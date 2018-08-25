@@ -1,0 +1,176 @@
+/* Octopus Project Vec3 3D Vector Class
+    Implements regular 3D (space) vectors including the common inner scalar
+    product (2 norm) and the cross product. */
+
+#ifndef VEC3_H
+#define VEC3_H
+
+#include <iostream>
+#include <valarray>
+#include <cmath>
+
+class Vec3 : public std::valarray<float> {
+  /* Inline non-member operators */
+  friend inline Vec3 operator+(Vec3 a,const Vec3& b) {
+   a[0]+=b[0]; a[1]+=b[1]; a[2]+=b[2]; return a;
+  }
+  friend inline Vec3 operator-(Vec3 a,const Vec3& b) {
+   a[0]-=b[0]; a[1]-=b[1]; a[2]-=b[2]; return a;
+  }
+  friend inline Vec3 operator-(Vec3 a) {
+   a[0]=-a[0]; a[1]=-a[1]; a[2]=-a[2]; return a;
+  }
+  friend inline float operator*(Vec3 a,const Vec3& b) {
+   a[0]*=b[0]; a[1]*=b[1]; a[2]*=b[2]; return a[0]+a[1]+a[2];
+  }
+  friend inline Vec3 operator*(const float& a,Vec3 b) {
+   b[0]*=a; b[1]*=a; b[2]*=a; return b;
+  }
+  friend inline Vec3 operator*(Vec3 a,const float& b) {
+   a[0]*=b; a[1]*=b; a[2]*=b; return a;
+//  friend inline Vec3 operator/(Vec3 a,const float& b) {
+//   a[0]/=b; a[1]/=b; a[2]/=b; return a;
+  }
+
+ public:
+  inline Vec3() : std::valarray<float>(3) {} // Empty Constructor
+  inline Vec3(const float& a, // Constructor with initial elements
+              const float& b,
+              const float& c) : std::valarray<float>(3) {
+   (*this)[0]=a; (*this)[1]=b; (*this)[2]=c;
+  }
+  // Copy constructor
+  inline Vec3(const std::valarray<float>& a) : std::valarray<float>(a) {}
+  inline Vec3(const std::slice_array<float>& a) : std::valarray<float>(a) {}
+
+  void zero() {
+   (*this)[0]=(*this)[1]=(*this)[2]=0.0;
+  }
+
+  // Norm of argument vector.
+  static float norm(const Vec3& a) { return sqrt(a*a); }
+  float norm() { return sqrt((*this)*(*this)); }
+
+  // Cross product of vectors a and b.
+  static Vec3 cross(const Vec3& a,const Vec3& b) {
+   return Vec3(a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]);
+  }
+
+  void cross(const Vec3& b) {
+   Vec3 a=Vec3((*this)[1]*b[2]-(*this)[2]*b[1],
+               (*this)[2]*b[0]-(*this)[0]*b[2],
+               (*this)[0]*b[1]-(*this)[1]*b[0]);
+   (*this)[0]=a[0]; (*this)[1]=a[1]; (*this)[2]=a[2];
+  }
+
+  // Normalize the vector to have a norm of 1.
+  // Returns the normalized vector if the length is non-zero,
+  //  otherwise the zero-vector.
+  static Vec3 normalize(const Vec3& a) {
+   float n=norm(a);
+   if (n!=0.0) return Vec3(a[0]/n,a[1]/n,a[2]/n);
+   else { std::cout << "Vec3: Unable to Normalize. Size is 0!" <<
+          std:: endl; return a; }
+  }
+
+  void normalize() {
+   float n=norm(*this); Vec3 a;
+   if (n!=0.0) {
+    a[0]=(*this)[0]/n; a[1]=(*this)[1]/n; a[2]=(*this)[2]/n;
+    (*this)[0]=a[0]; (*this)[1]=a[1]; (*this)[2]=a[2];
+   } else {
+    std::cout << "Vec3: Unable to Normalize. Size is 0!" <<
+    std:: endl;
+   }
+  }
+
+  // Rotate the vector (*this) in positive mathematical direction around the
+  // direction given by vector r.
+  // The norm of vector r specifies the rotation angle in radians.
+  Vec3 rotate(const Vec3& r) {
+   float phi=norm(r);
+   if (phi!=0) {
+    Vec3 par(r*(*this)/(r*r) * r); // Part parallel to r
+    Vec3 perp(*this - par);        // Part perpendicular to r
+    Vec3 rotdir(norm(perp) * normalize(cross(r,perp))); // Rotation direction
+    return Vec3(par+cos(phi)*perp+sin(phi)*rotdir);
+   } else {
+    std::cout << "Vec3: rotation angle is zero!" << std:: endl; return *this;
+   }
+  }
+
+  // STATIC FUNCTIONS
+
+  // Cosine of the angle between vectors a and b.
+  static float cosine(const Vec3& a,const Vec3& b) {
+   float den=norm(a)*norm(b); float ret=0.0;
+   // If |a|=0 or |b|=0, then angle is not defined.
+   // We return 1.0 in this case and print error..
+   if (den!=0.0) ret=a*b/den; else { 
+    ret=1.0;
+    std::cout << "Vec3: One of the cosine norms are zero!" << std:: endl;
+   }
+   return ret;
+  }
+
+  float cosine(const Vec3& b) {
+   float den=norm((*this))*norm(b); float ret=0.0;
+   // If |a|=0 or |b|=0, then angle is not defined.
+   // We return 1.0 in this case and print error..
+   if (den!=0.0) ret=(*this)*b/den; else {
+    ret=1.0;
+    std::cout << "Vec3: One of the cosine norms are zero!" << std:: endl;
+   }
+   return ret;
+  }
+
+  // Angle between vectors a and b.
+  // Norms of vectors must be > 0 otherwise NaN is returned.
+  // Returns the angle in radians between 0 and Pi,
+  //  or returns NaN if |a|=0 or |b|=0.
+  static float angle(const Vec3& a,const Vec3& b) {
+   if (!(a[0]==b[0] && a[1]==b[1] && a[2]==b[2])) return acos(cosine(a,b));
+   else return 0.0;
+  }
+
+  float angle(const Vec3& b) { return acos(cosine((*this),b)); }
+
+  // Returns the angle between vectors a and b, but with respect to a
+  // preferred rotation direction c.
+  // * Params vector a and be must be |a|>0 & |b|>0 or NaN is returned.
+  // * Param vector c indicates the rotation direction. It can be any vector
+  //   which is not part of the plane spanned by a and b. If |c|=0, the
+  //   smallest possible angle is returned.
+  //   The angle is returned in radians between 0 and 2*Pi,
+  //   or NaN if |a|=0 or |b|=0.
+  //
+  // * For vector a being not parallel to vector b, and vector a not
+  //   antiparallel to vector b, the two vectors a and b span a unique plane
+  //   in 3D space.
+  //   Let vectors n1 and n2 be the two possible normal vectors for this plane
+  //   with |ni|=1, i={1,2} and n1=-n2.
+  //
+  // * Let further vectors a and b enclose an angle alpha in [0,Pi],
+  //   then there is one i in {1,2} such that (alpha*ni x a ) * b=0.
+  //   This means vector a rotated by the rotation vector alpha*ni is parallel
+  //   to vector b. One could also rotate vector a vy (2*Pi-alpha)*(-ni) to
+  //   accomplish the same transformation with ((2*Pi-alpha)*(-ni) x a)*b = 0.
+  //
+  // * The vector c defines the direction of the normal vector to take as
+  //   reference. If c*ni>0, alpha is returned and otherwise 2*Pi-alpha.
+  //   If vector a is parallel to vector b, the choice of vector c does not
+  //   matter.
+  static float angle2(const Vec3& a,const Vec3& b,const Vec3& c) {
+   // If |a|=0 or |b|=0, then angle is not defined. We return NaN in this case.
+   float ang=angle(a,b); return (cross(a,b)*c < 0) ? float(2.*M_PI)-ang : ang;
+  }
+
+  float angle2(const Vec3& b,const Vec3& c) {
+   // If |a|=0 or |b|=0, then angle is not defined. We return NaN in this case.
+   float ang=angle((*this),b);
+   return (cross((*this),b)*c < 0) ? float(2.*M_PI)-ang : ang;
+  }
+
+};
+
+#endif
