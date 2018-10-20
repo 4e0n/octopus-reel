@@ -1,7 +1,3 @@
-# *      Octopus - Bioelectromagnetic Source Localization System 0.9.9      *
-# *                   (>) GPL 2007-2009,2018- Barkin Ilhan                  *
-# *            barkin@unrlabs.org, http://www.unrlabs.org/barkin            *
-
 obj-m    := octopus-stim-backend.o
 
 CURRENT = $(shell uname -r)

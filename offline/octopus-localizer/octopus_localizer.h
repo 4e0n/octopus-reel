@@ -1,7 +1,25 @@
-/*      Octopus - Bioelectromagnetic Source Localization System 0.9.5       *\
- *                     (>) GPL 2007-2009 Barkin Ilhan                       *
- *      Hacettepe University, Medical Faculty, Biophysics Department        *
-\*                barkin@turk.net, barkin@hacettepe.edu.tr                  */
+/*
+Octopus-ReEL - Realtime Encephalography Laboratory Network
+   Copyright (C) 2007 Barkin Ilhan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+
+ Contact info:
+ E-Mail:  barkin@unrlabs.org
+ Website: http://icon.unrlabs.org/staff/barkin/
+ Repo:    https://github.com/4e0n/
+*/
 
 #ifndef OCTOPUS_LOCALIZER_H
 #define OCTOPUS_LOCALIZER_H
@@ -53,8 +71,8 @@ class Localizer : public QMainWindow {
    // System Menu
    aboutAction=new QAction("&About..",this);
    quitAction=new QAction("&Quit",this);
-   aboutAction->setStatusTip("About Octopus GUI..");
-   quitAction->setStatusTip("Quit Octopus GUI");
+   aboutAction->setStatusTip("About Octopus-ReEL..");
+   quitAction->setStatusTip("Quit Octopus-ReEL");
    connect(aboutAction,SIGNAL(triggered()),this,SLOT(slotAbout()));
    connect(quitAction,SIGNAL(triggered()),(QObject *)p,SLOT(slotQuit()));
    sysMenu->addAction(aboutAction); sysMenu->addSeparator();
@@ -107,8 +125,12 @@ class Localizer : public QMainWindow {
  private slots:
 
   void slotAbout() {
-   QMessageBox::about(this,"About Octopus Project",
-                           "Octopus EEG/ERP Source Localizer v0.9.5");
+   QMessageBox::about(this,"About Octopus-ReEL",
+                           "Octopus EEG/ERP Source Localization Tool\n"
+                           "(c) 2007 Barkin Ilhan (barkin@unrlabs.org)\n"
+                           "This is free software coming with\n"
+                           "ABSOLUTELY NO WARRANTY; You are welcome\n"
+                           "to redistribute it under conditions of GPL v3.\n");
   }
 
 
