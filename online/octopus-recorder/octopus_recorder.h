@@ -37,7 +37,6 @@ class Recorder : public QMainWindow {
    p=rm; setGeometry(p->guiX,p->guiY,p->guiWidth,p->guiHeight);
    setFixedSize(p->guiWidth,p->guiHeight);
 
-
    // *** TABS & TABWIDGETS ***
 
    mainTabWidget=new QTabWidget(this);

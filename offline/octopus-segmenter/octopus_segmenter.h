@@ -152,7 +152,7 @@ class Segmenter : public QMainWindow {
    mainTabWidget->show();
 
    setWindowTitle(
-    "Octopus-0.9.5 - Volumetric MR Segmentation/Tissue Classification Tool");
+    "Octopus-ReEL - Volumetric MR Segmentation/Tissue Classification Tool");
   }
 
  public slots:

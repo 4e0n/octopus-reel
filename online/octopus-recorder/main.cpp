@@ -52,5 +52,9 @@ int main(int argc,char** argv) {
  QApplication app(argc,argv); RecMaster *p=new RecMaster(&app);
  if (!p->initSuccess) {
   qDebug("Octopus-Recorder: Initialization failed.. exiting.."); return -1;
- } else { Recorder recorder(p); recorder.show(); return app.exec(); }
+ } else {
+	 Recorder recorder(p);
+	 recorder.show();
+	 return app.exec();
+ }
 }

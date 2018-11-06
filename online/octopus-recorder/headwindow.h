@@ -249,7 +249,10 @@ class HeadWindow : public QMainWindow {
 
    headGLWidget=new HeadGLWidget(this,p);
 
-   gizmoList->setCurrentRow(0); slotSelectGizmo(0);
+   //if (gizmoList->count()>0) {
+   // gizmoList->setCurrentRow(0); slotSelectGizmo(0);
+   //}
+ 
    setWindowTitle("Octopus-GUI - Head & Configuration Window");
   }
 

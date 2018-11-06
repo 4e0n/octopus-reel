@@ -22,8 +22,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* This is the acquisition backend RTAI module designed to run over a
-   realtime Linux node which need to have parallel and serial ports, and
-   some AD card(s) supported by COMEDI, in order to acquire N-channels
+   realtime Linux node which needs to have parallel and serial ports, and
+   AD card(s) supported by COMEDI, in order to acquire N-channels
    of EEG data.
 
    After launching, channel list will be filled with subsequent channels of
@@ -45,12 +45,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    PCI-6071E DAQ cards together (64+64=128 channel source localization system),
    and mobile systems with a single PCMCIA DAQ Card such as NI DAQCard-6036E
    or NI AI-16-E4 (16 channel mobile acquisition system appropriate for
-   usage over older laptop systems with parallel/serial ports). Also tested is
-   the configuration in which NI DAQCard-6036E and NI AI-16-E4 coexist.
+   usage over older laptop systems with parallel/serial ports). So, also
+   tested is the configuration in which NI DAQCard-6036E and NI AI-16-E4
+   coexist.
+
    As long as a free IRQ is available for the second card, this also seem to
    work. In Octopus, Serial and Parallel ports are Interrupt driven, it's
    better if they don't interfere with the COMEDI devices, although Octopus
-   does not rely on the concept of "COMEDI command" in the meantime.
+   does not rely on COMEDI commands in the meantime.
 
    The data transferred to daemon over the Parallel and Serial ports, are the
    STIMulus events and subject RESPonses, respectively. The triggers are
@@ -59,7 +61,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    corresponding realtime interrupt handlers. Parallel port must support
    and actually be in bi-directional mode, accepting incoming data.
 
-   EEG Data combined with the events are sent to userspace using a SYN-ACK
+   EEG data combined with the events are sent to userspace using a SYN-ACK
    handshake protocol controlled over two FIFOs. Data, on the other hand, is
    transferred via the SHM buffer allocated during module initialization. */
 
@@ -71,15 +73,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_sem.h>
 #include <rtai_math.h>
 
-//#define OCTOPUS_ACQ_COMEDI
+#define OCTOPUS_ACQ_COMEDI
 #define OCTOPUS_VERBOSE
 
 #ifdef OCTOPUS_ACQ_COMEDI
 #include <linux/kcomedilib.h>
 static lsampl_t dummy_sample;
-#endif
-
+#else
+/* Due to a momentary problem with RTAI this is to be defined manually. */
 #define M_PI (double)(3.141519)
+#endif
 
 static float dummy_data,dummy_filt;
 
@@ -90,13 +93,12 @@ static int par_base=0x378,ser_base=0x3f8,par_irq=7,ser_irq=3;
 
 /* ========================================================================= */
 
-#define SAMPLE_RATE	(250)  /* Soon, will be dynamically adjustable */
+#define SAMPLE_RATE	(250)  /* Soon, will (may) be dynamically adjustable */
 
-/* Since we depend on amplifier CMRR, range is hard-coded as microvolts. */
+/* Since we depend on amplifier CMRR, range is hard-coded as microvolts.
+   but it is for this one to be given as a module parameter as well. */
 #define AMP_RANGE	(200.) /* Amplifier range in uVpeak */
 
-/* ! Initial sample rate value will be changed to be read as a module
-     parameter from the command line. */
 static int octopus_acq_rate=SAMPLE_RATE;
 
 static RT_TASK octopus_acq_task;
@@ -330,6 +332,6 @@ static void __exit octopus_exit(void) {
 module_init(octopus_init);
 module_exit(octopus_exit);
 
-MODULE_AUTHOR("Barkin Ilhan (barkin@turk.net)");
-MODULE_DESCRIPTION("Octopus v0.9.5 - ACQ Realtime kernel-space backend");
+MODULE_AUTHOR("Barkin Ilhan (barkin@unrlab.org)");
+MODULE_DESCRIPTION("Octopus-ReEL - ACQ Realtime kernel-space backend");
 MODULE_LICENSE("GPL"); 

@@ -144,6 +144,8 @@ int setup_comedi(void) {
     ai_channel[i*daqcard[i].chn_count+j].channel_no=j;
    }
   }
+
+  /* half of the total count are the notch filtered version */
   ai_total_count=2*ai_channel_count+2;
 
   /* Make ready the precalculated channel values for use in main rtai task */

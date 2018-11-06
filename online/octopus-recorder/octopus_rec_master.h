@@ -67,6 +67,7 @@ class RecMaster : QObject {
   RecMaster(QApplication *app) : QObject() { application=app;
    stimCommandSocket=new QTcpSocket(this); stimDataSocket=new QTcpSocket(this);
    acqCommandSocket=new QTcpSocket(this); acqDataSocket=new QTcpSocket(this);
+ 
    connect(stimCommandSocket,SIGNAL(error(QAbstractSocket::SocketError)),
            this,SLOT(slotStimCommandError(QAbstractSocket::SocketError)));
    connect(stimDataSocket,SIGNAL(error(QAbstractSocket::SocketError)),
