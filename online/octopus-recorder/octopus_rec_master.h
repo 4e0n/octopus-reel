@@ -113,8 +113,8 @@ class RecMaster : QObject {
            "Cannot open ./octopus.cfg for reading!..\n"
            "Loading hardcoded values..");
     cp.cntPastSize=5000;
-    stimIp="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
-    acqIp="127.0.0.1";  acqCommPort=65002;  stimDataPort=65003;
+    stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
+    acqHost="127.0.0.1";  acqCommPort=65002;  stimDataPort=65003;
     cp.rejBwd=-300; cp.avgBwd=-200; cp.avgFwd=500; cp.rejFwd=600;
 
     // ..here put default events setup..
@@ -156,7 +156,7 @@ class RecMaster : QObject {
    }
 
    // Begin retrieving continuous data
-   acqDataSocket->connectToHost(acqIp,acqDataPort,QIODevice::ReadOnly);
+   acqDataSocket->connectToHost(acqHost,acqDataPort,QIODevice::ReadOnly);
    acqDataSocket->waitForConnected();
    connect(acqDataSocket,SIGNAL(readyRead()),this,SLOT(slotAcqReadData()));
   }
@@ -180,7 +180,7 @@ class RecMaster : QObject {
   // *** UTILITY ROUTINES ***
 
   void stimSendCommand(int command,int ip0,int ip1,int ip2) {
-   stimCommandSocket->connectToHost(stimIp,stimCommPort);
+   stimCommandSocket->connectToHost(stimHost,stimCommPort);
    stimCommandSocket->waitForConnected();
    QDataStream stimCommandStream(stimCommandSocket); csCmd.cmd=command;
    csCmd.iparam[0]=ip0; csCmd.iparam[1]=ip1; csCmd.iparam[2]=ip2;
@@ -189,7 +189,7 @@ class RecMaster : QObject {
   }
 
   void acqSendCommand(int command,int ip0,int ip1,int ip2) {
-   acqCommandSocket->connectToHost(acqIp,acqCommPort);
+   acqCommandSocket->connectToHost(acqHost,acqCommPort);
    acqCommandSocket->waitForConnected();
    QDataStream acqCommandStream(acqCommandSocket); csCmd.cmd=command;
    csCmd.iparam[0]=ip0; csCmd.iparam[1]=ip1; csCmd.iparam[2]=ip2;
@@ -462,7 +462,7 @@ class RecMaster : QObject {
   // Non-volatile (read from and saved to octopus.cfg)
 
   // NET
-  QString stimIp,acqIp; int stimCommPort,stimDataPort,acqCommPort,acqDataPort;
+  QString stimHost,acqHost; int stimCommPort,stimDataPort,acqCommPort,acqDataPort;
 
   // CHN
   QVector<Channel*> acqChannels; QVector<Event*> acqEvents;
@@ -553,6 +553,7 @@ class RecMaster : QObject {
    int acqCurStimEvent,acqCurRespEvent,avgDataCount,avgStartOffset;
    QVector<float> *avgInChn,*stdInChn; float n1,k1,k2,z;
    QDataStream acqDataStream(acqDataSocket);
+
    while (acqDataSocket->bytesAvailable() >=
                                     (unsigned int)((tChns+1)*sizeof(float))) {
     acqDataStream.readRawData((char*)(acqCurData.data()),
@@ -912,7 +913,7 @@ class RecMaster : QObject {
     patFile.open(QIODevice::ReadOnly); patStream.setDevice(&patFile);
     pattern=patStream.readAll(); patFile.close(); // Close pattern file.
 
-    stimCommandSocket->connectToHost(stimIp,stimCommPort);
+    stimCommandSocket->connectToHost(stimHost,stimCommPort);
     stimCommandSocket->waitForConnected();
 
     // We want to be ready when the answer comes..
@@ -939,7 +940,7 @@ class RecMaster : QObject {
      qDebug("Octopus GUI: Error in STIM daemon ACK reply!"); return; }
 
     // Now STIM Server is waiting for the file.. Let's send over data port..
-    stimDataSocket->connectToHost(stimIp,stimDataPort);
+    stimDataSocket->connectToHost(stimHost,stimDataPort);
     stimDataSocket->waitForConnected();
     QDataStream stimDataStream(stimDataSocket);
 

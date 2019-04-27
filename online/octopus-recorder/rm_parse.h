@@ -63,22 +63,17 @@ void parseConfig(QStringList cfgLines) {
  if (netSection.size()>0) {
   for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
    if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
-    if (opts2.size()==3) { stimIp=opts2[0].trimmed();
+    if (opts2.size()==3) { stimHost=opts2[0].trimmed();
+     QHostInfo qhiStim=QHostInfo::fromName(stimHost);
+     stimHost=qhiStim.addresses().first().toString();
+     qDebug() << "StimHost:" << stimHost;
+
      stimCommPort=opts2[1].toInt(); stimDataPort=opts2[2].toInt();
-     opts3=stimIp.split("."); if (opts3.size()==4) {
-      // Simple IP validation..
-      if ((!(opts3[0].toInt() >= 1  && opts3[0].toInt() < 254)) ||
-          (!(opts3[1].toInt() >= 0  && opts3[1].toInt() < 255)) ||
-          (!(opts3[2].toInt() >= 0  && opts3[2].toInt() < 255)) ||
-          (!(opts3[3].toInt() >= 1  && opts3[3].toInt() < 254)) ||
-          // Simple port validation..
-          (!(stimCommPort >= 1024 && stimCommPort <= 65535)) ||
-          (!(stimDataPort >= 1024 && stimDataPort <= 65535))) {
-       qDebug(".cfg: Error in STIM IP and/or port settings!");
-       initSuccess=false; break;
-      }
-     } else {
-      qDebug(".cfg: Parse error in STIM IP (v4) Address!");
+
+     // Simple port validation..
+     if ((!(stimCommPort >= 1024 && stimCommPort <= 65535)) ||
+         (!(stimDataPort >= 1024 && stimDataPort <= 65535))) {
+      qDebug(".cfg: Error in STIM IP and/or port settings!");
       initSuccess=false; break;
      }
     } else {
@@ -86,22 +81,17 @@ void parseConfig(QStringList cfgLines) {
      initSuccess=false; break;
     }
    } else if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
-    if (opts2.size()==3) { acqIp=opts2[0].trimmed();
+    if (opts2.size()==3) { acqHost=opts2[0].trimmed();
+     QHostInfo qhiAcq=QHostInfo::fromName(acqHost);
+     acqHost=qhiAcq.addresses().first().toString();
+     qDebug() << "AcqHost:" << acqHost;
+
      acqCommPort=opts2[1].toInt(); acqDataPort=opts2[2].toInt();
-     opts3=acqIp.split("."); if (opts3.size()==4) {
-      // Simple IP validation..
-      if ((!(opts3[0].toInt() >= 1  && opts3[0].toInt() < 254)) ||
-          (!(opts3[1].toInt() >= 0  && opts3[1].toInt() < 255)) ||
-          (!(opts3[2].toInt() >= 0  && opts3[2].toInt() < 255)) ||
-          (!(opts3[3].toInt() >= 1  && opts3[3].toInt() < 254)) ||
-          // Simple port validation..
-          (!(acqCommPort >= 1024 && acqCommPort <= 65535)) ||
-          (!(acqDataPort >= 1024 && acqDataPort <= 65535))) {
-       qDebug(".cfg: Error in ACQ IP and/or port settings!");
-       initSuccess=false; break;
-      }
-     } else {
-      qDebug(".cfg: Parse error in ACQ IP (v4) Address!");
+
+     // Simple port validation..
+     if ((!(acqCommPort >= 1024 && acqCommPort <= 65535)) ||
+         (!(acqDataPort >= 1024 && acqDataPort <= 65535))) {
+      qDebug(".cfg: Error in ACQ IP and/or port settings!");
       initSuccess=false; break;
      }
     }
@@ -111,12 +101,12 @@ void parseConfig(QStringList cfgLines) {
    }
   }
  } else {
-  stimIp="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
-  acqIp="127.0.0.1";  acqCommPort=65002;  stimDataPort=65003;
+  stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
+  acqHost="127.0.0.1";  acqCommPort=65002;  stimDataPort=65003;
  } if (!initSuccess) return;
 
  // Connect to ACQ Server and get crucial info.
- acqCommandSocket->connectToHost(acqIp,acqCommPort);
+ acqCommandSocket->connectToHost(acqHost,acqCommPort);
  acqCommandSocket->waitForConnected();
  QDataStream acqCommandStream(acqCommandSocket);
  csCmd.cmd=CS_ACQ_INFO;

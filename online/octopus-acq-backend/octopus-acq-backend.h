@@ -246,20 +246,22 @@ int dispose_fifos(int *f_handler) {
 
 /* ************************************************************************* */
 
-int setup_rtai(int rate,RT_TASK *task,void *r_thread) {
+int setup_rtai(RT_TASK *task,void *r_thread) {
  /* Setup Realtime task */
- rt_task_init(task,r_thread,0,2000,0,1,0);
- rtai_ticks=start_rt_timer(nano2count(1e9/rate));
+ rt_task_init(task,(void *)r_thread,0,2000,0,1,0);
+ rtai_ticks=start_rt_timer(nano2count(1e9/octopus_acq_rate));
  rt_task_make_periodic(task,rt_get_time()+rtai_ticks,rtai_ticks);
 #ifdef OCTOPUS_VERBOSE
- rt_printk("octopus-acq-backend.o: Acq RTAI task started at %d Hz.\n",rate);
+ rt_printk("octopus-acq-backend.o: Acq RTAI task started at %d Hz.\n",octopus_acq_rate);
 #endif
  return 0;
 }
 
 int dispose_rtai(RT_TASK *task) {
  /* Delete the bottom half task of vidirq handler */
- stop_rt_timer(); rt_busy_sleep(1e7); rt_task_delete(task);
+ stop_rt_timer();
+ rt_busy_sleep(1e7);
+ rt_task_delete(task);
 #ifdef OCTOPUS_VERBOSE
  rt_printk("octopus-acq-backend.o: Acquisition RTAI task disposed.\n");
 #endif

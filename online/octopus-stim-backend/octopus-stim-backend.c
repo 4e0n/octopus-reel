@@ -50,7 +50,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_fifos.h>
 #include <rtai_shm.h>
 #include <rtai_sem.h>
-#include <rtai_math.h>
+//#include <rtai_math.h>
 //#include <math.h>
 #include <linux/delay.h>
 
@@ -65,11 +65,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* ========================================================================= */
 
-#define M_PI (double)(3.141519)
+//#define M_PI (double)(3.141519)
 #ifdef OCTOPUS_STIM_COMEDI
 static comedi_t *pcimio; static sampl_t dac_0,dac_1,dac_2,dac_3;
-#else
-static unsigned short dac_0,dac_1,dac_2,dac_3;
+//#else
+//static unsigned short dac_0,dac_1,dac_2,dac_3;
 #endif
 
 static char *himem_buffer,*patt_shm; static fb_command fb_msg,bf_msg;
@@ -90,8 +90,8 @@ static int i=0,pause_trighi=0;
 /* ========================================================================= */
 
 /* TESTS */
-#include "test_calibration.h"
-#include "test_sinecosine.h"
+//#include "test_calibration.h"
+//#include "test_sinecosine.h"
 #include "test_square.h"
 #include "test_steadysquare.h"
 
@@ -108,9 +108,9 @@ static void stim_thread(int t) {
   if (stim_active) {
    rt_sem_wait(&stim_sem);
     switch (paradigm) {
-     case TEST_CALIBRATION:   test_calibration();  break;
+//     case TEST_CALIBRATION:   test_calibration();  break;
      default:
-     case TEST_SINECOSINE:    test_sinecosine();   break;
+//     case TEST_SINECOSINE:    test_sinecosine();   break;
      case TEST_SQUARE:        test_square();       break;
      case TEST_STEADYSQUARE:  test_steadysquare(); break;
      case PARA_CLICK:         para_click();        break;
@@ -145,8 +145,8 @@ static void stim_reset(void) {
 
 static void init_test_para(int tp) {
  switch (tp) {
-  case TEST_CALIBRATION:   test_calibration_init();  break;
-  case TEST_SINECOSINE:    test_sinecosine_init();   break;
+//  case TEST_CALIBRATION:   test_calibration_init();  break;
+//  case TEST_SINECOSINE:    test_sinecosine_init();   break;
   case TEST_SQUARE:        test_square_init();       break;
   case TEST_STEADYSQUARE:  test_steadysquare_init(); break;
   case PARA_CLICK:         para_click_init();        break;
@@ -250,8 +250,8 @@ static int __init octopus_stim_init(void) {
  comedi_data_write(pcimio,1,3,0,AREF_GROUND,dac_3);
  rt_printk("octopus-stim-backend.o: Comedi Device Allocation successful. ->\n");
  rt_printk("octopus-stim-backend.o:  (pcimio=0x%p).\n",pcimio);
-#else
- rt_printk("octopus-stim-backend.o: Diagnostic mode.. no COMEDI..\n");
+//#else
+// rt_printk("octopus-stim-backend.o: Diagnostic mode.. no COMEDI..\n");
 #endif
 
  /* Initialize SHM Buffer for Pattern Transfer */
@@ -305,14 +305,14 @@ static void __exit octopus_stim_exit(void) {
  comedi_unlock(pcimio,1);
  comedi_close(pcimio);
  rt_printk("octopus-stim-backend.o: Comedi DAC device freed.\n");
-#else
- rt_printk("octopus-stim-backend.o: STIM Backend exited successfully.\n");
+//#else
+// rt_printk("octopus-stim-backend.o: STIM Backend exited successfully.\n");
 #endif
 }
 
 module_init(octopus_stim_init);
 module_exit(octopus_stim_exit);
 
-MODULE_AUTHOR("Barkin Ilhan (barkin@turk.net)");
+MODULE_AUTHOR("Barkin Ilhan (barkin@unrlabs.org)");
 MODULE_DESCRIPTION("Octopus Auditory STIM Backend v0.8");
 MODULE_LICENSE("GPL"); 

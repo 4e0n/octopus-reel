@@ -71,7 +71,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_fifos.h>
 #include <rtai_shm.h>
 #include <rtai_sem.h>
-#include <rtai_math.h>
+//#include <rtai_math.h>
 
 #define OCTOPUS_ACQ_COMEDI
 #define OCTOPUS_VERBOSE
@@ -89,11 +89,11 @@ static float dummy_data,dummy_filt;
 static SEM octopus_acq_sem;
 
 /* ! Will be changed to be read as module parameter from the command line. */
-static int par_base=0x378,ser_base=0x3f8,par_irq=7,ser_irq=3;
+static int par_base=0x378,ser_base=0x3f8,par_irq=7,ser_irq=4;
 
 /* ========================================================================= */
 
-#define SAMPLE_RATE	(250)  /* Soon, will (may) be dynamically adjustable */
+#define SAMPLE_RATE	(int)(250)  /* Soon, will (may) be dynamically adjustable */
 
 /* Since we depend on amplifier CMRR, range is hard-coded as microvolts.
    but it is for this one to be given as a module parameter as well. */
@@ -156,11 +156,11 @@ static void octopus_acq_thread(int t) {
      (buffer.data)[pivot_be*ai_total_count+i]=dummy_data;
 #else
      /* Range is 400uVpp */
-     dummy_data =a_signal*(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_signal);
-     if (hz)
-      dummy_data+=a_noise *(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_noise );
-     else
-      dummy_data+=a_noise2 *(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_noise );
+//     dummy_data =a_signal*(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_signal);
+//     if (hz)
+//      dummy_data+=a_noise *(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_noise );
+//     else
+//      dummy_data+=a_noise2 *(AMP_RANGE*95./100.) * sin(2.*M_PI*theta/t_noise );
 
      (buffer.data)[pivot_be*ai_total_count+i]=dummy_data;
 #endif
@@ -184,9 +184,9 @@ static void octopus_acq_thread(int t) {
     (buffer.data)[(pivot_be+1)*ai_total_count-1]=resp_trig;
     stim_trig=resp_trig=0;
 
-#ifndef OCTOPUS_ACQ_COMEDI
-    theta+=1./(float)(octopus_acq_rate); if (theta>1.) theta=0.;
-#endif
+//#ifndef OCTOPUS_ACQ_COMEDI
+//    theta+=1./(float)(octopus_acq_rate); if (theta>1.) theta=0.;
+//#endif
 
 #ifdef OCTOPUS_VERBOSE
     if (!sample_counter & data_loss_flag) {
@@ -231,6 +231,7 @@ static void stim_handler(void) {
    stim_trig=(float)(stim_data);
   rt_sem_signal(&octopus_acq_sem);
  } total_stim_interrupts++;
+ rt_printk("Stim=%d\n",stim_data);
  rt_ack_irq(par_irq);
 }
 
@@ -243,7 +244,7 @@ static void resp_handler(void) {
     resp_trig=(float)(127+resp_data);
    rt_sem_signal(&octopus_acq_sem);
   }
-//  rt_printk("ResponsePad=%d\n",resp_data);
+  rt_printk("ResponsePad=%d\n",resp_data);
   outb(0x7,ser_base+2); /* FCR: FIFOs on, INT every byte and clear'em - 0xc7 */
  } total_resp_interrupts++;
 // rt_pend_linux_irq(ser_irq);
@@ -301,7 +302,7 @@ static int __init octopus_init(void) {
 #endif
  setup_shm();
  setup_fifos((int *)fb_fifohandler);
- setup_rtai(octopus_acq_rate,&octopus_acq_task,octopus_acq_thread);
+ setup_rtai(&octopus_acq_task,(void *)octopus_acq_thread);
  setup_stim(par_irq,par_base,stim_handler);
  setup_resp(ser_irq,ser_base,resp_handler);
 

@@ -1,0 +1,13 @@
+.*.swp
+.deps
+*.ko
+*.ko.cmd
+*.mod.c
+*.o
+*.o.cmd
+*.o.d
+Makefile
+Makefile.in
+modules.order
+moc_*.cpp
+moc_*.o

@@ -36,7 +36,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
                                                   stimulus pattern. */
 #define SHMBUFSIZE		(128)	/* Shared Memory between backend and
                                            frontend. */
-#define DA_SYNTH_RATE		(50000)	/* Audio synthesis rate (main loop). */
+#define DA_SYNTH_RATE		(10000)	/* Audio synthesis rate (main loop). */
 
 /* Commands for frontend<->backend communication of stim. */
 #define	STIM_SET_PARADIGM	(0x0001)

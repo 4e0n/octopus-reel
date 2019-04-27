@@ -116,20 +116,15 @@ class AcqDaemon : public QTcpServer {
     } else {
      qDebug("octopus-acq-daemon:  ..accepted.. connecting..");
      connect(&dataSocket,SIGNAL(disconnected()),this,SLOT(slotDisconnected()));
-     if (dataSocket.waitForConnected()) {
-      //qDebug() << dataSocket.peerAddress();
-      connected=true;
-      qDebug("octopus-acq-daemon: Client TCP connection established.");
-      // Launch thread responsible for sending acq.data asynchronously..
-      acqThread=new AcqThread(this,&tcpBuffer,&tcpBufIndex,totalCount,
-		              sampleRate,
-                              fbFifo,bfFifo,shmBuffer,&connected,&mutex);
-      // Delete thread if communication breaks..
-      connect(acqThread,SIGNAL(finished()),acqThread,SLOT(deleteLater()));
-      acqThread->start(QThread::HighestPriority);
-     } else {
-      qDebug("octopus-acq-daemon: Cannot connect to Client TCP socket!!!");
-     }
+     dataSocket.waitForConnected(); connected=true;
+     qDebug("octopus-acq-daemon: Client TCP connection established.");
+     // Launch thread responsible for sending acq.data asynchronously..
+     outputStream.setDevice(&dataSocket);
+     acqThread=new AcqThread(this,&tcpBuffer,&tcpBufIndex,totalCount,sampleRate,
+                             fbFifo,bfFifo,shmBuffer,&connected,&mutex);
+     // Delete thread if communication breaks..
+     connect(acqThread,SIGNAL(finished()),acqThread,SLOT(deleteLater()));
+     acqThread->start(QThread::HighestPriority);
     }
    } else qDebug("octopus-acq-daemon:  ..not accepted.. already connected..");
   }
@@ -137,18 +132,15 @@ class AcqDaemon : public QTcpServer {
  private slots:
   void slotDisconnected() {
    disconnect(&dataSocket,SIGNAL(disconnected()),this,SLOT(slotDisconnected()));
-   connected=false;
+   connected=false; qDebug("octopus-acq-daemon: Client disconnected!");
    while (acqThread->isRunning()); // Wait for thread termination
-   dataSocket.close();
-   qDebug("octopus-acq-daemon: Client disconnected!");
+   //dataSocket.flush();
   }
 
   void slotSendData() {
    for (int i=0;i<(totalCount+1);i++)
     outBuffer.append(tcpBuffer[tcpBufIndex*(totalCount+1)+i]);
    if (tcpSampleCount==tcpPacketSize) { tcpSampleCount=0;
-    QDataStream outputStream(&dataSocket);
-    //qDebug() << outputStream.status();
     outputStream.writeRawData((const char*)((char *)(outBuffer.data())),
                               outBuffer.size()*sizeof(float));
     dataSocket.flush();
@@ -162,7 +154,7 @@ class AcqDaemon : public QTcpServer {
   cs_command csCmd; fb_command fbMsg,bfMsg;
   int fbFifo,bfFifo; float *shmBuffer;
   int tcpBufSize,acqBufSize,totalCount,sampleRate;
-  QVector<float> tcpBuffer; bool connected;
+  QVector<float> tcpBuffer; bool connected; QDataStream outputStream;
   int tcpSampleCount,tcpBufIndex,tcpPacketSize;
   QVector<float> outBuffer;
 };

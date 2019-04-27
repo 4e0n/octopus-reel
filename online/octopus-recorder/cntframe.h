@@ -119,6 +119,8 @@ class CntFrame : public QFrame {
        scrCurY-(int)(scrPrvDataX*chHeight*p->cntAmpX/400.0),
                            wX[curCol],
        scrCurY-(int)(scrCurDataX*chHeight*p->cntAmpX/400.0));
+
+//      if (i==0) qDebug("%2.2f",scrCurDataX);
      }
 
      if (event) { event=false;
