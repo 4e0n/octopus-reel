@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -26,12 +26,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QtGui>
 #include <QString>
-#include "octopus_seg_master.h"
+#include "octopus_bem_master.h"
 
 class DeformW : public QWidget {
  Q_OBJECT
  public:
-  DeformW(SegMaster *sm) : QWidget(0,Qt::SubWindow) { p=sm;
+  DeformW(BEMMaster *sm) : QWidget(0,Qt::SubWindow) { p=sm;
    setGeometry(540,40,500,300); setFixedSize(500,300);
 
    gvfIterLabel=new QLabel("GVF Iter# ("+
@@ -104,7 +104,7 @@ class DeformW : public QWidget {
   }
 
  private:
-  SegMaster *p; QString dummyString;
+  BEMMaster *p; QString dummyString;
   QLabel *gvfIterLabel,*gvfMuLabel,*defIterLabel,
          *defAlphaLabel,*defBetaLabel,*defTauLabel,
          *modelRxLabel,*modelRyLabel,*modelRzLabel;

@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -25,12 +25,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define REGGROW_W_H
 
 #include <QtGui>
-#include "octopus_seg_master.h"
+#include "octopus_bem_master.h"
 
 class RegGrowW : public QWidget {
  Q_OBJECT
  public:
-  RegGrowW(SegMaster *sm) : QWidget(0,Qt::SubWindow) {
+  RegGrowW(BEMMaster *sm) : QWidget(0,Qt::SubWindow) {
    p=sm; setGeometry(p->guiX+p->guiWidth+20,p->guiY,170,190);
    setFixedSize(170,190);
 
@@ -68,7 +68,7 @@ class RegGrowW : public QWidget {
   void slotFldInvSet(int x) { p->thrInv=(bool)x; }
 
  private:
-  SegMaster *p; QLabel *bndLabel; QString dummyString;
+  BEMMaster *p; QLabel *bndLabel; QString dummyString;
 };
 
 #endif

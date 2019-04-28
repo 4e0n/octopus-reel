@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -21,12 +21,25 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* Simple coord structure when the possible overhead of Vec3 class is
-   considered anyway. */
+#ifndef GENPAR_W_H
+#define GENPAR_W_H
 
-#ifndef COORD3D_H
-#define COORD3D_H
+#include <QtGui>
+#include <QString>
+#include "octopus_bem_master.h"
 
-typedef struct _Coord3D { float x,y,z; } Coord3D;
+class GenParW : public QWidget {
+ Q_OBJECT
+ public:
+  GenParW(BEMMaster *sm) : QWidget(0,Qt::SubWindow) { p=sm;
+   setGeometry(540,40,500,300); setFixedSize(500,300);
+   setWindowTitle("General Settings");
+  }
+
+ private slots:
+
+ private:
+  BEMMaster *p; QString dummyString;
+};
 
 #endif

@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -25,12 +25,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define STATSEG_W_H
 
 #include <QtGui>
-#include "octopus_seg_master.h"
+#include "octopus_bem_master.h"
 
 class StatSegW : public QWidget {
  Q_OBJECT
  public:
-  StatSegW(SegMaster *sm) : QWidget(0,Qt::SubWindow) {
+  StatSegW(BEMMaster *sm) : QWidget(0,Qt::SubWindow) {
    p=sm; setGeometry(540,40,200,100); setFixedSize(200,100);
 
    centroidLabel=new QLabel("Centroid Count ("+
@@ -57,7 +57,7 @@ class StatSegW : public QWidget {
   }
 
  private:
-  SegMaster *p; QLabel *centroidLabel; QString dummyString;
+  BEMMaster *p; QLabel *centroidLabel; QString dummyString;
 };
 
 #endif

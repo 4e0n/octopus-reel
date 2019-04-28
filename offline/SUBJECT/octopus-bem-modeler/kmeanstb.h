@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -21,32 +21,24 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_MRI_VOLUME_H
-#define OCTOPUS_MRI_VOLUME_H
+#ifndef KMEANS_TB_H
+#define KMEANS_TB_H
 
-#include <QVector>
-#include "octopus_mri_slice.h"
+#include <QtGui>
+#include "octopus_bem_master.h"
 
-class MRIVolume {
+class KMeansTB : public QWidget {
+ Q_OBJECT
  public:
-  MRIVolume() {}
-  ~MRIVolume() { clear(); }
+  KMeansTB(BEMMaster *mVol) : QWidget(0,Qt::SubWindow) {
+   mv=mVol;
+   setGeometry(540,40,500,300); setFixedSize(500,300);
 
-  void clear() {
-   for (int i=0;i<slice.size();i++) delete slice[i]; slice.resize(0);
+   setWindowTitle("K-Means Clustering");
   }
 
-  void append(MRISlice *s) { slice.append(s); }
-
-  void updateHistogram() { float t;
-   histogram.resize(slice.size());
-   for (int i=0;i<256;i++) { t=0.;
-    for (int j=0;j<slice.size();j++) t+=slice[j]->histogram[i];
-    histogram[i]=t/(float)(slice.size());
-   }
-  }
-
-  QVector<MRISlice*> slice; QVector<float> histogram;
+ private:
+  BEMMaster *mv;
 };
 
 #endif

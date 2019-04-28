@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -21,24 +21,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef KMEANS_TB_H
-#define KMEANS_TB_H
+#ifndef OCTOPUS_WING_H
+#define OCTOPUS_WING_H
 
-#include <QtGui>
-#include "octopus_seg_master.h"
+#include <QColor>
+#include "vec3.h"
 
-class KMeansTB : public QWidget {
- Q_OBJECT
- public:
-  KMeansTB(SegMaster *mVol) : QWidget(0,Qt::SubWindow) {
-   mv=mVol;
-   setGeometry(540,40,500,300); setFixedSize(500,300);
-
-   setWindowTitle("K-Means Clustering");
-  }
-
- private:
-  SegMaster *mv;
-};
+typedef struct _Vertex { Vec3 r;   } Vertex;
+typedef struct _Edge   { int v[2]; } Edge;
+typedef struct _Face   { int v[3]; } Face;
+typedef struct _Wing   { int f[2]; } Wing;
+typedef struct _SNeigh { int v[3]; } SNeigh;
 
 #endif

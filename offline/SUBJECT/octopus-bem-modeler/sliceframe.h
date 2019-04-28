@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -29,15 +29,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QPainter>
 #include <QMouseEvent>
 #include <QComboBox>
-#include "octopus_seg_master.h"
-#include "octopus_mri_slice.h"
+#include "octopus_bem_master.h"
+#include "../../../common/mrislice.h"
 
 class SliceFrame : public QFrame {
  Q_OBJECT
  public:
-  SliceFrame(QWidget* pnt,SegMaster *sm,int x,int y,QString wmi) : QFrame(pnt) {
-   parent=pnt; p=sm; if (wmi=="L") curVolume=&(p->curVolumeL);
-                   else if (wmi=="R") curVolume=&(p->curVolumeR);
+  SliceFrame(QWidget* pnt,BEMMaster *sm,int x,int y,QString wmi) : QFrame(pnt) {
+   parent=pnt; p=sm; if (wmi=="L") curBuffer=&(p->curBufferL);
+                   else if (wmi=="R") curBuffer=&(p->curBufferR);
    setGeometry(x,y,p->fWidth,p->fHeight);
    setMouseTracking(true);	// Receive events also when mouse
                                 // buttons not pressed
@@ -46,9 +46,10 @@ class SliceFrame : public QFrame {
   }
 
  protected:
-  void mousePressEvent(QMouseEvent *event) {
+  void mousePressEvent(QMouseEvent *event) { MRIVolume *vBuf;
    if (p->mrSetExists) {
-    QImage *curImg=&(p->volume[*curVolume].slice[p->curSlice]->data);
+    vBuf=p->findVol(*curBuffer);
+    QImage *curImg=&(vBuf->slice[p->curSlice]->data);
     int x=(float)(event->x())*(float)(p->xSize)/(float)(width());
     int y=(float)(event->y())*(float)(p->ySize)/(float)(height());
     switch (p->mouseMode) {
@@ -68,15 +69,16 @@ class SliceFrame : public QFrame {
         } repaint();
       } break;
      case MOUSEMODE_POINT:
-      if (event->buttons() & Qt::LeftButton) { p->selection(QPoint(x,y)); }
+      if (event->buttons() & Qt::LeftButton) { p->coRegSelect(QPoint(x,y)); }
       break;
      case MOUSEMODE_SEED:  break;
     }
    }
   }
-  void mouseMoveEvent(QMouseEvent *event) {
+  void mouseMoveEvent(QMouseEvent *event) { MRIVolume *vBuf;
    if (p->mrSetExists) {
-    QImage *curImg=&(p->volume[*curVolume].slice[p->curSlice]->data);
+    vBuf=p->findVol(*curBuffer);
+    QImage *curImg=&(vBuf->slice[p->curSlice]->data);
     int x=(float)(event->x())*(float)(p->xSize)/(float)(width());
     int y=(float)(event->y())*(float)(p->ySize)/(float)(height());
     switch (p->mouseMode) {
@@ -102,7 +104,7 @@ class SliceFrame : public QFrame {
   }
 
   virtual void paintEvent(QPaintEvent*) {
-   MRISlice *currentSlice;
+   MRIVolume *vBuf; MRISlice *currentSlice; int i,w,h;
    QImage img; QPixmap buf,buf2,buf3;
    QBrush bgBrush(Qt::black);
    QBrush ulBrush(Qt::gray,Qt::DiagCrossPattern);
@@ -112,48 +114,23 @@ class SliceFrame : public QFrame {
     mainPainter.setBackgroundMode(Qt::TransparentMode);
 
     if (p->mrSetExists) {
+     vBuf=p->findVol(*curBuffer);
      if (p->previewMode) currentSlice=&(p->previewSlice);
-     else currentSlice=p->volume[*curVolume].slice[p->curSlice];
-     img=currentSlice->data.copy();
+     else currentSlice=vBuf->slice[p->curSlice];
+
+     img=currentSlice->data.copy(); w=img.width(); h=img.height();
      buf2=buf.fromImage(img);
      int w=buf2.width(); int h=buf2.height();
 
      bufferPainter.begin(&buf2);
       // Slice histogram and scalp coords if available
       bufferPainter.setPen(Qt::yellow);
-      for (int i=0;i<255;i++)
+      for (i=0;i<255;i++)
        bufferPainter.drawLine((int)((float)(i*w)/(float)(256.)),
-                              h-currentSlice->histogram[i]*0.9*h,
+                              h-vBuf->histogram[i]*0.9*h,
                               (int)((float)((i+1)*w)/(float)(256.)),
-                              h-currentSlice->histogram[i+1]*0.9*h);
+                              h-vBuf->histogram[i+1]*0.9*h);
       bufferPainter.setPen(Qt::red);
-      if (p->scalpCoord2D.size()) {
-       QVector<QPoint> *coords=&(p->scalpCoord2D[p->curSlice]);
-       int cCount=coords->size();
-       if (cCount) {
-        for (int i=0;i<cCount;i++)
-         bufferPainter.drawLine((*coords)[i].x(),
-                                (*coords)[i].y(),
-                                (*coords)[(i+1)%cCount].x(),
-                                (*coords)[(i+1)%cCount].y());
-                                // Reweave to the beginning..
-       }
-      }
-
-      bufferPainter.setPen(Qt::cyan);
-      bufferPainter.drawLine(0,currentSlice->center.y(),
-                             w-1,currentSlice->center.y());
-      bufferPainter.drawLine(currentSlice->center.x(),0,
-                             currentSlice->center.x(),h-1);
-      bufferPainter.setPen(Qt::magenta);
-      bufferPainter.drawLine(0,currentSlice->yMin,
-                             w-1,currentSlice->yMin);
-      bufferPainter.drawLine(0,currentSlice->yMax,
-                             w-1,currentSlice->yMax);
-      bufferPainter.drawLine(currentSlice->xMin,0,
-                             currentSlice->xMin,h-1);
-      bufferPainter.drawLine(currentSlice->xMax,0,
-                             currentSlice->xMax,h-1);
 
      bufferPainter.end();
 
@@ -174,16 +151,10 @@ class SliceFrame : public QFrame {
   }
 
  private:
-  QWidget *parent; SegMaster *p;
+  QWidget *parent; BEMMaster *p;
   QPainter mainPainter,bufferPainter;
-  QString dummyString; int *curVolume;
+  QString dummyString; int *curBuffer;
   int penSize; QRgb penColorErase,penColorFill;
 };
 
 #endif
-//   // Construct moving average kernel of diameter 2*x+1
-//   int count=0; int n=2*fltValue+1; QPixmap kPix(n,n); kPix.fill(Qt::black);
-//   kp.begin(&kPix); kp.setPen(Qt::white); kp.setBrush(Qt::white);
-//    kp.drawEllipse(0,0,kPix.width()-1,kPix.height()-1);
-//   kp.end(); ki=kPix.toImage().convertToFormat(QImage::Format_Indexed8,
-//                                               Qt::ColorOnly);

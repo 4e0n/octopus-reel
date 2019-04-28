@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -21,9 +21,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef COORD3D_H
-#define COORD3D_H
+// Main MRI Volume processor application for segmentation,
+// tissue classification, and 3D-boundarization..
 
-typedef struct _Coord3D { float x,y,z; } Coord3D;
+#include "octopus_bem_master.h"
+#include "octopus_modeler.h"
 
-#endif
+int main(int argc,char *argv[]) {
+ QApplication app(argc,argv);
+ BEMMaster *p=new BEMMaster(&app);
+ BEMModeler modeler(p); modeler.show(); return app.exec();
+}

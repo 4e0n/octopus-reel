@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -27,7 +27,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QObject>
 #include <QString>
 #include "channel_params.h"
-#include "coord3d.h"
+#include "../../../common/coord3d.h"
 #include "../../../common/vec3.h"
 
 class Channel : QObject {
