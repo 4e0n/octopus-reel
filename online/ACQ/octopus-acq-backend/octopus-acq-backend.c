@@ -72,6 +72,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_shm.h>
 #include <rtai_sem.h>
 //#include <rtai_math.h>
+#include "../../common/fb_command.h"
 #include "../octopus-acq.h"
 
 #define OCTOPUS_ACQ_COMEDI

@@ -159,7 +159,7 @@ class AcqDaemon : public QTcpServer {
 
  private:
   QCoreApplication *application; AcqThread *acqThread; QMutex mutex;
-  QTcpServer *commandServer; QTcpSocket *commandSocket,*dataSocket;
+  QTcpServer *commandServer; QTcpSocket *commandSocket; QTcpSocket dataSocket;
   cs_command csCmd; fb_command fbMsg,bfMsg;
   int fbFifo,bfFifo; float *shmBuffer;
   int tcpBufSize,acqBufSize,totalCount,sampleRate;

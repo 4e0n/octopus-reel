@@ -24,9 +24,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 /* Supporting functions of acq-backend..
     Most crucial action is performed here.. */
 
-#include "../octopus-acq.h"
-#include "../../common/fb_command.h"
-
 #define ACQ_F2BFIFO_SIZE	(1000)
 #define ACQ_B2FFIFO_SIZE	(1000)
 
