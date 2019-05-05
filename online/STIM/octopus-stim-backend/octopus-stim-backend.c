@@ -160,7 +160,7 @@ static void init_test_para(int tp) {
 
 int fbfifohandler(unsigned int fifo,int rw) {
  if (rw=='w') {
-  rtf_get(FBFIFO,&fb_msg,sizeof(fb_command));
+  rtf_get(STIM_F2BFIFO,&fb_msg,sizeof(fb_command));
   switch (fb_msg.id) {
    case STIM_SET_PARADIGM: stim_active=0; dac_0=dac_1=dac_2=dac_3=DACZERO;
 #ifdef OCTOPUS_STIM_COMEDI
@@ -174,7 +174,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
                                      paradigm);
                            init_test_para(paradigm);
                            rt_sem_wait(&stim_sem);
-                            rtf_reset(BFFIFO); rtf_reset(FBFIFO);
+                            rtf_reset(STIM_B2FFIFO); rtf_reset(STIM_F2BFIFO);
                            rt_sem_signal(&stim_sem);
                            break;
    case STIM_LOAD_PATTERN: pattern_size=fb_msg.iparam[0]; /* Byte count */
@@ -185,7 +185,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
 
 			   bf_msg.id=STIM_PATT_XFER_ACK;
 			   bf_msg.iparam[0]=fb_msg.iparam[0];
-                           rtf_put(BFFIFO,&bf_msg,sizeof(fb_command));
+                           rtf_put(STIM_B2FFIFO,&bf_msg,sizeof(fb_command));
                            /* Burst acknowledged! */
 
 			   if (pattern_size==pattern_size_dummy) /* Finished? */
@@ -208,7 +208,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            comedi_data_write(comedi_da_dev,1,3,0,AREF_GROUND,dac_3);
 #endif
                            rt_sem_wait(&stim_sem);
-                            rtf_reset(BFFIFO); rtf_reset(FBFIFO);
+                            rtf_reset(STIM_B2FFIFO); rtf_reset(STIM_F2BFIFO);
                            rt_sem_signal(&stim_sem);
                            rt_printk("octopus-stim-backend.o: Stim stopped.\n");
                            break;
@@ -220,12 +220,12 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            break;
    case F2B_RESET_SYN:     stim_active=lp0_data=0;
                            rt_sem_wait(&stim_sem);
-                            rtf_reset(BFFIFO); rtf_reset(FBFIFO);
+                            rtf_reset(STIM_B2FFIFO); rtf_reset(STIM_F2BFIFO);
                             stim_reset();
                            rt_sem_signal(&stim_sem);
                            bf_msg.id=B2F_RESET_ACK;
                            bf_msg.iparam[0]=bf_msg.iparam[1]=0;
-                           rtf_put(BFFIFO,&bf_msg,sizeof(fb_command));
+                           rtf_put(STIM_B2FFIFO,&bf_msg,sizeof(fb_command));
                         rt_printk("octopus-stim-backend.o: Backend reset.\n");
                            break;
    case STIM_SYNTH_EVENT:  outb(0x80|(fb_msg.iparam[0] & 0x7f),STIM_PARBASE);
@@ -263,9 +263,9 @@ static int __init octopus_stim_init(void) {
            patt_shm);
 
  /* Initialize transfer fifos */
- rtf_create_using_bh(FBFIFO,1000*sizeof(fb_command),0);
- rtf_create_using_bh(BFFIFO,1000*sizeof(fb_command),0);
- rtf_create_handler(FBFIFO,(void*)&fbfifohandler);
+ rtf_create_using_bh(STIM_F2BFIFO,1000*sizeof(fb_command),0);
+ rtf_create_using_bh(STIM_B2FFIFO,1000*sizeof(fb_command),0);
+ rtf_create_handler(STIM_F2BFIFO,(void*)&fbfifohandler);
  rt_printk(
   "octopus-stim-backend.o: Up&downstream transfer FIFOs initialized.\n");
 
@@ -286,8 +286,8 @@ static void __exit octopus_stim_exit(void) {
  rt_printk("octopus-stim-backend.o: Stimulus task disposed.\n");
 
  /* Dispose transfer fifos */
- rtf_create_handler(FBFIFO,(void*)&fbfifohandler);
- rtf_destroy(BFFIFO); rtf_destroy(FBFIFO);
+ rtf_create_handler(STIM_F2BFIFO,(void*)&fbfifohandler);
+ rtf_destroy(STIM_B2FFIFO); rtf_destroy(STIM_F2BFIFO);
  rt_printk("octopus-stim-backend.o: Up&downstream transfer FIFOs disposed.\n");
 
  /* Dispose SHM Buffer */

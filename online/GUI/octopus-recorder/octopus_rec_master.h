@@ -610,6 +610,7 @@ class RecMaster : QObject {
 
      acqCurStimEvent=(int)(acqCurData[tChns-1]); // Stim Event
      acqCurRespEvent=(int)(acqCurData[tChns]);   // Resp Event
+     //if (acqCurRespEvent) qDebug("Resp event: %d",acqCurRespEvent);
 
      if (recording) { // .. to disk ..
       for (int i=0;i<cntRecChns.size();i++)
@@ -641,7 +642,8 @@ class RecMaster : QObject {
      }
 
      // Handle Incoming Event..
-     if ((acqCurStimEvent || acqCurRespEvent) && trigger) { event=true;
+     if ((acqCurStimEvent || acqCurRespEvent)) { event=true;
+
       if (acqCurStimEvent) {
        curEventName="Unknown STIM event #";
        curEventName+=dummyString.setNum(acqCurStimEvent); curEventType=1;
@@ -650,20 +652,24 @@ class RecMaster : QObject {
        curEventName+=dummyString.setNum(acqCurRespEvent); curEventType=2;
       }
 
+
       int i1=eventIndex(acqCurStimEvent,1);
       int i2=eventIndex(acqCurRespEvent,2);
       if (i1>=0 || i2>=0) {
        if (i1>=0) eIndex=i1; else if (i2>=0) eIndex=i2;
        curEventName=acqEvents[eIndex]->name;
        curEventType=acqEvents[eIndex]->type;
-       qDebug("Octopus-Recorder: Avg! -> Index=%d, Name=%s",
+       qDebug("Octopus-Recorder: Event! -> Index=%d, Name=%s",
               eIndex,curEventName.toAscii().data());
-       if (averaging) {
-        qDebug("Octopus-Recorder: "
-               "Event collision!.. (was already averaging).. %d %d",
-               avgCounter,cp.rejCount);
-       } else { averaging=true; avgCounter=0; }
+       if (trigger) {	     
+        if (averaging) {
+         qDebug("Octopus-Recorder: "
+                "Collision with upcoming event! (was already averaging) %d %d",
+                avgCounter,cp.rejCount);
+        } else { averaging=true; avgCounter=0; }
+       }
       }
+
      }
 
      if (averaging) {

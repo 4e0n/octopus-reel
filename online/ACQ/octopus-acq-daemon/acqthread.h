@@ -77,6 +77,9 @@ class AcqThread : public QThread {
       mutex->lock();
        f2bWrite(CMD_F2B,F2B_DATA_ACK,shmBufIndex,bfMsg.iparam[2],0);
       mutex->unlock();
+
+      int x=(*tcpBuffer)[tcpBaseX+totalCount];
+      if (x!=0) qDebug("Resp: %d",x);
       emit sendData();
      } else
       qDebug(

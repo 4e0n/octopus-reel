@@ -238,7 +238,7 @@ static void resp_handler(void) {
   if (acq_active) {
    rt_sem_wait(&octopus_acq_sem);
     /* Put RESP event code to (N+1)th channel */
-    resp_trig=(float)(127+resp_data);
+    resp_trig=(float)(resp_data);
    rt_sem_signal(&octopus_acq_sem);
   }
   rt_printk("ResponsePad=%d\n",resp_data);

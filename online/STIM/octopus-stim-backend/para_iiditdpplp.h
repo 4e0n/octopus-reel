@@ -230,8 +230,8 @@ static void para_iiditdpplp(void) {
    comedi_data_write(comedi_da_dev,1,3,0,AREF_GROUND,dac_3);
 #endif
    rt_sem_wait(&stim_sem);
-    rtf_reset(BFFIFO);
-    rtf_reset(FBFIFO);
+    rtf_reset(STIM_B2FFIFO);
+    rtf_reset(STIM_F2BFIFO);
    rt_sem_signal(&stim_sem);
    rt_printk("octopus-stim-rtai.o: Stim stopped.\n");
   } else if (counter3%para_iiditdpplp_t5==0) {
