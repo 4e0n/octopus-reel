@@ -148,8 +148,12 @@ static void octopus_acq_thread(int t) {
 #ifdef OCTOPUS_ACQ_COMEDI
      err=comedi_data_read_delayed(cur_dev[i],cur_sub[i],cur_chn[i],cur_rng[i],
                                   AREF_GROUND,&dummy_sample,2000);
-     dummy_data=(float)
-                ((short)(dummy_sample)-cur_zer[i])*200./(float)(cur_zer[i]);
+//     err=comedi_data_read(cur_dev[i],cur_sub[i],cur_chn[i],cur_rng[i],
+//                                  AREF_GROUND,&dummy_sample);
+//     dummy_data=(float)
+//                ((short)(dummy_sample)-cur_zer[i])*200./(float)(cur_zer[i]);
+     dummy_data=((float)
+                ((int)(dummy_sample)-cur_zer[i]))*200./(float)(cur_zer[i]);
      (buffer.data)[pivot_be*ai_total_count+i]=dummy_data;
 #else
      /* Range is 400uVpp */
