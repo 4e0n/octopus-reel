@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RTAI_VERSION="5.1"
+RTAI_VERSION="5.2"
 LINUX_VERSION="4.9.80"
 PATCH_REV="4"
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LINUX_CONFIG="./kernel_config/octopus_linux_config_stmx"
+LINUX_CONFIG="./kernel_config/octopus_linux_config_vm32"
 
 KERNEL_VERSION="4.9.80"
 
