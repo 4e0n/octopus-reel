@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RTAI_CONFIG="./kernel_config/octopus_rtai_config_vm32"
+RTAI_CONFIG="./kernel_config/octopus_rtai_config_acer"
 
 KERNEL_VERSION=4.9.80
 

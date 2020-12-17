@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LINUX_CONFIG="./kernel_config/octopus_linux_config_vm32"
+LINUX_CONFIG="./kernel_config/octopus_linux_config_acer"
 
 KERNEL_VERSION="4.9.80"
 
