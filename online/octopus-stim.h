@@ -43,25 +43,32 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 /* Commands for frontend<->backend communication of stim. */
 #define	STIM_SET_PARADIGM	(0x0001)
 
+/* --------------------------------------------------- */
 #define	STIM_LOAD_PATTERN	(0x0010)
 
-#define STIM_PATT_XFER_SYN	(0x1001) /* Handshake for Xfering pattern */
-#define STIM_PATT_XFER_ACK	(0x1002) /* to backend over SHM. */
-
-#define	STIM_START		(0x2001)
-#define	STIM_STOP		(0x2002)
-#define	STIM_PAUSE		(0x2003) /* Useful in psychophysics
+/* --------------------------------------------------- */
+#define	STIM_START		(0x1001)
+#define	STIM_STOP		(0x1002)
+#define	STIM_PAUSE		(0x1003) /* Useful in psychophysics
                                             experiments. */
-#define	TRIG_START		(0x2004)
-#define	TRIG_STOP		(0x2005)
+#define	TRIG_START		(0x1004)
+#define	TRIG_STOP		(0x1005)
 
+/* --------------------------------------------------- */
+#define STIM_PATT_XFER_SYN	(0x2001) /* Handshake for Xfering pattern */
+#define STIM_PATT_XFER_ACK	(0x2002) /* to backend over SHM. */
+
+#define STIM_SET_PARAM_P1	(0x2101) /* Default is  1ms. */
+#define STIM_SET_PARAM_P2	(0x2102) /* Default is 10ms. */
+#define STIM_SET_PARAM_P3	(0x2103) /* Default is 50ms. */
+#define STIM_SET_PARAM_P4	(0x2104) /* Default is 50ms. */
+#define STIM_SET_PARAM_P5	(0x2105) /* Default is 50ms. */
+
+/* --------------------------------------------------- */
 #define	STIM_SYNTH_EVENT	(0x3001) /* Diagnostic synthetic event
                                             coming from operator computer. */
 
-#define STIM_SET_IIDITD_T1	(0x1101) /* Default is  1ms. */
-#define STIM_SET_IIDITD_T2	(0x1102) /* Default is 10ms. */
-#define STIM_SET_IIDITD_T3	(0x1103) /* Default is 50ms. */
-
+/* --------------------------------------------------- */
 #define	STIM_RST_SYN		(0xF001) /* Reset kernel-space backend. */
 #define	STIM_RST_ACK		(0xF002)
 

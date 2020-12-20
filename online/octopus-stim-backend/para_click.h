@@ -33,9 +33,8 @@ static void para_click_init(void) {
 static void para_click(void) {
  if (counter0==0) {
   dac_0=dac_1=DA_NORM; /* output norm to range between +-20dB (2047/sqrt(10)) */
-//  if (trigger_active) trigger_set(SEC_CLICK);
-//	  //outb(0x80|SEC_CLICK,0x378);
- } else if (counter0==TRIG_HI_STEPS) outb(0x00,0x378); /* pull down */
+  if (trigger_active) trigger_set(SEC_CLICK);
+ } else if (counter0==TRIG_HI_STEPS) trigger_reset(); /* pull down */
  else if (counter0==para_click_duration) dac_0=dac_1=0;  
  counter0++; counter0%=AUDIO_RATE; /* 1 second */
 }

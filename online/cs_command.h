@@ -26,27 +26,35 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CS_COMMAND_H
 #define CS_COMMAND_H
 
+/* -------------------------------------------------- */
 #define CS_STIM_SET_PARADIGM		(0x0001)
 
-#define CS_STIM_LOAD_PATTERN_SYN	(0x1001)
-#define CS_STIM_LOAD_PATTERN_ACK	(0x1002)
+/* -------------------------------------------------- */
+#define CS_STIM_START			(0x1001)
+#define CS_STIM_STOP			(0x1002)
+#define CS_STIM_PAUSE			(0x1003)
+#define CS_TRIG_START			(0x1004)
+#define CS_TRIG_STOP			(0x1005)
 
-#define CS_STIM_START			(0x2001)
-#define CS_STIM_STOP			(0x2002)
-#define CS_STIM_PAUSE			(0x2003)
-#define CS_TRIG_START			(0x2004)
-#define CS_TRIG_STOP			(0x2005)
+/* -------------------------------------------------- */
+#define CS_STIM_LOAD_PATTERN_SYN	(0x2001)
+#define CS_STIM_LOAD_PATTERN_ACK	(0x2002)
 
-#define CS_STIM_SET_IIDITD_T1		(0x1101)
-#define CS_STIM_SET_IIDITD_T2		(0x1102)
-#define CS_STIM_SET_IIDITD_T3		(0x1103)
+#define CS_STIM_SET_PARAM_P1		(0x2101)
+#define CS_STIM_SET_PARAM_P2		(0x2102)
+#define CS_STIM_SET_PARAM_P3		(0x2103)
+#define CS_STIM_SET_PARAM_P4		(0x2104)
+#define CS_STIM_SET_PARAM_P5		(0x2105)
 
+/* -------------------------------------------------- */
 #define CS_STIM_SYNTHETIC_EVENT		(0x3001)
 
+/* -------------------------------------------------- */
 #define CS_ACQ_INFO			(0x0001)
 #define CS_ACQ_INFO_RESULT		(0x0002)
 #define CS_ACQ_TRIGTEST			(0x1001)
 
+/* -------------------------------------------------- */
 #define CS_REBOOT			(0xFFFE)
 #define CS_SHUTDOWN			(0xFFFF)
 

@@ -127,16 +127,24 @@ class StimDaemon : public QTcpServer {
       fbWrite(STIM_SYNTH_EVENT,csCommand.iparam[0],0);
       break;
 
-     case CS_STIM_SET_IIDITD_T1:
-      fbWrite(STIM_SET_IIDITD_T1,csCommand.iparam[0],0);
+     case CS_STIM_SET_PARAM_P1:
+      fbWrite(STIM_SET_PARAM_P1,csCommand.iparam[0],0);
       break;
 
-     case CS_STIM_SET_IIDITD_T2:
-      fbWrite(STIM_SET_IIDITD_T2,csCommand.iparam[0],0);
+     case CS_STIM_SET_PARAM_P2:
+      fbWrite(STIM_SET_PARAM_P2,csCommand.iparam[0],0);
       break;
 
-     case CS_STIM_SET_IIDITD_T3:
-      fbWrite(STIM_SET_IIDITD_T3,csCommand.iparam[0],0);
+     case CS_STIM_SET_PARAM_P3:
+      fbWrite(STIM_SET_PARAM_P3,csCommand.iparam[0],0);
+      break;
+
+     case CS_STIM_SET_PARAM_P4:
+      fbWrite(STIM_SET_PARAM_P4,csCommand.iparam[0],0);
+      break;
+
+     case CS_STIM_SET_PARAM_P5:
+      fbWrite(STIM_SET_PARAM_P5,csCommand.iparam[0],0);
       break;
 
      case CS_REBOOT:

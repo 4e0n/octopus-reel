@@ -43,6 +43,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    main stim engine. */
 
 #define OCTOPUS_STIM_COMEDI
+#define OCTOPUS_STIM_TRIG_COMEDI
 
 #include <linux/module.h>
 #include <rtai.h>
@@ -77,6 +78,7 @@ static RT_TASK audio_task,trigger_task;
 static RTIME tickperiod; static SEM audio_sem,trigger_sem;
 static int audio_rate=AUDIO_RATE;
 static int trigger_rate=TRIG_RATE;
+static int trigger_code=0,trigger_ongoing=0;
 static char current_pattern_data; static int current_pattern_offset=0;
 static int audio_active=0,audio_paused=0,trigger_active=0,paradigm=0,lp0_data=0;
 static int pattern_size,pattern_size_dummy;
@@ -90,6 +92,25 @@ static double theta=0.0;
 static int i=0,pause_trigger_hi=0;
 
 /* ========================================================================= */
+
+static void trigger_set(int t_code) {
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ trigger_code=t_code; /* Trigger code to be fetch one bit at a time within task */
+ comedi_dio_write(daqcard,2,0,1); /* Trigger */
+ trigger_ongoing=1; /* Launch */
+#else
+ outb(0x80|(fb_msg.iparam[0] & 0x7f),0x378);
+#endif
+}
+
+static void trigger_reset(void) {
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ comedi_dio_write(daqcard,2,1,0); /* Code - failsafe zeroing */
+ comedi_dio_write(daqcard,2,0,1); /* Trigger */
+#else
+ outb(0x00,0x378);
+#endif
+}
 
 /* TESTS */
 #include "test_calibration.h"
@@ -123,8 +144,8 @@ static void audio_thread(int t) {
      case PARA_ITD_OPPCHN_V1: para_itdoppchn_v1(); break;
     }
 #ifdef OCTOPUS_STIM_COMEDI
-    comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0); // L
-    comedi_data_write(daqcard,1,1,0,AREF_GROUND,DACZERO+dac_1); // R
+    comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0); /* L */
+    comedi_data_write(daqcard,1,1,0,AREF_GROUND,DACZERO+dac_1); /* R */
 #endif
    rt_sem_signal(&audio_sem);
   } /* audio_active */
@@ -132,14 +153,15 @@ static void audio_thread(int t) {
  }
 }
 
+
+
+
+
 static void trigger_thread(int t) {
  while (1) {
   if (trigger_active) {
    rt_sem_wait(&trigger_sem);
-//#ifdef OCTOPUS_STIM_COMEDI
-//    comedi_data_write(daqcard,2,0,0); // Trigger
-//    comedi_data_write(daqcard,2,1,1); // Code
-//#endif
+    trigger_reset();
    rt_sem_signal(&trigger_sem);
   } /* trigger_active */
   rt_task_wait_period();
@@ -153,9 +175,8 @@ static void stim_reset(void) {
 #ifdef OCTOPUS_STIM_COMEDI
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
- comedi_dio_write(daqcard,2,0,0);
- comedi_dio_write(daqcard,2,1,0);
-#endif
+ trigger_reset();
+#endif /* OCTOPUS_STIM_COMEDI */
 }
 
 static void init_test_para(int tp) {
@@ -182,8 +203,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
 #ifdef OCTOPUS_STIM_COMEDI
                            comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
                            comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
-			   comedi_dio_write(daqcard,2,0,0);
-			   comedi_dio_write(daqcard,2,1,0);
+			   trigger_reset();
 #endif
                            paradigm=fb_msg.iparam[0];
                            rt_printk("octopus-stim-backend.o: Para -> %d.\n",
@@ -247,10 +267,9 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            rtf_put(BFFIFO,&bf_msg,sizeof(fb_command));
                         rt_printk("octopus-stim-backend.o: Backend reset.\n");
                            break;
-   case STIM_SYNTH_EVENT:  //trigger_set(fb_msg.iparam[0]);
-			   //outb(0x80|(fb_msg.iparam[0] & 0x7f),0x378);
+   case STIM_SYNTH_EVENT:  trigger_set(fb_msg.iparam[0]);
                            msleep(1);
-                           //trigger_reset();;
+                           trigger_reset();;
    default:                break;
   }
  }
@@ -267,8 +286,7 @@ static int __init octopus_stim_init(void) {
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
  comedi_dio_config(daqcard,2,0,COMEDI_OUTPUT); /* Trigger direction -trig */
  comedi_dio_config(daqcard,2,1,COMEDI_OUTPUT); /* Trigger direction -code */
- comedi_dio_write(daqcard,2,0,0); /* Set low */
- comedi_dio_write(daqcard,2,1,0);
+ trigger_reset();
  rt_printk("octopus-stim-backend.o: Comedi Device Allocation successful. ->\n");
  rt_printk("octopus-stim-backend.o:  (daqcard=0x%p).\n",daqcard);
 #else
@@ -308,11 +326,16 @@ static int __init octopus_stim_init(void) {
 }
 
 static void __exit octopus_stim_exit(void) {
- /* Delete stimulus task */
+
  stop_rt_timer();
  rt_busy_sleep(1e7);
+ /* Delete trigger task */
  rt_task_delete(&trigger_task);
  rt_printk("octopus-stim-backend.o: Trigger task disposed.\n");
+
+// Delete visual stimulus task - to be implemented/merged from AURAVIS
+
+ /* Delete auditory stimulus task */
  rt_task_delete(&audio_task);
  rt_printk("octopus-stim-backend.o: Audio task disposed.\n");
 
@@ -327,18 +350,18 @@ static void __exit octopus_stim_exit(void) {
  iounmap(himem_buffer);
  rt_printk("octopus-stim-backend.o: Himem dedicated memory disposed.\n");
 
- dac_0=dac_1=DACZERO;
 #ifdef OCTOPUS_STIM_COMEDI
- comedi_dio_write(daqcard,2,0,0);
- comedi_dio_write(daqcard,2,1,0);
+ dac_0=dac_1=DACZERO;
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
+
+ trigger_reset();
 
  comedi_unlock(daqcard,1);
  comedi_close(daqcard);
  rt_printk("octopus-stim-backend.o: Comedi DAQcard freed.\n");
-//#else
-// rt_printk("octopus-stim-backend.o: STIM Backend exited successfully.\n");
+#else
+ rt_printk("octopus-stim-backend.o: STIM Backend exited successfully.\n");
 #endif
 }
 
@@ -346,5 +369,5 @@ module_init(octopus_stim_init);
 module_exit(octopus_stim_exit);
 
 MODULE_AUTHOR("Barkin Ilhan (barkin@unrlabs.org)");
-MODULE_DESCRIPTION("Octopus Auditory STIM Backend v0.8");
+MODULE_DESCRIPTION("Octopus STIM Backend v0.9");
 MODULE_LICENSE("GPL"); 
