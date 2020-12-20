@@ -81,28 +81,27 @@ static void para_iiditd(void) {
    case '2': para_iiditd_current_iid_amp_l=AMP_H20; /* IID: L high, R low.. */
              para_iiditd_current_iid_amp_r=AMP_L20;
              para_iiditd_itd_lr_delta=0;
-             if (trig_active) outb(0x80|SEC_IID_LEFT,0x378);
+//             if (trigger_active) outb(0x80|SEC_IID_LEFT,0x378);
              break;
    case '3': para_iiditd_current_iid_amp_l=AMP_H20; /* ITD: Source to Left.. */
              para_iiditd_current_iid_amp_r=AMP_H20;
              para_iiditd_itd_lr_delta=PHASE_LL;
-             if (trig_active) outb(0x80|SEC_ITD_LEFT,0x378);
+//             if (trigger_active) outb(0x80|SEC_ITD_LEFT,0x378);
              break;
    case '4': para_iiditd_current_iid_amp_l=AMP_L20; /* IID: L low, R high.. */
              para_iiditd_current_iid_amp_r=AMP_H20;
              para_iiditd_itd_lr_delta=0;
-             if (trig_active) outb(0x80|SEC_IID_RIGHT,0x378);
+//             if (trigger_active) outb(0x80|SEC_IID_RIGHT,0x378);
              break;
    case '5': para_iiditd_current_iid_amp_l=AMP_H20; /* ITD: Source to Right.. */
              para_iiditd_current_iid_amp_r=AMP_H20;
              para_iiditd_itd_lr_delta=PHASE_RL;
-             if (trig_active) outb(0x80|SEC_ITD_RIGHT,0x378);
+//             if (trigger_active) outb(0x80|SEC_ITD_RIGHT,0x378);
    default:  break;
   }
- } else if (counter2==TRIG_HI_STEPS) outb(0x00,0x378); /* pull down */
+ } //else if (counter2==TRIG_HI_STEPS) outb(0x00,0x378); //pull down
 
  counter2++; counter2%=para_iiditd_t3; /* 50ms? */
  if (para_iiditd_mono==1) dac_1=0;      /* Left Only */
  else if (para_iiditd_mono==2) dac_0=0;	/* Right Only */
- dac_2=dac_3=0;
 }

@@ -32,11 +32,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define FBFIFO			(0)
 #define BFFIFO			(1)
 
-#define HIMEMSTART		(128*0x100000) /* Upper 128M is dedicated to
-                                                  stimulus pattern. */
+#define HIMEMSTART		(9*128*0x100000) /* Highest 128M of 1G RAM
+						    is dedicated to
+                                                    stimulus pattern. */
 #define SHMBUFSIZE		(128)	/* Shared Memory between backend and
                                            frontend. */
-#define DA_SYNTH_RATE		(10000)	/* Audio synthesis rate (main loop). */
+#define AUDIO_RATE		(50000)	/* Audio synthesis rate. */
+#define TRIG_RATE		(9600)	/* Serial trigger rate. */
 
 /* Commands for frontend<->backend communication of stim. */
 #define	STIM_SET_PARADIGM	(0x0001)

@@ -51,8 +51,8 @@ const QString stimEventNames[128]={
  "STIM_017",	//  17
  "STIM_018",	//  18
  "STIM_019",	//  19
- "STIM_020",	//  20
- "STIM_021",	//  21
+ "OppC1-A",	//  20
+ "OppC1-B",	//  21
  "STIM_022",	//  22
  "STIM_023",	//  23
  "STIM_024",	//  24

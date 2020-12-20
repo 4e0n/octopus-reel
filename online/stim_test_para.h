@@ -23,16 +23,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* Some Low-level definitions for STIM DA-converter. */
 
-#define DACZERO		(2048)	/* Zero-level for 12-bit DAC. */
+#define DACZERO		(32768)		/* Zero-level for 16-bit DAC. */
 
-#define DA_NORM		(647)	/* Reference Audio Level */
-#define AMP_L20		(204)	/*  -20dB of Reference */
-#define AMP_H20		(2045)	/*  +20dB of Reference */
+#define DA_NORM		(16*647)	/* Reference Audio Level */
+#define AMP_L20		(16*204)	/*  -20dB of Reference */
+#define AMP_H20		(16*2045)	/*  +20dB of Reference */
 
-#define PHASE_LL	(50)	/* Left  is leading */
-#define PHASE_RL	(-50)	/* Right is leading */
+#define PHASE_LL	(50)		/* Left  is leading */
+#define PHASE_RL	(-50)		/* Right is leading */
 
-#define TRIG_HI_STEPS		(1) /* One period in 50KHz for trigger. */
+#define TRIG_HI_STEPS	(1) 		/* One period in 50KHz for trigger. */
 
 /* Test and paradigm codes for switching. */
 #define TEST_CALIBRATION	(0x0001)
@@ -43,3 +43,4 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PARA_SQUAREBURST	(0x1002)
 #define PARA_IIDITD		(0x1003)
 #define PARA_IIDITD_PPLP	(0x1004)
+#define PARA_ITD_OPPCHN_V1	(0x1005)
