@@ -29,7 +29,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    binaurally over NI PCI-6711 DAC card, synchronously sending the events
    via parallel port to ACQ.
 
-   This backend also has a "can=Calibration And Normalization" mod, which
+   This backend also has a "CaN=Calibration and Normalization" mod, which
    can be used to normalize the 128 channel amplifier's per-channel DC, and
    amplifier gain values, that can be saved to a compensation file in the
    operator computer.
@@ -40,7 +40,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    Independent test and paradigm routines scheduled in main realtime thread
    are implemented in separate header files. This enables the developers
    to implement new paradigms in a more abstract way, without touching the
-   main stim engine. */
+   main stim engine.
+
+ -------- Improvements after December 2020: --------
+   We started an attempt for generalizing the octopus-stim structure
+   for different types of future bi-lateral stimulus types. Accordingly,
+   system now is more tailored to NI DAQCard 6036E, which has two 16-bit
+   D/A converters for Left and Right audio. Besides, triggers are now
+   t/riggers are now given in three different ways
+   possible to be given also via two 6036E digital outputs (one for trig,
+   another for code), and serial port, in addition to the original parallel
+   port code.
+
+   The most important thing being worked on is some "generalization" of
+   original new stimulus paradigm. */
 
 #define OCTOPUS_STIM_COMEDI
 #define OCTOPUS_STIM_TRIG_COMEDI
@@ -76,9 +89,8 @@ static unsigned short dac_0,dac_1;
 static char *himem_buffer,*patt_shm; static fb_command fb_msg,bf_msg;
 static RT_TASK audio_task,trigger_task;
 static RTIME tickperiod; static SEM audio_sem,trigger_sem;
-static int audio_rate=AUDIO_RATE;
-static int trigger_rate=TRIG_RATE;
-static int trigger_code=0,trigger_ongoing=0;
+static int audio_rate=AUDIO_RATE,trigger_rate=TRIG_RATE;;
+static int trigger_code=0,trigger_bit_shift=0;
 static char current_pattern_data; static int current_pattern_offset=0;
 static int audio_active=0,audio_paused=0,trigger_active=0,paradigm=0,lp0_data=0;
 static int pattern_size,pattern_size_dummy;
@@ -97,7 +109,7 @@ static void trigger_set(int t_code) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
  trigger_code=t_code; /* Trigger code to be fetch one bit at a time within task */
  comedi_dio_write(daqcard,2,0,1); /* Trigger */
- trigger_ongoing=1; /* Launch */
+ trigger_bit_shift=8; /* Launch */
 #else
  outb(0x80|(fb_msg.iparam[0] & 0x7f),0x378);
 #endif
@@ -153,17 +165,16 @@ static void audio_thread(int t) {
  }
 }
 
-
-
-
-
 static void trigger_thread(int t) {
  while (1) {
-  if (trigger_active) {
-   rt_sem_wait(&trigger_sem);
-    trigger_reset();
-   rt_sem_signal(&trigger_sem);
-  } /* trigger_active */
+  if (trigger_bit_shift) {
+//   rt_sem_wait(&trigger_sem);
+   comedi_dio_write(daqcard,2,1,trigger_code&0x01);
+   trigger_code>>=1; trigger_bit_shift--;
+   if (!trigger_bit_shift)
+    comedi_dio_write(daqcard,2,0,0);
+//   rt_sem_signal(&trigger_sem);
+  }
   rt_task_wait_period();
  }
 }
@@ -240,8 +251,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
 #ifdef OCTOPUS_STIM_COMEDI
                            comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
                            comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
-			   comedi_dio_write(daqcard,2,0,0);
-			   comedi_dio_write(daqcard,2,1,0);
+			   trigger_reset();
 #endif
                            rt_sem_wait(&audio_sem);
                             rtf_reset(BFFIFO); rtf_reset(FBFIFO);
@@ -268,8 +278,8 @@ int fbfifohandler(unsigned int fifo,int rw) {
                         rt_printk("octopus-stim-backend.o: Backend reset.\n");
                            break;
    case STIM_SYNTH_EVENT:  trigger_set(fb_msg.iparam[0]);
-                           msleep(1);
-                           trigger_reset();;
+                           //msleep(1);
+                           //trigger_reset();;
    default:                break;
   }
  }
@@ -279,14 +289,11 @@ int fbfifohandler(unsigned int fifo,int rw) {
 /* ========================================================================= */
 
 static int __init octopus_stim_init(void) {
- /* Initialize comedi devices for auditory stimulus presentation and  */
+ /* Initialize comedi device for auditory stimulus presentation */
 #ifdef OCTOPUS_STIM_COMEDI
  daqcard=comedi_open("/dev/comedi0"); comedi_lock(daqcard,1);
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
- comedi_dio_config(daqcard,2,0,COMEDI_OUTPUT); /* Trigger direction -trig */
- comedi_dio_config(daqcard,2,1,COMEDI_OUTPUT); /* Trigger direction -code */
- trigger_reset();
  rt_printk("octopus-stim-backend.o: Comedi Device Allocation successful. ->\n");
  rt_printk("octopus-stim-backend.o:  (daqcard=0x%p).\n",daqcard);
 #else
@@ -316,11 +323,18 @@ static int __init octopus_stim_init(void) {
  rt_printk(
   "octopus-stim-backend.o: Auditory Stimulus task initialized (50 KHz).\n");
 
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ comedi_lock(daqcard,2);
+ comedi_dio_config(daqcard,2,0,COMEDI_OUTPUT); /* Trigger direction -trig */
+ comedi_dio_config(daqcard,2,1,COMEDI_OUTPUT); /* Trigger direction -code */
+ trigger_reset();
+
  /* Initialize trigger task */
  rt_task_init(&trigger_task,(void *)trigger_thread,0,2000,0,1,0);
  tickperiod=start_rt_timer(nano2count(1e9/trigger_rate));
  rt_task_make_periodic(&trigger_task,rt_get_time()+tickperiod,tickperiod);
  rt_printk("octopus-stim-backend.o: Trigger task initialized (9600 Hz).\n");
+#endif
 
  return 0;
 }
@@ -329,9 +343,14 @@ static void __exit octopus_stim_exit(void) {
 
  stop_rt_timer();
  rt_busy_sleep(1e7);
+
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
  /* Delete trigger task */
  rt_task_delete(&trigger_task);
  rt_printk("octopus-stim-backend.o: Trigger task disposed.\n");
+ trigger_reset();
+ comedi_unlock(daqcard,2);
+#endif
 
 // Delete visual stimulus task - to be implemented/merged from AURAVIS
 
@@ -354,9 +373,6 @@ static void __exit octopus_stim_exit(void) {
  dac_0=dac_1=DACZERO;
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
-
- trigger_reset();
-
  comedi_unlock(daqcard,1);
  comedi_close(daqcard);
  rt_printk("octopus-stim-backend.o: Comedi DAQcard freed.\n");

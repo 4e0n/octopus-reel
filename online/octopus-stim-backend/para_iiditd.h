@@ -99,7 +99,7 @@ static void para_iiditd(void) {
              if (trigger_active) trigger_set(SEC_ITD_RIGHT);
    default:  break;
   }
- } else if (counter2==TRIG_HI_STEPS) trigger_reset(); //pull down
+ } //else if (counter2==TRIG_HI_STEPS) trigger_reset(); //pull down
 
  counter2++; counter2%=para_iiditd_t3; /* 50ms? */
  if (para_iiditd_mono==1) dac_1=0;      /* Left Only */

@@ -21,20 +21,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* STEADY SQUARE WAVE TEST
-    Total period is 10 seconds.. identical with the one in calibration signal */
+#include "octopus_stim_client.h"
 
-static int test_steadysquare_duration;
-
-static void test_steadysquare_init(void) {
- counter0=0; test_steadysquare_duration=5*AUDIO_RATE; /* 5 seconds hi */
-}
-
-static void test_steadysquare(void) { 
- if (counter0==0) dac_0=0; 
- else if (counter0==test_steadysquare_duration) {
-  dac_0=250; if (trigger_active) trigger_set(SEC_STEADY_WAVE);
- } //else if (counter0==test_steadysquare_duration+TRIG_HI_STEPS)
-  //trigger_reset(); // pull down
- counter0++; counter0%=10*AUDIO_RATE; /*  Total period is 10 seconds */
+int main(int argc,char** argv) {
+ QApplication app(argc,argv);
+ StimClient stimClient(&app);
+ stimClient.show();
+ return app.exec();
 }

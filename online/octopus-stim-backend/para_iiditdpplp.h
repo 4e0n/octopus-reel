@@ -212,7 +212,7 @@ static void para_iiditdpplp(void) {
 	      trigger_set(SEC_PP_ITD_R6);
     default:  break;
    }
-  } else if (counter2==TRIG_HI_STEPS) trigger_reset(); // Pull down
+  } //else if (counter2==TRIG_HI_STEPS) trigger_reset(); // Pull down
   else if (counter2==para_iiditdpplp_t3) {
     para_iiditdpplp_current_iid_amp_l=0; /* Silence */
     para_iiditdpplp_current_iid_amp_r=0;
@@ -239,6 +239,6 @@ static void para_iiditdpplp(void) {
   }
  } else {
   pause_trigger_hi++;
-  if (pause_trigger_hi==TRIG_HI_STEPS) trigger_reset();
+  //if (pause_trigger_hi==TRIG_HI_STEPS) trigger_reset();
  }
 }
