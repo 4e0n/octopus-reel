@@ -32,8 +32,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
 
-#define TRIG_HI_STEPS	(1) 		/* One period in 50KHz for trigger. */
-
 /* Test and paradigm codes for switching. */
 #define TEST_CALIBRATION	(0x0001)
 #define TEST_SINECOSINE		(0x0002)

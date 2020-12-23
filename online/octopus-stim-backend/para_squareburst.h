@@ -37,9 +37,8 @@ static void para_squareburst_init(void) {
 static void para_squareburst(void) {
  if (counter0<para_squareburst_t3) {
   if (counter0==0) { if (trigger_active) trigger_set(SEC_SQUARE_BURST); }
-  //else if (counter0==TRIG_HI_STEPS) trigger_reset(); // pull down
   if ((counter0%para_squareburst_t2)<para_squareburst_t1) dac_0=dac_1=AMP_H20;
-  else dac_0=dac_1=0;
- } else dac_0=dac_1=0;
+  else dac_0=dac_1=DACZERO;
+ } else dac_0=dac_1=DACZERO;
  counter0++; counter0%=AUDIO_RATE; /* 1 second */
 }

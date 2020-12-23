@@ -37,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "stimdaemon.h"
 
 int main(int argc,char *argv[]) {
- int fbFifo,bfFifo; char *shmBuffer; fb_command reset_msg;
+ int fbFifo,bfFifo; char *xferBuffer; fb_command reset_msg;
  QString host,comm,data; int commP,dataP;
 
  if (argc!=4) {
@@ -88,12 +88,12 @@ int main(int argc,char *argv[]) {
  //  We may close and reopen FIFO in blocking mode...
  close(bfFifo); bfFifo=open("/dev/rtf1",O_RDONLY);
 
- if ((shmBuffer=(char *)rtai_malloc('PATT',SHMBUFSIZE)) == 0) {
+ if ((xferBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE)) == 0) {
   qDebug("octopus-stim-daemon: Kernel-space backend SHM could not be opened!");
   return -1;
  }
 
  QCoreApplication app(argc,argv);
- StimDaemon stimDaemon(0,&app,host,commP,dataP,fbFifo,bfFifo,shmBuffer);
+ StimDaemon stimDaemon(0,&app,host,commP,dataP,fbFifo,bfFifo,xferBuffer);
  return app.exec();
 }

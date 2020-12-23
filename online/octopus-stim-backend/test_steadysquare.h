@@ -33,8 +33,7 @@ static void test_steadysquare_init(void) {
 static void test_steadysquare(void) { 
  if (counter0==0) dac_0=0; 
  else if (counter0==test_steadysquare_duration) {
-  dac_0=250; if (trigger_active) trigger_set(SEC_STEADY_WAVE);
- } //else if (counter0==test_steadysquare_duration+TRIG_HI_STEPS)
-  //trigger_reset(); // pull down
+  dac_0=4096; if (trigger_active) trigger_set(SEC_STEADY_WAVE);
+ }
  counter0++; counter0%=10*AUDIO_RATE; /*  Total period is 10 seconds */
 }

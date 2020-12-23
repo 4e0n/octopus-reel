@@ -86,13 +86,14 @@ static comedi_t *daqcard; static sampl_t dac_0,dac_1;
 static unsigned short dac_0,dac_1;
 #endif
 
-static char *himem_buffer,*patt_shm; static fb_command fb_msg,bf_msg;
+static char *himem_buffer,*xfer_shm,*patt_buf;
+static fb_command fb_msg,bf_msg;
 static RT_TASK audio_task,trigger_task;
 static RTIME tickperiod; static SEM audio_sem,trigger_sem;
 static int audio_rate=AUDIO_RATE,trigger_rate=TRIG_RATE;;
 static int trigger_code=0,trigger_bit_shift=0;
 static char current_pattern_data; static int current_pattern_offset=0;
-static int audio_active=0,audio_paused=0,trigger_active=0,paradigm=0,lp0_data=0;
+static int audio_active=0,audio_paused=0,trigger_active=0,paradigm=0;
 static int pattern_size,pattern_size_dummy;
 
 /* ========================================================================= */
@@ -107,9 +108,9 @@ static int i=0,pause_trigger_hi=0;
 
 static void trigger_set(int t_code) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- trigger_code=t_code; /* Trigger code to be fetch one bit at a time within task */
- comedi_dio_write(daqcard,2,0,1); /* Trigger */
- trigger_bit_shift=8; /* Launch */
+ trigger_code=(t_code<<1) & 0x1fe; /* 10-bit trigger code (inc.start and stop bits)
+				      to be fetched one bit at a time within task */
+ trigger_bit_shift=10; /* Causes it to be launched within the trigger task */
 #else
  outb(0x80|(fb_msg.iparam[0] & 0x7f),0x378);
 #endif
@@ -117,7 +118,7 @@ static void trigger_set(int t_code) {
 
 static void trigger_reset(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,1,0); /* Code - failsafe zeroing */
+ comedi_dio_write(daqcard,2,1,1); /* Code - failsafe zeroing */
  comedi_dio_write(daqcard,2,0,1); /* Trigger */
 #else
  outb(0x00,0x378);
@@ -169,10 +170,14 @@ static void trigger_thread(int t) {
  while (1) {
   if (trigger_bit_shift) {
 //   rt_sem_wait(&trigger_sem);
+
+   if (trigger_bit_shift==10) comedi_dio_write(daqcard,2,0,0); /* Trigger to low */
+
    comedi_dio_write(daqcard,2,1,trigger_code&0x01);
    trigger_code>>=1; trigger_bit_shift--;
-   if (!trigger_bit_shift)
-    comedi_dio_write(daqcard,2,0,0);
+   if (!trigger_bit_shift) {
+    comedi_dio_write(daqcard,2,1,1); comedi_dio_write(daqcard,2,0,1); /* Trigger to high */
+   }
 //   rt_sem_signal(&trigger_sem);
   }
   rt_task_wait_period();
@@ -227,10 +232,10 @@ int fbfifohandler(unsigned int fifo,int rw) {
    case STIM_LOAD_PATTERN: pattern_size=fb_msg.iparam[0]; /* Byte count */
                            pattern_size_dummy=0;	/* Current index */
                            break;
-   case STIM_PATT_XFER_SYN:for (i=0;i<fb_msg.iparam[0];i++) /* Burst count */
-                            himem_buffer[pattern_size_dummy++]=patt_shm[i];
+   case STIM_XFER_SYN:	   for (i=0;i<fb_msg.iparam[0];i++) /* Burst count */
+                            patt_buf[pattern_size_dummy++]=xfer_shm[i];
 
-			   bf_msg.id=STIM_PATT_XFER_ACK;
+			   bf_msg.id=STIM_XFER_ACK;
 			   bf_msg.iparam[0]=fb_msg.iparam[0];
                            rtf_put(BFFIFO,&bf_msg,sizeof(fb_command));
                            /* Burst acknowledged! */
@@ -245,10 +250,11 @@ int fbfifohandler(unsigned int fifo,int rw) {
    case STIM_PAUSE:        pause_trigger_hi=0; audio_paused=1;
                            rt_printk("octopus-stim-backend.o: Stim paused.\n");
                            break;
-   case STIM_STOP:         audio_active=lp0_data=0;
+   case STIM_STOP:         audio_active=0;
                            stim_reset();
                            init_test_para(paradigm);
 #ifdef OCTOPUS_STIM_COMEDI
+			   dac_0=dac_1=DACZERO;
                            comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
                            comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
 			   trigger_reset();
@@ -267,7 +273,7 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            rt_printk(
 			    "octopus-stim-backend.o: Trigger stopped.\n");
                            break;
-   case STIM_RST_SYN:      audio_active=lp0_data=0;
+   case STIM_RST_SYN:      audio_active=0;
                            rt_sem_wait(&audio_sem);
                             rtf_reset(BFFIFO); rtf_reset(FBFIFO);
                             stim_reset();
@@ -278,8 +284,6 @@ int fbfifohandler(unsigned int fifo,int rw) {
                         rt_printk("octopus-stim-backend.o: Backend reset.\n");
                            break;
    case STIM_SYNTH_EVENT:  trigger_set(fb_msg.iparam[0]);
-                           //msleep(1);
-                           //trigger_reset();;
    default:                break;
   }
  }
@@ -292,22 +296,28 @@ static int __init octopus_stim_init(void) {
  /* Initialize comedi device for auditory stimulus presentation */
 #ifdef OCTOPUS_STIM_COMEDI
  daqcard=comedi_open("/dev/comedi0"); comedi_lock(daqcard,1);
- comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
- comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
+ comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0);
+ comedi_data_write(daqcard,1,1,0,AREF_GROUND,DACZERO+dac_1);
  rt_printk("octopus-stim-backend.o: Comedi Device Allocation successful. ->\n");
  rt_printk("octopus-stim-backend.o:  (daqcard=0x%p).\n",daqcard);
 #else
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
  rt_printk("octopus-stim-backend.o: Diagnostic mode.. no COMEDI..\n");
 #endif
 
- /* Initialize SHM Buffer for Pattern Transfer */
- himem_buffer=ioremap(HIMEMSTART,2*0x100000); /* 2M is enough */
+ /* Initialize Himem Buffer for Wavefile uploading.. */
+ himem_buffer=ioremap(HIMEMSTART,128*0x100000); /* toppest 128M */
  rt_printk("octopus-stim-backend.o: Himem dedicated mem: (0x%x).\n",
            himem_buffer);
- patt_shm=rtai_kmalloc('PATT',SHMBUFSIZE);
- rt_printk("octopus-stim-backend.o: Pattern transfer SHM allocated (0x%x).\n",
-           patt_shm);
+ /* Initialize SHM Buffer for Large Object Transfer */
+ xfer_shm=rtai_kmalloc('XFER',XFERBUFSIZE);
+ rt_printk("octopus-stim-backend.o: Object transfer SHM allocated (0x%x).\n",
+           xfer_shm);
+
+ /* Initialize SHM Buffer for Stimulus Presentation Pattern Array */
+ patt_buf=rtai_kmalloc('PATT',PATTBUFSIZE);
+ rt_printk("octopus-stim-backend.o: Pattern buffer allocated (0x%x).\n",
+           patt_buf);
 
  /* Initialize transfer fifos */
  rtf_create_using_bh(FBFIFO,1000*sizeof(fb_command),0);
@@ -363,9 +373,13 @@ static void __exit octopus_stim_exit(void) {
  rtf_destroy(BFFIFO); rtf_destroy(FBFIFO);
  rt_printk("octopus-stim-backend.o: Up&downstream transfer FIFOs disposed.\n");
 
- /* Dispose SHM Buffer */
+ /* Dispose Pattern Buffer */
  rtai_kfree('PATT');
- rt_printk("octopus-stim-backend.o: Pattern transfer SHM disposed.\n");
+ rt_printk("octopus-stim-backend.o: Pattern buffer disposed.\n");
+ /* Dispose XFER Buffer */
+ rtai_kfree('XFER');
+ rt_printk("octopus-stim-backend.o: Large Object transfer SHM disposed.\n");
+ /* Dispose Linux Unmapped Himem Buffer for media objects */
  iounmap(himem_buffer);
  rt_printk("octopus-stim-backend.o: Himem dedicated memory disposed.\n");
 

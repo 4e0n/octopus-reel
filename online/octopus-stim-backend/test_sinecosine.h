@@ -27,26 +27,27 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
      counter1: Counter of subsequent sines or cosines */
 
 /* Full phase sine and cosine evts to individually test chns and averaging. */
+
 static void test_sinecosine_init(void) {
  event0=SEC_GEN_COSINE;
- counter0=counter1=0; theta=0.0; var0=256; /* First low amp.. */
+ counter0=counter1=0; theta=0.0; var0=16384; /* First low amp.. */
 }
 
 static void test_sinecosine(void) { 
- if (counter0==0) {
-  if (var0==256) var0=25; else if (var0==25) var0=256;
- }
+// if (counter0==0) {
+//  if (var0==AMP_H20) var0=AMP_L20; else if (var0==AMP_L20) var0=AMP_H20;
+// }
 
  if (counter1==0) {
   if (event0==SEC_GEN_COSINE) event0=SEC_GEN_SINE;
   else if (event0==SEC_GEN_SINE) event0=SEC_GEN_COSINE;
   theta=0.0; if (trigger_active) trigger_set(event0);
- } //else if (counter1==TRIG_HI_STEPS) trigger_reset(); // TRIG down
+ }
 
  if (event0==SEC_GEN_SINE) { /* Sine */
-  if (theta<360.0) dac_0=(short)(256.0*sin(2.0*M_PI/360.0*theta)); else dac_0=0;
+  if (theta<360.0) dac_0=(short)((double)var0*sin(2.0*M_PI/360.0*theta)); else dac_0=0;
  } else if (event0==SEC_GEN_COSINE) { /* Cosine */
-  if (theta<360.0) dac_0=(short)(256.0*cos(2.0*M_PI/360.0*theta)); else dac_0=0;
+  if (theta<360.0) dac_0=(short)((double)var0*cos(2.0*M_PI/360.0*theta)); else dac_0=0;
  }
  counter1++; counter1%=50000; /* after 1 sec. */
  theta+=2.0*360.0/(double)(AUDIO_RATE); /* f=2Hz */

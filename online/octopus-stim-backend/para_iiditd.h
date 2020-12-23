@@ -64,11 +64,10 @@ static void para_iiditd(void) {
   para_iiditd_base_level_r=1;
 
  if (counter2==0) {
-  current_pattern_data=himem_buffer[current_pattern_offset]; /* fetch new.. */
+  current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
   current_pattern_offset++;
+  if (current_pattern_offset==pattern_size) current_pattern_offset=0; /* Roll-over */
 
-  /* Roll-over */
-  if (current_pattern_offset==pattern_size) current_pattern_offset=0;
   switch (current_pattern_data) {
    case '0': para_iiditd_current_iid_amp_l=AMP_L20; /* IID: Both L & R low.. */
              para_iiditd_current_iid_amp_r=AMP_L20; /* ITD=0 */
@@ -99,9 +98,9 @@ static void para_iiditd(void) {
              if (trigger_active) trigger_set(SEC_ITD_RIGHT);
    default:  break;
   }
- } //else if (counter2==TRIG_HI_STEPS) trigger_reset(); //pull down
+ }
 
  counter2++; counter2%=para_iiditd_t3; /* 50ms? */
- if (para_iiditd_mono==1) dac_1=0;      /* Left Only */
+ if (para_iiditd_mono==1) dac_1=0;     	/* Left Only */
  else if (para_iiditd_mono==2) dac_0=0;	/* Right Only */
 }

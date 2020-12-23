@@ -32,13 +32,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define FBFIFO			(0)
 #define BFFIFO			(1)
 
-#define HIMEMSTART		(9*128*0x100000) /* Highest 128M of 1G RAM
-						    is dedicated to
-                                                    stimulus pattern. */
-#define SHMBUFSIZE		(128)	/* Shared Memory between backend and
-                                           frontend. */
-#define AUDIO_RATE		(50000)	/* Audio synthesis rate. */
-#define TRIG_RATE		(9600)	/* Serial trigger rate. */
+/* Highest 128M of 1G RAM is dedicated to stimulus pattern
+   "memmap=128M!896M" should exist in kernel cmdline */
+#define HIMEMSTART		((1024-128)*0x100000)
+
+/* Shared Memory between backend and frontend. */
+#define XFERBUFSIZE		(16)
+
+/* Size of stimulus presentation pattern buffer size. */
+#define PATTBUFSIZE		(8)
+
+#define AUDIO_RATE		(50000)	/* Audio synthesis rate */
+#define TRIG_RATE		(9600)	/* Serial trigger rate (bitbang) */
 
 /* Commands for frontend<->backend communication of stim. */
 #define	STIM_SET_PARADIGM	(0x0001)
@@ -49,14 +54,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 /* --------------------------------------------------- */
 #define	STIM_START		(0x1001)
 #define	STIM_STOP		(0x1002)
-#define	STIM_PAUSE		(0x1003) /* Useful in psychophysics
-                                            experiments. */
+#define	STIM_PAUSE		(0x1003) /* Useful particularly in
+                                            psychophysics experiments. */
 #define	TRIG_START		(0x1004)
 #define	TRIG_STOP		(0x1005)
 
 /* --------------------------------------------------- */
-#define STIM_PATT_XFER_SYN	(0x2001) /* Handshake for Xfering pattern */
-#define STIM_PATT_XFER_ACK	(0x2002) /* to backend over SHM. */
+#define STIM_XFER_SYN		(0x2001) /* Handshake for Xfering data */
+#define STIM_XFER_ACK		(0x2002) /* to backend over SHM. */
 
 #define STIM_SET_PARAM_P1	(0x2101) /* Default is  1ms. */
 #define STIM_SET_PARAM_P2	(0x2102) /* Default is 10ms. */
@@ -66,7 +71,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* --------------------------------------------------- */
 #define	STIM_SYNTH_EVENT	(0x3001) /* Diagnostic synthetic event
-                                            coming from operator computer. */
+                                            coming from client application. */
 
 /* --------------------------------------------------- */
 #define	STIM_RST_SYN		(0xF001) /* Reset kernel-space backend. */

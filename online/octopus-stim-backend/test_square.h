@@ -33,8 +33,8 @@ static void test_square_init(void) {
 
 static void test_square(void) { 
  if (counter0==0) {
-  dac_0=256; if (trigger_active) trigger_set(SEC_SQUARE_WAVE);
- } // else if (counter0==TRIG_HI_STEPS) trigger_reset(); // pull down..
+  dac_0=4096; if (trigger_active) trigger_set(SEC_SQUARE_WAVE);
+ }
  else if (counter0==test_square_duration) dac_0=0;
  counter0++; counter0%=AUDIO_RATE; /* after 1 sec. */
 }

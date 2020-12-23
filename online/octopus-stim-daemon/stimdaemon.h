@@ -186,7 +186,7 @@ class StimDaemon : public QTcpServer {
      shmBuffer[i]=pattDatagram.data[i];
 
     // Send SYN(count) -- Inform backend
-    fbMsg.id=STIM_PATT_XFER_SYN; fbMsg.iparam[0]=pattDatagram.size;
+    fbMsg.id=STIM_XFER_SYN; fbMsg.iparam[0]=pattDatagram.size;
     write(fbFifo,&fbMsg,sizeof(fb_command));
     // Wait for ACK
     read(bfFifo,&bfMsg,sizeof(fb_command));

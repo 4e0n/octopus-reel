@@ -72,7 +72,7 @@ static void para_iiditdpplp(void) {
    para_iiditdpplp_base_level_r=1;
 
   if (counter2==0) {
-   current_pattern_data=himem_buffer[current_pattern_offset]; /* fetch new.. */
+   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
    current_pattern_offset++;
 
    /* Roll-over */
@@ -212,7 +212,7 @@ static void para_iiditdpplp(void) {
 	      trigger_set(SEC_PP_ITD_R6);
     default:  break;
    }
-  } //else if (counter2==TRIG_HI_STEPS) trigger_reset(); // Pull down
+  }
   else if (counter2==para_iiditdpplp_t3) {
     para_iiditdpplp_current_iid_amp_l=0; /* Silence */
     para_iiditdpplp_current_iid_amp_r=0;
@@ -221,7 +221,7 @@ static void para_iiditdpplp(void) {
   counter2++; counter2%=para_iiditdpplp_t4; /* 3seconds? */
   counter3++;
   if (counter3==para_iiditdpplp_t6) { /* Stop */
-   audio_active=lp0_data=0;
+   audio_active=0;
 //   stim_reset();
 #ifdef OCTOPUS_STIM_COMEDI
    comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
@@ -239,6 +239,5 @@ static void para_iiditdpplp(void) {
   }
  } else {
   pause_trigger_hi++;
-  //if (pause_trigger_hi==TRIG_HI_STEPS) trigger_reset();
  }
 }
