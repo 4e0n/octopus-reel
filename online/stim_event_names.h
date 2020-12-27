@@ -112,15 +112,15 @@ const QString stimEventNames[128]={
  "STIM_078",	//  78
  "STIM_079",	//  79
  "STIM_080",	//  80
- "STIM_081",	//  81
- "STIM_082",	//  82
- "STIM_083",	//  83
- "STIM_084",	//  84
- "STIM_085",	//  85
- "STIM_086",	//  86
- "STIM_087",	//  87
- "STIM_088",	//  88
- "STIM_089",	//  89
+ "SEC_OPPCHN_CC",//  81
+ "SEC_OPPCHN_CL",//  82
+ "SEC_OPPCHN_CR",//  83
+ "SEC_OPPCHN_LC",//  84
+ "SEC_OPPCHN_LL",//  85
+ "SEC_OPPCHN_LR",//  86
+ "SEC_OPPCHN_RC",//  87
+ "SEC_OPPCHN_RL",//  88
+ "SEC_OPPCHN_RR",//  89
  "STIM_090",	//  90
  "STIM_091",	//  91
  "STIM_092",	//  92

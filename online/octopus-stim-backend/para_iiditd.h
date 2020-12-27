@@ -33,7 +33,7 @@ static int para_iiditd_base_level_l,para_iiditd_base_level_r,
 
 static void para_iiditd_init(void) {
  para_iiditd_base_level_l=para_iiditd_base_level_r=0;
- para_iiditd_current_iid_amp_l=para_iiditd_current_iid_amp_r=DA_NORM;
+ para_iiditd_current_iid_amp_l=para_iiditd_current_iid_amp_r=AMP_0DB;
  para_iiditd_t1=25;   /*  500usec up, 9.5 msec down */
  para_iiditd_t2=500;  /* 10.0msec */
  para_iiditd_t3=2500; /* 50.0msec */

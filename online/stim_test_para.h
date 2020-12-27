@@ -25,8 +25,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #define DACZERO		(32768)		/* Zero-level for 16-bit DAC. */
 
-#define DA_NORM		(16*647)	/* Reference Audio Level */
 #define AMP_L20		(16*204)	/*  -20dB of Reference */
+#define AMP_0DB		(16*647)	/* Reference Audio Level */
 #define AMP_H20		(16*2045)	/*  +20dB of Reference */
 
 #define PHASE_LL	(50)		/* Left  is leading */
@@ -41,4 +41,4 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PARA_SQUAREBURST	(0x1002)
 #define PARA_IIDITD		(0x1003)
 #define PARA_IIDITD_PPLP	(0x1004)
-#define PARA_ITD_OPPCHN_V1	(0x1005)
+#define PARA_ITD_OPPCHN		(0x1005)

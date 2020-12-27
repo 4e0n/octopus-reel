@@ -37,7 +37,7 @@ static int para_iiditdpplp_base_level_l,
 
 static void para_iiditdpplp_init(void) {
  para_iiditdpplp_base_level_l=para_iiditdpplp_base_level_r=0;
- para_iiditdpplp_current_iid_amp_l=para_iiditdpplp_current_iid_amp_r=DA_NORM;
+ para_iiditdpplp_current_iid_amp_l=para_iiditdpplp_current_iid_amp_r=AMP_0DB;
  para_iiditdpplp_t1=25; /* 500us up, 9.5ms down */
  para_iiditdpplp_t2=500;
  para_iiditdpplp_t3=AUDIO_RATE;
@@ -80,8 +80,8 @@ static void para_iiditdpplp(void) {
 
    switch (current_pattern_data) {
     /* CENTER */
-    case '0': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD=0,IID: */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM; // Both L&R norm
+    case '0': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD=0,IID: */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB; // Both L&R norm
               para_iiditdpplp_itd_lr_delta=0;
 	      trigger_set(SEC_PP_CENTER);
               break;
@@ -150,64 +150,64 @@ static void para_iiditdpplp(void) {
               break;
 
     /* ITD */
-    case 'd': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +6 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'd': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +6 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=30; /* 600usec */
 	      trigger_set(SEC_PP_ITD_L6);
               break;
-    case 'e': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +5 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'e': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +5 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=10; /* 200usec */
 	      trigger_set(SEC_PP_ITD_L5);
               break;
-    case 'f': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +4 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'f': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +4 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=5; /* 100usec */
 	      trigger_set(SEC_PP_ITD_L4);
               break;
-    case 'g': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +3 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'g': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +3 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=3; /* 60usec */
 	      trigger_set(SEC_PP_ITD_L3);
               break;
-    case 'h': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +2 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'h': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +2 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=2; /* 40usec */
 	      trigger_set(SEC_PP_ITD_L2);
               break;
-    case 'i': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Left +1 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'i': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Left +1 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=1; /* 20usec */
 	      trigger_set(SEC_PP_ITD_L1);
               break;
 
-    case 'j': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +1 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'j': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +1 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-1; /* 20usec */
 	      trigger_set(SEC_PP_ITD_R1);
               break;
-    case 'k': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +2 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'k': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +2 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-2; /* 40usec */
 	      trigger_set(SEC_PP_ITD_R2);
               break;
-    case 'l': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +3 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'l': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +3 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-3; /* 60usec */
 	      trigger_set(SEC_PP_ITD_R3);
               break;
-    case 'm': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +4 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'm': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +4 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-5; /* 100usec */
 	      trigger_set(SEC_PP_ITD_R4);
               break;
-    case 'n': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +5 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'n': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +5 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-10; /* 200usec */
 	      trigger_set(SEC_PP_ITD_R5);
               break;
-    case 'o': para_iiditdpplp_current_iid_amp_l=DA_NORM; /* ITD: Right +6 */
-              para_iiditdpplp_current_iid_amp_r=DA_NORM;
+    case 'o': para_iiditdpplp_current_iid_amp_l=AMP_0DB; /* ITD: Right +6 */
+              para_iiditdpplp_current_iid_amp_r=AMP_0DB;
               para_iiditdpplp_itd_lr_delta=-30; /* 600usec */
 	      trigger_set(SEC_PP_ITD_R6);
     default:  break;

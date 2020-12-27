@@ -1,0 +1,162 @@
+/*
+Octopus-ReEL - Realtime Encephalography Laboratory Network
+   Copyright (C) 2007 Barkin Ilhan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+
+ Contact info:
+ E-Mail:  barkin@unrlabs.org
+ Website: http://icon.unrlabs.org/staff/barkin/
+ Repo:    https://github.com/4e0n/
+*/
+
+/* PARADIGM 'Testing of Opponent Channels hypothesis'
+    counter0: pulse counter
+    counter1: stim counter
+    counter2: soa counter */
+
+static int para_itdoppchn_pulse,para_itdoppchn_delta,
+	   para_itdoppchn_stim,para_itdoppchn_soa,
+	   para_itdoppchn_adapter_instant,para_itdoppchn_probe_instant,
+           para_itdoppchn_trigger;
+
+static void para_itdoppchn_init(void) {
+ para_itdoppchn_pulse=0.0001*AUDIO_RATE; /* 5 steps - 100 us */
+ para_itdoppchn_delta==0.0006*AUDIO_RATE; /*  L-R delta: 30 steps - 600 us */
+ para_itdoppchn_stim=0.1*AUDIO_RATE; /* 100 ms */
+ para_itdoppchn_soa=2*AUDIO_RATE; /* 2 seconds */
+ para_itdoppchn_adapter_instant=para_itdoppchn_soa/2-para_itdoppchn_stim/2;
+ para_itdoppchn_probe_instant=para_itdoppchn_soa/2+para_itdoppchn_stim/2;
+ current_pattern_offset=0;
+}
+
+static void para_itdoppchn(void) {
+ if (counter0==0) {
+  current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
+  current_pattern_offset++;
+  /* Roll-over */
+  if (current_pattern_offset==pattern_size) current_pattern_offset=0;
+  switch (current_pattern_data) {
+   case 'A': /* Adapter: Center - Probe: Center */
+	     para_itdoppchn_trigger=SEC_OPPCHN_CC;
+             break;
+   case 'B': /* Adapter: Center - Probe: Left-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_CL;
+             break;
+   case 'C': /* Adapter: Center - Probe: Right-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_CR;
+             break;
+   case 'D': /* Adapter: Left-leading - Probe: Center */
+	     para_itdoppchn_trigger=SEC_OPPCHN_LC;
+             break;
+   case 'E': /* Adapter: Left-leading - Probe: Left-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_LL;
+             break;
+   case 'F': /* Adapter: Left-leading - Probe: Right-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_LR;
+             break;
+   case 'G': /* Adapter: Right-leading - Probe: Center */
+	     para_itdoppchn_trigger=SEC_OPPCHN_RC;
+             break;
+   case 'H': /* Adapter: Right-leading - Probe: Left-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_RL;
+             break;
+   case 'I': /* Adapter: Right-leading - Probe: Right-leading */
+	     para_itdoppchn_trigger=SEC_OPPCHN_RR;
+   default:  break;
+  }
+ }
+
+ /* ------------------------------------------------------------------- */
+ /* Trigger */
+ if (trigger_active && (counter0 == para_itdoppchn_soa/2)) 
+  trigger_set(para_itdoppchn_trigger);
+ /* ------------------------------------------------------------------- */
+
+ /* Adapter - Center */
+ if ((counter0 >= para_itdoppchn_adapter_instant) &&
+     (counter0 <  para_itdoppchn_adapter_instant+para_itdoppchn_pulse)) {
+  switch (current_pattern_data) {
+   case 'A':
+   case 'B':
+   case 'C': dac_0=AMP_0DB; dac_1=dac_0=AMP_0DB;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* Adapter - LL */
+ if ((counter0 >= para_itdoppchn_adapter_instant-para_itdoppchn_delta/2) &&
+     (counter0 <  para_itdoppchn_adapter_instant-para_itdoppchn_delta/2
+                                                +para_itdoppchn_pulse)) { 
+  switch (current_pattern_data) {
+   case 'D':
+   case 'E':
+   case 'F': dac_0=0; dac_1=AMP_0DB;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* Adapter - RL: Left High in 2nd part */
+ if ((counter0 >= para_itdoppchn_adapter_instant+para_itdoppchn_delta/2) &&
+     (counter0 <  para_itdoppchn_adapter_instant+para_itdoppchn_delta/2
+                                                +para_itdoppchn_pulse)) { 
+  switch (current_pattern_data) {
+   case 'G':
+   case 'H':
+   case 'I': dac_0=AMP_0DB; dac_1=0;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* ------------------------------------------------------------------- */
+
+ /* Probe - Center */
+ if ((counter0 >= para_itdoppchn_probe_instant) &&
+     (counter0 <  para_itdoppchn_probe_instant+para_itdoppchn_pulse)) {
+  switch (current_pattern_data) {
+   case 'A':
+   case 'D':
+   case 'G': dac_0=AMP_0DB; dac_1=dac_0=AMP_0DB;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* Probe - LL */
+ if ((counter0 >= para_itdoppchn_probe_instant-para_itdoppchn_delta/2) &&
+     (counter0 <  para_itdoppchn_probe_instant-para_itdoppchn_delta/2
+                                                +para_itdoppchn_pulse)) { 
+  switch (current_pattern_data) {
+   case 'B':
+   case 'E':
+   case 'H': dac_0=0; dac_1=AMP_0DB;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* Probe - RL */
+ if ((counter0 >= para_itdoppchn_probe_instant+para_itdoppchn_delta/2) &&
+     (counter0 <  para_itdoppchn_probe_instant+para_itdoppchn_delta/2
+                                                +para_itdoppchn_pulse)) { 
+  switch (current_pattern_data) {
+   case 'C':
+   case 'F':
+   case 'I': dac_0=AMP_0DB; dac_1=0;
+   default:  break;
+  }
+ } else dac_0=dac_1=0;
+
+ /* ------------------------------------------------------------------- */
+
+ counter0++; counter0%=para_itdoppchn_soa; /* Two seconds? */
+}

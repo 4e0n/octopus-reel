@@ -126,9 +126,10 @@ class StimClient : public QMainWindow {
    paraLoadPatAction=new QAction("&Load STIM Pattern..",this);
    paraClickAction=new QAction("1ms Click",this);
    paraSquareBurstAction=new QAction("50ms Burst",this);
-   paraIIDITDAction=new QAction("IID-ITD (PU)",this);
+   paraIIDITDAction=new QAction("IID-ITD",this);
    paraIIDITD_ML_Action=new QAction("IID-ITD Mono-L",this);
    paraIIDITD_MR_Action=new QAction("IID-ITD Mono-R",this);
+   paraITDOppChnAction=new QAction("Opponent Channels",this);
    paraLoadPatAction->setStatusTip(
     "Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
@@ -140,6 +141,8 @@ class StimClient : public QMainWindow {
     "Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Left)");
    paraIIDITD_MR_Action->setStatusTip(
     "Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Right)");
+   paraITDOppChnAction->setStatusTip(
+    "Verification/falsification of ITD Opponent Channels Model");
    connect(paraLoadPatAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmLoadPattern()));
    connect(paraClickAction,SIGNAL(triggered()),
@@ -152,12 +155,15 @@ class StimClient : public QMainWindow {
            this,SLOT(slotParadigmIIDITD_MonoL()));
    connect(paraIIDITD_MR_Action,SIGNAL(triggered()),
            this,SLOT(slotParadigmIIDITD_MonoR()));
+   connect(paraITDOppChnAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigmITDOppChn()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
    paraMenu->addAction(paraIIDITDAction);
    paraMenu->addAction(paraIIDITD_ML_Action);
    paraMenu->addAction(paraIIDITD_MR_Action);
+   paraMenu->addAction(paraITDOppChnAction);
 
    // *** BUTTONS AT THE TOP ***
    toggleStimulationButton=new QPushButton("STIM",this);
@@ -245,7 +251,7 @@ class StimClient : public QMainWindow {
   }
 
  private slots:
-  // *** TCP HANDLERS */
+  // *** TCP HANDLERS
 
   void slotStimCommandError(QAbstractSocket::SocketError socketError) {
    switch (socketError) {
@@ -411,6 +417,9 @@ class StimClient : public QMainWindow {
   void slotParadigmIIDITD_MonoR() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,2,0);
   }
+  void slotParadigmITDOppChn() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_OPPCHN,0,0);
+  }
 
  private:
   QApplication *application;
@@ -437,7 +446,8 @@ class StimClient : public QMainWindow {
   QAction *toggleCalAction,*rebootAction,*shutdownAction,
           *quitAction,*aboutAction,*testSCAction,*testSquareAction,
           *paraLoadPatAction,*paraClickAction,*paraSquareBurstAction,
-          *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action;
+          *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action,
+	  *paraITDOppChnAction;
 
   // Calibration
   int calPts; QVector<float> calA,calB;
