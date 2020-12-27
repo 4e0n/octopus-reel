@@ -244,7 +244,8 @@ int fbfifohandler(unsigned int fifo,int rw) {
                             rt_printk(
  "octopus-stim-backend.o: Stimulus pattern Xferred to backend successfully.\n");
                            break;
-   case STIM_START:        audio_paused=0; audio_active=1;
+   case STIM_START:        init_test_para(paradigm);
+			   audio_paused=0; audio_active=1;
                  rt_printk("octopus-stim-backend.o: Stim resumed/started.\n");
                            break;
    case STIM_PAUSE:        pause_trigger_hi=0; audio_paused=1;
@@ -252,7 +253,6 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            break;
    case STIM_STOP:         audio_active=0;
                            stim_reset();
-                           init_test_para(paradigm);
 #ifdef OCTOPUS_STIM_COMEDI
 			   dac_0=dac_1=DACZERO;
                            comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);

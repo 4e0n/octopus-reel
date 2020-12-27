@@ -22,23 +22,38 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* PARADIGM 'Testing of Opponent Channels hypothesis'
-    counter0: pulse counter
-    counter1: stim counter
-    counter2: soa counter */
+    counter0: soa counter */
 
 static int para_itdoppchn_pulse,para_itdoppchn_delta,
 	   para_itdoppchn_stim,para_itdoppchn_soa,
 	   para_itdoppchn_adapter_instant,para_itdoppchn_probe_instant,
+	   para_itdoppchn_adapter_instant_1,para_itdoppchn_probe_instant_1,
+	   para_itdoppchn_adapter_instant_2,para_itdoppchn_probe_instant_2,
            para_itdoppchn_trigger;
 
 static void para_itdoppchn_init(void) {
- para_itdoppchn_pulse=0.0001*AUDIO_RATE; /* 5 steps - 100 us */
- para_itdoppchn_delta==0.0006*AUDIO_RATE; /*  L-R delta: 30 steps - 600 us */
- para_itdoppchn_stim=0.1*AUDIO_RATE; /* 100 ms */
- para_itdoppchn_soa=2*AUDIO_RATE; /* 2 seconds */
+ counter0=0; current_pattern_offset=0;
+ para_itdoppchn_pulse=(0.0001)*AUDIO_RATE; /* 5 steps - 100 us */
+ para_itdoppchn_delta=(0.00061)*AUDIO_RATE; /*  L-R delta: 30 steps */
+ para_itdoppchn_stim=(0.1)*AUDIO_RATE; /* 5000 steps - 100 ms - 0.005 */
+ para_itdoppchn_soa=(2.0)*AUDIO_RATE; /* 100000 steps - 2 seconds - 1.0 */
  para_itdoppchn_adapter_instant=para_itdoppchn_soa/2-para_itdoppchn_stim/2;
+ para_itdoppchn_adapter_instant_1=para_itdoppchn_adapter_instant-para_itdoppchn_delta/2;
+ para_itdoppchn_adapter_instant_2=para_itdoppchn_adapter_instant+para_itdoppchn_delta/2;
  para_itdoppchn_probe_instant=para_itdoppchn_soa/2+para_itdoppchn_stim/2;
- current_pattern_offset=0;
+ para_itdoppchn_probe_instant_1=para_itdoppchn_probe_instant-para_itdoppchn_delta/2;
+ para_itdoppchn_probe_instant_2=para_itdoppchn_probe_instant+para_itdoppchn_delta/2;
+
+// rt_printk("%d %d %d %d %d %d %d %d %d %d\n",para_itdoppchn_pulse,
+//		 	 para_itdoppchn_delta,
+//		 	 para_itdoppchn_stim,
+//		 	 para_itdoppchn_soa,
+//		 	 para_itdoppchn_adapter_instant,
+//		 	 para_itdoppchn_adapter_instant_1,
+//		 	 para_itdoppchn_adapter_instant_2,
+//		 	 para_itdoppchn_probe_instant,
+//		 	 para_itdoppchn_probe_instant_1,
+//		 	 para_itdoppchn_probe_instant_2);
 }
 
 static void para_itdoppchn(void) {
@@ -84,77 +99,91 @@ static void para_itdoppchn(void) {
   trigger_set(para_itdoppchn_trigger);
  /* ------------------------------------------------------------------- */
 
+ dac_0=dac_1=0;
+
+ /* Adapter - Early */
+ if ((counter0 >= para_itdoppchn_adapter_instant_1) &&
+     (counter0 <  para_itdoppchn_adapter_instant_1+para_itdoppchn_pulse)) {
+  switch (current_pattern_data) {
+   case 'D':
+   case 'E':
+   case 'F': dac_1=AMP_H20;
+	     break;
+   case 'G':
+   case 'H':
+   case 'I': dac_0=AMP_H20;
+   default:  break;
+  }
+ }
+
  /* Adapter - Center */
  if ((counter0 >= para_itdoppchn_adapter_instant) &&
      (counter0 <  para_itdoppchn_adapter_instant+para_itdoppchn_pulse)) {
   switch (current_pattern_data) {
    case 'A':
    case 'B':
-   case 'C': dac_0=AMP_0DB; dac_1=dac_0=AMP_0DB;
+   case 'C': dac_0=AMP_H20; dac_1=AMP_H20;
    default:  break;
   }
- } else dac_0=dac_1=0;
+ }
 
- /* Adapter - LL */
- if ((counter0 >= para_itdoppchn_adapter_instant-para_itdoppchn_delta/2) &&
-     (counter0 <  para_itdoppchn_adapter_instant-para_itdoppchn_delta/2
-                                                +para_itdoppchn_pulse)) { 
+ /* Adapter - Late */
+ if ((counter0 >= para_itdoppchn_adapter_instant_2) &&
+     (counter0 <  para_itdoppchn_adapter_instant_2+para_itdoppchn_pulse)) {
   switch (current_pattern_data) {
    case 'D':
    case 'E':
-   case 'F': dac_0=0; dac_1=AMP_0DB;
-   default:  break;
-  }
- } else dac_0=dac_1=0;
-
- /* Adapter - RL: Left High in 2nd part */
- if ((counter0 >= para_itdoppchn_adapter_instant+para_itdoppchn_delta/2) &&
-     (counter0 <  para_itdoppchn_adapter_instant+para_itdoppchn_delta/2
-                                                +para_itdoppchn_pulse)) { 
-  switch (current_pattern_data) {
+   case 'F': dac_0=AMP_H20;
+	     break;
    case 'G':
    case 'H':
-   case 'I': dac_0=AMP_0DB; dac_1=0;
+   case 'I': dac_1=AMP_H20;
    default:  break;
   }
- } else dac_0=dac_1=0;
+ }
 
  /* ------------------------------------------------------------------- */
 
- /* Probe - Center */
- if ((counter0 >= para_itdoppchn_probe_instant) &&
-     (counter0 <  para_itdoppchn_probe_instant+para_itdoppchn_pulse)) {
-  switch (current_pattern_data) {
-   case 'A':
-   case 'D':
-   case 'G': dac_0=AMP_0DB; dac_1=dac_0=AMP_0DB;
-   default:  break;
-  }
- } else dac_0=dac_1=0;
-
- /* Probe - LL */
- if ((counter0 >= para_itdoppchn_probe_instant-para_itdoppchn_delta/2) &&
-     (counter0 <  para_itdoppchn_probe_instant-para_itdoppchn_delta/2
-                                                +para_itdoppchn_pulse)) { 
+ /* Probe - Early */
+ if ((counter0 >= para_itdoppchn_probe_instant_1) &&
+     (counter0 <  para_itdoppchn_probe_instant_1+para_itdoppchn_pulse)) {
   switch (current_pattern_data) {
    case 'B':
    case 'E':
-   case 'H': dac_0=0; dac_1=AMP_0DB;
-   default:  break;
-  }
- } else dac_0=dac_1=0;
-
- /* Probe - RL */
- if ((counter0 >= para_itdoppchn_probe_instant+para_itdoppchn_delta/2) &&
-     (counter0 <  para_itdoppchn_probe_instant+para_itdoppchn_delta/2
-                                                +para_itdoppchn_pulse)) { 
-  switch (current_pattern_data) {
+   case 'H': dac_1=AMP_H20;
+	     break;
    case 'C':
    case 'F':
-   case 'I': dac_0=AMP_0DB; dac_1=0;
+   case 'I': dac_0=AMP_H20;
    default:  break;
   }
- } else dac_0=dac_1=0;
+ }
+
+ /* Probe - Center */
+ if ( (counter0 >= para_itdoppchn_probe_instant) &&
+      (counter0 <  para_itdoppchn_probe_instant+para_itdoppchn_pulse)) {
+  switch (current_pattern_data) {
+   case 'A':
+   case 'D':
+   case 'G': dac_0=AMP_H20; dac_1=AMP_H20;
+   default:  break;
+  }
+ }
+
+ /* Probe - Late */
+ if ((counter0 >= para_itdoppchn_probe_instant_2) &&
+     (counter0 <  para_itdoppchn_probe_instant_2+para_itdoppchn_pulse)) {
+  switch (current_pattern_data) {
+   case 'B':
+   case 'E':
+   case 'H': dac_0=AMP_H20;
+	     break;
+   case 'C':
+   case 'F':
+   case 'I': dac_1=AMP_H20;
+   default:  break;
+  }
+ }
 
  /* ------------------------------------------------------------------- */
 

@@ -32,6 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../patt_datagram.h"
 #include "../fb_command.h"
 #include "../cs_command.h"
+#include "../stim_test_para.h"
 
 class StimDaemon : public QTcpServer {
  Q_OBJECT
@@ -59,6 +60,7 @@ class StimDaemon : public QTcpServer {
     qDebug(
      "octopus-stim-daemon: Servers started.. Waiting for client connection..");
    }
+   fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN,0);
   }
 
   void fbWrite(unsigned short code,int p1,int p2) {
