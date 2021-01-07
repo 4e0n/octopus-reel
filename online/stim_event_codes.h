@@ -108,7 +108,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_EVENT_77		77	// ""
 #define SEC_EVENT_78		78	// ""
 #define SEC_EVENT_79		79	// ""
-#define SEC_EVENT_80		80	// ""
+#define SEC_OPPCHN_CO		80	// "OPPCHN CO"
 #define SEC_OPPCHN_CC		81	// "OPPCHN CC"
 #define SEC_OPPCHN_CL		82	// "OPPCHN CL"
 #define SEC_OPPCHN_CR		83	// "OPPCHN CR"

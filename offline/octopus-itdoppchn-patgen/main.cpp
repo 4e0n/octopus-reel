@@ -21,7 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* This application generates the orderly pattern which streams in background
+/* This application generates the randomized pattern which streams in background
    in the ITD Opponent channels protocol
 */   
 
@@ -31,25 +31,25 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QTextStream>
 
-static int patternCount;
-static QString dummyString;
-
 int main(int argc,char *argv[]) {
+ int patternCount,domainSize;
+ QFile patternFile; QTextStream patternStream;
+ QString finalPattern,triggerDomain; QChar c;
+
  if (argc!=3) {
   qDebug("Usage: octopus-patt <file name> <stim.length in trials>");
   return -1;
  }
 
  QString p=QString::fromAscii(argv[2]);
- QIntValidator intValidator(30,1800,NULL); int pos=0;
+ QIntValidator intValidator(1,1800,NULL); int pos=0;
  if (intValidator.validate(p,pos) != QValidator::Acceptable) {
-  qDebug("Please enter a positive integer between 30 and 1800 as stim.length!");
-  qDebug("Usage: octopus-patt <file name> <seconds @ 50ms stim.length>");
+  qDebug("Please enter a positive integer between 1 and 1800 as stim.length!");
+  qDebug("Usage: octopus-patt <file name> <size @stim.length>");
   return -1;
  }
  patternCount=p.toInt();
 
- QFile patternFile; QTextStream patternStream;
  patternFile.setFileName(argv[1]);
  if (!patternFile.open(QIODevice::WriteOnly)) {
   qDebug("Pattern error: Cannot generate/open pattern file for writing.");
@@ -57,13 +57,14 @@ int main(int argc,char *argv[]) {
  }
  patternStream.setDevice(&patternFile);
 
+ std::srand(time(NULL));
 
- QString finalPattern; // Add random 20lets..
- int idx=0;
+ triggerDomain="0ABC";
+ domainSize=triggerDomain.length();
+
  while (finalPattern.size() < patternCount) {
-  dummyString='A'+idx;
-  finalPattern.append(dummyString);
-  idx++; idx%=9;
+  c=triggerDomain[rand()%domainSize];
+  finalPattern.append(c);
  }
 
  qDebug("Outputting to file..");
@@ -74,3 +75,4 @@ int main(int argc,char *argv[]) {
  patternFile.close();
  return 0;
 }
+

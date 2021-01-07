@@ -63,6 +63,9 @@ static void para_itdoppchn(void) {
   /* Roll-over */
   if (current_pattern_offset==pattern_size) current_pattern_offset=0;
   switch (current_pattern_data) {
+   case '0': /* Adapter: Center - Probe: Center */
+	     para_itdoppchn_trigger=SEC_OPPCHN_CO;
+             break;
    case 'A': /* Adapter: Center - Probe: Center */
 	     para_itdoppchn_trigger=SEC_OPPCHN_CC;
              break;
@@ -95,7 +98,7 @@ static void para_itdoppchn(void) {
 
  /* ------------------------------------------------------------------- */
  /* Trigger */
- if (trigger_active && (counter0 == para_itdoppchn_soa/2)) 
+ if (trigger_active && (counter0 == para_itdoppchn_adapter_instant)) 
   trigger_set(para_itdoppchn_trigger);
  /* ------------------------------------------------------------------- */
 
@@ -120,6 +123,7 @@ static void para_itdoppchn(void) {
  if ((counter0 >= para_itdoppchn_adapter_instant) &&
      (counter0 <  para_itdoppchn_adapter_instant+para_itdoppchn_pulse)) {
   switch (current_pattern_data) {
+   case '0':
    case 'A':
    case 'B':
    case 'C': dac_0=AMP_H20; dac_1=AMP_H20;

@@ -111,7 +111,7 @@ const QString stimEventNames[128]={
  "STIM_077",	//  77
  "STIM_078",	//  78
  "STIM_079",	//  79
- "STIM_080",	//  80
+ "SEC_OPPCHN_CO",//  80
  "SEC_OPPCHN_CC",//  81
  "SEC_OPPCHN_CL",//  82
  "SEC_OPPCHN_CR",//  83
