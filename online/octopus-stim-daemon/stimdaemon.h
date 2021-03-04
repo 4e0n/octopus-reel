@@ -60,7 +60,7 @@ class StimDaemon : public QTcpServer {
     qDebug(
      "octopus-stim-daemon: Servers started.. Waiting for client connection..");
    }
-   fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN,0);
+   fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0);
   }
 
   void fbWrite(unsigned short code,int p1,int p2) {

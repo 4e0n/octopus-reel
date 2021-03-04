@@ -42,3 +42,5 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PARA_IIDITD		(0x1003)
 #define PARA_IIDITD_PPLP	(0x1004)
 #define PARA_ITD_OPPCHN		(0x1005)
+#define PARA_ITD_OPPCHN2	(0x1006)
+#define PARA_ITD_LINTEST	(0x1007)

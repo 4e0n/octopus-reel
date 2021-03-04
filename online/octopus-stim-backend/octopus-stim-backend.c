@@ -137,6 +137,8 @@ static void trigger_reset(void) {
 #include "para_iiditd.h"
 #include "para_iiditdpplp.h"
 #include "para_itdoppchn.h"
+#include "para_itdoppchn2.h"
+#include "para_itdlintest.h"
 
 /* ========================================================================= */
 
@@ -155,6 +157,8 @@ static void audio_thread(int t) {
      case PARA_IIDITD:        para_iiditd();       break;
      case PARA_IIDITD_PPLP:   para_iiditdpplp();   break;
      case PARA_ITD_OPPCHN:    para_itdoppchn();	   break;
+     case PARA_ITD_OPPCHN2:   para_itdoppchn2();   break;
+     case PARA_ITD_LINTEST:   para_itdlintest();   break;
     }
 #ifdef OCTOPUS_STIM_COMEDI
     comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0); /* L */
@@ -206,6 +210,8 @@ static void init_test_para(int tp) {
   case PARA_IIDITD:        para_iiditd_init();       break;
   case PARA_IIDITD_PPLP:   para_iiditdpplp_init();   break;
   case PARA_ITD_OPPCHN:    para_itdoppchn_init();    break;
+  case PARA_ITD_OPPCHN2:   para_itdoppchn2_init();   break;
+  case PARA_ITD_LINTEST:   para_itdlintest_init();   break;
  }
 }
 
