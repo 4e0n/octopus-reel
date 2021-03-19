@@ -36,9 +36,9 @@ static int para_itdlintest_trigger,
 
 static void para_itdlintest_init(void) {
  counter0=0; current_pattern_offset=0;
- para_itdlintest_soa=(2.0)*AUDIO_RATE; /* 100000 steps - 2 seconds */
+ para_itdlintest_soa=(2.00201)*AUDIO_RATE; /* 100100 steps - 2.02 seconds - 143 cycles */
  para_itdlintest_hi_duration=(0.00051)*AUDIO_RATE; /* 25 steps */
- para_itdlintest_click_period=(0.100)*AUDIO_RATE; /* 5000 steps */
+ para_itdlintest_click_period=(0.014)*AUDIO_RATE; /* 700 steps */
  para_itdlintest_delta1=(0.00031)*AUDIO_RATE; /*  L-R delta1: 15 steps */
  para_itdlintest_delta2=(0.00061)*AUDIO_RATE; /*  L-R delta2: 30 steps */
 
@@ -61,6 +61,8 @@ static void para_itdlintest_init(void) {
 }
 
 static void para_itdlintest(void) {
+ int dummy_counter=0;
+
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
   current_pattern_offset++;
@@ -119,6 +121,7 @@ static void para_itdlintest(void) {
   trigger_set(para_itdlintest_trigger);
  /* ------------------------------------------------------------------- */
 
+ dummy_counter=counter0%para_itdlintest_click_period;
  dac_0=dac_1=0;
 
  switch (current_pattern_data) {
@@ -126,34 +129,34 @@ static void para_itdlintest(void) {
   case 'H':
   case 'K':
   case 'N':
-	if ((counter0 >= para_itdlintest_stim_instant) &&
-	    (counter0 <  para_itdlintest_stim_instant \
+	if ((dummy_counter >= para_itdlintest_stim_instant) &&
+	    (dummy_counter <  para_itdlintest_stim_instant \
 			 +para_itdlintest_hi_duration)) {
 	 dac_0=dac_1=AMP_H20;
 	}
 	    break;
   case 'A':	// Destination is L300
   case 'C':
-	if ((counter0 >= para_itdlintest_stim_instant_minus1) &&
-	    (counter0 <  para_itdlintest_stim_instant_minus1 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_minus1) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_minus1 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_0=AMP_H20;
 	}
-	if ((counter0 >= para_itdlintest_stim_instant_plus1) &&
-	    (counter0 <  para_itdlintest_stim_instant_plus1 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_plus1) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_plus1+1 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_1=AMP_H20;
 	}
 	    break;
   case 'E':	// Destination is R300
   case 'G':
-	if ((counter0 >= para_itdlintest_stim_instant_minus1) &&
-	    (counter0 <  para_itdlintest_stim_instant_minus1 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_minus1) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_minus1 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_1=AMP_H20;
 	}
-	if ((counter0 >= para_itdlintest_stim_instant_plus1) &&
-	    (counter0 <  para_itdlintest_stim_instant_plus1 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_plus1) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_plus1+1 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_0=AMP_H20;
 	}
@@ -161,13 +164,13 @@ static void para_itdlintest(void) {
   case 'B':	// Destination is L600
   case 'I':
   case 'M':
-	if ((counter0 >= para_itdlintest_stim_instant_minus2) &&
-	    (counter0 <  para_itdlintest_stim_instant_minus2 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_minus2) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_minus2 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_0=AMP_H20;
 	}
-	if ((counter0 >= para_itdlintest_stim_instant_plus2) &&
-	    (counter0 <  para_itdlintest_stim_instant_plus2 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_plus2) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_plus2 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_1=AMP_H20;
 	}
@@ -175,13 +178,13 @@ static void para_itdlintest(void) {
   case 'F':	// Destination is R600
   case 'J':
   case 'L':
-	if ((counter0 >= para_itdlintest_stim_instant_minus2) &&
-	    (counter0 <  para_itdlintest_stim_instant_minus2 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_minus2) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_minus2 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_1=AMP_H20;
 	}
-	if ((counter0 >= para_itdlintest_stim_instant_plus2) &&
-	    (counter0 <  para_itdlintest_stim_instant_plus2 \
+	if ((dummy_counter >= para_itdlintest_stim_instant_plus2) &&
+	    (dummy_counter <  para_itdlintest_stim_instant_plus2 \
 			 +para_itdlintest_hi_duration)) {
 	 dac_0=AMP_H20;
 	}
