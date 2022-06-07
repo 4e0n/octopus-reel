@@ -73,10 +73,10 @@ int main(int argc,char *argv[]) {
   return -1;
  }
 
- QHostInfo qhi=QHostInfo::fromName(QString::fromAscii(argv[1]));
+ QHostInfo qhi=QHostInfo::fromName(QString::fromLatin1(argv[1]));
  host=qhi.addresses().first().toString();
- comm=QString::fromAscii(argv[2]);
- data=QString::fromAscii(argv[3]);
+ comm=QString::fromLatin1(argv[2]);
+ data=QString::fromLatin1(argv[3]);
  QIntValidator intValidator(1024,65535,NULL); int pos=0;
  if (intValidator.validate(comm,pos) != QValidator::Acceptable ||
      intValidator.validate(data,pos) != QValidator::Acceptable) {
@@ -97,11 +97,11 @@ int main(int argc,char *argv[]) {
  // *** FIFO VALIDATION ***
 
  dStr2.setNum(ACQ_F2BFIFO); dStr1="/dev/rtf"+dStr2;
- if ((fbFifo=open(dStr1.toAscii().data(),O_WRONLY))<0) {
+ if ((fbFifo=open(dStr1.toLatin1().data(),O_WRONLY))<0) {
   qDebug("octopus-acq-daemon: Cannot open f2b FIFO!"); return -1;
  }
  dStr2.setNum(ACQ_B2FFIFO); dStr1="/dev/rtf"+dStr2;
- if ((bfFifo=open(dStr1.toAscii().data(),O_RDONLY|O_NONBLOCK))<0) {
+ if ((bfFifo=open(dStr1.toLatin1().data(),O_RDONLY|O_NONBLOCK))<0) {
   qDebug("octopus-acq-daemon: Cannot open b2f FIFO!"); return -1;
  }
 
@@ -120,7 +120,7 @@ int main(int argc,char *argv[]) {
 
  // *** CLOSE and REOPEN FIFO IN BLOCKING MODE ***
 
- close(bfFifo); bfFifo=open(dStr1.toAscii().data(),O_RDONLY);
+ close(bfFifo); bfFifo=open(dStr1.toLatin1().data(),O_RDONLY);
 
  // *** SHM/ACQBUF VALIDATION ***
 

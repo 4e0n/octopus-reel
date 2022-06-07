@@ -45,9 +45,9 @@ int main(int argc,char *argv[]) {
   return -1;
  }
 
- host=QString::fromAscii(argv[1]);
- comm=QString::fromAscii(argv[2]);
- data=QString::fromAscii(argv[3]);
+ host=QString::fromLatin1(argv[1]);
+ comm=QString::fromLatin1(argv[2]);
+ data=QString::fromLatin1(argv[3]);
  QIntValidator intValidator(1024,65535,NULL); int pos=0;
  if (intValidator.validate(comm,pos) != QValidator::Acceptable ||
      intValidator.validate(data,pos) != QValidator::Acceptable) {

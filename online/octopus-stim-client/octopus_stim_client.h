@@ -25,7 +25,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define OCTOPUS_STIM_CLIENT_H
 
 #include <QApplication>
-#include <QtGui>
+#include <QWidget>
+#include <QMainWindow>
+#include <QMenuBar>
+#include <QPushButton>
+#include <QFileDialog>
+#include <QStatusBar>
+#include <QMessageBox>
+#include <QAction>
+
+//#include <QtGui>
 #include <QtNetwork>
 #include <unistd.h>
 #include "../cs_command.h"
@@ -394,7 +403,7 @@ class StimClient : public QMainWindow {
 
     int dataCount=0; pattDatagram.magic_number=0xaabbccdd;
     for (int i=0;i<pattern.size();i++) {
-     pattDatagram.data[dataCount]=pattern.at(i).toAscii(); dataCount++;
+     pattDatagram.data[dataCount]=pattern.at(i).toLatin1(); dataCount++;
      if (dataCount==128) { // We got 128 bytes.. Send packet and Sync.
       pattDatagram.size=dataCount; dataCount=0;
       stimDataStream.writeRawData((const char*)(&pattDatagram),

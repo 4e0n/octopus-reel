@@ -30,7 +30,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QObject>
 #include <QApplication>
-#include <QtGui>
+//#include <QtGui>
+#include <QWidget>
+#include <QStatusBar>
+#include <QLabel>
 #include <QtNetwork>
 #include <QFile>
 #include <QFileDialog>
@@ -526,7 +529,7 @@ class RecMaster : QObject {
      avgStream << (int)(OCTOPUS_VER);	// Version
      avgStream << sampleRate;		// Sample rate
      avgStream << avgRecChns.size();	// Channel count
-     avgStream << acqEvents[i]->name.toAscii().data(); // Name of Evt - Cstyle
+     avgStream << acqEvents[i]->name.toLatin1().data(); // Name of Evt - Cstyle
      avgStream << cp.avgBwd;		// Averaging Window
      avgStream << cp.avgFwd;
      avgStream << acqEvents[i]->accepted; // Accepted count
@@ -657,7 +660,7 @@ class RecMaster : QObject {
        curEventName=acqEvents[eIndex]->name;
        curEventType=acqEvents[eIndex]->type;
        qDebug("Octopus-Recorder: Avg! -> Index=%d, Name=%s",
-              eIndex,curEventName.toAscii().data());
+              eIndex,curEventName.toLatin1().data());
        if (averaging) {
         qDebug("Octopus-Recorder: "
                "Event collision!.. (was already averaging).. %d %d",
@@ -669,7 +672,7 @@ class RecMaster : QObject {
      if (averaging) {
       if (avgCounter==cp.bwCount) { averaging=false;
        qDebug("Octopus-Recorder: Computing for Event! -> Index=%d, Name=%s",
-              eIndex,acqEvents[eIndex]->name.toAscii().data());
+              eIndex,acqEvents[eIndex]->name.toLatin1().data());
  
        // Check rejection backwards on pastdata
        bool rejFlag=false; int rejChn;
@@ -687,7 +690,7 @@ class RecMaster : QObject {
         // Rejected, increment rejected count
         acqEvents[eIndex]->rejected++;
         qDebug("Octopus-Recorder: Rejected because of %s!",
-               acqChannels[rejChn]->name.toAscii().data());
+               acqChannels[rejChn]->name.toLatin1().data());
        } else {
         // Not rejected: compute average and increment accepted for the event
         acqEvents[eIndex]->accepted++; eventOccured=true;
@@ -790,7 +793,7 @@ class RecMaster : QObject {
     cntStream << cntRecChns.size();	// Channel count
 
     for (int i=0;i<cntRecChns.size();i++) // Channel names - Cstyle
-     cntStream << acqChannels[cntRecChns[i]]->name.toAscii().data();
+     cntStream << acqChannels[cntRecChns[i]]->name.toLatin1().data();
 
     for (int i=0;i<cntRecChns.size();i++) { // Param coords
      cntStream << acqChannels[cntRecChns[i]]->param.y;
@@ -808,7 +811,7 @@ class RecMaster : QObject {
     cntStream << acqEvents.size();	// Event count
     for (int i=0;i<acqEvents.size();i++) { // Event Info of the session
      cntStream << acqEvents[i]->no;	// Event #
-     cntStream << acqEvents[i]->name.toAscii().data(); // Name - Cstyle
+     cntStream << acqEvents[i]->name.toLatin1().data(); // Name - Cstyle
      cntStream << acqEvents[i]->type;	// STIM or RESP
      cntStream << acqEvents[i]->color.red(); // Color
      cntStream << acqEvents[i]->color.green();
@@ -946,7 +949,7 @@ class RecMaster : QObject {
 
     int dataCount=0; pattDatagram.magic_number=0xaabbccdd;
     for (int i=0;i<pattern.size();i++) {
-     pattDatagram.data[dataCount]=pattern.at(i).toAscii(); dataCount++;
+     pattDatagram.data[dataCount]=pattern.at(i).toLatin1(); dataCount++;
      if (dataCount==128) { // We got 128 bytes.. Send packet and Sync.
       pattDatagram.size=dataCount; dataCount=0;
       stimDataStream.writeRawData((const char*)(&pattDatagram),

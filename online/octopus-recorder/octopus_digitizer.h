@@ -54,7 +54,7 @@ class Digitizer : public QThread {
 
   void serialOpen() { // Open the serial device..
    QString result;
-   if ((device=open(serial->devname.toAscii().data(),O_RDWR|O_NOCTTY))>0) {
+   if ((device=open(serial->devname.toLatin1().data(),O_RDWR|O_NOCTTY))>0) {
     tcgetattr(device,&oldtio);     // Save current port settings..
     bzero(&newtio,sizeof(newtio)); // Clear struct for new settings..
 
@@ -80,7 +80,7 @@ class Digitizer : public QThread {
     digitizerSend("S"); msleep(100); result=digitizerGetLine();
     QStringList k=result.split(" ",QString::SkipEmptyParts);
     if (k.size()>=3) {
-     qDebug("Digitizer status:\n%s",result.toAscii().data());
+     qDebug("Digitizer status:\n%s",result.toLatin1().data());
      digitizerSend("u"); msleep(100);   // Metric system..
      digitizerSend("c"); msleep(100);      // Single coord mode..
      digitizerSend("e1,0\n"); msleep(100); // Mouse Mode..
@@ -114,7 +114,7 @@ class Digitizer : public QThread {
   }
 
   void digitizerSend(QString command) {
-   write(device,command.toAscii().data(),command.size());
+   write(device,command.toLatin1().data(),command.size());
   }
 
   QString digitizerGetLine() {
@@ -172,7 +172,7 @@ class Digitizer : public QThread {
     }
    } else {
     qDebug("Error in received coord line.. It is:\n %d %s\n",c.size(),
-           receivedLine.toAscii().data());
+           receivedLine.toLatin1().data());
    }
   }
 

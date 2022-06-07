@@ -40,8 +40,8 @@ class CntFrame : public QFrame {
    setGeometry(2,2,w,h); scroll=false;
 
    setAttribute(Qt::WA_NoSystemBackground,true);
-   extern void qt_x11_set_global_double_buffer(bool);
-   qt_x11_set_global_double_buffer(false);
+//   extern void qt_x11_set_global_double_buffer(bool);
+//   qt_x11_set_global_double_buffer(false);
 
    chnCount=p->cntVisChns.size();
    colCount=ceil((float)chnCount/(float)(32.));
