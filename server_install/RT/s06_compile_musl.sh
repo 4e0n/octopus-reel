@@ -6,6 +6,8 @@ cd /usr/src
 
 # Compile MUSL libm.a
 cd /usr/src/musl
+cp Makefile Makefile.saved
+sed 's/-fPIC//' <Makefile >Makefile.tmp; mv Makefile.tmp Makefile;
 ./configure --disable-shared CFLAGS="-fno-common -fno-pic"
 make
 ar -dv lib/libc.a fwrite.o write.o fputs.o sprintf.o strcpy.o strlen.o memcpy.o memset.o

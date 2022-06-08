@@ -13,3 +13,4 @@ modules.order
 Module.symvers
 moc_*.cpp
 moc_*.o
+.qmake.stash

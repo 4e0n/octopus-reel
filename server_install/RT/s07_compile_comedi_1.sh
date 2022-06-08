@@ -7,7 +7,7 @@ cd /usr/src
 # Compile and Install COMEDI
 cd /usr/src/comedi
 ./autogen.sh
-./configure
+./configure --with-rtaidir=/usr/src/rtai
 make -j$(getconf _NPROCESSORS_ONLN)
 make install
 depmod -a

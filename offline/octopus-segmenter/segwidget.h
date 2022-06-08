@@ -25,6 +25,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEGWIDGET_H
 
 #include <QtGui>
+#include <QButtonGroup>
+#include <QPushButton>
 #include "octopus_seg_master.h"
 #include "sliceframe.h"
 

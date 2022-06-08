@@ -24,7 +24,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef THRESHOLD_TB_H
 #define THRESHOLD_TB_H
 
-#include <QtGui>
+//#include <QtGui>
+#include <QLabel>
+#include <QCheckBox>
+#include <QSlider>
+#include <QPushButton>
 #include "octopus_seg_master.h"
 
 class ThresholdTB : public QWidget {

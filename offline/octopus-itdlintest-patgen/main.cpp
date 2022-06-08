@@ -71,7 +71,7 @@ QString createPattern(int count,int g) {
   result="N"; // Start at center
   while (boolSum<base.length()) {
    letter=result[result.length()-1];
-   switch (letter.toAscii()) {	  
+   switch (letter.toLatin1()) {	  
     case 'N': case 'D': case 'K': case 'H':
      letter=state[0][rand()%state[0].length()];
      break;
@@ -89,7 +89,7 @@ QString createPattern(int count,int g) {
     default: break;
    } 
    result.append(letter);
-   counts[int(letter.toAscii()-'A')]++;
+   counts[int(letter.toLatin1()-'A')]++;
    boolSum=0;
    for (int i=0;i<base.length();i++)
     boolSum+=int(counts[i]>=count);
@@ -161,9 +161,9 @@ QString createPattern2(int count,int g) {
    letter0=letter[pivot][ draw0[draw_idx] ];
    letter1=letter[ draw0[draw_idx] ][ draw1[draw_idx] ];
    result.append(letter0); //result.append(letter1);
-//   std::cout << letter0.toAscii() << "\n";
-   counts[int(letter0.toAscii()-'A')]++;
-   counts[int(letter1.toAscii()-'A')]++;
+//   std::cout << letter0.toLatin1() << "\n";
+   counts[int(letter0.toLatin1()-'A')]++;
+   counts[int(letter1.toLatin1()-'A')]++;
    pivot=draw1[draw_idx];
    pivot=draw0[draw_idx];
    boolSum=0;
@@ -182,7 +182,7 @@ QString createPattern2(int count,int g) {
 
  std::cout << "Iteration count: " << iter << "\n";
 
-//  std::cout << result[i].toAscii();
+//  std::cout << result[i].toLatin1();
 // std::cout << "\n";
 
 // for (int i=0;i<draw0.size();i++)
@@ -224,7 +224,7 @@ QString createPattern3(int count,int g) {
     // Optimization
     //minVec.resize(0);
     //for (int i=0;i<letter[pivot].size();i++) {
-    // c=letter[pivot][i].toAscii();
+    // c=letter[pivot][i].toLatin1();
     // if (c!='X') minVec.push_back(counts[int(c-'A')]);
     //}
     //bool diff=false; int minV=count*10; int minVidx=0;
@@ -234,17 +234,17 @@ QString createPattern3(int count,int g) {
     //}
     //if (diff) {
     // for (int i=0;i<letter[pivot].length();i++) {
-    //  if (letter[pivot][i].toAscii()==base[minVidx]) draw_idx=i;
-    //  std::cout << letter[pivot][i].toAscii() << " ";
+    //  if (letter[pivot][i].toLatin1()==base[minVidx]) draw_idx=i;
+    //  std::cout << letter[pivot][i].toLatin1() << " ";
     //  std::cout << minVidx;
     //  std::cout << "\n";
     // }
     //} //else
      draw_idx=rand()%letter.size();
     letter0=letter[pivot][draw_idx];
-   } while (letter0.toAscii()=='X');
+   } while (letter0.toLatin1()=='X');
    result.append(letter0);
-   counts[int(letter0.toAscii()-'A')]++;
+   counts[int(letter0.toLatin1()-'A')]++;
    pivot=draw_idx;
    boolSum=0;
    for (int i=0;i<base.length();i++)
@@ -269,7 +269,7 @@ int main(int argc,char *argv[]) {
   return -1;
  }
 
- p=QString::fromAscii(argv[2]);
+ p=QString::fromLatin1(argv[2]);
  QIntValidator intValidator0(1,3,NULL); pos=0;
  if (intValidator0.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer of either 1 or 2 as algorithm!");
@@ -278,7 +278,7 @@ int main(int argc,char *argv[]) {
  }
  int algo=p.toInt();
 
- p=QString::fromAscii(argv[3]);
+ p=QString::fromLatin1(argv[3]);
  QIntValidator intValidator1(100,1000,NULL); pos=0;
  if (intValidator1.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 10 and 1000 as stim.length!");
@@ -287,7 +287,7 @@ int main(int argc,char *argv[]) {
  }
  int patternCount=p.toInt();
 
- p=QString::fromAscii(argv[4]);
+ p=QString::fromLatin1(argv[4]);
  QIntValidator intValidator2(1,20,NULL); pos=0;
  if (intValidator2.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 1 and 20 as grace % !");

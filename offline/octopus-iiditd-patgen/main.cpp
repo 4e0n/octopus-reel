@@ -110,7 +110,7 @@ int main(int argc,char *argv[]) {
   return -1;
  }
 
- QString p=QString::fromAscii(argv[2]);
+ QString p=QString::fromLatin1(argv[2]);
  QIntValidator intValidator(30,7200,NULL); int pos=0;
  if (intValidator.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 30 and 7200 as stim.length!");
