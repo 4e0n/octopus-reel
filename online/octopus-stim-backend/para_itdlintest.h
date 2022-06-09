@@ -132,7 +132,7 @@ static void para_itdlintest(void) {
 	if ((dummy_counter >= para_itdlintest_stim_instant) &&
 	    (dummy_counter <  para_itdlintest_stim_instant \
 			 +para_itdlintest_hi_duration)) {
-	 dac_0=dac_1=AMP_H20;
+	 dac_0=dac_1=AMP_OPPCHN;
 	}
 	    break;
   case 'A':	// Destination is L300
@@ -140,12 +140,12 @@ static void para_itdlintest(void) {
 	if ((dummy_counter >= para_itdlintest_stim_instant_minus1) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_minus1 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_0=AMP_H20;
+	 dac_0=AMP_OPPCHN;
 	}
 	if ((dummy_counter >= para_itdlintest_stim_instant_plus1) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_plus1+1 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_1=AMP_H20;
+	 dac_1=AMP_OPPCHN;
 	}
 	    break;
   case 'E':	// Destination is R300
@@ -153,12 +153,12 @@ static void para_itdlintest(void) {
 	if ((dummy_counter >= para_itdlintest_stim_instant_minus1) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_minus1 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_1=AMP_H20;
+	 dac_1=AMP_OPPCHN;
 	}
 	if ((dummy_counter >= para_itdlintest_stim_instant_plus1) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_plus1+1 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_0=AMP_H20;
+	 dac_0=AMP_OPPCHN;
 	}
 	    break;
   case 'B':	// Destination is L600
@@ -167,12 +167,12 @@ static void para_itdlintest(void) {
 	if ((dummy_counter >= para_itdlintest_stim_instant_minus2) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_minus2 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_0=AMP_H20;
+	 dac_0=AMP_OPPCHN;
 	}
 	if ((dummy_counter >= para_itdlintest_stim_instant_plus2) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_plus2 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_1=AMP_H20;
+	 dac_1=AMP_OPPCHN;
 	}
 	    break;
   case 'F':	// Destination is R600
@@ -181,12 +181,12 @@ static void para_itdlintest(void) {
 	if ((dummy_counter >= para_itdlintest_stim_instant_minus2) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_minus2 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_1=AMP_H20;
+	 dac_1=AMP_OPPCHN;
 	}
 	if ((dummy_counter >= para_itdlintest_stim_instant_plus2) &&
 	    (dummy_counter <  para_itdlintest_stim_instant_plus2 \
 			 +para_itdlintest_hi_duration)) {
-	 dac_0=AMP_H20;
+	 dac_0=AMP_OPPCHN;
 	}
   default:  break;
  }

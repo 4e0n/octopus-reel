@@ -29,6 +29,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define AMP_0DB		(16*647)	/* Reference Audio Level */
 #define AMP_H20		(16*2045)	/*  +20dB of Reference */
 
+#define AMP_OPPCHN	(16*170)		/* Etymotics 100dB is that value */
+
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
 
