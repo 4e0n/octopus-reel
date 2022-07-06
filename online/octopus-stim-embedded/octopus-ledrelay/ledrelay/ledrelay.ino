@@ -42,17 +42,30 @@ const int MAX_CLIENT=8;
 EthernetClient clients[MAX_CLIENT];
 
 const int PIN_COUNT=4;
-int relayPin[PIN_COUNT]={2,3,5,6};
+int relayPin[PIN_COUNT]={4,5,6,7}; //{2,3,5,6};
 int inputPin[PIN_COUNT]={8,9,10,11};
 
 const int BUF_SIZE=80; byte buffer[BUF_SIZE]; int bufCount;
 char inStrC[BUF_SIZE]; String inStr,cmdStr,paramStr;
 
 String cmdQuitStr=String("quit");
-String cmdSetRelayStr=String("setRelay");
-String cmdResetRelayStr=String("resetRelay");
+String cmdSetRelayStr=String("on");
+String cmdResetRelayStr=String("off");
+
+bool D8_state=LOW;
+bool D9_state=LOW;
+bool D10_state=LOW;
+bool D11_state=LOW;
 
 void setup() {
+ PCICR=B00000001; // PCIE0 -> PORT B
+ PCMSK0=B00011111; // Only pins 8,9,10,11 will generate a change interrupt
+ PCMSK1=B00000000;
+ PCMSK2=B00000000;
+ PCIFR|=B00000001; // Clear interrupt flag register
+
+ attachInterrupt(digitalPinToInterrupt(2),setRelayCombo,RISING);
+ 
  // Relay setup
  for (int i=0;i<PIN_COUNT;i++) { pinMode(relayPin[i],OUTPUT); digitalWrite(relayPin[i],HIGH); }
  
@@ -72,25 +85,40 @@ void setup() {
  Serial.print("Server address:"); Serial.println(Ethernet.localIP());
 }
 
+void setRelayCombo() {
+ for (byte i=0;i<PIN_COUNT;i++) {
+  if (digitalRead(inputPin[i])) digitalWrite(relayPin[i],LOW); else digitalWrite(relayPin[i],HIGH);
+ }
+}
+
+ISR (PCINT0_vect) {
+ if (digitalRead(8) && D8_state) D8_state=HIGH;
+ else if (digitalRead(8) && !D8_state) D8_state=LOW;
+
+ if (digitalRead(9) && D9_state) D9_state=HIGH;
+ else if (digitalRead(9) && !D9_state) D9_state=LOW;
+
+ if (digitalRead(10) && D10_state) D10_state=HIGH;
+ else if (digitalRead(10) && !D10_state) D10_state=LOW;
+
+ if (digitalRead(11) && D11_state) D11_state=HIGH;
+ else if (digitalRead(11) && !D11_state) D11_state=LOW;
+}
+
 void loop() {
  EthernetClient newClient=server.accept();
  if (newClient) {
   for (byte i=0;i<MAX_CLIENT;i++) {
    if (!clients[i]) {
     Serial.print("New client: #"); Serial.println(i);
-    newClient.print("Welcome to Octopus Lab Environment Server (10.0.10.7).\n");
-    newClient.print("Commands:\nquit: Quits.\nsetRelay <#>\nresetRelay <#>\n----\n");
+    newClient.print("Welcome to Octopus Lab LED Relay Server (10.0.10.7).\n");
+    newClient.print("Commands:\nquit: Quits.\non <#>\noff <#>\n----\n");
     clients[i]=newClient;
     //clients[i].write(">");
     break;
    }
   }
  }
- //else {
- // for (byte i=0;i<PIN_COUNT;i++) {
- //  if (digitalRead(inputPin[i])) digitalWrite(relayPin[i],LOW); else digitalWrite(relayPin[i],HIGH);
- // }
- //}
 
  for (byte i=0;i<MAX_CLIENT;i++) {
   if (clients[i] && clients[i].available()>0) {
@@ -131,4 +159,3 @@ void loop() {
 }
 
 //   Serial.print(cmdStr); Serial.println((byte)cmdStr.length());
-
