@@ -33,8 +33,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define CS_STIM_START			(0x1001)
 #define CS_STIM_STOP			(0x1002)
 #define CS_STIM_PAUSE			(0x1003)
-#define CS_TRIG_START			(0x1004)
-#define CS_TRIG_STOP			(0x1005)
+#define CS_STIM_RESUME			(0x1004)
+
+#define CS_TRIG_START			(0x1101)
+#define CS_TRIG_STOP			(0x1101)
 
 /* -------------------------------------------------- */
 #define CS_STIM_LOAD_PATTERN_SYN	(0x2001)

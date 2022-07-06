@@ -125,6 +125,33 @@ static void trigger_reset(void) {
 #endif
 }
 
+/* ========================================================================= */
+/* Experimental code */
+static void lights_on(void) {
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ comedi_dio_write(daqcard,2,4,1);
+ comedi_dio_write(daqcard,2,5,1);
+ comedi_dio_write(daqcard,2,6,1);
+ comedi_dio_write(daqcard,2,7,1);
+#endif
+}
+static void lights_off(void) {
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ comedi_dio_write(daqcard,2,4,0);
+ comedi_dio_write(daqcard,2,5,0);
+ comedi_dio_write(daqcard,2,6,0);
+ comedi_dio_write(daqcard,2,7,0);
+#endif
+}
+static void lights_dimm(void) {
+#ifdef OCTOPUS_STIM_TRIG_COMEDI
+ comedi_dio_write(daqcard,2,4,0);
+ comedi_dio_write(daqcard,2,5,1);
+ comedi_dio_write(daqcard,2,6,0);
+ comedi_dio_write(daqcard,2,7,1);
+#endif
+}
+
 /* TESTS */
 #include "test_calibration.h"
 #include "test_sinecosine.h"
@@ -196,6 +223,8 @@ static void stim_reset(void) {
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
  trigger_reset();
+
+ lights_on();
 #endif /* OCTOPUS_STIM_COMEDI */
 }
 
@@ -212,6 +241,30 @@ static void init_test_para(int tp) {
   case PARA_ITD_OPPCHN:    para_itdoppchn_init();    break;
   case PARA_ITD_OPPCHN2:   para_itdoppchn2_init();   break;
   case PARA_ITD_LINTEST:   para_itdlintest_init();   break;
+ }
+}
+
+static void pause_test_para(int tp) {
+ switch (tp) {
+  // others will be registered here by convention,
+  // even if they don't exist
+  case PARA_ITD_LINTEST:   para_itdlintest_pause();   break;
+ }
+}
+
+static void resume_test_para(int tp) {
+ switch (tp) {
+  // others will be registered here by convention,
+  // even if they don't exist
+  case PARA_ITD_LINTEST:   para_itdlintest_resume();   break;
+ }
+}
+
+static void stop_test_para(int tp) {
+ switch (tp) {
+  // others will be registered here by convention,
+  // even if they don't exist
+  case PARA_ITD_LINTEST:   para_itdlintest_stop();   break;
  }
 }
 
@@ -251,13 +304,14 @@ int fbfifohandler(unsigned int fifo,int rw) {
  "octopus-stim-backend.o: Stimulus pattern Xferred to backend successfully.\n");
                            break;
    case STIM_START:        init_test_para(paradigm);
-			   audio_paused=0; audio_active=1;
-                 rt_printk("octopus-stim-backend.o: Stim resumed/started.\n");
                            break;
-   case STIM_PAUSE:        pause_trigger_hi=0; audio_paused=1;
-                           rt_printk("octopus-stim-backend.o: Stim paused.\n");
+   case STIM_PAUSE:        pause_test_para(paradigm);
                            break;
-   case STIM_STOP:         audio_active=0;
+   case STIM_RESUME:       resume_test_para(paradigm);
+                           break;
+   case STIM_STOP:         stop_test_para();
+			   audio_active=0;
+                           rt_printk("octopus-stim-backend.o: Stim stopped.\n");
                            stim_reset();
 #ifdef OCTOPUS_STIM_COMEDI
 			   dac_0=dac_1=DACZERO;
@@ -343,6 +397,13 @@ static int __init octopus_stim_init(void) {
  comedi_lock(daqcard,2);
  comedi_dio_config(daqcard,2,0,COMEDI_OUTPUT); /* Trigger direction -trig */
  comedi_dio_config(daqcard,2,1,COMEDI_OUTPUT); /* Trigger direction -code */
+
+ // For arduino test
+ comedi_dio_config(daqcard,2,4,COMEDI_OUTPUT); /* Relay 0 */
+ comedi_dio_config(daqcard,2,5,COMEDI_OUTPUT); /* Relay 1 */
+ comedi_dio_config(daqcard,2,6,COMEDI_OUTPUT); /* Relay 2 */
+ comedi_dio_config(daqcard,2,7,COMEDI_OUTPUT); /* Relay 3 */
+
  trigger_reset();
 
  /* Initialize trigger task */

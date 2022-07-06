@@ -26,6 +26,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     -- longer SOA
     -- squareburst of 400ms stim duration */
 
+static int experiment_loop=0;
+
 static int para_itdlintest_trigger,
 	   para_itdlintest_soa,para_itdlintest_hi_duration,
 	   para_itdlintest_click_period,
@@ -58,6 +60,30 @@ static void para_itdlintest_init(void) {
 		 	 para_itdlintest_stim_instant_minus2,
 		 	 para_itdlintest_stim_instant_plus1,
 		 	 para_itdlintest_stim_instant_plus2);
+
+ audio_paused=0; audio_active=1; trigger_active=1;
+
+ // Just for trial.. this should normally be through tcp connection to arduino
+ lights_dimm();
+}
+
+static void para_itdlintest_pause(void) {
+ lights_on();
+ pause_trigger_hi=0; audio_paused=1;
+ rt_printk("octopus-stim-backend.o: Stim paused due to pattern.\n");
+}
+
+static void para_itdlintest_resume(void) {
+ lights_dimm();
+ current_pattern_offset-=2; // Resume rewinding to 2 trials before..
+ trigger_interleave=2;	    // Trigger won't happen for 2 trials..
+ pause_trigger_hi=1; audio_paused=0;
+ rt_printk("octopus-stim-backend.o: Stim resumed.\n");
+}
+
+static void para_itdlintest_stop(void) {
+ // Just for trial.. this should normally be through tcp connection to arduino
+ lights_on();
 }
 
 static void para_itdlintest(void) {
@@ -66,8 +92,11 @@ static void para_itdlintest(void) {
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
   current_pattern_offset++;
-  /* Roll-over */
-  if (current_pattern_offset==pattern_size) current_pattern_offset=0;
+
+  /* Roll-over or stop ?*/
+  if (current_pattern_offset==pattern_size) {
+   if (experiment_loop==true) stop;
+   else current_pattern_offset=0;
 
   switch (current_pattern_data) {
    case 'A': /* Center - Left 300us */
@@ -111,6 +140,9 @@ static void para_itdlintest(void) {
              break;
    case 'N': /* Left 600us - Center */
 	     para_itdlintest_trigger=SEC_L600_C;
+	     break;
+   case '@': /* Interblock pause */
+	     para_itdlintest_pause();
    default:  break;
   }
  }

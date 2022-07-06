@@ -54,10 +54,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 /* --------------------------------------------------- */
 #define	STIM_START		(0x1001)
 #define	STIM_STOP		(0x1002)
-#define	STIM_PAUSE		(0x1003) /* Useful particularly in
-                                            psychophysics experiments. */
-#define	TRIG_START		(0x1004)
-#define	TRIG_STOP		(0x1005)
+#define	STIM_PAUSE		(0x1003) /* Useful particularly in pausing
+					    automatically in between blocks or
+                                            sophisticated psychophysics experiments. */
+#define	STIM_RESUME		(0x1004)
+
+#define	TRIG_START		(0x1101)
+#define	TRIG_STOP		(0x1102)
 
 /* --------------------------------------------------- */
 #define STIM_XFER_SYN		(0x2001) /* Handshake for Xfering data */

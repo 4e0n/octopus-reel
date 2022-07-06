@@ -199,7 +199,7 @@ QString createPattern3(int count,int g) {
  QString result;
  QString base="ABCDEFGHIJKLMN";
 
- std::vector<int> counts; counts.resize(base.length());
+ std::vector<int> counts; counts.resize(base.length()); // Counts of the 14 transitions
  std::vector<int> draw0,draw1;
  int pivot,draw_idx,boolSum=0,maxCount=0;
  QChar letter0;
@@ -217,7 +217,7 @@ QString createPattern3(int count,int g) {
  std::cout << count << " " << grace << std::endl;
  int iter=0;
  do {
-  for (int i=0;i<base.length();i++) counts[i]=0;
+  for (int i=0;i<base.length();i++) counts[i]=0; // Reset transition event counts
   result=""; pivot=2; // Initial position is center
   while (boolSum<base.length()) {
    do {
@@ -257,15 +257,15 @@ QString createPattern3(int count,int g) {
   }
   std::cout << "MaxCount: " << maxCount << "\n";
   iter++;
- } while (maxCount>grace);
+ } while (maxCount>grace); // Repeat till grace statisfied
 
  return result;
 }
 
 int main(int argc,char *argv[]) {
  QString p; int pos;
- if (argc!=5) {
-  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%>");
+ if (argc!=6) {
+  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%> <block#>");
   return -1;
  }
 
@@ -273,7 +273,7 @@ int main(int argc,char *argv[]) {
  QIntValidator intValidator0(1,3,NULL); pos=0;
  if (intValidator0.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer of either 1 or 2 as algorithm!");
-  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%>");
+  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%> <block#>");
   return -1;
  }
  int algo=p.toInt();
@@ -282,7 +282,7 @@ int main(int argc,char *argv[]) {
  QIntValidator intValidator1(100,1000,NULL); pos=0;
  if (intValidator1.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 10 and 1000 as stim.length!");
-  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%>");
+  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%> <block#>");
   return -1;
  }
  int patternCount=p.toInt();
@@ -291,10 +291,19 @@ int main(int argc,char *argv[]) {
  QIntValidator intValidator2(1,20,NULL); pos=0;
  if (intValidator2.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 1 and 20 as grace % !");
-  qDebug("Usage: octopus-patt <file name> <count from each state> <grace%>");
+  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%> <block#>");
   return -1;
  }
  int grace=p.toInt();
+
+ p=QString::fromLatin1(argv[5]);
+ QIntValidator intValidator3(1,40,NULL); pos=0;
+ if (intValidator3.validate(p,pos) != QValidator::Acceptable) {
+  qDebug("Please enter a # of blocks between 1 and 40 !");
+  qDebug("Usage: octopus-patt <file name> <alg#> <count from each state> <grace%> <block#>");
+  return -1;
+ }
+ int blkCount=p.toInt();
 
  QFile patternFile; QTextStream patternStream;
  patternFile.setFileName(argv[1]);
@@ -312,7 +321,12 @@ int main(int argc,char *argv[]) {
  else if (algo==3) finalPattern=createPattern3(patternCount,grace);
 
  qDebug("Outputting to file..");
- for (int i=0;i<finalPattern.length();i++) patternStream << finalPattern[i];
+
+ int blkTrialCount=finalPattern.length()/blkCount;
+ for (int i=0,curBlk=0;i<finalPattern.length();i++) {
+  if (i!=0 && i%blkTrialCount==0 && curBlk<blkCount-1) { patternStream << "@"; curBlk++; }
+  patternStream << finalPattern[i];
+ }
 
  qDebug("Exiting..");
  patternStream.setDevice(0);
