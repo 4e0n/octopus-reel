@@ -49,7 +49,7 @@ class StimClient : public QMainWindow {
   StimClient(QApplication *app,QWidget *parent=0) : QMainWindow(parent) {
 	  nChns=64;
    application=app;
-   guiWidth=400; guiHeight=300; guiX=100; guiY=100;
+   guiWidth=400; guiHeight=100; guiX=100; guiY=100;
 
    stimCommandSocket=new QTcpSocket(this);
    stimDataSocket=new QTcpSocket(this);
@@ -76,7 +76,7 @@ class StimClient : public QMainWindow {
    if (!initSuccess) return;
 
    // *** POST SETUP ***
-   stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
+   //stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
    setGeometry(guiX,guiY,guiWidth,guiHeight);
    setFixedSize(guiWidth,guiHeight);
 
@@ -187,17 +187,41 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDLinTestAction);
 
    // *** BUTTONS AT THE TOP ***
-   toggleStimulationButton=new QPushButton("STIM",this);
-   toggleStimulationButton->setGeometry(width()-120,height()-54,48,20);
-   toggleStimulationButton->setCheckable(true);
-   connect(toggleStimulationButton,SIGNAL(clicked()),
-           this,SLOT(slotToggleStimulation()));
+   startStimulationButton=new QPushButton("Start Stim",this);
+   startStimulationButton->setGeometry(20,height()-64,78,20);
+   startStimulationButton->setCheckable(false);
+   connect(startStimulationButton,SIGNAL(clicked()),
+           this,SLOT(slotStartStimulation()));
 
-   toggleTriggerButton=new QPushButton("TRIG",this);
-   toggleTriggerButton->setGeometry(width()-60,height()-54,48,20);
-   toggleTriggerButton->setCheckable(true);
-   connect(toggleTriggerButton,SIGNAL(clicked()),
-           this,SLOT(slotToggleTrigger()));
+   stopStimulationButton=new QPushButton("Stop Stim",this);
+   stopStimulationButton->setGeometry(100,height()-64,78,20);
+   stopStimulationButton->setCheckable(false);
+   connect(stopStimulationButton,SIGNAL(clicked()),
+           this,SLOT(slotStopStimulation()));
+
+   pauseStimulationButton=new QPushButton("Pause Stim",this);
+   pauseStimulationButton->setGeometry(200,height()-64,98,20);
+   pauseStimulationButton->setCheckable(false);
+   connect(pauseStimulationButton,SIGNAL(clicked()),
+           this,SLOT(slotPauseStimulation()));
+
+   resumeStimulationButton=new QPushButton("Resume Stim",this);
+   resumeStimulationButton->setGeometry(300,height()-64,98,20);
+   resumeStimulationButton->setCheckable(false);
+   connect(resumeStimulationButton,SIGNAL(clicked()),
+           this,SLOT(slotResumeStimulation()));
+
+   startTriggerButton=new QPushButton("Start Trig",this);
+   startTriggerButton->setGeometry(20,height()-34,78,20);
+   startTriggerButton->setCheckable(false);
+   connect(startTriggerButton,SIGNAL(clicked()),
+           this,SLOT(slotStartTrigger()));
+
+   stopTriggerButton=new QPushButton("Stop Trig",this);
+   stopTriggerButton->setGeometry(100,height()-34,78,20);
+   stopTriggerButton->setCheckable(false);
+   connect(stopTriggerButton,SIGNAL(clicked()),
+           this,SLOT(slotStopTrigger()));
 
    setWindowTitle("Octopus STIM Client v0.9.9");
   }
@@ -336,18 +360,46 @@ class StimClient : public QMainWindow {
                          "to redistribute it under conditions of GPL v3.\n");
   }
 
-  void slotToggleStimulation() {
+  //void slotToggleStimulation() {
+  // if (!stimulation) {
+  //  stimSendCommand(CS_STIM_START,0,0,0); stimulation=true;
+  // } else {
+  //  stimSendCommand(CS_STIM_STOP,0,0,0); stimulation=false;
+  // }
+  //}
+
+  void slotStartStimulation() {
    if (!stimulation) {
     stimSendCommand(CS_STIM_START,0,0,0); stimulation=true;
-   } else {
+   }
+  }
+
+  void slotStopStimulation() {
+   if (stimulation) {
     stimSendCommand(CS_STIM_STOP,0,0,0); stimulation=false;
    }
   }
 
-  void slotToggleTrigger() {
+  void slotPauseStimulation() {
+   if (stimulation) {
+    stimSendCommand(CS_STIM_PAUSE,0,0,0); stimulation=false;
+   }
+  }
+
+  void slotResumeStimulation() {
+   if (!stimulation) {
+    stimSendCommand(CS_STIM_RESUME,0,0,0); stimulation=true;
+   }
+  }
+
+  void slotStartTrigger() {
    if (!trigger) {
     stimSendCommand(CS_TRIG_START,0,0,0); trigger=true;
-   } else {
+   }
+  }
+
+  void slotStopTrigger() {
+   if (trigger) {
     stimSendCommand(CS_TRIG_STOP,0,0,0); trigger=false;
    }
   }
@@ -483,7 +535,9 @@ class StimClient : public QMainWindow {
   QString pattern,calibMsg;
   patt_datagram pattDatagram;
 
-  QPushButton *toggleStimulationButton,*toggleTriggerButton;
+  QPushButton *startStimulationButton,*stopStimulationButton,
+	      *pauseStimulationButton,*resumeStimulationButton,
+	      *startTriggerButton,*stopTriggerButton;
 
   int nChns;
 };

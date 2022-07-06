@@ -114,6 +114,11 @@ class StimDaemon : public QTcpServer {
       fbWrite(STIM_PAUSE,0,0);
       break;
 
+     case CS_STIM_RESUME:
+      qDebug("octopus-stim-daemon: Received resume stim command.");
+      fbWrite(STIM_RESUME,0,0);
+      break;
+
      case CS_TRIG_START:
       qDebug("octopus-stim-daemon: Received start trigger command.");
       fbWrite(TRIG_START,0,0);

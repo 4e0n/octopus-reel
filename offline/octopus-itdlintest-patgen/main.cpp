@@ -240,7 +240,7 @@ QString createPattern3(int count,int g) {
     //  std::cout << "\n";
     // }
     //} //else
-     draw_idx=rand()%letter.size();
+    draw_idx=rand()%letter.size();
     letter0=letter[pivot][draw_idx];
    } while (letter0.toLatin1()=='X');
    result.append(letter0);

@@ -244,6 +244,22 @@ static void init_test_para(int tp) {
  }
 }
 
+static void start_test_para(int tp) {
+ switch (tp) {
+  // others will be registered here by convention,
+  // even if they don't exist
+  case PARA_ITD_LINTEST:   para_itdlintest_start();   break;
+ }
+}
+
+static void stop_test_para(int tp) {
+ switch (tp) {
+  // others will be registered here by convention,
+  // even if they don't exist
+  case PARA_ITD_LINTEST:   para_itdlintest_stop();   break;
+ }
+}
+
 static void pause_test_para(int tp) {
  switch (tp) {
   // others will be registered here by convention,
@@ -260,13 +276,6 @@ static void resume_test_para(int tp) {
  }
 }
 
-static void stop_test_para(int tp) {
- switch (tp) {
-  // others will be registered here by convention,
-  // even if they don't exist
-  case PARA_ITD_LINTEST:   para_itdlintest_stop();   break;
- }
-}
 
 /* ========================================================================= */
 
@@ -303,15 +312,13 @@ int fbfifohandler(unsigned int fifo,int rw) {
                             rt_printk(
  "octopus-stim-backend.o: Stimulus pattern Xferred to backend successfully.\n");
                            break;
-   case STIM_START:        init_test_para(paradigm);
+   case STIM_START:        start_test_para(paradigm);
                            break;
    case STIM_PAUSE:        pause_test_para(paradigm);
                            break;
    case STIM_RESUME:       resume_test_para(paradigm);
                            break;
-   case STIM_STOP:         stop_test_para();
-			   audio_active=0;
-                           rt_printk("octopus-stim-backend.o: Stim stopped.\n");
+   case STIM_STOP:         stop_test_para(paradigm);
                            stim_reset();
 #ifdef OCTOPUS_STIM_COMEDI
 			   dac_0=dac_1=DACZERO;
