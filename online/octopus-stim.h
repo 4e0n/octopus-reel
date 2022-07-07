@@ -73,7 +73,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define STIM_SET_PARAM_P5	(0x2105) /* Default is 50ms. */
 
 #define STIM_LIGHTS_ON		(0x2201)
-#define STIM_LIGHTS_DIMM		(0x2202)
+#define STIM_LIGHTS_DIMM	(0x2202)
 #define STIM_LIGHTS_OFF		(0x2203)
 /* --------------------------------------------------- */
 #define	STIM_SYNTH_EVENT	(0x3001) /* Diagnostic synthetic event

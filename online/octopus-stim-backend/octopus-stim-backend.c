@@ -146,10 +146,10 @@ static void lights_off(void) {
 }
 static void lights_dimm(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,4,0);
- comedi_dio_write(daqcard,2,5,1);
- comedi_dio_write(daqcard,2,6,0);
- comedi_dio_write(daqcard,2,7,1);
+ comedi_dio_write(daqcard,2,4,1);
+ comedi_dio_write(daqcard,2,5,0);
+ comedi_dio_write(daqcard,2,6,1);
+ comedi_dio_write(daqcard,2,7,0);
 #endif
 }
 
