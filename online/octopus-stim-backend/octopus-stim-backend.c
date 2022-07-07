@@ -93,8 +93,9 @@ static RTIME tickperiod; static SEM audio_sem,trigger_sem;
 static int audio_rate=AUDIO_RATE,trigger_rate=TRIG_RATE;;
 static int trigger_code=0,trigger_bit_shift=0;
 static char current_pattern_data; static int current_pattern_offset=0;
-static int audio_active=0,audio_paused=0,trigger_active=0,paradigm=0;
+static int audio_active=0,trigger_active=0,paradigm=0;
 static int pattern_size,pattern_size_dummy;
+static int manual_pause=0;
 
 /* ========================================================================= */
 
@@ -102,7 +103,7 @@ static int counter0,counter1,counter2,counter3,counter4,counter5,
            event0,event1,event2,event3,event4,event5,
            var0,var1,var2,var3,var4,var5;
 static double theta=0.0;
-static int i=0,pause_trigger_hi=0;
+static int i=0;
 
 /* ========================================================================= */
 
@@ -314,7 +315,8 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            break;
    case STIM_START:        start_test_para(paradigm);
                            break;
-   case STIM_PAUSE:        pause_test_para(paradigm);
+   case STIM_PAUSE:        manual_pause=1;
+			   pause_test_para(paradigm);
                            break;
    case STIM_RESUME:       resume_test_para(paradigm);
                            break;
@@ -340,6 +342,12 @@ int fbfifohandler(unsigned int fifo,int rw) {
                            rt_printk(
 			    "octopus-stim-backend.o: Trigger stopped.\n");
                            break;
+   case STIM_LIGHTS_ON:    lights_on();
+			   break;
+   case STIM_LIGHTS_DIMM:  lights_dimm();
+			   break;
+   case STIM_LIGHTS_OFF:   lights_off();
+			   break;
    case STIM_RST_SYN:      audio_active=0;
                            rt_sem_wait(&audio_sem);
                             rtf_reset(BFFIFO); rtf_reset(FBFIFO);

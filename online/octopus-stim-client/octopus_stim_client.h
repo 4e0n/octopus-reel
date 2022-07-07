@@ -49,7 +49,7 @@ class StimClient : public QMainWindow {
   StimClient(QApplication *app,QWidget *parent=0) : QMainWindow(parent) {
 	  nChns=64;
    application=app;
-   guiWidth=400; guiHeight=100; guiX=100; guiY=100;
+   guiWidth=400; guiHeight=160; guiX=100; guiY=100;
 
    stimCommandSocket=new QTcpSocket(this);
    stimDataSocket=new QTcpSocket(this);
@@ -187,38 +187,56 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDLinTestAction);
 
    // *** BUTTONS AT THE TOP ***
+   lightsOnButton=new QPushButton("Lights On",this);
+   lightsOnButton->setGeometry(20,height()-124,78,20);
+   lightsOnButton->setCheckable(false);
+   connect(lightsOnButton,SIGNAL(clicked()),
+           this,SLOT(slotLightsOn()));
+
+   lightsDimmButton=new QPushButton("Lights Dimm",this);
+   lightsDimmButton->setGeometry(110,height()-124,78,20);
+   lightsDimmButton->setCheckable(false);
+   connect(lightsDimmButton,SIGNAL(clicked()),
+           this,SLOT(slotLightsDimm()));
+
+   lightsOffButton=new QPushButton("Lights Off",this);
+   lightsOffButton->setGeometry(200,height()-124,78,20);
+   lightsOffButton->setCheckable(false);
+   connect(lightsOffButton,SIGNAL(clicked()),
+           this,SLOT(slotLightsOff()));
+
    startStimulationButton=new QPushButton("Start Stim",this);
-   startStimulationButton->setGeometry(20,height()-64,78,20);
+   startStimulationButton->setGeometry(20,height()-84,78,20);
    startStimulationButton->setCheckable(false);
    connect(startStimulationButton,SIGNAL(clicked()),
            this,SLOT(slotStartStimulation()));
 
    stopStimulationButton=new QPushButton("Stop Stim",this);
-   stopStimulationButton->setGeometry(100,height()-64,78,20);
+   stopStimulationButton->setGeometry(100,height()-84,78,20);
    stopStimulationButton->setCheckable(false);
    connect(stopStimulationButton,SIGNAL(clicked()),
            this,SLOT(slotStopStimulation()));
 
    pauseStimulationButton=new QPushButton("Pause Stim",this);
-   pauseStimulationButton->setGeometry(200,height()-64,98,20);
+   pauseStimulationButton->setGeometry(200,height()-84,98,20);
    pauseStimulationButton->setCheckable(false);
    connect(pauseStimulationButton,SIGNAL(clicked()),
            this,SLOT(slotPauseStimulation()));
 
    resumeStimulationButton=new QPushButton("Resume Stim",this);
-   resumeStimulationButton->setGeometry(300,height()-64,98,20);
+   resumeStimulationButton->setGeometry(300,height()-84,98,20);
    resumeStimulationButton->setCheckable(false);
    connect(resumeStimulationButton,SIGNAL(clicked()),
            this,SLOT(slotResumeStimulation()));
 
    startTriggerButton=new QPushButton("Start Trig",this);
-   startTriggerButton->setGeometry(20,height()-34,78,20);
+   startTriggerButton->setGeometry(20,height()-54,78,20);
    startTriggerButton->setCheckable(false);
    connect(startTriggerButton,SIGNAL(clicked()),
            this,SLOT(slotStartTrigger()));
 
    stopTriggerButton=new QPushButton("Stop Trig",this);
-   stopTriggerButton->setGeometry(100,height()-34,78,20);
+   stopTriggerButton->setGeometry(100,height()-54,78,20);
    stopTriggerButton->setCheckable(false);
    connect(stopTriggerButton,SIGNAL(clicked()),
            this,SLOT(slotStopTrigger()));
@@ -387,9 +405,9 @@ class StimClient : public QMainWindow {
   }
 
   void slotResumeStimulation() {
-   if (!stimulation) {
+   //if (!stimulation) {
     stimSendCommand(CS_STIM_RESUME,0,0,0); stimulation=true;
-   }
+   //}
   }
 
   void slotStartTrigger() {
@@ -402,6 +420,16 @@ class StimClient : public QMainWindow {
    if (trigger) {
     stimSendCommand(CS_TRIG_STOP,0,0,0); trigger=false;
    }
+  }
+
+  void slotLightsOn() {
+   stimSendCommand(CS_STIM_LIGHTS_ON,0,0,0);
+  }
+  void slotLightsDimm() {
+   stimSendCommand(CS_STIM_LIGHTS_DIMM,0,0,0);
+  }
+  void slotLightsOff() {
+   stimSendCommand(CS_STIM_LIGHTS_OFF,0,0,0);
   }
 
   // *** RELATIVELY SIMPLE COMMANDS TO SERVERS ***
@@ -535,7 +563,8 @@ class StimClient : public QMainWindow {
   QString pattern,calibMsg;
   patt_datagram pattDatagram;
 
-  QPushButton *startStimulationButton,*stopStimulationButton,
+  QPushButton *lightsOnButton,*lightsDimmButton,*lightsOffButton,
+	      *startStimulationButton,*stopStimulationButton,
 	      *pauseStimulationButton,*resumeStimulationButton,
 	      *startTriggerButton,*stopTriggerButton;
 

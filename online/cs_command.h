@@ -48,6 +48,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define CS_STIM_SET_PARAM_P4		(0x2104)
 #define CS_STIM_SET_PARAM_P5		(0x2105)
 
+#define CS_STIM_LIGHTS_ON		(0x2201)
+#define CS_STIM_LIGHTS_DIMM		(0x2202)
+#define CS_STIM_LIGHTS_OFF		(0x2203)
 /* -------------------------------------------------- */
 #define CS_STIM_SYNTHETIC_EVENT		(0x3001)
 

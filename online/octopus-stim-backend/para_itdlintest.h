@@ -28,6 +28,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 static int experiment_loop=0;
 
+static int rollback_count=2;
+static int pause_interleave=0,trigger_interleave=0;
+
 static int para_itdlintest_trigger,
 	   para_itdlintest_soa,para_itdlintest_hi_duration,
 	   para_itdlintest_click_period,
@@ -37,7 +40,7 @@ static int para_itdlintest_trigger,
 	   para_itdlintest_stim_instant_plus1,para_itdlintest_stim_instant_plus2;
 
 static void para_itdlintest_init(void) {
- counter0=0; current_pattern_offset=0;
+ current_pattern_offset=0;
  para_itdlintest_soa=(2.00201)*AUDIO_RATE; /* 100100 steps - 2.02 seconds - 143 cycles */
  para_itdlintest_hi_duration=(0.00051)*AUDIO_RATE; /* 25 steps */
  para_itdlintest_click_period=(0.014)*AUDIO_RATE; /* 700 steps */
@@ -68,7 +71,7 @@ static void para_itdlintest_init(void) {
 static void para_itdlintest_start(void) {
  lights_dimm();
 
- audio_paused=0; audio_active=1; trigger_active=1;
+ counter0=0; audio_active=1; trigger_active=1;
  // Just for trial.. this should normally be through tcp connection to arduino
  rt_printk("octopus-stim-backend.o: Stim started.\n");
 }
@@ -82,17 +85,25 @@ static void para_itdlintest_stop(void) {
 
 static void para_itdlintest_pause(void) {
  lights_on();
- audio_paused=1; audio_active=0;
- pause_trigger_hi=0;
+ audio_active=0;
+
+ // Skip the @ i.e. "rollback_count" trials ahead..
+ //if (rollback_count!=0)
+ if (manual_pause==1) { manual_pause=0; pause_interleave=0; }
+ else pause_interleave=1;
+
+ trigger_interleave=rollback_count+1;
+
+ // Resume rewinding to "rollback_count" trials before..
+ // Trigger won't happen for "rollback_count" of trials..
+ current_pattern_offset=current_pattern_offset-rollback_count-1;
+
  rt_printk("octopus-stim-backend.o: Stim paused.\n");
 }
 
 static void para_itdlintest_resume(void) {
  lights_dimm();
-// current_pattern_offset-=2; // Resume rewinding to 2 trials before..
-// trigger_interleave=2;	    // Trigger won't happen for 2 trials..
- audio_paused=0; audio_active=1;
- pause_trigger_hi=0;
+ counter0=0; audio_active=1;
  rt_printk("octopus-stim-backend.o: Stim resumed.\n");
 }
 
@@ -102,14 +113,16 @@ static void para_itdlintest(void) {
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
-  current_pattern_offset++;
 
-  /* Roll-over or stop ?*/
-  if (current_pattern_offset==pattern_size) {
-   current_pattern_offset=0;
-   if (experiment_loop!=0) para_itdlintest_stop();
+  /* Interblock pause */
+  if (current_pattern_data=='@') {
+   if (pause_interleave==0) para_itdlintest_pause();
+   else {
+    current_pattern_offset++;
+    current_pattern_data=patt_buf[current_pattern_offset]; /* fetch next.. */
+    pause_interleave=0;
+   }
   }
-
   switch (current_pattern_data) {
    case 'A': /* Center - Left 300us */
 	     para_itdlintest_trigger=SEC_C_L300;
@@ -154,21 +167,29 @@ static void para_itdlintest(void) {
 	     para_itdlintest_trigger=SEC_L600_C;
    default:  break;
   }
+
+  if (trigger_interleave>0) trigger_interleave--;
+  current_pattern_offset++;
+
+  /* Roll-over or stop ?*/
+  if (current_pattern_offset==pattern_size) {
+   if (experiment_loop==0) para_itdlintest_stop();
+   current_pattern_offset=0;
+  }
  }
 
  /* ------------------------------------------------------------------- */
  /* Trigger */
- if (trigger_active && (counter0 == para_itdlintest_stim_instant)) 
+ if (!trigger_interleave &&
+     trigger_active && (counter0 == para_itdlintest_stim_instant)) 
   trigger_set(para_itdlintest_trigger);
+
  /* ------------------------------------------------------------------- */
 
  dummy_counter=counter0%para_itdlintest_click_period;
  dac_0=dac_1=0;
 
  switch (current_pattern_data) {
-  case '@': /* Interblock pause */
-            para_itdlintest_pause();
-	    break;
   case 'D':	// Destination is Center
   case 'H':
   case 'K':

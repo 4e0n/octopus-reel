@@ -129,6 +129,21 @@ class StimDaemon : public QTcpServer {
       fbWrite(TRIG_STOP,0,0);
       break;
 
+     case CS_STIM_LIGHTS_ON:
+      qDebug("octopus-stim-daemon: Received lights on stim command.");
+      fbWrite(STIM_LIGHTS_ON,0,0);
+      break;
+
+     case CS_STIM_LIGHTS_DIMM:
+      qDebug("octopus-stim-daemon: Received lights dimm stim command.");
+      fbWrite(STIM_LIGHTS_DIMM,0,0);
+      break;
+
+     case CS_STIM_LIGHTS_OFF:
+      qDebug("octopus-stim-daemon: Received lights off stim command.");
+      fbWrite(STIM_LIGHTS_OFF,0,0);
+      break;
+
      case CS_STIM_SYNTHETIC_EVENT:
       qDebug("octopus-stim-daemon: Received synthetic event.");
       fbWrite(STIM_SYNTH_EVENT,csCommand.iparam[0],0);

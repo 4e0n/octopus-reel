@@ -23,6 +23,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* Psychophysical IIDITD Laterality Determination (PPLP). */
 
+static int audio_paused=0,pause_trigger_hi=0;
+
 static int para_iiditdpplp_base_level_l,
            para_iiditdpplp_base_level_r,
            para_iiditdpplp_current_iid_amp_l,

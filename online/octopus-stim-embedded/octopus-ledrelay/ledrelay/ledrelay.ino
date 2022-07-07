@@ -41,9 +41,10 @@ EthernetServer server(23);
 const int MAX_CLIENT=8;
 EthernetClient clients[MAX_CLIENT];
 
-const int PIN_COUNT=4;
-int relayPin[PIN_COUNT]={4,5,6,7}; //{2,3,5,6};
-int inputPin[PIN_COUNT]={8,9,10,11};
+const int INPUT_PIN_COUNT=2;
+const int RELAY_PIN_COUNT=4;
+int relayPin[RELAY_PIN_COUNT]={2,3,4,5};
+int inputPin[INPUT_PIN_COUNT]={6,7};
 
 const int BUF_SIZE=80; byte buffer[BUF_SIZE]; int bufCount;
 char inStrC[BUF_SIZE]; String inStr,cmdStr,paramStr;
@@ -52,22 +53,22 @@ String cmdQuitStr=String("quit");
 String cmdSetRelayStr=String("on");
 String cmdResetRelayStr=String("off");
 
-bool D8_state=LOW;
-bool D9_state=LOW;
-bool D10_state=LOW;
-bool D11_state=LOW;
+//bool D6_state=LOW;
+//bool D7_state=LOW;
 
 void setup() {
- PCICR=B00000001; // PCIE0 -> PORT B
- PCMSK0=B00011111; // Only pins 8,9,10,11 will generate a change interrupt
- PCMSK1=B00000000;
- PCMSK2=B00000000;
- PCIFR|=B00000001; // Clear interrupt flag register
-
- attachInterrupt(digitalPinToInterrupt(2),setRelayCombo,RISING);
- 
+ // Input setup
+ for (int i=0;i<INPUT_PIN_COUNT;i++) pinMode(inputPin[i],INPUT);
  // Relay setup
- for (int i=0;i<PIN_COUNT;i++) { pinMode(relayPin[i],OUTPUT); digitalWrite(relayPin[i],HIGH); }
+ for (int i=0;i<RELAY_PIN_COUNT;i++) { pinMode(relayPin[i],OUTPUT); digitalWrite(relayPin[i],HIGH); }
+
+ PCICR=B00000100; // PCIE0 -> PORT D
+// PCMSK0=B00000011; // Only pins 8,9 will generate a change in
+// PCMSK1=B00000000;
+ PCMSK2=B11000000; // Only pins 6,7 will generate a change interrupt
+// PCIFR|=B00000001; // Clear interrupt flag register
+
+// attachInterrupt(digitalPinToInterrupt(2),setRelayCombo,RISING);
  
  // You can use Ethernet.init(pin) to configure the CS pin
  Ethernet.init(10);  // Most Arduino shields
@@ -85,24 +86,21 @@ void setup() {
  Serial.print("Server address:"); Serial.println(Ethernet.localIP());
 }
 
-void setRelayCombo() {
- for (byte i=0;i<PIN_COUNT;i++) {
-  if (digitalRead(inputPin[i])) digitalWrite(relayPin[i],LOW); else digitalWrite(relayPin[i],HIGH);
- }
-}
+//void setRelayCombo() {
+// for (byte i=0;i<RELAY_PIN_COUNT;i++) {
+//  if (digitalRead(inputPin[i])) digitalWrite(relayPin[i],LOW); else digitalWrite(relayPin[i],HIGH);
+// }
+//}
 
-ISR (PCINT0_vect) {
- if (digitalRead(8) && D8_state) D8_state=HIGH;
- else if (digitalRead(8) && !D8_state) D8_state=LOW;
+ISR (PCINT2_vect) {
+// if (digitalRead(6) && D6_state) D6_state=HIGH;
+// else if (digitalRead(6) && !D6_state) D6_state=LOW;
 
- if (digitalRead(9) && D9_state) D9_state=HIGH;
- else if (digitalRead(9) && !D9_state) D9_state=LOW;
+// if (digitalRead(7) && D7_state) D7_state=HIGH;
+// else if (digitalRead(7) && !D7_state) D7_state=LOW;
 
- if (digitalRead(10) && D10_state) D10_state=HIGH;
- else if (digitalRead(10) && !D10_state) D10_state=LOW;
-
- if (digitalRead(11) && D11_state) D11_state=HIGH;
- else if (digitalRead(11) && !D11_state) D11_state=LOW;
+ for (byte i=0;i<INPUT_PIN_COUNT;i++)
+  if (digitalRead(inputPin[i])==HIGH) digitalWrite(relayPin[i],LOW); else digitalWrite(relayPin[i],HIGH);
 }
 
 void loop() {
