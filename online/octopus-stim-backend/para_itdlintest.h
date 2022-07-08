@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 static int experiment_loop=0;
 
-static int rollback_count=2;
+static int rollback_count=3;
 static int pause_interleave=0,trigger_interleave=0;
 
 static int para_itdlintest_trigger,
@@ -84,15 +84,20 @@ static void para_itdlintest_pause(void) {
  audio_active=0;
  lights_on();
 
- // Skip the @ which is "rollback_count" trials ahead..
- if (manual_pause==1) { manual_pause=0; pause_interleave=0; }
- else if (rollback_count>0) pause_interleave=1;
-
- trigger_interleave=rollback_count;
-
  // Resume rewinding to "rollback_count" trials before..
- // Trigger won't happen for "rollback_count" of trials..
- current_pattern_offset=current_pattern_offset-rollback_count-1;
+ // Trigger won't happen for this "rollback_count" of trials..
+ if (manual_pause==1) {
+  manual_pause=0;
+  pause_interleave=0; /* No @ ahead, so don't skip some.. */
+  current_pattern_offset=current_pattern_offset-rollback_count;
+  trigger_interleave=rollback_count+1;
+ } else if (rollback_count>0) {
+  pause_interleave=1; /* Skip the @.. */
+  current_pattern_offset=current_pattern_offset-rollback_count-1;
+  trigger_interleave=rollback_count+1;
+ }
+
+
 
  rt_printk("octopus-stim-backend.o: Stim paused.\n");
 }
@@ -109,6 +114,8 @@ static void para_itdlintest(void) {
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
+
+  if (trigger_interleave>0) trigger_interleave--;
 
   /* Interblock pause */
   if (current_pattern_data=='@') {
@@ -168,12 +175,11 @@ static void para_itdlintest(void) {
  /* ------------------------------------------------------------------- */
  /* Trigger */
  if ( (counter0==para_itdlintest_stim_instant) && trigger_active &&
-      (trigger_interleave==0) )
+      (current_pattern_offset>0) && (trigger_interleave==0) )
   trigger_set(para_itdlintest_trigger);
 
  /* ------------------------------------------------------------------- */
  if (counter0==0) {
-  if (trigger_interleave>0) trigger_interleave--;
   current_pattern_offset++;
   if (current_pattern_offset==pattern_size) { /* roll-back or stop? */
    if (experiment_loop==0) para_itdlintest_stop();
