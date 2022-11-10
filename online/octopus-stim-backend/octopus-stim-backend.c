@@ -167,6 +167,7 @@ static void lights_dimm(void) {
 #include "para_itdoppchn.h"
 #include "para_itdoppchn2.h"
 #include "para_itdlintest.h"
+#include "para_itdlintest2.h"
 
 /* ========================================================================= */
 
