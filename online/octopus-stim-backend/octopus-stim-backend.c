@@ -188,6 +188,7 @@ static void audio_thread(int t) {
      case PARA_ITD_OPPCHN:    para_itdoppchn();	   break;
      case PARA_ITD_OPPCHN2:   para_itdoppchn2();   break;
      case PARA_ITD_LINTEST:   para_itdlintest();   break;
+     case PARA_ITD_LINTEST2:  para_itdlintest2();  break;
     }
 #ifdef OCTOPUS_STIM_COMEDI
     comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0); /* L */
@@ -243,6 +244,7 @@ static void init_test_para(int tp) {
   case PARA_ITD_OPPCHN:    para_itdoppchn_init();    break;
   case PARA_ITD_OPPCHN2:   para_itdoppchn2_init();   break;
   case PARA_ITD_LINTEST:   para_itdlintest_init();   break;
+  case PARA_ITD_LINTEST2:  para_itdlintest2_init();  break;
  }
 }
 
@@ -251,6 +253,7 @@ static void start_test_para(int tp) {
   // others will be registered here by convention,
   // even if they don't exist
   case PARA_ITD_LINTEST:   para_itdlintest_start();   break;
+  case PARA_ITD_LINTEST2:  para_itdlintest2_start();  break;
  }
 }
 
@@ -259,6 +262,7 @@ static void stop_test_para(int tp) {
   // others will be registered here by convention,
   // even if they don't exist
   case PARA_ITD_LINTEST:   para_itdlintest_stop();   break;
+  case PARA_ITD_LINTEST2:  para_itdlintest2_stop();  break;
  }
 }
 
@@ -267,6 +271,7 @@ static void pause_test_para(int tp) {
   // others will be registered here by convention,
   // even if they don't exist
   case PARA_ITD_LINTEST:   para_itdlintest_pause();   break;
+  case PARA_ITD_LINTEST2:  para_itdlintest2_pause();  break;
  }
 }
 
@@ -275,6 +280,7 @@ static void resume_test_para(int tp) {
   // others will be registered here by convention,
   // even if they don't exist
   case PARA_ITD_LINTEST:   para_itdlintest_resume();   break;
+  case PARA_ITD_LINTEST2:  para_itdlintest2_resume();  break;
  }
 }
 
