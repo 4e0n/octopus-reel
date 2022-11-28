@@ -38,7 +38,7 @@ static int experiment_loop=0;
 static int para_itdlintest2_trigger,
 	   para_itdlintest2_no_stim_types,
 	   para_itdlintest2_soa,
-	   para_itdlintest2_hi_duration,para_itdlintest2_hi_duration_short,
+	   para_itdlintest2_hi_duration,
 	   para_itdlintest2_click_period,
 	   para_itdlintest2_delta,
 	   para_itdlintest2_stim_instant,
@@ -51,9 +51,8 @@ static int para_itdlintest2_trigger,
 static void para_itdlintest2_init(void) {
  current_pattern_offset=0;
  para_itdlintest2_no_stim_types=6;
- para_itdlintest2_soa=(3.00001)*AUDIO_RATE; /* 150150 steps - 3.02 seconds */
+ para_itdlintest2_soa=(2.9401)*AUDIO_RATE; /* 150150 steps - 3.02 seconds */
  para_itdlintest2_hi_duration=(0.0005001)*AUDIO_RATE; /* 500us - 25 steps */
- para_itdlintest2_hi_duration_short=(0.0001001)*AUDIO_RATE; /* 100us - 5 steps */
  para_itdlintest2_click_period=(0.014)*AUDIO_RATE; /* 14ms - 700 steps */
  para_itdlintest2_delta=(0.0006001)*AUDIO_RATE; /* L-R delta: 600us - 30 steps */
  
@@ -130,7 +129,7 @@ static void para_itdlintest2(void) {
 	     para_itdlintest2_trigger=SEC_S10S_L;
              break;
    case 5: /* Center to Left 600us  - 100ms duration */
-	     para_itdlintest2_trigger=SEC_S10S_L;
+	     para_itdlintest2_trigger=SEC_S10S_R;
    default:  break;
   }
  }
@@ -231,59 +230,51 @@ static void para_itdlintest2(void) {
 	}
 	break;
    case 4:
-	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration_short)) {
-	 dac_0=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
-			 +para_itdlintest2_hi_duration_short)) {
-	 dac_1=AMP_OPPCHN;
+	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
+	     (counter0< para_itdlintest2_stim_timeoffset \
+	      		+para_itdlintest2_stim12_part1_duration) ) {
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_minus \
+	 		       +para_itdlintest2_hi_duration)) {
+	  dac_0=AMP_OPPCHN;
+	 }
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_plus \
+			       +para_itdlintest2_hi_duration)) {
+	  dac_1=AMP_OPPCHN;
+	 }
+	} else if ((dummy_counter >= para_itdlintest2_stim_instant) &&
+	           (dummy_counter <  para_itdlintest2_stim_instant \
+	                             +para_itdlintest2_hi_duration)) {
+	 dac_0=dac_1=AMP_OPPCHN;
 	}
 	break;
    case 5:
-	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration_short)) {
-	 dac_1=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
-			 +para_itdlintest2_hi_duration_short)) {
-	 dac_0=AMP_OPPCHN;
+	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
+	     (counter0< para_itdlintest2_stim_timeoffset \
+	      		+para_itdlintest2_stim12_part1_duration) ) {
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_minus \
+	 		       +para_itdlintest2_hi_duration)) {
+	  dac_1=AMP_OPPCHN;
+	 }
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_plus \
+			       +para_itdlintest2_hi_duration)) {
+	  dac_0=AMP_OPPCHN;
+	 }
+	} else if ((dummy_counter >= para_itdlintest2_stim_instant) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant \
+	                       +para_itdlintest2_hi_duration)) {
+	 dac_0=dac_1=AMP_OPPCHN;
 	}
    default: break;
   }
  } else if ((dummy_counter >= para_itdlintest2_stim_instant) &&
-     (dummy_counter <  para_itdlintest2_stim_instant \
-                       +para_itdlintest2_hi_duration)) {
+            (dummy_counter <  para_itdlintest2_stim_instant \
+                              +para_itdlintest2_hi_duration)) {
   dac_0=dac_1=AMP_OPPCHN;
  }
-/*	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_1=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus+1 \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_0=AMP_OPPCHN;
-	}
-  case 3:
-	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_0=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus+1 \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_1=AMP_OPPCHN;
-	} */
-//  default:
-//	break;
-// }
 
  /* ------------------------------------------------------------------- */
 
