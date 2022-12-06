@@ -109,7 +109,7 @@ static void para_itdlintest2_resume(void) {
  rt_printk("octopus-stim-backend.o: Stim resumed.\n");
 }
 
-static int static_pattern[]={0,1,5,3,4,2};
+static int static_pattern[]={0,1,2,3,4,5};
 /* static double theta; */
 
 static void para_itdlintest2(void) {
@@ -120,17 +120,17 @@ static void para_itdlintest2(void) {
    case 0: /* Center to Left to Right 600us */
 	     para_itdlintest2_trigger=SEC_S12_L2R;
              break;
-   case 1: /* Center to Right to Left 600us */
-	     para_itdlintest2_trigger=SEC_S12_R2L;
-             break;
-   case 2: /* Center to Left 600us */
+   case 1: /* Center to Left 600us */
 	     para_itdlintest2_trigger=SEC_S10_L;
              break;
-   case 3: /* Center to Right 600us */
-	     para_itdlintest2_trigger=SEC_S10_R;
-             break;
-   case 4: /* Center to Left 600us  - 100ms duration */
+   case 2: /* Center to Left 600us  - 100ms duration */
 	     para_itdlintest2_trigger=SEC_S10S_L;
+             break;
+   case 3: /* Center to Right to Left 600us */
+	     para_itdlintest2_trigger=SEC_S12_R2L;
+             break;
+   case 4: /* Center to Right 600us */
+	     para_itdlintest2_trigger=SEC_S10_R;
              break;
    case 5: /* Center to Left 600us  - 100ms duration */
 	     para_itdlintest2_trigger=SEC_S10S_R;
@@ -183,6 +183,38 @@ static void para_itdlintest2(void) {
 	}
 	break;
    case 1:
+	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
+	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
+			 +para_itdlintest2_hi_duration)) {
+	 dac_0=AMP_OPPCHN;
+	}
+	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
+	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
+			 +para_itdlintest2_hi_duration)) {
+	 dac_1=AMP_OPPCHN;
+	}
+	break;
+   case 2:
+	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
+	     (counter0< para_itdlintest2_stim_timeoffset \
+	      		+para_itdlintest2_stim12_part1_duration) ) {
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_minus \
+	 		       +para_itdlintest2_hi_duration)) {
+	  dac_0=AMP_OPPCHN;
+	 }
+	 if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
+	     (dummy_counter <  para_itdlintest2_stim_instant_plus \
+			       +para_itdlintest2_hi_duration)) {
+	  dac_1=AMP_OPPCHN;
+	 }
+	} else if ((dummy_counter >= para_itdlintest2_stim_instant) &&
+	           (dummy_counter <  para_itdlintest2_stim_instant \
+	                             +para_itdlintest2_hi_duration)) {
+	 dac_0=dac_1=AMP_OPPCHN;
+	}
+	break;
+   case 3:
 	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
 	     (counter0< para_itdlintest2_stim_timeoffset \
 	      		+para_itdlintest2_stim12_part1_duration) ) {
@@ -209,48 +241,16 @@ static void para_itdlintest2(void) {
 	 }
 	}
 	break;
-   case 2:
-	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_0=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_1=AMP_OPPCHN;
-	}
-	break;
-   case 3:
-	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_1=AMP_OPPCHN;
-	}
-	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
-			 +para_itdlintest2_hi_duration)) {
-	 dac_0=AMP_OPPCHN;
-	}
-	break;
    case 4:
-	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
-	     (counter0< para_itdlintest2_stim_timeoffset \
-	      		+para_itdlintest2_stim12_part1_duration) ) {
-	 if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
-	     (dummy_counter <  para_itdlintest2_stim_instant_minus \
-	 		       +para_itdlintest2_hi_duration)) {
-	  dac_0=AMP_OPPCHN;
-	 }
-	 if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
-	     (dummy_counter <  para_itdlintest2_stim_instant_plus \
-			       +para_itdlintest2_hi_duration)) {
-	  dac_1=AMP_OPPCHN;
-	 }
-	} else if ((dummy_counter >= para_itdlintest2_stim_instant) &&
-	           (dummy_counter <  para_itdlintest2_stim_instant \
-	                             +para_itdlintest2_hi_duration)) {
-	 dac_0=dac_1=AMP_OPPCHN;
+	if ((dummy_counter >= para_itdlintest2_stim_instant_minus) &&
+	    (dummy_counter <  para_itdlintest2_stim_instant_minus \
+			 +para_itdlintest2_hi_duration)) {
+	 dac_1=AMP_OPPCHN;
+	}
+	if ((dummy_counter >= para_itdlintest2_stim_instant_plus) &&
+	    (dummy_counter <  para_itdlintest2_stim_instant_plus \
+			 +para_itdlintest2_hi_duration)) {
+	 dac_0=AMP_OPPCHN;
 	}
 	break;
    case 5:
