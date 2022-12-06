@@ -67,6 +67,8 @@ static void para_itdlintest2_init(void) {
 				    +para_itdlintest2_delta/2;
  experiment_loop=1;
 
+/* theta=0.0; */
+
  rt_printk("%d %d %d %d %d %d %d %d %d %d\n",
 		 	 para_itdlintest2_hi_duration,
 		 	 para_itdlintest2_click_period,
@@ -107,12 +109,14 @@ static void para_itdlintest2_resume(void) {
  rt_printk("octopus-stim-backend.o: Stim resumed.\n");
 }
 
+static int static_pattern[]={0,1,5,3,4,2};
+/* static double theta; */
 
 static void para_itdlintest2(void) {
  int dummy_counter=0;
 
  if (counter0==0) {
-  switch (current_pattern_offset) {
+  switch (static_pattern[current_pattern_offset]) {
    case 0: /* Center to Left to Right 600us */
 	     para_itdlintest2_trigger=SEC_S12_L2R;
              break;
@@ -150,7 +154,7 @@ static void para_itdlintest2(void) {
  if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
       (counter0< para_itdlintest2_stim_timeoffset \
                  +para_itdlintest2_stim_duration) ) {
-  switch (current_pattern_offset) {
+  switch (static_pattern[current_pattern_offset]) {
    case 0:
 	if ( (counter0>=para_itdlintest2_stim_timeoffset) && \
 	     (counter0< para_itdlintest2_stim_timeoffset \
@@ -268,6 +272,12 @@ static void para_itdlintest2(void) {
 	                       +para_itdlintest2_hi_duration)) {
 	 dac_0=dac_1=AMP_OPPCHN;
 	}
+/*	break;
+  case 6:
+        dac_0=(int)((double)(AMP_OPPCHN)*sin(theta*M_PI/180.0));
+        dac_1=(int)((double)(AMP_OPPCHN)*cos(theta*M_PI/180.0));
+        theta+=5000.0*360.0/(double)(AUDIO_RATE);
+	if (theta>=360.0) theta=0.0; */
    default: break;
   }
  } else if ((dummy_counter >= para_itdlintest2_stim_instant) &&

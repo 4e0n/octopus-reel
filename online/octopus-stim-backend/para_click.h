@@ -32,7 +32,8 @@ static void para_click_init(void) {
 
 static void para_click(void) {
  if (counter0==0) {
-  dac_0=dac_1=AMP_H20; /* output norm to range between +-20dB (2047/sqrt(10)) */
+  /* output norm to range between +-20dB (2047/sqrt(10)) */
+  dac_0=dac_1=AMP_H20;
   if (trigger_active) trigger_set(SEC_CLICK);
  }
  else if (counter0==para_click_duration) dac_0=dac_1=0;  
