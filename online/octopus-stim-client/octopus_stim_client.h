@@ -34,7 +34,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMessageBox>
 #include <QAction>
 
-//#include <QtGui>
 #include <QtNetwork>
 #include <unistd.h>
 #include "../cs_command.h"
@@ -142,6 +141,7 @@ class StimClient : public QMainWindow {
    paraITDOppChn2Action=new QAction("Opponent Channels v2",this);
    paraITDLinTestAction=new QAction("ITD Linearity Test",this);
    paraITDLinTest2Action=new QAction("ITD Linearity Exp.2",this);
+   paraITDTompresAction=new QAction("ITD Optimum Adapter-Probe Offset",this);
    paraLoadPatAction->setStatusTip(
     "Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
@@ -160,6 +160,8 @@ class StimClient : public QMainWindow {
    paraITDLinTestAction->setStatusTip(
     "Testing of ITD Linearity");
    paraITDLinTest2Action->setStatusTip(
+    "Testing of ITD Linearity - Exp.2");
+   paraITDTompresAction->setStatusTip(
     "Testing of ITD Linearity - Exp.2");
    connect(paraLoadPatAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmLoadPattern()));
@@ -181,6 +183,8 @@ class StimClient : public QMainWindow {
            this,SLOT(slotParadigmITDLinTest()));
    connect(paraITDLinTest2Action,SIGNAL(triggered()),
            this,SLOT(slotParadigmITDLinTest2()));
+   connect(paraITDTompresAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigmTompres()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
@@ -191,6 +195,7 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDOppChn2Action);
    paraMenu->addAction(paraITDLinTestAction);
    paraMenu->addAction(paraITDLinTest2Action);
+   paraMenu->addAction(paraITDTompresAction);
 
    // *** BUTTONS AT THE TOP ***
    lightsOnButton=new QPushButton("Lights On",this);
@@ -536,6 +541,9 @@ class StimClient : public QMainWindow {
   void slotParadigmITDLinTest2() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_LINTEST2,0,0);
   }
+  void slotParadigmTompres() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_TOMPRES,0,0);
+  }
 
  private:
   QApplication *application;
@@ -564,7 +572,8 @@ class StimClient : public QMainWindow {
           *paraLoadPatAction,*paraClickAction,*paraSquareBurstAction,
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action,
 	  *paraITDOppChnAction,*paraITDOppChn2Action,
-	  *paraITDLinTestAction,*paraITDLinTest2Action;
+	  *paraITDLinTestAction,*paraITDLinTest2Action,
+	  *paraITDTompresAction;;
 
   // Calibration
   int calPts; QVector<float> calA,calB;

@@ -149,6 +149,24 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_S10_R		118	// "S10: -> R"
 #define SEC_S10S_L		119	// "S10: -> SL"
 #define SEC_S10S_R		120	// "S10: -> SR"
+
+#define SEC_TOMPRES_L100	1	// TOMPRES Left 100ms
+#define SEC_TOMPRES_L200	2	// TOMPRES Left 200ms
+#define SEC_TOMPRES_L300	3	// TOMPRES Left 300ms
+#define SEC_TOMPRES_L400	4	// TOMPRES Left 400ms
+#define SEC_TOMPRES_L500	5	// TOMPRES Left 500ms
+#define SEC_TOMPRES_L600	6	// TOMPRES Left 600ms
+#define SEC_TOMPRES_L800	7	// TOMPRES Left 800ms
+#define SEC_TOMPRES_L1400	8	// TOMPRES Left 1400ms
+#define SEC_TOMPRES_R100	9	// TOMPRES Right 100ms
+#define SEC_TOMPRES_R200	10	// TOMPRES Right 200ms
+#define SEC_TOMPRES_R300	11	// TOMPRES Right 300ms
+#define SEC_TOMPRES_R400	12	// TOMPRES Right 400ms
+#define SEC_TOMPRES_R500	13	// TOMPRES Right 500ms
+#define SEC_TOMPRES_R600	14	// TOMPRES Right 600ms
+#define SEC_TOMPRES_R800	15	// TOMPRES Right 800ms
+#define SEC_TOMPRES_R1400	16	// TOMPRES Right 1400ms
+
 #define SEC_EVENT_121		121	// ""
 #define SEC_EVENT_122		122	// ""
 #define SEC_EVENT_123		123	// ""
