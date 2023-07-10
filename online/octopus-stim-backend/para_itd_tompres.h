@@ -25,7 +25,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     counter0: Counter for single trial
     -- squareburst of 400ms stim duration */
 
-static int para_itd_tompres_experiment_loop=0;
+static int para_itd_tompres_experiment_loop=1;
 
 static int para_itd_tompres_trigger,
 
@@ -143,6 +143,7 @@ static void para_itd_tompres(void) {
    case '@': /* Interblock pause */
              para_itd_tompres_pause(); /* legitimate pause */
 	     break;
+
    case 'A': /* Left - Adapter-Probe Temporal Offset -> 100ms */
 	     para_itd_tompres_trigger=SEC_TOMPRES_L100;
              para_itd_tompres_ap_offset=para_itd_tompres_ap_offset100;
@@ -223,6 +224,88 @@ static void para_itd_tompres(void) {
 	     para_itd_tompres_trigger=SEC_TOMPRES_R1400;
              para_itd_tompres_ap_offset=para_itd_tompres_ap_offset1400;
 	     para_itd_tompres_laterality=1;
+	     break;
+
+   case 'Q': /* Left - Adapter-Probe Temporal Offset -> 100ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L100X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset100;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'R': /* Left - Adapter-Probe Temporal Offset -> 200ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L200X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset200;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'S': /* Left - Adapter-Probe Temporal Offset -> 300ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L300X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset300;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'T': /* Left - Adapter-Probe Temporal Offset -> 400ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L400X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset400;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'U': /* Left - Adapter-Probe Temporal Offset -> 500ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L500X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset500;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'V': /* Left - Adapter-Probe Temporal Offset -> 600ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L600X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset600;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'W': /* Left - Adapter-Probe Temporal Offset -> 800ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L800X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset800;
+	     para_itd_tompres_laterality=2;
+             break;
+   case 'X': /* Left - Adapter-Probe Temporal Offset -> 1400ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_L1400X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset1400;
+	     para_itd_tompres_laterality=2;
+             break;
+
+   case 'Y': /* Right - Adapter-Probe Temporal Offset -> 100ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R100X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset100;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'Z': /* Right - Adapter-Probe Temporal Offset -> 200ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R200X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset200;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'a': /* Right - Adapter-Probe Temporal Offset -> 300ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R300X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset300;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'b': /* Right - Adapter-Probe Temporal Offset -> 400ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R400X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset400;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'c': /* Right - Adapter-Probe Temporal Offset -> 500ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R500X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset500;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'd': /* Right - Adapter-Probe Temporal Offset -> 600ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R600X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset600;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'e': /* Right - Adapter-Probe Temporal Offset -> 800ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R800X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset800;
+	     para_itd_tompres_laterality=3;
+             break;
+   case 'f': /* Right - Adapter-Probe Temporal Offset -> 1400ms */
+	     para_itd_tompres_trigger=SEC_TOMPRES_R1400X;
+             para_itd_tompres_ap_offset=para_itd_tompres_ap_offset1400;
+	     para_itd_tompres_laterality=3;
    default:  break;
   }
 
@@ -265,80 +348,138 @@ static void para_itd_tompres(void) {
 
  dac_0=dac_1=0;
 
- if (para_itd_tompres_laterality) {
+ switch (para_itd_tompres_laterality) {
+  case 0: /* RIGHT IPSILATERAL */
+   if (para_itd_tompres_adapter_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_probe_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_adapter_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_probe_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   break;
 
-  /* LEFT */
-  if (para_itd_tompres_adapter_region_lead) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_0=AMP_OPPCHN;
-   else dac_0=0;
-  }
+  case 1: /* LEFT IPSILATERAL */
+   if (para_itd_tompres_adapter_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_probe_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_adapter_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_probe_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   break;
 
-  if (para_itd_tompres_probe_region_lead) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
-                                              -para_itd_tompres_ap_offset;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_0=AMP_OPPCHN;
-   else dac_0=0;
-  }
+  case 2: /* RIGHT TRANSLATERAL */
+   if (para_itd_tompres_adapter_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_probe_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_adapter_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_probe_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   break;
 
-  if (para_itd_tompres_adapter_region_lag) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_1=AMP_OPPCHN;
-   else dac_1=0;
-  }
-
-  if (para_itd_tompres_probe_region_lag) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
-                                              -para_itd_tompres_ap_offset;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_1=AMP_OPPCHN;
-   else dac_1=0;
-  }
-
- } else {
-
-  /* RIGHT */
-  if (para_itd_tompres_adapter_region_lead) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_1=AMP_OPPCHN;
-   else dac_1=0;
-  }
-
-  if (para_itd_tompres_probe_region_lead) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
-                                              -para_itd_tompres_ap_offset;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_1=AMP_OPPCHN;
-   else dac_1=0;
-  }
-
-  if (para_itd_tompres_adapter_region_lag) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_0=AMP_OPPCHN;
-   else dac_0=0;
-  }
-
-  if (para_itd_tompres_probe_region_lag) {
-   para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
-                                              -para_itd_tompres_ap_offset;
-   if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
-                                                   para_itd_tompres_hi_period)
-    dac_0=AMP_OPPCHN;
-   else dac_0=0;
-  }
-
+  case 3: /* LEFT TRANSLATERAL */
+   if (para_itd_tompres_adapter_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_tompres_probe_region_lead) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_adapter_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_1=AMP_OPPCHN;
+    else dac_1=0;
+   }
+   if (para_itd_tompres_probe_region_lag) {
+    para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
+                                               -para_itd_tompres_ap_offset;
+    if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
+                                                    para_itd_tompres_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+  default: break;
  }
 
  /* ------------------------------------------------------------------- */

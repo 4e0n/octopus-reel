@@ -40,7 +40,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define XFERBUFSIZE		(16)
 
 /* Size of stimulus presentation pattern buffer size. */
-#define PATTBUFSIZE		(8)
+#define PATTBUFSIZE		(64) /* (8) */
 
 #define AUDIO_RATE		(50000)	/* Audio synthesis rate */
 #define TRIG_RATE		(9600)	/* Serial trigger rate (bitbang) */
