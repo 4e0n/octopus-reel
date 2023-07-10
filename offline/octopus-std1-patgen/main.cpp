@@ -77,9 +77,9 @@ int main(int argc,char *argv[]) {
  trialCount=p.toInt();
 
  p=QString::fromLatin1(argv[2]); pos=0;
- QIntValidator intValidator2(1,100,NULL);
+ QIntValidator intValidator2(1,1000,NULL);
  if (intValidator2.validate(p,pos) != QValidator::Acceptable) {
-  qDebug("Please enter a positive integer between 1 and 100 as # of blocks!");
+  qDebug("Please enter a positive integer between 1 and 1000 as # of blocks!");
   qDebug("Usage: octopus-patt <file name> <# of blocks> <# of trials in one block>");
   return -1;
  }
@@ -94,7 +94,7 @@ int main(int argc,char *argv[]) {
 
  std::srand(time(NULL));
 
- triggerDomain="ABCDEFGHIJKLMNOP";
+ triggerDomain="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
  domainSize=triggerDomain.length();
 
  for (int i=0;i<trialCount;i++) {
@@ -103,7 +103,7 @@ int main(int argc,char *argv[]) {
 
  for (int i=0;i<blockCount;i++) {
   finalPattern.append(shuffle(blockDomain));
-  if (i<blockCount-1) finalPattern.append('@');
+  // if (i<blockCount-1) finalPattern.append('@');
  }
 
  qDebug("Outputting to file..");
