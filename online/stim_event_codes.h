@@ -183,6 +183,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_TOMPRES_R800X	31	// TOMPRES Right 800ms - T
 #define SEC_TOMPRES_R1400X	32	// TOMPRES Right 1400ms - T
 
+#define SEC_PIP_TONE_LL		1	// Tone Pip 500Hz -> 500Hz
+#define SEC_PIP_TONE_HH		2	// Tone Pip 1250Hz -> 1250Hz
+#define SEC_PIP_TONE_LH		3	// Tone Pip 500Hz -> 1250Hz
+#define SEC_PIP_TONE_HL		4	// Tone Pip 1250Hz -> 500Hz
+#define SEC_PIP_CTRAIN_LL	5	// Click Train Pip Left -> Left
+#define SEC_PIP_CTRAIN_RR	6	// Click Train Pip Right -> Right
+#define SEC_PIP_CTRAIN_LR	7	// Click Train Pip Left -> Right
+#define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
+
 #define SEC_EVENT_121		121	// ""
 #define SEC_EVENT_122		122	// ""
 #define SEC_EVENT_123		123	// ""

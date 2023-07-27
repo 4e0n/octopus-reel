@@ -142,6 +142,7 @@ class StimClient : public QMainWindow {
    paraITDLinTestAction=new QAction("ITD Linearity Test",this);
    paraITDLinTest2Action=new QAction("ITD Linearity Exp.2",this);
    paraITDTompresAction=new QAction("ITD Optimum Adapter-Probe Offset",this);
+   paraITDPipCTrainAction=new QAction("ITD Pip vs. CTrain - 500ms Adapter-Probe",this);
    paraLoadPatAction->setStatusTip(
     "Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
@@ -162,7 +163,9 @@ class StimClient : public QMainWindow {
    paraITDLinTest2Action->setStatusTip(
     "Testing of ITD Linearity - Exp.2");
    paraITDTompresAction->setStatusTip(
-    "Testing of ITD Linearity - Exp.2");
+    "Testing of ITD Linearity - Exp.3a/b");
+   paraITDPipCTrainAction->setStatusTip(
+    "Testing of ITD Linearity - Exp.3c");
    connect(paraLoadPatAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmLoadPattern()));
    connect(paraClickAction,SIGNAL(triggered()),
@@ -185,6 +188,8 @@ class StimClient : public QMainWindow {
            this,SLOT(slotParadigmITDLinTest2()));
    connect(paraITDTompresAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmTompres()));
+   connect(paraITDPipCTrainAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigmPipCTrain()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
@@ -196,6 +201,7 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDLinTestAction);
    paraMenu->addAction(paraITDLinTest2Action);
    paraMenu->addAction(paraITDTompresAction);
+   paraMenu->addAction(paraITDPipCTrainAction);
 
    // *** BUTTONS AT THE TOP ***
    lightsOnButton=new QPushButton("Lights On",this);
@@ -544,6 +550,9 @@ class StimClient : public QMainWindow {
   void slotParadigmTompres() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_TOMPRES,0,0);
   }
+  void slotParadigmPipCTrain() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_CTRAIN,0,0);
+  }
 
  private:
   QApplication *application;
@@ -573,7 +582,7 @@ class StimClient : public QMainWindow {
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action,
 	  *paraITDOppChnAction,*paraITDOppChn2Action,
 	  *paraITDLinTestAction,*paraITDLinTest2Action,
-	  *paraITDTompresAction;;
+	  *paraITDTompresAction,*paraITDPipCTrainAction;
 
   // Calibration
   int calPts; QVector<float> calA,calB;
