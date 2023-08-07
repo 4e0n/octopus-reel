@@ -69,6 +69,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <linux/random.h>
 
 #ifdef OCTOPUS_STIM_COMEDI
+#include <comedi.h>
 #include <linux/kcomedilib.h>
 #endif
 
@@ -393,6 +394,16 @@ static int __init octopus_stim_init(void) {
  /* Initialize comedi device for auditory stimulus presentation */
 #ifdef OCTOPUS_STIM_COMEDI
  daqcard=comedi_open("/dev/comedi0"); comedi_lock(daqcard,1);
+
+ //lsampl_t maxdata;
+ //comedi_krange* range_info;
+
+ //range_info=comedi_get_krange(daqcard,1,0,0,0);
+ //maxdata=comedi_get_maxdata(daqcard,1,0);
+ //if (range_info)
+ // rt_printk("[0,%d] -> [%g,%g]\n",maxdata,range_info->min,range_info->max);
+ //physical_value=comedi_to_phys(data_range_info,maxdata);
+
  comedi_data_write(daqcard,1,0,0,AREF_GROUND,DACZERO+dac_0);
  comedi_data_write(daqcard,1,1,0,AREF_GROUND,DACZERO+dac_1);
  rt_printk("octopus-stim-backend.o: Comedi Device Allocation successful. ->\n");

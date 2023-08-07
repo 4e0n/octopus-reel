@@ -23,13 +23,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* Some Low-level definitions for STIM DA-converter. */
 
-#define DACZERO		(32768)		/* Zero-level for 16-bit DAC. */
+#define DACZERO16	/* Default is 16-bit DAC samplespace */
 
+#ifdef DACZERO16
+#define DACZERO		(32768)		/* Zero-level for 16-bit DAC. */
 #define AMP_L20		(16*204)	/*  -20dB of Reference */
 #define AMP_0DB		(16*647)	/* Reference Audio Level */
 #define AMP_H20		(16*2045)	/*  +20dB of Reference */
-
 #define AMP_OPPCHN	(16*170)	/* Calibrated Etymotics 100dB */
+#else
+#define DACZERO		(2048)		/* Zero-level for 12-bit DAC. */
+#define AMP_L20		(16*204)>>4	/*  -20dB of Reference */
+#define AMP_0DB		(16*647)>>4	/* Reference Audio Level */
+#define AMP_H20		(16*2045)>>4	/*  +20dB of Reference */
+#define AMP_OPPCHN	(16*170)>>4	/* Calibrated Etymotics 100dB */
+#endif
 
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
