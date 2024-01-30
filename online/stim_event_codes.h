@@ -192,6 +192,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_PIP_CTRAIN_LR	7	// Click Train Pip Left -> Right
 #define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
 
+#define SEC_PIP_PROBE		9	// Probe instant after any of the adapters
+					//
 #define SEC_EVENT_121		121	// ""
 #define SEC_EVENT_122		122	// ""
 #define SEC_EVENT_123		123	// ""

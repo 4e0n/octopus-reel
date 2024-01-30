@@ -68,7 +68,7 @@ int main(int argc,char *argv[]) {
  }
 
  p=QString::fromLatin1(argv[3]); pos=0;
- QIntValidator intValidator1(5,1800,NULL);
+ QIntValidator intValidator1(4,1800,NULL);
  if (intValidator1.validate(p,pos) != QValidator::Acceptable) {
   qDebug("Please enter a positive integer between 5 and 1800 as # of trials per block!");
   qDebug("Usage: octopus-patt <file name> <# of blocks> <# of trials in one block>");
@@ -94,7 +94,7 @@ int main(int argc,char *argv[]) {
 
  std::srand(time(NULL));
 
- triggerDomain="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+ triggerDomain="EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
  domainSize=triggerDomain.length();
 
  for (int i=0;i<trialCount;i++) {
