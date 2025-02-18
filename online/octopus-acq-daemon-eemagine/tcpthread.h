@@ -47,11 +47,13 @@ class TcpThread : public QThread {
 
   virtual void run() {
    while (*clientConnected) {
-    //emit sendData();
+    mutex->lock();
+     if (*tcpBufPIdx>*tcpBufCIdx) emit sendData();
+    mutex->unlock();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
    }
 
-   qDebug("octopus-acq-daemon: ..exiting TCP handler thread..");
+   qDebug("octopus_acqd: <tcpthread> Exiting thread..");
   }
 
  signals:

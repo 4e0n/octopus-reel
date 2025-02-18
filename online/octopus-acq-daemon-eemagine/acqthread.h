@@ -64,7 +64,7 @@ class AcqThread : public QThread {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
    if (amplifiers.size()<2) {
-    qDebug() << "Either of the amplifiers is offline!"; *daemonRunning=false; return;
+    qDebug() << "octopus_acqd: <acqthread_amp_setup> Either of the amplifiers is offline!"; *daemonRunning=false; return;
    } eegBufs.resize(amplifiers.size());
 
    // Sort the two amplifiers in vector for their serial numbers
@@ -103,16 +103,15 @@ class AcqThread : public QThread {
     eegStreams.push_back(s);
    }
    *eegImpedanceMode=false;
-   qDebug("octopus-acq-daemon: EEG upstream started..");
+   qDebug("octopus_acqd: <acqthread_switch2eeg> EEG upstream started..");
 #else
    amp0offset=amp1offset=20; t0=t1=0.0; dt=0.001; frqA=10.0; frqB=48.0;
 #endif
   }
 
-
   virtual void run() {
-   int sc,cc,sc0,sc1,tcpBufSize;
-   tcpBufSize=tcpBuffer->size();
+   int sc,cc,sc0,sc1;
+   int tcpBufSize=tcpBuffer->size();
 
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -199,13 +198,16 @@ class AcqThread : public QThread {
      qDebug() << "---------";
 #endif
 
-     tcpBuffer->resize(pivot1-pivot0);
-     for (unsigned int i=0;i<(pivot1-pivot0);i++) {
-      tcpS.amp1=buf0[(pivot0+i-convN2)%bufSize]; tcpS.amp2=buf1[(pivot0+i-convN2)%bufSize];
-      (*tcpBuffer)[i]=tcpS;
-     }
-     //update circular buffer consumer pointers
+     mutex->lock();
+      quint64 tcpDataSize=pivot1-pivot0;
+      for (quint64 i=0;i<tcpDataSize;i++) {
+       tcpS.amp1=buf0[(pivot0+i-convN2)%bufSize]; tcpS.amp2=buf1[(pivot0+i-convN2)%bufSize];
+       (*tcpBuffer)[(*tcpBufPIdx+i)%tcpBufSize]=tcpS;
+      }
+      (*tcpBufPIdx)+=tcpDataSize; // Update producer index
+     mutex->unlock();
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_msecs));
+     //qDebug("octopus_acqd: <acqthread> Data validated to buffer..");
     } // eegImpedanceMode
    } // daemonRunning
 
@@ -215,7 +217,7 @@ class AcqThread : public QThread {
    if (!(*eegImpedanceMode)) for (quint64 i=0;i<eegStreams.size();i++) delete eegStreams[i];
    for (quint64 i=0;i<amplifiers.size();i++) delete amplifiers[i];
 #endif
-   qDebug("octopus-acq-daemon: ..exiting EEG acquisition thread..");
+   qDebug("octopus_acqd: <acqthread> Exiting thread..");
   }
 
  private:
