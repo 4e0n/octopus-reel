@@ -18,6 +18,7 @@ QT += widgets network
 # Input
 HEADERS += acqdaemon.h \
            acqthread.h \
+           tcpthread.h \
 	   ../chninfo.h \
 	   ../sample.h \
 	   ../tcpsample.h \

@@ -34,32 +34,102 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../tcpsample.h"
 #include "../chninfo.h"
 #include "acqthread.h"
+#include "tcpthread.h"
 
 class AcqDaemon : public QTcpServer {
  Q_OBJECT
  public:
-  AcqDaemon(QObject *parent,QCoreApplication *app,
-            QString h,int comm,int data,chninfo *c): QTcpServer(parent) {
-   application=app; chnInfo=c; tcpBuffer.resize(chnInfo->probe_msecs);
+  AcqDaemon(QObject *parent,QCoreApplication *app,chninfo *c): QTcpServer(parent) {
+   application=app; chnInfo=c;
 
-   // TCP Buffer for subsequent acq data.. extra one for sampleset checkmark..
-   connected=false;
+   // Parse system config file for variables
+   QStringList cfgValidLines,opts,opts2,bufSection,netSection;
+   QFile cfgFile; QTextStream cfgStream;
+   QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_acqd.conf");
+   if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "octopus_acqd: <.conf> cannot load /etc/octopus_acqd.conf.";
+    qDebug() << "octopus_acqd: <.conf> Falling back to hardcoded defaults.";
+    confTcpBufSize=10; confHost="127.0.0.1";  confCommP=65002;  confDataP=65003;
+   } else { cfgStream.setDevice(&cfgFile);
+    while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); // Max Line Size
+     cfgLines.append(cfgLine); } cfgFile.close();
 
-   QHostAddress hostAddress(h);
+    // Parse config
+    for (int i=0;i<cfgLines.size();i++) { // Isolate valid lines
+     if (!(cfgLines[i].at(0)=='#') &&
+         cfgLines[i].contains('|')) cfgValidLines.append(cfgLines[i]); }
 
+    for (int i=0;i<cfgValidLines.size();i++) {
+     opts=cfgValidLines[i].split("|");
+          if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
+     else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
+     else { qDebug() << "octopus_acqd: <.conf> Unknown section in .conf file!";
+      app->quit();
+     }
+    }
+
+    // BUF
+    if (bufSection.size()>0) {
+     for (int i=0;i<bufSection.size();i++) { opts=bufSection[i].split("=");
+      if (opts[0].trimmed()=="PAST") { confTcpBufSize=opts[1].toInt();
+       if (!(confTcpBufSize >= 2 && confTcpBufSize <= 50)) {
+        qDebug() << "octopus_acqd: <.conf> BUF|PAST not within inclusive (2,50) seconds range!";
+        app->quit();
+       }
+      }
+     }
+    } else { confTcpBufSize=5000; }
+
+    // NET
+    if (netSection.size()>0) {
+     for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
+
+      if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
+       if (opts2.size()==3) { confHost=opts2[0].trimmed();
+        QHostInfo qhiAcq=QHostInfo::fromName(confHost);
+        confHost=qhiAcq.addresses().first().toString();
+        qDebug() << "octopus_acqd: <.conf> (this) Host IP is " << confHost;
+        confCommP=opts2[1].toInt(); confDataP=opts2[2].toInt();
+        // Simple port validation..
+        if ((!(confCommP >= 1024 && confCommP <= 65535)) ||
+            (!(confDataP >= 1024 && confDataP <= 65535))) {
+         qDebug() << "octopus_acqd: <.conf> Error in Hostname/IP and/or port settings!";
+         app->quit();
+        }
+       }
+      } else {
+       qDebug() << "octopus_acqd: <.conf> Parse error in Hostname/IP(v4) Address!";
+       app->quit();
+      }
+     }
+    } else {
+     confHost="127.0.0.1";  confCommP=65002;  confDataP=65003;
+    }
+   }
+
+   tcpBuffer.resize(confTcpBufSize*chnInfo->sampleRate); // in seconds, after which data is lost.
+
+   QHostAddress hostAddress(confHost);
    // Initialize Tcp Command Server
    commandServer=new QTcpServer(this);
    commandServer->setMaxPendingConnections(1);
    connect(commandServer,SIGNAL(newConnection()),this,SLOT(slotIncomingCommand()));
    setMaxPendingConnections(1);
 
-   if (!commandServer->listen(hostAddress,comm) || !listen(hostAddress,data)) {
-    qDebug("octopus-acq-daemon: Error starting command and/or data server(s)!");
+   if (!commandServer->listen(hostAddress,confCommP) || !listen(hostAddress,confDataP)) {
+    qDebug() << "octopus_acqd: Error starting command and/or data server(s)!";
     application->quit();
    } else {
-    qDebug(
-     "octopus-acq-daemon: Servers started.. Waiting for client connection..");
+    qDebug() << "octopus_acqd: Daemon started successfully..";
+    qDebug() << "octopus_acqd: Waiting for client connection..";
    }
+
+   tcpBuffer.resize(confTcpBufSize*chnInfo->sampleRate); tcpBufPIdx=tcpBufCIdx=0;
+
+   eegImpedanceMode=false;
+   acqThread=new AcqThread(this,chnInfo,&tcpBuffer,&tcpBufPIdx,&tcpBufCIdx,&daemonRunning,&eegImpedanceMode,&mutex);
+   //connect(acqThread,SIGNAL(finished()),acqThread,SLOT(deleteLater()));
+   acqThread->start(QThread::HighestPriority);
   }
 
  public slots:
@@ -91,6 +161,10 @@ class AcqDaemon : public QTcpServer {
                                                   sizeof(cs_command));
                        //dataSocket.flush();
                        commandSocket->flush(); break;
+     case CS_ACQ_SETMODE:
+		       if (csCmd.iparam[0]==0) eegImpedanceMode=true;
+		       else eegImpedanceMode=false;
+		       break;
      case CS_REBOOT:   qDebug("octopus-acq-daemon: System rebooting..");
                        system("/sbin/shutdown -r now"); commandSocket->close(); break;
      case CS_SHUTDOWN: qDebug("octopus-acq-daemon: System shutting down..");
@@ -104,22 +178,22 @@ class AcqDaemon : public QTcpServer {
  protected:
   // Data port "connection handler"..
   void incomingConnection(qintptr socketDescriptor) {
-   if (!connected) {
+   if (!clientConnected) {
     qDebug("octopus-acq-daemon: Incoming client connection..");
     if (!dataSocket.setSocketDescriptor(socketDescriptor)) {
-     qDebug("octopus-acq-daemon: TCP Socket Error!"); connected=false; return;
+     qDebug("octopus-acq-daemon: TCP Socket Error!"); clientConnected=false; return;
     } else {
      qDebug("octopus-acq-daemon:  ..accepted.. connecting..");
      connect(&dataSocket,SIGNAL(disconnected()),this,SLOT(slotDisconnected()));
      if (dataSocket.waitForConnected()) {
       //qDebug() << dataSocket.peerAddress();
-      connected=true;
+      clientConnected=true;
       qDebug("octopus-acq-daemon: Client TCP connection established.");
       // Launch thread responsible for sending acq.data asynchronously..
-      acqThread=new AcqThread(this,&tcpBuffer,chnInfo,&connected,&mutex);
+      tcpThread=new TcpThread(this,&tcpBuffer,&tcpBufPIdx,&tcpBufCIdx,&daemonRunning,&clientConnected,&mutex);
       // Delete thread if communication breaks..
-      connect(acqThread,SIGNAL(finished()),acqThread,SLOT(deleteLater()));
-      acqThread->start(QThread::HighestPriority);
+      connect(tcpThread,SIGNAL(finished()),tcpThread,SLOT(deleteLater()));
+      tcpThread->start(QThread::HighestPriority);
      } else {
       qDebug("octopus-acq-daemon: Cannot connect to Client TCP socket!!!");
      }
@@ -130,8 +204,8 @@ class AcqDaemon : public QTcpServer {
  private slots:
   void slotDisconnected() {
    disconnect(&dataSocket,SIGNAL(disconnected()),this,SLOT(slotDisconnected()));
-   connected=false;
-   while (acqThread->isRunning()); // Wait for thread termination
+   clientConnected=false;
+   while (tcpThread->isRunning()); // Wait for thread termination
    dataSocket.close();
    qDebug("octopus-acq-daemon: Client disconnected!");
   }
@@ -145,10 +219,16 @@ class AcqDaemon : public QTcpServer {
   }
 
  private:
-  QCoreApplication *application; AcqThread *acqThread; QMutex mutex;
-  QTcpServer *commandServer; QTcpSocket *commandSocket; QTcpSocket dataSocket;
+  QCoreApplication *application; QTcpServer *commandServer;
+  QTcpSocket *commandSocket; QTcpSocket dataSocket;
+  QVector<tcpsample> tcpBuffer; quint64 tcpBufPIdx,tcpBufCIdx;
+  bool daemonRunning,eegImpedanceMode,clientConnected;
+
+  AcqThread *acqThread; TcpThread *tcpThread; QMutex mutex;
   cs_command csCmd; chninfo *chnInfo;
-  QVector<tcpsample> tcpBuffer; bool connected;
+
+  QString confHost; 
+  int confTcpBufSize,confCommP,confDataP;
 };
 
 #endif

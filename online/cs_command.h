@@ -60,6 +60,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define CS_ACQ_TRIGTEST			(0x1001)
 
 /* -------------------------------------------------- */
+#define CS_ACQ_SETMODE			(0x5001)
+/* -------------------------------------------------- */
 #define CS_REBOOT			(0xFFFE)
 #define CS_SHUTDOWN			(0xFFFF)
 
