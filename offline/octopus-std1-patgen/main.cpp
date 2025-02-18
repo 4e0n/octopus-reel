@@ -94,7 +94,7 @@ int main(int argc,char *argv[]) {
 
  std::srand(time(NULL));
 
- triggerDomain="EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+ triggerDomain="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
  domainSize=triggerDomain.length();
 
  for (int i=0;i<trialCount;i++) {
