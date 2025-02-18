@@ -144,6 +144,8 @@ class StimClient : public QMainWindow {
    paraITDTompresAction=new QAction("ITD Optimum Adapter-Probe Offset",this);
    paraITDPipCTrainAction=new QAction("ITD Pip vs. CTrain - 500ms Adapter-Probe",this);
    paraITDPipRandAction=new QAction("ITD Pip vs. CTrain - 400-800ms(rnd) Adapter-Probe",this);
+   para0021aAction=new QAction("ITD Para 0021a Adapter-Probe",this);
+   para0021bAction=new QAction("ITD Para 0021b Adapter-Probe",this);
    paraLoadPatAction->setStatusTip(
     "Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
@@ -169,6 +171,8 @@ class StimClient : public QMainWindow {
     "Testing of ITD Linearity - Exp.3c");
    paraITDPipRandAction->setStatusTip(
     "Testing of ITD vs. Tone Adaptation - RND");
+   para0021aAction->setStatusTip("ITD Para 0021a Adapter-Probe");
+   para0021bAction->setStatusTip("ITD Para 0021b Adapter-Probe");
    connect(paraLoadPatAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmLoadPattern()));
    connect(paraClickAction,SIGNAL(triggered()),
@@ -195,6 +199,10 @@ class StimClient : public QMainWindow {
            this,SLOT(slotParadigmPipCTrain()));
    connect(paraITDPipRandAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmPipRand()));
+   connect(para0021aAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigm0021a()));
+   connect(para0021bAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigm0021b()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
@@ -208,6 +216,8 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDTompresAction);
    paraMenu->addAction(paraITDPipCTrainAction);
    paraMenu->addAction(paraITDPipRandAction);
+   paraMenu->addAction(para0021aAction);
+   paraMenu->addAction(para0021bAction);
 
    // *** BUTTONS AT THE TOP ***
    lightsOnButton=new QPushButton("Lights On",this);
@@ -562,6 +572,13 @@ class StimClient : public QMainWindow {
   void slotParadigmPipRand() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_RAND,0,0);
   }
+  void slotParadigm0021a() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A,0,0);
+  }
+  void slotParadigm0021b() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021B,0,0);
+  }
+
 
  private:
   QApplication *application;
@@ -591,7 +608,8 @@ class StimClient : public QMainWindow {
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action,
 	  *paraITDOppChnAction,*paraITDOppChn2Action,
 	  *paraITDLinTestAction,*paraITDLinTest2Action,
-	  *paraITDTompresAction,*paraITDPipCTrainAction,*paraITDPipRandAction;
+	  *paraITDTompresAction,*paraITDPipCTrainAction,*paraITDPipRandAction,
+	  *para0021aAction,*para0021bAction;
 
   // Calibration
   int calPts; QVector<float> calA,calB;

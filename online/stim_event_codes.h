@@ -194,6 +194,28 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #define SEC_PIP_PROBE		9	// Probe instant after any of the adapters
 					//
+#define PARA_0021A_L_L600	1	// PARA0021 L->L600 (Adapter->Probe)
+#define PARA_0021A_L_L200	2	// PARA0021 L->L200 (Adapter->Probe)
+#define PARA_0021A_L_C		3	// PARA0021 L->C    (Adapter->Probe)
+#define PARA_0021A_L_R200	4	// PARA0021 L->R200 (Adapter->Probe)
+#define PARA_0021A_L_R600	5	// PARA0021 L->R600 (Adapter->Probe)
+#define PARA_0021A_R_L600	6	// PARA0021 R->L600 (Adapter->Probe)
+#define PARA_0021A_R_L200	7	// PARA0021 R->L200 (Adapter->Probe)
+#define PARA_0021A_R_C		8	// PARA0021 R->C    (Adapter->Probe)
+#define PARA_0021A_R_R200	9	// PARA0021 R->R200 (Adapter->Probe)
+#define PARA_0021A_R_R600	10	// PARA0021 R->R600 (Adapter->Probe)
+#define PARA_0021A_C_C		11	// PARA0021 C->C    (Adapter->Probe)
+					//
+#define PARA_0021B_L600		1	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L350		2	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L200		3	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L100		4	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_C		5	// PARA0021 C    (50ms ITD burst)
+#define PARA_0021B_R100		6	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R200		7	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R350		8	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R600		9	// PARA0021 R600 (50ms ITD burst)
+					//
 #define SEC_EVENT_121		121	// ""
 #define SEC_EVENT_122		122	// ""
 #define SEC_EVENT_123		123	// ""
