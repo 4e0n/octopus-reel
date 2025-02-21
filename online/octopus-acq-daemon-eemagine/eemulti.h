@@ -1,6 +1,8 @@
 #ifndef _EEMULTI_H
 #define _EEMULTI_H
 
+#define EEMAGINE
+
 typedef struct _eemulti {
 #ifdef EEMAGINE
  eemagine::sdk::amplifier *amp;
@@ -8,7 +10,6 @@ typedef struct _eemulti {
  eemagine::sdk::stream *stream;
  eemagine::sdk::buffer buffer;
 #else
- unsigned int ampOffset;
  unsigned int t;
 #endif
  unsigned int smpCount; // data count int buffer

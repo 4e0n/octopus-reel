@@ -34,7 +34,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <thread>
 #include <cmath>
 
-//#define EEMAGINE
+#define EEMAGINE
 
 #ifdef EEMAGINE
 #define _UNICODE
@@ -88,7 +88,7 @@ class AcqThread : public QThread {
    amp0offset=amp1offset=20;
    dc0=dc1=0.0; // to simulate High-Pass
    ampl0=ampl1=0.000100; // 100uV mimicks EEG
-   t0=t1=0.0; dt=1.0/(float)(chnInfo->sampleRate); frqA=10.0; frqB=48.0;
+   dt=1.0/(float)(chnInfo->sampleRate); frqA=10.0; frqB=48.0;
 #endif
   }
 
@@ -146,22 +146,25 @@ class AcqThread : public QThread {
    for (unsigned int i=0;i<snos.size();i++) for (unsigned int j=0;j<snosU.size();j++)
     if (snos[i]==snosU[j]) eeAmps.push_back(eeAmpsU[j]);
 
-   // ----- List unsorted vs. sorted
-
    // Construct main EE structure
    for (amplifier* eeAmp:eeAmps) { eemulti e; e.amp=eeAmp;
     // Select same channels for all eeAmps (i.e. All 64/64 referentials and 2/24 of bipolars)
     //e.chnList=e.amp->getChannelList(0xffffffffffffffff,0x0000000000000003);
     e.chnList=e.amp->getChannelList(0x0000000000000000,0x0000000000000001);
     e.cBufIdx=convN; e.cBufIdxP=0; cBufSz=chnInfo->probe_eeg_msecs*10;
-    cBuf.resize(cBufSz); cBufF=resize(cBufSz); imps.resize(chnInfo->physChnCount);
+    e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
     ee.push_back(e);
    }
+
+   // ----- List unsorted vs. sorted
+   //for (unsigned int i=0;i<ee.size();i++) qDebug() << stoi(ee[i].amp->getSerialNumber());
+
 #else
    // Construct main EE structure
    for (int i=0;i<EE_AMPCOUNT;i++) { eemulti e;
     e.cBufIdx=convN; e.cBufIdxP=0; cBufSz=chnInfo->probe_eeg_msecs*10;
     e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
+    e.dc=0; e.ampl=0.000100; e.t=0.0;
     ee.push_back(e);
    }
 #endif
@@ -194,8 +197,8 @@ class AcqThread : public QThread {
 #else
      for (eemulti& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
       for (unsigned int k=0;k<chnCount-2;k++)
-       smp.data[k]=dc0+ampl0*cos(2.0*M_PI*frqA*t0)+(ampl0/1.0)*sin(2.0*M_PI*frqB*t0);
-      smp.trigger=0; smp.offset=e.ampOffset; e.t+=dt; e.ampOffset++;
+       smp.data[k]=dc+ampl*cos(2.0*M_PI*frqA*e.t)+(ampl/1.0)*sin(2.0*M_PI*frqB*e.t);
+      smp.trigger=0; smp.offset=e.absSmpIdx; e.t+=dt; e.absSmpIdx++;
       e.cBuf[(e.cBufIdx+j)%cBufSz]=smp;
      }
 #endif
@@ -209,7 +212,8 @@ class AcqThread : public QThread {
      for (eemulti& e:ee) e.cBufIdx+=e.smpCount;
 
 #ifdef EEMAGINE
-     qDebug() << "CHK0: " << sc0 << " " << eeBuf0Chk << " -- CHK1:" << sc1 << " " <<eeBuf1Chk;
+     qDebug() << "Sample count vs. Checkpoint: SC0:" << ee[0].smpCount << " CHK0:" << ee[0].absSmpIdx;
+     qDebug() << "                             SC1:" << ee[1].smpCount << " CHK1:" << ee[1].absSmpIdx;
 #endif
 
      if (ee[0].cBufIdxP < ee[1].cBufIdxP) pivot0=ee[0].cBufIdxP; else pivot0=ee[1].cBufIdxP;
@@ -264,7 +268,7 @@ class AcqThread : public QThread {
   int eeBuf0Chk,eeBuf1Chk;
 #else
 
-   quint64 amp0offset,amp1offset; float dc0,dc1,ampl0,ampl1,frqA,frqB,t0,t1,dt;
+   quint64 amp0offset,amp1offset; float dc,ampl,frqA,frqB,dt;
 #endif
 
 };

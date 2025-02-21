@@ -132,9 +132,9 @@ void parseConfig(QStringList cfgLines) {
  chnInfo.physChnMaxCount=csCmd.iparam[6];
  tChns=chnInfo.totalChnCount=csCmd.iparam[7];
  chnInfo.totalCount=csCmd.iparam[8];
- chnInfo.probe_msecs=csCmd.iparam[9];
+ chnInfo.probe_eeg_msecs=csCmd.iparam[9];
 
- acqCurData.resize(chnInfo.probe_msecs);
+ acqCurData.resize(chnInfo.probe_eeg_msecs);
 
  //for (int i=0;i<2*chnInfo.physChnCount;i++) { calM.append(1.); calN.append(0.); }
  //calA.resize(2*chnInfo.physChnCount); calB.resize(2*chnInfo.physChnCount);

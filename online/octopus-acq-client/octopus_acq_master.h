@@ -565,10 +565,10 @@ class AcqMaster : QObject {
    QVector<float> *avgInChn,*stdInChn; float n1,k1,k2,z;
    QDataStream acqDataStream(acqDataSocket);
 
-   while (acqDataSocket->bytesAvailable() >= chnInfo.probe_msecs*(unsigned int)(sizeof(tcpsample))) {
-    acqDataStream.readRawData((char*)(acqCurData.data()),chnInfo.probe_msecs*(unsigned int)(sizeof(tcpsample)));
+   while (acqDataSocket->bytesAvailable() >= chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample))) {
+    acqDataStream.readRawData((char*)(acqCurData.data()),chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample)));
 
-    for (int zumbek=0;zumbek<chnInfo.probe_msecs;zumbek++) {
+    for (int zumbek=0;zumbek<chnInfo.probe_eeg_msecs;zumbek++) {
 
      if (((unsigned int)(acqCurData[zumbek].amp1.offset)-amp1chkP)!=1 || ((unsigned int)(acqCurData[zumbek].amp2.offset)-amp2chkP)!=1)
       qDebug() << "Offset leak!!!: " << (unsigned int)(acqCurData[zumbek].amp1.offset) << " " << amp1chkP \
