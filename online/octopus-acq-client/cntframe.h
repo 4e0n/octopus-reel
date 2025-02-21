@@ -122,13 +122,13 @@ class CntFrame : public QFrame {
     if (acqM->notch) {
     scrollPainter.setPen(Qt::black); // Filtered in Red
     scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-     wX[curCol]-1,scrCurY-(int)(scrPrvDataFX*chHeight*acqM->cntAmpX/400.0),
-     wX[curCol],scrCurY-(int)(scrCurDataFX*chHeight*acqM->cntAmpX/400.0));
+     wX[curCol]-1,scrCurY-(int)(scrPrvDataFX*chHeight*acqM->cntAmpX/4.0),
+     wX[curCol],scrCurY-(int)(scrCurDataFX*chHeight*acqM->cntAmpX/4.0));
     } else {
     scrollPainter.setPen(Qt::black);
     scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-     wX[curCol]-1,scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX/400.0),
-     wX[curCol],scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX/400.0));
+     wX[curCol]-1,scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX/4.0),
+     wX[curCol],scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX/4.0));
     }
 //      if (i==0) qDebug("%2.2f",scrCurDataX);
    }

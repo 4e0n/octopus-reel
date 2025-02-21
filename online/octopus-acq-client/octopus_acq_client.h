@@ -189,15 +189,22 @@ class AcqClient : public QMainWindow {
                              mainTabWidget->height()-54,60,20);
     cntSpdBG->addButton(dummyButton,i); }
 
-   cntAmpBG->button(0)->setText("1V");   cntAmpBG->button(1)->setText("10uV");
-   cntAmpBG->button(2)->setText("500mV");  cntAmpBG->button(3)->setText("50uV");
-   cntAmpBG->button(4)->setText("200mV"); cntAmpBG->button(5)->setText("200uV");
-   cntAmpBG->button(5)->setDown(true);
-   cntSpdBG->button(0)->setText("4s");    cntSpdBG->button(1)->setText("2s");
-   cntSpdBG->button(2)->setText("800ms"); cntSpdBG->button(3)->setText("400ms");
-   cntSpdBG->button(4)->setText("200ms"); cntSpdBG->button(2)->setDown(true);
+   cntAmpBG->button(0)->setText("1mV");
+   cntAmpBG->button(1)->setText("500uV");
+   cntAmpBG->button(2)->setText("200uV");
+   cntAmpBG->button(3)->setText("100uv");
+   cntAmpBG->button(4)->setText("50uV");
+   cntAmpBG->button(5)->setText("20uV");
+   cntAmpBG->button(3)->setDown(true);
 
-   acqM->cntAmpX=(100000.0/1000.0);
+   cntSpdBG->button(0)->setText("4s");
+   cntSpdBG->button(1)->setText("2s");
+   cntSpdBG->button(2)->setText("800ms");
+   cntSpdBG->button(3)->setText("400ms");
+   cntSpdBG->button(4)->setText("200ms");
+   cntSpdBG->button(2)->setDown(true);
+
+   acqM->cntAmpX=(1000000.0/100.0);
    connect(cntAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntAmp(int)));
    connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntSpeed(int)));
 
@@ -232,12 +239,12 @@ class AcqClient : public QMainWindow {
 
   void slotCntAmp(int x) {
    switch (x) {
-    case 0: acqM->cntAmpX=(100000.0/10.0);cntAmpBG->button(5)->setDown(false);break;
-    case 1: acqM->cntAmpX=(100000.0/20.0);cntAmpBG->button(5)->setDown(false);break;
-    case 2: acqM->cntAmpX=(100000.0/50.0);cntAmpBG->button(5)->setDown(false);break;
-    case 3: acqM->cntAmpX=(100000.0/100.0);cntAmpBG->button(5)->setDown(false);break;
-    case 4: acqM->cntAmpX=(100000.0/200.0);cntAmpBG->button(5)->setDown(false);break;
-    case 5: acqM->cntAmpX=(100000.0/500.0);break;
+    case 0: acqM->cntAmpX=(1000000.0/1000.0);cntAmpBG->button(3)->setDown(false);break;
+    case 1: acqM->cntAmpX=(1000000.0/500.0);cntAmpBG->button(3)->setDown(false);break;
+    case 2: acqM->cntAmpX=(1000000.0/200.0);cntAmpBG->button(3)->setDown(false);break;
+    case 3: acqM->cntAmpX=(1000000.0/100.0);break;
+    case 4: acqM->cntAmpX=(1000000.0/50.0);cntAmpBG->button(3)->setDown(false);break;
+    case 5: acqM->cntAmpX=(1000000.0/20.0);cntAmpBG->button(3)->setDown(false);break;
    }
   }
 

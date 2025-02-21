@@ -50,6 +50,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
+#else
 #endif
 
 #include "../chninfo.h"
@@ -59,12 +60,13 @@ int main(int argc,char *argv[]) {
  QCoreApplication app(argc,argv);
 
  chninfo chnInfo;
- chnInfo.sampleRate=1000;
- chnInfo.refChnCount=refChnCount; chnInfo.refChnMaxCount=64;
- chnInfo.bipChnCount=bipChnCount; chnInfo.bipChnMaxCount=24;
- chnInfo.physChnCount=physChnCount; chnInfo.totalChnCount=totalChnCount;
- chnInfo.totalCount=2*totalChnCount;
- chnInfo.probe_msecs=100; // 100ms probetime
+ chnInfo.sampleRate=SAMPLE_RATE; // 1000sps
+ chnInfo.refChnCount=REF_CHN_COUNT; chnInfo.refChnMaxCount=REF_CHN_MAXCOUNT;
+ chnInfo.bipChnCount=BIP_CHN_COUNT; chnInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
+ chnInfo.physChnCount=PHYS_CHN_COUNT; chnInfo.totalChnCount=TOTAL_CHN_COUNT;
+ chnInfo.totalCount=EE_AMPCOUNT*TOTAL_CHN_COUNT;
+ chnInfo.probe_eeg_msecs=100; // 100ms probetime
+ chnInfo.probe_impedance_msecs=1000; // 1000ms probetime
 
  // *** BACKEND VALIDATION ***
 

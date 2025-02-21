@@ -3,7 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = octopus-acq-daemon-eemagine
+TARGET = octopus_acqd
 INCLUDEPATH += .
 QT += widgets network
 #LIBS += -leego-SDK
@@ -19,6 +19,7 @@ QT += widgets network
 HEADERS += acqdaemon.h \
            acqthread.h \
            tcpthread.h \
+           eemulti.h \
 	   ../chninfo.h \
 	   ../sample.h \
 	   ../tcpsample.h \

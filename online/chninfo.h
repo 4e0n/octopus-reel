@@ -11,7 +11,8 @@ typedef struct _chninfo {
  unsigned int physChnMaxCount;
  unsigned int totalChnCount;
  unsigned int totalCount; // Chncount among all connected amplifiers
- unsigned int probe_msecs;
+ unsigned int probe_eeg_msecs;
+ unsigned int probe_impedance_msecs;
 } chninfo;
 
 #endif

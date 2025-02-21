@@ -66,7 +66,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define CS_SHUTDOWN			(0xFFFF)
 
 typedef struct _cs_command { /* Client-server communication structure. */
- unsigned short cmd; int iparam[10]; float fparam[10];
+ unsigned short cmd; int iparam[20]; float fparam[20];
 } cs_command;
 
 #endif

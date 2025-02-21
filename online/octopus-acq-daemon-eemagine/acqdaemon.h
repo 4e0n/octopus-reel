@@ -157,7 +157,8 @@ class AcqDaemon : public QTcpServer {
                        csCmd.iparam[6]=chnInfo->physChnMaxCount;
                        csCmd.iparam[7]=chnInfo->totalChnCount;
                        csCmd.iparam[8]=chnInfo->totalCount;
-                       csCmd.iparam[9]=chnInfo->probe_msecs;
+                       csCmd.iparam[9]=chnInfo->probe_eeg_msecs;
+                       csCmd.iparam[10]=chnInfo->probe_impedance_msecs;
                        commandStream.writeRawData((const char*)(&csCmd),
                                                   sizeof(cs_command));
                        //dataSocket.flush();
