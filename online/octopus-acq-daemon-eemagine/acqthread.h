@@ -34,13 +34,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <thread>
 #include <cmath>
 
-#define EEMAGINE
+//#define EEMAGINE
 
 #ifdef EEMAGINE
 #define _UNICODE
 #define EEGO_SDK_BIND_DYNAMIC
 #include <eemagine/sdk/factory.h>
 #include <eemagine/sdk/amplifier.h>
+#else
+#include "eesynth.h"
 #endif
 
 const int EE_AMPCOUNT=2;
@@ -50,8 +52,7 @@ const int EE_BIP_GAIN=4.;
 #include "../chninfo.h"
 #include "../sample.h"
 #include "../tcpsample.h"
-
-#include "eemulti.h"
+#include "eex.h"
 
 class AcqThread : public QThread {
  Q_OBJECT
@@ -68,50 +69,60 @@ class AcqThread : public QThread {
    *eegImpedanceMode=true;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
-   // Dispose previous streams of amps.
-   for (eemulti& e:ee) delete e.stream;
-   // Initialize impedance streams of amps.
-   for (eemulti& e:ee) e.stream=e.amp->OpenImpedanceStream(e.chnList);
-   qDebug("octopus_acqd: <acqthread_switch2impedance> Switched to Impedance Measurement mode..");
+#else
+   using namespace eesynth;
 #endif
+   // Dispose previous streams of amps.
+   for (eex& e:ee) delete e.str;
+   // Initialize impedance streams of amps.
+   for (eex& e:ee) e.str=e.amp->OpenImpedanceStream(e.chnList);
+   qDebug("octopus_acqd: <acqthread_switch2impedance> Switched to Impedance Measurement mode..");
   }
 
   void switchToEEGMode() { // Will be checked for mutual exclusion
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
-   // Dispose previous streams of amps (if already in Impedance Measurement mode).
-   if (*eegImpedanceMode) { for (eemulti& e:ee) delete e.stream; *eegImpedanceMode=false; }
-   // Initialize EEG streams of amps.
-   for (eemulti& e:ee) e.stream=e.amp->OpenEegStream(chnInfo->sampleRate,EE_REF_GAIN,EE_BIP_GAIN,e.chnList);
-   qDebug("octopus_acqd: <acqthread_switch2eeg> EEG upstream started..");
 #else
-   amp0offset=amp1offset=20;
-   dc0=dc1=0.0; // to simulate High-Pass
-   ampl0=ampl1=0.000100; // 100uV mimicks EEG
-   dt=1.0/(float)(chnInfo->sampleRate); frqA=10.0; frqB=48.0;
+   using namespace eesynth;
 #endif
+   // Dispose previous streams of amps (if already in Impedance Measurement mode).
+   if (*eegImpedanceMode) { for (eex& e:ee) delete e.str; *eegImpedanceMode=false; }
+   // Initialize EEG streams of amps.
+   for (eex& e:ee) e.str=e.amp->OpenEegStream(chnInfo->sampleRate,EE_REF_GAIN,EE_BIP_GAIN,e.chnList);
+   qDebug("octopus_acqd: <acqthread_switch2eeg> EEG upstream started..");
+
+//   amp0offset=amp1offset=20;
+//   dc=0.0; // to simulate High-Pass
+//   ampl=0.000100; // 100uV mimicks EEG
+//   dt=1.0/(float)(chnInfo->sampleRate); frqA=10.0; frqB=48.0;
+
   }
 
   void getImpedanceData() {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
-   for (eemulti& e:ee) {
+#else
+   using namespace eesynth;
+#endif
+   for (eex& e:ee) {
     try {
-     e.buffer=e.stream->getData();
+     e.buf=e.str->getData();
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception:" << ex.what() << std::endl;
     }
    }
-#endif
   }
 
   void getEegData() {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
-   for (eemulti& e:ee) {
+#else
+   using namespace eesynth;
+#endif
+   for (eex& e:ee) {
     try {
-     e.buffer=e.stream->getData();
-     e.smpCount=e.buffer.getSampleCount(); chnCount=e.buffer.getChannelCount();
+     e.buf=e.str->getData();
+     e.smpCount=e.buf.getSampleCount(); chnCount=e.buf.getChannelCount();
      if (chnCount!=chnInfo->totalChnCount) qDebug() << "octopus_acqd: <getEegData> Channel count mismatch!!!";
      //qDebug() << "Amp " << i+1 << ": " << smpCount << " samples," << chnCount << " channels.";
     } catch (const exceptions::internalError& ex) {
@@ -119,10 +130,8 @@ class AcqThread : public QThread {
     }
     e.cBufIdxP=e.cBufIdx;
    }
-#else
-   for (eemulti& e:ee) e.smpCount=chnInfo->probe_eeg_msecs;
-   chnCount=TOTAL_CHN_COUNT;
-#endif
+//   for (eex& e:ee) e.smpCount=chnInfo->probe_eeg_msecs;
+//   chnCount=TOTAL_CHN_COUNT;
   }
 
 // ------------------------------------------------
@@ -133,8 +142,10 @@ class AcqThread : public QThread {
    // Initial setup
 
 #ifdef EEMAGINE
-   using namespace eemagine::sdk;
-   factory eeFact("libeego-SDK.so");
+   using namespace eemagine::sdk; factory eeFact("libeego-SDK.so");
+#else
+   using namespace eesynth; factory eeFact;
+#endif
    std::vector<amplifier*> eeAmpsU,eeAmps; std::vector<unsigned int> snosU,snos; // Unsorted vs. sorted
    eeAmpsU=eeFact.getAmplifiers();
    if (eeAmpsU.size()<EE_AMPCOUNT) {
@@ -147,7 +158,7 @@ class AcqThread : public QThread {
     if (snos[i]==snosU[j]) eeAmps.push_back(eeAmpsU[j]);
 
    // Construct main EE structure
-   for (amplifier* eeAmp:eeAmps) { eemulti e; e.amp=eeAmp;
+   for (amplifier* eeAmp:eeAmps) { eex e; e.amp=eeAmp;
     // Select same channels for all eeAmps (i.e. All 64/64 referentials and 2/24 of bipolars)
     //e.chnList=e.amp->getChannelList(0xffffffffffffffff,0x0000000000000003);
     e.chnList=e.amp->getChannelList(0x0000000000000000,0x0000000000000001);
@@ -159,15 +170,14 @@ class AcqThread : public QThread {
    // ----- List unsorted vs. sorted
    //for (unsigned int i=0;i<ee.size();i++) qDebug() << stoi(ee[i].amp->getSerialNumber());
 
-#else
    // Construct main EE structure
-   for (int i=0;i<EE_AMPCOUNT;i++) { eemulti e;
-    e.cBufIdx=convN; e.cBufIdxP=0; cBufSz=chnInfo->probe_eeg_msecs*10;
-    e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
-    e.dc=0; e.ampl=0.000100; e.t=0.0;
-    ee.push_back(e);
-   }
-#endif
+//   for (int i=0;i<EE_AMPCOUNT;i++) { eex e;
+//    e.cBufIdx=convN; e.cBufIdxP=0; cBufSz=chnInfo->probe_eeg_msecs*10;
+//    e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
+//    e.t=0.0;
+//    ee.push_back(e);
+//   }
+
    switchToEEGMode();
 
    // Main Loop
@@ -176,9 +186,9 @@ class AcqThread : public QThread {
     if (*eegImpedanceMode) {
 
      getImpedanceData();
-#ifdef EEMAGINE
-     for (eemulti& e:ee) for (unsigned int j=0;j<e.chnList.size();j++) e.imps[j]=e.buffer.getSample(j,0);
-#endif
+
+     for (eex& e:ee) for (unsigned int j=0;j<e.chnList.size();j++) e.imps[j]=e.buf.getSample(j,0);
+
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_impedance_msecs));
 
     } else {
@@ -186,45 +196,41 @@ class AcqThread : public QThread {
      getEegData();
     
 // ---------------------------------------------------------------------------------------------------
-#ifdef EEMAGINE
-     for (eemulti& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
-      for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=e.buffer.getSample(k,j);
-      smp.trigger=e.buffer.getSample(chnCount-2,j);
-      smp.offset=e.absSmpIdx=e.buffer.getSample(chnCount-1,j);
+
+     for (eex& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
+      for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=e.buf.getSample(k,j);
+      smp.trigger=e.buf.getSample(chnCount-2,j);
+      smp.offset=e.absSmpIdx=e.buf.getSample(chnCount-1,j);
       e.cBuf[(e.cBufIdx+j)%cBufSz]=smp;
       //if (j==e.smpCount-1) e.absSmpIdx=smp.offset;
      }
-#else
-     for (eemulti& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
-      for (unsigned int k=0;k<chnCount-2;k++)
-       smp.data[k]=dc+ampl*cos(2.0*M_PI*frqA*e.t)+(ampl/1.0)*sin(2.0*M_PI*frqB*e.t);
-      smp.trigger=0; smp.offset=e.absSmpIdx; e.t+=dt; e.absSmpIdx++;
-      e.cBuf[(e.cBufIdx+j)%cBufSz]=smp;
-     }
-#endif
+//     for (eex& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
+//      for (unsigned int k=0;k<chnCount-2;k++)
+//       smp.data[k]=dc+ampl*cos(2.0*M_PI*frqA*e.t)+(ampl/1.0)*sin(2.0*M_PI*frqB*e.t);
+//      smp.trigger=0; smp.offset=e.absSmpIdx; e.t+=dt; e.absSmpIdx++;
+//      e.cBuf[(e.cBufIdx+j)%cBufSz]=smp;
+//     }
+
      // Filtering
-     for (eemulti& e:ee) for (unsigned int j=0;j<chnCount-2;j++)
+     for (eex& e:ee) for (unsigned int j=0;j<chnCount-2;j++)
       for (int k=-convN2;k<(int)(e.smpCount)-convN2;k++) {
        sum=0.; for (int m=0;m<convN;m++) sum+=e.cBuf[(e.cBufIdx+k+m)%cBufSz].data[j];
        e.cBuf[(e.cBufIdx+k+convN2)%cBufSz].dataF[j]=sum/convN;
       }
 
-     for (eemulti& e:ee) e.cBufIdx+=e.smpCount;
+     for (eex& e:ee) e.cBufIdx+=e.smpCount;
 
-#ifdef EEMAGINE
-     qDebug() << "Sample count vs. Checkpoint: SC0:" << ee[0].smpCount << " CHK0:" << ee[0].absSmpIdx;
-     qDebug() << "                             SC1:" << ee[1].smpCount << " CHK1:" << ee[1].absSmpIdx;
-#endif
+//     qDebug() << "Sample count vs. Checkpoint: SC0:" << ee[0].smpCount << " CHK0:" << ee[0].absSmpIdx;
+//     qDebug() << "                             SC1:" << ee[1].smpCount << " CHK1:" << ee[1].absSmpIdx;
 
      if (ee[0].cBufIdxP < ee[1].cBufIdxP) pivot0=ee[0].cBufIdxP; else pivot0=ee[1].cBufIdxP;
      if (ee[0].cBufIdx < ee[1].cBufIdx)   pivot1=ee[0].cBufIdx;  else pivot1=ee[1].cBufIdx;
 
-#ifdef DEBUG
-     qDebug() << "Indices (idx, Gidx Previous vs. actual)";
-     qDebug() << "Buf0Idx P,N (Amp1): " << ee[0].cBufIdxP << " " << ee[0].cBufIdx << " -- (Amp 2):" << ee[1].cBufIdxP << " " << ee[1].cBufIdx;
-     qDebug() << "Pivot: " << pivot0 << " " << pivot1;
-     qDebug() << "---------";
-#endif
+//     qDebug() << "Indices (idx, Gidx Previous vs. actual)";
+//     qDebug() << "Buf0Idx P,N (Amp1): " << ee[0].cBufIdxP << " " << ee[0].cBufIdx << " -- (Amp 2):" << ee[1].cBufIdxP << " " << ee[1].cBufIdx;
+//     qDebug() << "Pivot: " << pivot0 << " " << pivot1;
+//     qDebug() << "---------";
+
 // ---------------------------------------------------------------------------------------------------
 
      mutex->lock();
@@ -242,9 +248,9 @@ class AcqThread : public QThread {
 
    // Stop EEG Stream
    //mutex->lock(); mutex->unlock();
-#ifdef EEMAGINE
-   for (eemulti& e:ee) { delete e.stream; delete e.amp; }
-#endif
+
+   for (eex& e:ee) { delete e.str; delete e.amp; }
+
    qDebug("octopus_acqd: <acqthread> Exiting thread..");
   }
 
@@ -259,18 +265,17 @@ class AcqThread : public QThread {
 
   int convN2,convN,cBufSz;
 
-  std::vector<eemulti> ee;
+  std::vector<eex> ee;
 
   unsigned int smpCount,chnCount;
 
 #ifdef EEMAGINE
   std::vector<eemagine::sdk::amplifier*> eeAmpsU;
-  int eeBuf0Chk,eeBuf1Chk;
 #else
-
-   quint64 amp0offset,amp1offset; float dc,ampl,frqA,frqB,dt;
+  std::vector<eesynth::amplifier*> eeAmpsU;
 #endif
-
+  int eeBuf0Chk,eeBuf1Chk;
+//  quint64 amp0offset,amp1offset; float dc,ampl,frqA,frqB,dt;
 };
 
 #endif

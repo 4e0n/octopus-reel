@@ -1,17 +1,20 @@
-#ifndef _EEMULTI_H
-#define _EEMULTI_H
+#ifndef _EEX_H
+#define _EEX_H
 
-#define EEMAGINE
+//#define EEMAGINE
 
-typedef struct _eemulti {
 #ifdef EEMAGINE
- eemagine::sdk::amplifier *amp;
- std::vector<eemagine::sdk::channel> chnList;
- eemagine::sdk::stream *stream;
- eemagine::sdk::buffer buffer;
+using namespace eemagine::sdk;
 #else
- unsigned int t;
+using namespace eesynth;
 #endif
+
+typedef struct _eex {
+ amplifier *amp;
+ std::vector<channel> chnList;
+ stream *str;
+ buffer buf;
+ unsigned int t;
  unsigned int smpCount; // data count int buffer
  //unsigned int chnCount; // channel count int buffer -- redundant, to be asserted
  unsigned int absSmpIdx; // Absolute Sample Index, as sent from the amplifier
@@ -19,6 +22,6 @@ typedef struct _eemulti {
  quint64 cBufIdx,cBufIdxP;
  std::vector<sample> cBuf;
  std::vector<sample> cBufF;
-} eemulti;
+} eex;
 
 #endif

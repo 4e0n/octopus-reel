@@ -19,7 +19,7 @@ QT += widgets network
 HEADERS += acqdaemon.h \
            acqthread.h \
            tcpthread.h \
-           eemulti.h \
+           eex.h \
 	   ../chninfo.h \
 	   ../sample.h \
 	   ../tcpsample.h \
