@@ -1,13 +1,12 @@
 #ifndef _TCPSAMPLE_H
 #define _TCPSAMPLE_H
 
+#include "../acqglobals.h"
+
 #include "sample.h"
 
 typedef struct _tcpsample {
- float marker1;
- sample amp1;
- float marker2;
- sample amp2;
+ sample amp[EE_AMPCOUNT];
  unsigned int trigger;
 } tcpsample;
 

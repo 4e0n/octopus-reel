@@ -83,7 +83,7 @@ class AcqMaster : QObject {
    connect(acqDataSocket,SIGNAL(error(QAbstractSocket::SocketError)),
            this,SLOT(slotAcqDataError(QAbstractSocket::SocketError)));
 
-   amp1chkP=amp2chkP=0; globalCounter=0;
+   amp0chkP=amp1chkP=0; globalCounter=0;
 
    // *** INITIAL VALUES OF RUNTIME VARIABLES ***
 
@@ -570,13 +570,13 @@ class AcqMaster : QObject {
 
     for (int zumbek=0;zumbek<chnInfo.probe_eeg_msecs;zumbek++) {
 
-     if (((unsigned int)(acqCurData[zumbek].amp1.offset)-amp1chkP)!=1 || ((unsigned int)(acqCurData[zumbek].amp2.offset)-amp2chkP)!=1)
-      qDebug() << "Offset leak!!!: " << (unsigned int)(acqCurData[zumbek].amp1.offset) << " " << amp1chkP \
-	       << " -- " << (unsigned int)(acqCurData[zumbek].amp2.offset) << " " << amp2chkP;
-     amp1chkP=(unsigned int)(acqCurData[zumbek].amp1.offset); amp2chkP=(unsigned int)(acqCurData[zumbek].amp2.offset);
+     if (((unsigned int)(acqCurData[zumbek].amp[0].offset)-amp0chkP)!=1 || ((unsigned int)(acqCurData[zumbek].amp[1].offset)-amp1chkP)!=1)
+      qDebug() << "Offset leak!!!: " << (unsigned int)(acqCurData[zumbek].amp[0].offset) << " " << amp0chkP \
+	       << " -- " << (unsigned int)(acqCurData[zumbek].amp[1].offset) << " " << amp1chkP;
+     amp0chkP=(unsigned int)(acqCurData[zumbek].amp[0].offset); amp1chkP=(unsigned int)(acqCurData[zumbek].amp[1].offset);
 
      if (!(globalCounter%10000)) {
-      qDebug() << "Interamp sample count Delta= " << amp2chkP-amp1chkP;
+      qDebug() << "Interamp sample count Delta= " << amp1chkP-amp0chkP;
      }
      globalCounter++;
 
@@ -590,7 +590,7 @@ class AcqMaster : QObject {
        for (int j=0;j<acqChannels.size();j++) { // Averages
         curChn=acqChannels[j];
         k1=calB[j];
-        k2 = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.data[curChn->physChn] : acqCurData[zumbek].amp2.data[curChn->physChn];
+        k2 = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
         calB[j]=(k1*n1+k2)/(n1+1.);
        }
 //       printf("%d %2.2f\n",(int)n1,calB[0]);
@@ -602,7 +602,7 @@ class AcqMaster : QObject {
        for (int j=0;j<acqChannels.size();j++) { // Averages of squares
         curChn=acqChannels[j];
         // CD corrected sinus
-        z = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.data[curChn->physChn]-calB[curChn->physChn] : acqCurData[zumbek].amp2.data[curChn->physChn]-calB[curChn->physChn];
+        z = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn]-calB[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn]-calB[curChn->physChn];
         k1=calA[j]; k2=z*z;
         calA[j]=(k1*n1+k2)/(n1+1.);
        }
@@ -634,11 +634,11 @@ class AcqMaster : QObject {
       //for (int i=0;i<acqChannels.size();i++) {
       // curChn=acqChannels[i];
       // if (curChn->ampNo==1) {
-      //  acqCurData[zumbek].amp1.data[curChn->physChn]-=calN[curChn->physChn];
-      //  acqCurData[zumbek].amp1.data[curChn->physChn]*=calM[curChn->physChn];
+      //  acqCurData[zumbek].amp[0].data[curChn->physChn]-=calN[curChn->physChn];
+      //  acqCurData[zumbek].amp[0].data[curChn->physChn]*=calM[curChn->physChn];
       // } else {
-      //  acqCurData[zumbek].amp2.data[curChn->physChn]-=calN[curChn->physChn];
-      //  acqCurData[zumbek].amp2.data[curChn->physChn]*=calM[curChn->physChn];
+      //  acqCurData[zumbek].amp[1].data[curChn->physChn]-=calN[curChn->physChn];
+      //  acqCurData[zumbek].amp[1].data[curChn->physChn]*=calM[curChn->physChn];
       // }
       //}
 
@@ -648,8 +648,8 @@ class AcqMaster : QObject {
       if (recording) { // .. to disk ..
        for (int i=0;i<cntRecChns.size();i++) {
         curChn=acqChannels[cntRecChns[i]];
-        if (curChn->ampNo==1) cntStream << acqCurData[zumbek].amp1.data[curChn->physChn];
-	else cntStream << acqCurData[zumbek].amp2.data[curChn->physChn];
+        if (curChn->ampNo==1) cntStream << acqCurData[zumbek].amp[0].data[curChn->physChn];
+	else cntStream << acqCurData[zumbek].amp[1].data[curChn->physChn];
        }
        cntStream << acqCurStimEvent; cntStream << acqCurRespEvent;
        recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
@@ -662,8 +662,8 @@ class AcqMaster : QObject {
       int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
       for (int j=0;j<acqChannels.size();j++) {
        curChn=acqChannels[j];
-       curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.data[curChn->physChn] : acqCurData[zumbek].amp2.data[curChn->physChn];
-       curChn->pastFilt[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.dataF[curChn->physChn] : acqCurData[zumbek].amp2.dataF[curChn->physChn];
+       curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
+       curChn->pastFilt[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].dataF[curChn->physChn] : acqCurData[zumbek].amp[1].dataF[curChn->physChn];
 
        // Compute Absolute "50Hz+Harmonics" Level of that channel..
        dummyAvg=0.;
@@ -758,15 +758,15 @@ class AcqMaster : QObject {
       for (int i=0;i<acqChannels.size();i++) {
        curChn=acqChannels[i];
        scrPrvData[i]=scrCurData[i];
-       scrCurData[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.data[curChn->physChn] : acqCurData[zumbek].amp2.data[curChn->physChn];
+       scrCurData[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
        scrPrvDataF[i]=scrCurDataF[i];
-       scrCurDataF[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp1.dataF[curChn->physChn] : acqCurData[zumbek].amp2.dataF[curChn->physChn];
+       scrCurDataF[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].dataF[curChn->physChn] : acqCurData[zumbek].amp[1].dataF[curChn->physChn];
        //if (curChn->ampNo==1) {
-       // scrCurData[i]=acqCurData[zumbek].amp1.data[curChn->physChn];
-       // scrCurDataF[i]=acqCurData[zumbek].amp1.dataF[curChn->physChn];
+       // scrCurData[i]=acqCurData[zumbek].amp[0].data[curChn->physChn];
+       // scrCurDataF[i]=acqCurData[zumbek].amp[0].dataF[curChn->physChn];
        //} else {
-       // scrCurData[i]=acqCurData[zumbek].amp2.data[curChn->physChn];
-       // scrCurDataF[i]=acqCurData[zumbek].amp2.dataF[curChn->physChn];
+       // scrCurData[i]=acqCurData[zumbek].amp[1].data[curChn->physChn];
+       // scrCurDataF[i]=acqCurData[zumbek].amp[1].dataF[curChn->physChn];
        //}
       } emit scrData(tick,event); tick=event=false; // Update CntFrame
      } scrCounter++; scrCounter%=cntSpeedX;
@@ -1057,7 +1057,7 @@ class AcqMaster : QObject {
   QVector<float> calDC,calSin;
 
   Channel *curChn;
-  unsigned int amp1chkP,amp2chkP;
+  unsigned int amp0chkP,amp1chkP;
 
   quint64 globalCounter;
 };

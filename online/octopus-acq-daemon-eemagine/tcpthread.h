@@ -34,6 +34,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <thread>
 #include <cmath>
 
+#include "../acqglobals.h"
+
 #include "../tcpsample.h"
 
 class TcpThread : public QThread {

@@ -2,6 +2,7 @@
 #define _EEX_H
 
 //#define EEMAGINE
+#include "../acqglobals.h"
 
 #ifdef EEMAGINE
 using namespace eemagine::sdk;

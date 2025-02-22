@@ -5,6 +5,11 @@
 #include <vector>
 #include <ostream>
 #include <stdexcept>
+#include <iostream>
+#include <string>
+#include <algorithm>
+
+#include "../acqglobals.h"
 
 namespace eesynth {
  namespace exceptions {
@@ -15,13 +20,16 @@ namespace eesynth {
 class buffer {
  public:
   buffer(unsigned int channel_count=0,unsigned int sample_count=0):_data(channel_count*sample_count),_channel_count(channel_count),_sample_count(sample_count) {}
+  void setCounts(unsigned int channel_count,unsigned int sample_count) {
+   _data.resize(channel_count*sample_count); _channel_count=channel_count; _sample_count=sample_count;
+  }
   const unsigned int& getChannelCount() const { return _channel_count; }
   const unsigned int& getSampleCount() const { return _sample_count; }
   const double& getSample(unsigned int channel,unsigned int sample) const { return _data[channel+sample*_channel_count]; }
   void setSample(unsigned int channel,unsigned int sample,double value) { _data[channel+sample*_channel_count]=value; }
   size_t size() const { return _data.size(); }
   double* data() { return _data.data(); }
- protected:
+ private:
   std::vector<double> _data;
   unsigned int _channel_count,_sample_count;
 };
@@ -59,74 +67,99 @@ inline std::ostream& operator<<(std::ostream &out,const channel &c) {
 
 class stream {
  public:
-  stream(unsigned int c,unsigned int s,std::vector<channel>& cl,unsigned int smpRate) {
-   chnCount=c; smpCount=s; chnList=cl; t=0.0;
-   dc=0.0; // to simulate High-Pass
-   ampl=0.000100; // 100uV mimicks EEG
-   dt=1.0/(double)(smpRate); frqA=10.0; frqB=48.0;
+  stream(unsigned int c,unsigned int smpRate) {
+   chnCount=c;
+   if (smpRate==0) { impMode=true; smpCount=1; }
+   else { impMode=false; smpCount=100;
+    t=0.; // chnList=cl;
+    dc=0.; // to simulate High-Pass
+    a0=0.000100; // 100uV mimicks EEG
+    dt=1./(double)(smpRate); frqA=10.; frqB=48.;
+    trigger=counter=0.;
+   }
   }
   ~stream() {}
-  std::vector<channel> getChannelList() { return chnList; }
-  buffer getData() { buffer b(chnCount,smpCount);
-   for (unsigned int i=0;i<smpCount;i++) {
-    for (unsigned int j=0;j<chnCount;j++) {
-     b.setSample(i,j,dc+ampl*cos(2.0*M_PI*frqA*t)+(ampl/1.0)*sin(2.0*M_PI*frqB*t));
+
+  buffer getData() {
+   buffer b;
+   if (impMode) {
+    b.setCounts(chnCount-2,1); // bipolars aren't counted for during imp mode?? Not handled currently!!!
+    for (unsigned int cc=0;cc<chnCount;cc++) b.setSample(0,cc,2.71);
+   } else {
+    b.setCounts(chnCount,smpCount);
+    for (unsigned int sc=0;sc<smpCount;sc++,t+=dt,counter+=1.) {
+     for (unsigned int cc=0;cc<chnCount-2;cc++) {
+      b.setSample(cc,sc,dc+(a0*1.0)*cos(2.0*M_PI*frqA*t)+(a0*1.0)*sin(2.0*M_PI*frqB*t));
+     }
+     b.setSample(chnCount-2,sc,trigger); b.setSample(chnCount-1,sc,counter);
     }
-    t+=dt;
    }
    return b;
   }
-  std::vector<channel> chnList;
-  unsigned int chnCount,smpCount; double dc,ampl,frqA,frqB,t,dt;
+
+  bool impMode; double trigger,counter;
+  unsigned int chnCount,smpCount; double dc,a0,frqA,frqB,t,dt;
 };
 
 class amplifier {
  public:
-  amplifier(std::string s) { serialNumber=s; sampleCount=100; }
-  ~amplifier() {}
-  std::vector<channel> getChannelList(quint64 ref_mask,quint64 bip_mask) {
-   channelList.resize(0); unsigned int idx=0;
-   channel c; quint64 m;
-   m=ref_mask; while (m!=0) { if (m&0x1) channelList.push_back(channel(idx,channel::reference)); m>>=1; idx++; }
-   m=bip_mask; while (m!=0) { if (m&0x1) channelList.push_back(channel(idx,channel::bipolar)); m>>=1; idx++; }
-   channelList.push_back(channel(idx,channel::trigger)); idx++;
-   channelList.push_back(channel(idx,channel::sample_counter)); idx++;
-   return channelList;
+  amplifier(std::string s) {
+   serialNumber=s;
   }
+  ~amplifier() {}
+
+  std::vector<channel> getChannelList(quint64 ref_mask,quint64 bip_mask) {
+   channel c; quint64 m; chnList.resize(0); unsigned int idx=0;
+   m=ref_mask; while (m!=0) { if (m&0x1) chnList.push_back(channel(idx,channel::reference)); m>>=1; idx++; }
+   m=bip_mask; while (m!=0) { if (m&0x1) chnList.push_back(channel(idx,channel::bipolar)); m>>=1; idx++; }
+   chnList.push_back(channel(idx,channel::trigger)); idx++;
+   chnList.push_back(channel(idx,channel::sample_counter));
+   return chnList;
+  }
+
   std::string getSerialNumber() { return serialNumber; }
   //std::vector<int> getSamplingRatesAvailable() const=0;
   //std::vector<double> getReferenceRangesAvailable() const=0;
   //std::vector<double> getBipolarRangesAvailable() const=0;
+
   stream* OpenEegStream(int sampling_rate,double reference_range,double bipolar_range,const std::vector<channel>& channel_list) {
-   smpRate=sampling_rate; refRange=reference_range; bipRange=bipolar_range; channelList=channel_list;
-   eegStream=new stream(channelList.size(),sampleCount,channelList,smpRate);
-   return eegStream;
+   impedanceMode=false; smpRate=sampling_rate; refRange=reference_range; bipRange=bipolar_range; chnList=channel_list;
+   str=new stream(chnList.size(),smpRate);
+   return str;
   }
+
   stream* OpenImpedanceStream(const std::vector<channel>& channel_list) {
-   channelList=channel_list;
-   impedanceStream=new stream(channelList.size(),1,channelList,smpRate);
-   return impedanceStream;
+   impedanceMode=true; chnList=channel_list;
+   str=new stream(chnList.size(),0);
+   return str;
   }
-  std::string serialNumber;
-  std::vector<channel> channelList;
-  stream* eegStream;
-  stream* impedanceStream;
-  unsigned int sampleCount;
-  unsigned int smpRate; float refRange,bipRange;
+
+ private:
+  std::string serialNumber; bool impedanceMode;
+  unsigned int smpRate; float refRange,bipRange; std::vector<channel> chnList;
+  stream *str;
 };
 
-class factory {
+class factory { // Creates any number of virtual amplifiers identical to EE.
  public:
   factory() {
-   amplifier *a;
-   a=new amplifier(std::string("0077")); amps.push_back(a);
-   a=new amplifier(std::string("0075")); amps.push_back(a);
+   // Create serial pool with shuffled order
+   unsigned int i,no; amplifier *a;
+   for (i=0,no=100071;i<EE_MAX_AMPCOUNT;i++) { sNos.push_back(std::to_string(no)); no++; }
+   std::random_device rd;
+   std::mt19937 rng(rd()); // Mersenne Twister engine
+   std::shuffle(sNos.begin(),sNos.end(),rng);
+   for (std::string s:sNos) std::cout << s;
+   
+   // Create desired number of amplifier
+   for (i=0;i<EE_AMPCOUNT;i++) { a=new amplifier(sNos[i]); amps.push_back(a); }
   }
   std::vector<amplifier*> getAmplifiers() {
    return amps;
   }
-  //virtual std::string getSerialNumber() const=0;
+ private:
   std::vector<amplifier*> amps;
+  std::vector<std::string> sNos;
 };
 
 }

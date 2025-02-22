@@ -20,6 +20,7 @@ HEADERS += acqdaemon.h \
            acqthread.h \
            tcpthread.h \
            eex.h \
+           ../acqglobals.h \
 	   ../chninfo.h \
 	   ../sample.h \
 	   ../tcpsample.h \
