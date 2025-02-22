@@ -54,9 +54,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class AcqThread : public QThread {
  Q_OBJECT
  public:
-  AcqThread(QObject* parent,chninfo *ci,QVector<tcpsample> *tb,quint64 *pidx,quint64 *cidx,
+  AcqThread(QObject* parent,chninfo *ci,QVector<tcpsample> *tb,quint64 *pidx,
             bool *r,bool *im,QMutex *m) : QThread(parent) {
-   mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPIdx=pidx; tcpBufCIdx=cidx; daemonRunning=r; eegImpedanceMode=im;
+   mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPivot=pidx; daemonRunning=r; eegImpedanceMode=im;
    tcpS.trigger=0;
    convN=chnInfo->sampleRate/50; convN2=convN/2;
   }
@@ -103,7 +103,7 @@ class AcqThread : public QThread {
    }
   }
 
-  void fetchEegData() {
+  void fetchEegData() { float sum;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
 #else
@@ -112,26 +112,44 @@ class AcqThread : public QThread {
    //for (eex& e:ee) {
    for (unsigned int i=0;i<ee.size();i++) {
     try {
-     ee[i].buf=ee[i].str->getData();
-     ee[i].smpCount=ee[i].buf.getSampleCount(); chnCount=ee[i].buf.getChannelCount();
+     ee[i].buf=ee[i].str->getData(); chnCount=ee[i].buf.getChannelCount();
+     ee[i].smpCount=ee[i].buf.getSampleCount();
      //qDebug() << e.smpCount << " " << chnCount;
      if (chnCount!=chnInfo->totalChnCount) qDebug() << "octopus_acqd: <fetchEegData> Channel count mismatch!!!";
      //qDebug() << "Amp " << i+1 << ": " << smpCount << " samples," << chnCount << " channels.";
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception" << ex.what() << std::endl;
     }
-    ee[i].cBufIdxP=ee[i].cBufIdx;
+    // returns the minimum index for the number of samples fetched via any amp, to use later in circular buffer updates.
+    cBufIdxList[i]=ee[i].cBufIdxP=ee[i].cBufIdx;
     //if (i==0) {
     // qDebug() << "Sample count: " << ee[i].smpCount << "Channel count: " << chnCount;
     // for (unsigned int j=0;j<ee[i].smpCount;j++) { qDebug() << ee[i].buf.getSample(0,j); }
     //}
+    for (unsigned int j=0;j<ee[i].smpCount;j++) { smp.marker=M_PI;
+     for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=ee[i].buf.getSample(k,j);
+     smp.trigger=ee[i].buf.getSample(chnCount-2,j);
+     smp.offset=ee[i].absSmpIdx=ee[i].buf.getSample(chnCount-1,j);
+     ee[i].cBuf[(ee[i].cBufIdx+j)%cBufSz]=smp;
+     //if (j==e.smpCount-1) e.absSmpIdx=smp.offset;
+    }
+
+    // Filtering
+
+    for (unsigned int j=0;j<chnCount-2;j++) for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+     sum=0.; for (int m=0;m<convN;m++) sum+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+     ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum/convN;
+    }
+
+    ee[i].cBufIdx+=ee[i].smpCount;
    }
+   cBufPivotP=cBufPivot; cBufPivot=*std::min_element(cBufIdxList.begin(),cBufIdxList.end());
   }
 
 // ------------------------------------------------
 
   virtual void run() {
-   float sum; int tcpBufSize=tcpBuffer->size();
+   int tcpBufSize=tcpBuffer->size();
 #ifdef EEMAGINE
    using namespace eemagine::sdk; factory eeFact("libeego-SDK.so");
 #else
@@ -145,6 +163,7 @@ class AcqThread : public QThread {
    if (eeAmpsU.size()<EE_AMPCOUNT) {
     qDebug() << "octopus_acqd: <acqthread_amp_setup> At least one  of the amplifiers is offline!"; *daemonRunning=false; return;
    }
+
    // Sort amplifiers for their serial numbers
    for (amplifier* eeAmp:eeAmpsU) snosU.push_back(stoi(eeAmp->getSerialNumber()));
    snos=snosU; std::sort(snos.begin(),snos.end());
@@ -165,6 +184,8 @@ class AcqThread : public QThread {
     e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
     ee.push_back(e);
    }
+   //cBufPivot=cBufPivotP=cBufSz/2+convN;
+   cBufIdxList.resize(EE_AMPCOUNT);
 
    // ----- List unsorted vs. sorted
    for (unsigned int i=0;i<ee.size();i++) qDebug() << stoi(ee[i].amp->getSerialNumber());
@@ -180,27 +201,12 @@ class AcqThread : public QThread {
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_impedance_msecs));
     } else {
      fetchEegData();
-// ---------------------------------------------------------------------------------------------------
-     for (eex& e:ee) for (unsigned int j=0;j<e.smpCount;j++) {
-      smp.marker=M_PI;
-      for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=e.buf.getSample(k,j);
-      smp.trigger=e.buf.getSample(chnCount-2,j);
-      smp.offset=e.absSmpIdx=e.buf.getSample(chnCount-1,j);
-      e.cBuf[(e.cBufIdx+j)%cBufSz]=smp;
-      //if (j==e.smpCount-1) e.absSmpIdx=smp.offset;
-     }
-     // Filtering
-     for (eex& e:ee) for (unsigned int j=0;j<chnCount-2;j++)
-      for (int k=-convN2;k<(int)(e.smpCount)-convN2;k++) {
-       sum=0.; for (int m=0;m<convN;m++) sum+=e.cBuf[(e.cBufIdx+k+m)%cBufSz].data[j];
-       e.cBuf[(e.cBufIdx+k+convN2)%cBufSz].dataF[j]=sum/convN;
-      }
 
-     for (eex& e:ee) e.cBufIdx+=e.smpCount;
 //     qDebug() << "Sample count vs. Checkpoint: SC0:" << ee[0].smpCount << " CHK0:" << ee[0].absSmpIdx;
 //     qDebug() << "                             SC1:" << ee[1].smpCount << " CHK1:" << ee[1].absSmpIdx;
-     if (ee[0].cBufIdxP < ee[1].cBufIdxP) pivot0=ee[0].cBufIdxP; else pivot0=ee[1].cBufIdxP;
-     if (ee[0].cBufIdx < ee[1].cBufIdx)   pivot1=ee[0].cBufIdx;  else pivot1=ee[1].cBufIdx;
+
+//     if (ee[0].cBufIdxP < ee[1].cBufIdxP) pivot0=ee[0].cBufIdxP; else pivot0=ee[1].cBufIdxP;
+//     if (ee[0].cBufIdx < ee[1].cBufIdx)   pivot1=ee[0].cBufIdx;  else pivot1=ee[1].cBufIdx;
 
 //     qDebug() << "Indices (idx, Gidx Previous vs. actual)";
 //     qDebug() << "Buf0Idx P,N (Amp1): " << ee[0].cBufIdxP << " " << ee[0].cBufIdx << " -- (Amp 2):" << ee[1].cBufIdxP << " " << ee[1].cBufIdx;
@@ -210,14 +216,24 @@ class AcqThread : public QThread {
 // ---------------------------------------------------------------------------------------------------
 
      mutex->lock();
-      quint64 tcpDataSize=pivot1-pivot0;
+
+      //quint64 tcpDataSize=pivot1-pivot0;
+      quint64 tcpDataSize=cBufPivot-cBufPivotP;
+      //qDebug() << cBufPivotP << " " << cBufPivot;
+
       for (quint64 i=0;i<tcpDataSize;i++) {
-       tcpS.amp[0]=ee[0].cBuf[(pivot0+i-convN2)%cBufSz];
-       tcpS.amp[1]=ee[1].cBuf[(pivot0+i-convN2)%cBufSz];
-       (*tcpBuffer)[(*tcpBufPIdx+i)%tcpBufSize]=tcpS;
+       //tcpS.amp[0]=ee[0].cBuf[(pivot0+i-convN2)%cBufSz];
+       //tcpS.amp[1]=ee[1].cBuf[(pivot0+i-convN2)%cBufSz];
+       //(*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
+       tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2)%cBufSz];
+       tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2)%cBufSz];
+       (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
-      (*tcpBufPIdx)+=tcpDataSize; // Update producer index
+      (*tcpBufPivot)+=tcpDataSize; // Update producer index
+
      mutex->unlock();
+
+     cBufPivotP=cBufPivot;
 
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_eeg_msecs));
      //qDebug("octopus_acqd: <acqthread> Data validated to buffer..");
@@ -238,10 +254,11 @@ class AcqThread : public QThread {
 #else
   std::vector<eesynth::amplifier*> eeAmpsU;
 #endif
-  QVector<tcpsample> *tcpBuffer; quint64 *tcpBufPIdx,*tcpBufCIdx; tcpsample tcpS; sample smp;
+  QVector<tcpsample> *tcpBuffer; quint64 *tcpBufPivot,*tcpBufCIdx; tcpsample tcpS; sample smp;
   std::vector<eex> ee; chninfo *chnInfo; unsigned int cBufSz,smpCount,chnCount;
+  std::vector<unsigned int> cBufIdxList;
 
-  int convN2,convN; quint64 pivot0,pivot1;
+  int convN2,convN; quint64 cBufPivot,cBufPivotP;
 
   QMutex *mutex; bool *daemonRunning,*eegImpedanceMode;
 };

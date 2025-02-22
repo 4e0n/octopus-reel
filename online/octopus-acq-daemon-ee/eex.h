@@ -21,16 +21,31 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* Structure for the segmented transfer of stimulus patterns to STIM server */
-/* over TCP/IP network. */ 
+#ifndef _EEX_H
+#define _EEX_H
 
-#ifndef PATT_DATAGRAM_H
-#define PATT_DATAGRAM_H
+//#define EEMAGINE
+#include "../acqglobals.h"
 
-#define CHUNKSIZE	(128)
+#ifdef EEMAGINE
+using namespace eemagine::sdk;
+#else
+using namespace eesynth;
+#endif
 
-typedef struct _patt_datagram {
- unsigned int magic_number,size; char data[CHUNKSIZE];
-} patt_datagram;
+typedef struct _eex {
+ amplifier *amp;
+ std::vector<channel> chnList;
+ stream *str;
+ buffer buf;
+ unsigned int t;
+ unsigned int smpCount; // data count int buffer
+ //unsigned int chnCount; // channel count int buffer -- redundant, to be asserted
+ unsigned int absSmpIdx; // Absolute Sample Index, as sent from the amplifier
+ std::vector<float> imps;
+ quint64 cBufIdx,cBufIdxP;
+ std::vector<sample> cBuf;
+ std::vector<sample> cBufF;
+} eex;
 
 #endif

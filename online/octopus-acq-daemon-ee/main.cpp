@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -22,26 +22,33 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* This is the acquisition 'frontend' daemon of Octopus-ReEL, which has been
-   customized to be interfaced with Eemagine commercial EEG amps
-   (i.e. assuming two 64-channel "ANTneuro eego mylab" amps connected via USB)
-   Hence this acq daemon makes the initial setup and then puts itself into one of the
-   two possible modes of (1) EEG acquisition and (2) Impedance measurement.
+   customized to be interfaced with Eemagine commercial EEG amps within a hyperscanning
+   context (i.e. assuming more than one 64-channel "ANTneuro eego mylab" amps connected
+   via USB). Hence this acq daemon makes the initial setup and then puts itself into one
+   of the two possible modes of (1) EEG acquisition and (2) Impedance measurement.
    EEG acquisition mode is the default in which (N+M+2)*2 channels of data
    (N: Referential EEG channel, M: Bipolar channel, +1 event chn, +1 sample order chn)
-   is received via two separate streams within ACQ thread into a "TCPsample" circular buffer
-   When some client (i.e. consumer) is connected, the data in circular buffer is forwarded
-   The client, most likely, is a dedicated remote host responsible from several
-   on-the-fly calculations/visualizations on the EEG data received over the network.
-   a remote and dedicated workstation over TCP/IP network.
-   Each dataset is prepended with a sync-marker (constant pi)
-   to assure integrity.
+   is received via N independent streams within ACQ thread into a "TCPsample" circular
+   buffer. When some remote client (i.e. consumer) is connected over TCP, the data in
+   circular buffer begins to be forwarded. The client is most likely a dedicated remote
+   host responsible from several on-the-fly computations/visualizations on the collective
+   EEG data from multiple subjects. When the acquisition daemon is launched, a syncronized
+   trigger 0xFF is sent to all amplifiers via their parallel ports using the customly
+   designed Arduino (Sparkfun Pro Micro)-based trigger multiplexer, causing the amplifier(s)
+   receiving the trigger earlier to wait for others, thus causing them to be syncronized
+   once for all. Another issue of EEG amplifiers possibly having different clock paces
+   has been experimented and observed for still being syncronized after half an hour for
+   two connected amps.
 
-   The daemons connectivity with the TCP thread is event driven;
-   i.e. as soon as the socket connection is up, thread is instantiated and started,
-   and the stream is reestablished, and data already being fetched from amps
-   within the ACQ thread is sent to that client (otherwise data is leaked/lost over the
-   size of the circular buffer).
-   Similarly, when the connection is down, the associated TCP thread is disposed. */
+   As the amplifiers are not with me all the time but I can code **anywhere**, I translated
+   the class hierarchy and namespace of Eemagine to a simulated environment called "Eesynth"
+   which transparently and synthetically generated synthetic EEG data over the same system
+   calls and functions. One can enable it by commenting out the EEMAGINE line definition
+   in ../acqglobals.h (which is the main header with global definitions; either simulated or real).
+   
+   Due to copyright reasons, the respective Eemagine library isn't included in that project.
+*/
+
 
 #include <QApplication>
 #include <QtCore>
@@ -65,8 +72,8 @@ int main(int argc,char *argv[]) {
  chnInfo.bipChnCount=BIP_CHN_COUNT; chnInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
  chnInfo.physChnCount=PHYS_CHN_COUNT; chnInfo.totalChnCount=TOTAL_CHN_COUNT;
  chnInfo.totalCount=EE_AMPCOUNT*TOTAL_CHN_COUNT;
- chnInfo.probe_eeg_msecs=100; // 100ms probetime
- chnInfo.probe_impedance_msecs=1000; // 1000ms probetime
+ chnInfo.probe_eeg_msecs=EEG_PROBE_MSECS; // 100ms probetime
+ chnInfo.probe_impedance_msecs=IMPEDANCE_PROBE_MSECS; // 1000ms probetime
 
  // *** BACKEND VALIDATION ***
 

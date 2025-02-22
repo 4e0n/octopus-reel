@@ -43,14 +43,14 @@ class TcpThread : public QThread {
  public:
   TcpThread(QObject* parent,QVector<tcpsample> *tb,quint64 *pidx,quint64 *cidx,
             bool *r,bool *c,QMutex *m) : QThread(parent) {
-   mutex=m; tcpBuffer=tb; tcpBufPIdx=pidx; tcpBufCIdx=cidx; daemonRunning=r; clientConnected=c;
+   mutex=m; tcpBuffer=tb; tcpBufPivotP=pidx; tcpBufPivotC=cidx; daemonRunning=r; clientConnected=c;
    connect(this,SIGNAL(sendData()),parent,SLOT(slotSendData()));
   }
 
   virtual void run() {
    while (*clientConnected) {
     mutex->lock();
-     if (*tcpBufPIdx>*tcpBufCIdx) emit sendData();
+     if (*tcpBufPivotP>*tcpBufPivotC) emit sendData();
     mutex->unlock();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
    }
@@ -62,7 +62,7 @@ class TcpThread : public QThread {
   void sendData();
 
  private:
-  QVector<tcpsample> *tcpBuffer; quint64 *tcpBufPIdx,*tcpBufCIdx;
+  QVector<tcpsample> *tcpBuffer; quint64 *tcpBufPivotP,*tcpBufPivotC;
   bool *daemonRunning,*clientConnected; QMutex *mutex;
 };
 
