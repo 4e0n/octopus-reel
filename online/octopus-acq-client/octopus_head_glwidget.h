@@ -219,7 +219,19 @@ class HeadGLWidget : public QGLWidget {
 //    setYRotation(xRot+8*dx);
    } eventPos=event->pos();
   }
+/*
+ protected:
+  void resizeEvent(QResizeEvent *event) {
+    resizeEvent(event); // Call base class event handler
 
+    //int width = event->size().width();
+    //int height = event->size().height();
+
+    // Resize child widgets proportionally
+    //label1->setGeometry(width / 4, height / 4, width / 2, 30);
+    //label2->setGeometry(width / 4, height / 2, width / 2, 30);
+  }
+*/
 
  private:
   void setXRotation(int angle) { normalizeAngle(&angle);

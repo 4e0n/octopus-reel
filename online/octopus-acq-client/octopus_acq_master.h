@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007 Barkin Ilhan
+   Copyright (C) 2007-2025 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -23,7 +23,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* a.k.a. "The Engine"..
     This is the predefined parameters, configuration and management class
-    shared over all other classes of octopus-recorder. */
+    shared over all other classes of octopus-acq-client. */
 
 #ifndef OCTOPUS_ACQ_MASTER_H
 #define OCTOPUS_ACQ_MASTER_H
@@ -44,6 +44,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 
 #include <cmath>
+
+#include "../acqglobals.h"
 
 #include "serial_device.h"
 #include "channel_params.h"
@@ -71,6 +73,7 @@ class AcqMaster : QObject {
  Q_OBJECT
  public:
   AcqMaster(QApplication *app) : QObject() { application=app;
+   clientRunning=false;
    stimCommandSocket=new QTcpSocket(this); stimDataSocket=new QTcpSocket(this);
    acqCommandSocket=new QTcpSocket(this); acqDataSocket=new QTcpSocket(this);
  
@@ -83,11 +86,11 @@ class AcqMaster : QObject {
    connect(acqDataSocket,SIGNAL(error(QAbstractSocket::SocketError)),
            this,SLOT(slotAcqDataError(QAbstractSocket::SocketError)));
 
-   amp0chkP=amp1chkP=0; globalCounter=0;
+   ampChkP.resize(EE_AMPCOUNT); globalCounter=0;
 
    // *** INITIAL VALUES OF RUNTIME VARIABLES ***
 
-   recording=calibration=stimulation=trigger=averaging=eventOccured=notch=false;
+   recording=calibration=stimulation=trigger=averaging=eventOccured=false; notch=true;
    notchN=20; notchThreshold=20.;
    seconds=cp.cntPastIndex=avgCounter=calPts=0;
    currentGizmo=currentElectrode=curElecInSeq=0;
@@ -168,6 +171,8 @@ class AcqMaster : QObject {
    acqDataSocket->connectToHost(acqHost,acqDataPort,QIODevice::ReadOnly);
    acqDataSocket->waitForConnected();
    connect(acqDataSocket,SIGNAL(readyRead()),this,SLOT(slotAcqReadData()));
+
+   clientRunning=true;
   }
 
 
@@ -516,6 +521,8 @@ class AcqMaster : QObject {
 
   QVector<Source*> source;
 
+  bool clientRunning;
+
  signals:
   void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow();
 
@@ -562,21 +569,24 @@ class AcqMaster : QObject {
 
   void slotAcqReadData() {
    int acqCurStimEvent,acqCurRespEvent,avgDataCount,avgStartOffset;
-   QVector<float> *avgInChn,*stdInChn; float n1,k1,k2,z;
+   QVector<float> *avgInChn,*stdInChn; float n1,k1,k2,z; unsigned int offsetC,offsetP;
    QDataStream acqDataStream(acqDataSocket);
 
    while (acqDataSocket->bytesAvailable() >= chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample))) {
     acqDataStream.readRawData((char*)(acqCurData.data()),chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample)));
 
     for (int zumbek=0;zumbek<chnInfo.probe_eeg_msecs;zumbek++) {
-
-     if (((unsigned int)(acqCurData[zumbek].amp[0].offset)-amp0chkP)!=1 || ((unsigned int)(acqCurData[zumbek].amp[1].offset)-amp1chkP)!=1)
-      qDebug() << "Offset leak!!!: " << (unsigned int)(acqCurData[zumbek].amp[0].offset) << " " << amp0chkP \
-	       << " -- " << (unsigned int)(acqCurData[zumbek].amp[1].offset) << " " << amp1chkP;
-     amp0chkP=(unsigned int)(acqCurData[zumbek].amp[0].offset); amp1chkP=(unsigned int)(acqCurData[zumbek].amp[1].offset);
+     // Check Sample Offset Delta for all amps
+     for (int i=0;i<EE_AMPCOUNT;i++) {
+      offsetC=(unsigned int)(acqCurData[zumbek].amp[i].offset); offsetP=ampChkP[i];
+      if ((offsetC-offsetP)!=1)
+       qDebug() << "Offset leak!!! Amp " << i << " OffsetC=" << offsetC << " OffsetP=" << offsetP;
+      ampChkP[i]=(unsigned int)(acqCurData[zumbek].amp[i].offset);
+     }
 
      if (!(globalCounter%10000)) {
-      qDebug() << "Interamp sample count Delta= " << amp1chkP-amp0chkP;
+      //sort ampChkP and print
+      qDebug() << "Interamp sample count Delta= " << ampChkP[1]-ampChkP[0];
      }
      globalCounter++;
 
@@ -630,7 +640,6 @@ class AcqMaster : QObject {
      } else { // Not CALIBRATION... but STREAMING/RECORDING, 50Hz COMPUTATION and ONLINE AVG is enabled..
       // Apply loaded calibration model on incoming data..
       
- 
       //for (int i=0;i<acqChannels.size();i++) {
       // curChn=acqChannels[i];
       // if (curChn->ampNo==1) {
@@ -758,16 +767,9 @@ class AcqMaster : QObject {
       for (int i=0;i<acqChannels.size();i++) {
        curChn=acqChannels[i];
        scrPrvData[i]=scrCurData[i];
-       scrCurData[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
+       scrCurData[i] = acqCurData[zumbek].amp[curChn->ampNo-1].data[curChn->physChn];
        scrPrvDataF[i]=scrCurDataF[i];
-       scrCurDataF[i] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].dataF[curChn->physChn] : acqCurData[zumbek].amp[1].dataF[curChn->physChn];
-       //if (curChn->ampNo==1) {
-       // scrCurData[i]=acqCurData[zumbek].amp[0].data[curChn->physChn];
-       // scrCurDataF[i]=acqCurData[zumbek].amp[0].dataF[curChn->physChn];
-       //} else {
-       // scrCurData[i]=acqCurData[zumbek].amp[1].data[curChn->physChn];
-       // scrCurDataF[i]=acqCurData[zumbek].amp[1].dataF[curChn->physChn];
-       //}
+       scrCurDataF[i] = acqCurData[zumbek].amp[curChn->ampNo-1].dataF[curChn->physChn];
       } emit scrData(tick,event); tick=event=false; // Update CntFrame
      } scrCounter++; scrCounter%=cntSpeedX;
 
@@ -1057,7 +1059,7 @@ class AcqMaster : QObject {
   QVector<float> calDC,calSin;
 
   Channel *curChn;
-  unsigned int amp0chkP,amp1chkP;
+  QVector<unsigned int> ampChkP;
 
   quint64 globalCounter;
 };

@@ -35,7 +35,7 @@ class AcqClient : public QMainWindow {
  public:
   AcqClient(AcqMaster *acqm,QWidget *parent=0) : QMainWindow(parent) {
    acqM=acqm; setGeometry(acqM->guiX,acqM->guiY,acqM->guiWidth,acqM->guiHeight);
-   setFixedSize(acqM->guiWidth,acqM->guiHeight);
+   //setFixedSize(acqM->guiWidth,acqM->guiHeight);
 
    // *** TABS & TABWIDGETS ***
 
@@ -160,6 +160,7 @@ class AcqClient : public QMainWindow {
    toggleStimulationButton->setCheckable(true);
    toggleTriggerButton->setCheckable(true);
    toggleNotchButton->setCheckable(true);
+   toggleNotchButton->setChecked(true);
 
    connect(toggleRecordingButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleRecording()));
@@ -250,12 +251,44 @@ class AcqClient : public QMainWindow {
 
   void slotCntSpeed(int x) {
    switch (x) {
-    case 0: acqM->cntSpeedX=20; cntSpdBG->button(2)->setDown(false); break;
-    case 1: acqM->cntSpeedX=10; cntSpdBG->button(2)->setDown(false); break;
-    case 2: acqM->cntSpeedX= 5; break;
+    case 0: acqM->cntSpeedX=10; cntSpdBG->button(2)->setDown(false); break;
+    case 1: acqM->cntSpeedX= 8; cntSpdBG->button(2)->setDown(false); break;
+    case 2: acqM->cntSpeedX= 4; break;
     case 3: acqM->cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
     case 4: acqM->cntSpeedX= 1; cntSpdBG->button(2)->setDown(false); break;
    }
+  }
+
+ protected:
+  void resizeEvent(QResizeEvent *event) {
+   int w,h;
+   //resizeEvent(event); // Call base class event handler
+
+   //if (acqM->clientRunning) {
+   acqM->guiWidth=w=event->size().width();
+   acqM->guiHeight=h=event->size().height();
+
+   // Resize child widgets proportionally
+   cntFrame->setGeometry(2,2,w-9,h-60);
+   mainTabWidget->setGeometry(1,32,w-2,h-60);
+   cntWidget->setGeometry(0,0,w,h);
+   acqM->guiStatusBar->setGeometry(0,h-20,w,20);
+   acqM->timeLabel->setGeometry(acqM->timeLabel->x(),mainTabWidget->height()-52,
+                                acqM->timeLabel->width(),acqM->timeLabel->height());
+   menuBar->setFixedWidth(w);
+   toggleRecordingButton->setGeometry(toggleRecordingButton->x(),mainTabWidget->height()-54,
+                                      toggleRecordingButton->width(),toggleRecordingButton->height());
+   toggleStimulationButton->setGeometry(toggleStimulationButton->x(),mainTabWidget->height()-54,
+                                        toggleStimulationButton->width(),toggleStimulationButton->height());
+   toggleTriggerButton->setGeometry(toggleTriggerButton->x(),mainTabWidget->height()-54,
+                                    toggleTriggerButton->width(),toggleTriggerButton->height());
+   toggleNotchButton->setGeometry(toggleNotchButton->x(),mainTabWidget->height()-54,
+                                  toggleNotchButton->width(),toggleNotchButton->height());
+   for (int i=0;i<6;i++) cntAmpBG->button(i)->setGeometry(mainTabWidget->width()-676+i*60,mainTabWidget->height()-54,
+                                                          cntAmpBG->button(i)->width(),cntAmpBG->button(i)->height());
+   for (int i=0;i<5;i++) cntSpdBG->button(i)->setGeometry(mainTabWidget->width()-326+i*60,mainTabWidget->height()-54,
+                                                          cntSpdBG->button(i)->width(),cntSpdBG->button(i)->height());
+   //}
   }
 
  private:

@@ -33,7 +33,10 @@ using namespace eemagine::sdk;
 using namespace eesynth;
 #endif
 
+const unsigned int IIR_HIST_SIZE=4;
+
 typedef struct _eex {
+ unsigned int idx;
  amplifier *amp;
  std::vector<channel> chnList;
  stream *str;
@@ -46,6 +49,7 @@ typedef struct _eex {
  quint64 cBufIdx,cBufIdxP;
  std::vector<sample> cBuf;
  std::vector<sample> cBufF;
+ std::vector<std::array<double,IIR_HIST_SIZE> > fX,fY; // IIR filter History
 } eex;
 
 #endif

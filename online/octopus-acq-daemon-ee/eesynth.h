@@ -106,7 +106,7 @@ class stream {
    if (smpRate==0) { impMode=true; smpCount=1; }
    else { impMode=false; smpCount=100;
     t=0.; // chnList=cl;
-    dc=0.; // to simulate High-Pass
+    dc=0.001000; // to simulate High-Pass
     a0=0.000100; // 100uV mimicks EEG
     dt=1./(double)(smpRate); frqA=10.; frqB=48.;
     trigger=counter=0.;

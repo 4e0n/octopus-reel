@@ -35,7 +35,7 @@ class HeadWindow : public QMainWindow {
  public:
   HeadWindow(QWidget *p,AcqMaster* acqm) : QMainWindow(p,Qt::Window) {
    parent=p; acqM=acqm; setGeometry(acqM->hwX,acqM->hwY,acqM->hwWidth,acqM->hwHeight);
-   setFixedSize(acqM->hwWidth,acqM->hwHeight);
+   //setFixedSize(acqM->hwWidth,acqM->hwHeight);
 
    acqM->regRepaintHeadWindow(this);
 
@@ -359,6 +359,19 @@ class HeadWindow : public QMainWindow {
     case 5: acqM->avgAmpX=100.0; avgAmpBG->button(5)->setDown(false); break;
    }
   }
+/*
+ protected:
+  void resizeEvent(QResizeEvent *event) {
+    resizeEvent(event); // Call base class event handler
+
+    //int width = event->size().width();
+    //int height = event->size().height();
+
+    // Resize child widgets proportionally
+    //label1->setGeometry(width / 4, height / 4, width / 2, 30);
+    //label2->setGeometry(width / 4, height / 2, width / 2, 30);
+  }
+*/
 
  private:
   AcqMaster *acqM; QWidget *parent; HeadGLWidget *headGLWidget;

@@ -244,7 +244,7 @@ void parseConfig(QStringList cfgLines) {
      opts2[5]=opts2[5].trimmed(); opts2[6]=opts2[6].trimmed(); // Trim wspcs
      opts2[7]=opts2[7].trimmed(); opts2[8]=opts2[8].trimmed();
      opts2[9]=opts2[9].trimmed(); opts2[10]=opts2[10].trimmed();
-     if ((!(opts2[0].toInt()>0 && opts2[0].toInt()<=2)) || // Amp#
+     if ((!(opts2[0].toInt()>0 && opts2[0].toInt()<=8)) || // Amp#
 	 (!(opts2[1].toInt()>0 && opts2[1].toInt()<=chnInfo.physChnCount)) || // Channel#
          (!(opts2[2].size()>0)) || // Channel name must be at least 1 char..
 

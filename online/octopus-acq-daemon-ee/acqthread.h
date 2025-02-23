@@ -33,6 +33,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include <stdio.h>
 
 //#define EEMAGINE
 #include "../acqglobals.h"
@@ -51,6 +52,70 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../tcpsample.h"
 #include "eex.h"
 
+class HighPassFilter {
+ private:
+  std::array<double,3> b={ 0.9956,-1.9911, 0.9956};
+  std::array<double,3> a={ 1.0   ,-1.9911, 0.9912};
+  //std::array<double,3> b; // Numerator coefficients
+  //std::array<double,3> a; // Denominator coefficients
+  std::array<double,2> xh={0,0}; // Input history
+  std::array<double,2> yh={0,0}; // Output history
+ public:
+  //HighPassFilter(const std::array<double,3>& b_coeffs,const std::array<double,3>& a_coeffs):b(b_coeffs),a(a_coeffs) {}
+  HighPassFilter() {}
+  double process(double x) { // Process single sample
+   double y=(b[0]*x+b[1]*xh[0]+b[2]*xh[1])-(a[1]*yh[0]+a[2]*yh[1]);
+   // Update history
+   xh[1]=xh[0]; xh[0]=x;
+   yh[1]=yh[0]; yh[0]=y;
+   return y;
+  }
+  void processBuffer(std::vector<double>& signal) { // Process chunk - forward filtering
+   for (size_t i=0;i<signal.size();i++) { signal[i]=process(signal[i]); }
+  }
+  void processFiltFilt(std::vector<double>& signal,eex& e,int chn) {
+   for (unsigned int i=0;i<2;i++) { xh[i]=e.fX[chn][i]; yh[i]=e.fX[chn][i]; }
+   processBuffer(signal); // Forward
+   std::reverse(signal.begin(),signal.end()); processBuffer(signal); // Reverse
+   std::reverse(signal.begin(),signal.end());
+   for (unsigned int i=0;i<2;i++) { e.fX[chn][i]=xh[i]; e.fX[chn][i]=yh[i]; }
+  }
+};
+
+class BandPassFilter {
+ private:
+  std::array<double,5> b={ 0.0127, 0.0   ,-0.0255, 0.0   , 0.0127};
+  std::array<double,5> a={ 1.0000,-3.6533, 5.0141,-3.0680, 0.7071};
+  //std::array<double,5> b; // Numerator coefficients
+  //std::array<double,5> a; // Denominator coefficients
+  std::array<double,4> xh={0,0,0,0}; // Input history
+  std::array<double,4> yh={0,0,0,0}; // Output history
+ public:
+  //BandPassFilter(const std::array<double,5>& b_coeffs,const std::array<double,5>& a_coeffs):b(b_coeffs),a(a_coeffs) {}
+  BandPassFilter() {}
+  double process(double x) { // Process single sample
+   double y=(b[0]*x+b[1]*xh[0]+b[2]*xh[1]+b[3]*xh[2]+b[4]*xh[3])-(a[1]*yh[0]+a[2]*yh[1]+a[3]*yh[2]+a[4]*yh[3]);
+   // Update history
+   xh[3]=xh[2]; xh[2]=xh[1]; xh[1]=xh[0]; xh[0]=x;
+   yh[3]=yh[2]; yh[2]=yh[1]; yh[1]=yh[0]; yh[0]=y;
+   return y;
+  }
+  void processBuffer(std::vector<double>& signal) { // Process chunk - forward filtering
+   for (size_t i=0;i<signal.size();i++) { signal[i]=process(signal[i]); }
+  }
+  void processFiltFilt(std::vector<double>& signal,eex& e,int chn) {
+   //if (e.idx==0 && chn==0) { for (unsigned int i=0;i<signal.size();i++) printf("%f ",signal[i]); printf("\n"); }
+   if (e.idx==0 && chn==0) {
+    for (unsigned int i=0;i<e.fX[0].size();i++) printf("%f ",e.fX[chn][i]);
+    for (unsigned int i=0;i<e.fY[0].size();i++) printf("%f ",e.fY[chn][i]); printf("\n"); }
+   for (unsigned int i=0;i<4;i++) { xh[i]=e.fX[chn][i]; yh[i]=e.fY[chn][i]; }
+   processBuffer(signal); // Forward
+   //std::reverse(signal.begin(),signal.end()); processBuffer(signal); // Reverse
+   //std::reverse(signal.begin(),signal.end());
+   for (unsigned int i=0;i<4;i++) { e.fX[chn][i]=xh[i]; e.fY[chn][i]=yh[i]; }
+  }
+};
+
 class AcqThread : public QThread {
  Q_OBJECT
  public:
@@ -59,6 +124,9 @@ class AcqThread : public QThread {
    mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPivot=pidx; daemonRunning=r; eegImpedanceMode=im;
    tcpS.trigger=0;
    convN=chnInfo->sampleRate/50; convN2=convN/2;
+   convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
+
+   filterMA=true; filterIIR_1_40=false;
   }
 
   void switchToImpedanceMode() { // Will be checked for mutual exclusion
@@ -103,12 +171,13 @@ class AcqThread : public QThread {
    }
   }
 
-  void fetchEegData() { float sum;
+  void fetchEegData() { float sum0,sum1;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
 #else
    using namespace eesynth;
 #endif
+   std::vector<double> v;
    //for (eex& e:ee) {
    for (unsigned int i=0;i<ee.size();i++) {
     try {
@@ -134,12 +203,27 @@ class AcqThread : public QThread {
      //if (j==e.smpCount-1) e.absSmpIdx=smp.offset;
     }
 
-    // Filtering
+    // ----- Filtering -----
 
-    for (unsigned int j=0;j<chnCount-2;j++) for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
-     sum=0.; for (int m=0;m<convN;m++) sum+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-     ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum/convN;
-    }
+    // Past average subtraction for High Pass + Moving Average for 50Hz and harmonics
+    if (filterMA)
+     for (unsigned int j=0;j<chnCount-2;j++) {
+      for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+       sum0=0.; for (int m=k-convL;m<k;m++)      sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+       sum1=0.; for (int m=-convN2;m<convN2;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum1/convN-sum0/convL;
+      }
+     }
+
+    if (filterIIR_1_40) // Cascade to MA50Hz
+     for (unsigned int j=0;j<chnCount-2;j++) {
+      v.resize(0);
+      for (int k=0;k<(int)(ee[i].smpCount);k++) v.push_back(ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].data[j]);
+      bpf.processFiltFilt(v,ee[i],j);
+      for (int k=0;k<(int)(ee[i].smpCount);k++) ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].dataF[j]=v[k];
+     }
+
+    // ---------------------
 
     ee[i].cBufIdx+=ee[i].smpCount;
    }
@@ -175,16 +259,17 @@ class AcqThread : public QThread {
    rMask=0; for (int i=0;i<REF_CHN_COUNT;i++) { rMask<<=1; rMask|=1; }
    bMask=0; for (int i=0;i<BIP_CHN_COUNT;i++) { bMask<<=1; bMask|=1; }
    //qDebug("%llx %llx",rMask,bMask);
-   for (amplifier* eeAmp:eeAmps) { eex e; e.amp=eeAmp;
+   for (unsigned int i=0;i<eeAmps.size();i++) { eex e; e.idx=i; e.amp=eeAmps[i];
     e.chnList=e.amp->getChannelList(rMask,bMask);
     // Select same channels for all eeAmps (i.e. All 64/64 referentials and 2/24 of bipolars)
     //e.chnList=e.amp->getChannelList(0xffffffffffffffff,0x0000000000000003);
     //e.chnList=e.amp->getChannelList(0x0000000000000000,0x0000000000000001);
-    cBufSz=chnInfo->sampleRate*CBUF_SIZE_IN_SECS; e.cBufIdx=cBufSz/2+convN; e.cBufIdxP=0;
+    cBufSz=chnInfo->sampleRate*CBUF_SIZE_IN_SECS; e.cBufIdxP=0; e.cBufIdx=cBufSz/2; //+convN;
     e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
+    e.fX.resize(chnInfo->physChnCount); for (int i=0;i<e.fX.size();i++) for (int j=0;j<e.fX[i].size();j++) e.fX[i][j]=0.;
+    e.fY.resize(chnInfo->physChnCount); for (int i=0;i<e.fY.size();i++) for (int j=0;j<e.fY[i].size();j++) e.fY[i][j]=0.;
     ee.push_back(e);
    }
-   //cBufPivot=cBufPivotP=cBufSz/2+convN;
    cBufIdxList.resize(EE_AMPCOUNT);
 
    // ----- List unsorted vs. sorted
@@ -202,39 +287,18 @@ class AcqThread : public QThread {
     } else {
      fetchEegData();
 
-//     qDebug() << "Sample count vs. Checkpoint: SC0:" << ee[0].smpCount << " CHK0:" << ee[0].absSmpIdx;
-//     qDebug() << "                             SC1:" << ee[1].smpCount << " CHK1:" << ee[1].absSmpIdx;
-
-//     if (ee[0].cBufIdxP < ee[1].cBufIdxP) pivot0=ee[0].cBufIdxP; else pivot0=ee[1].cBufIdxP;
-//     if (ee[0].cBufIdx < ee[1].cBufIdx)   pivot1=ee[0].cBufIdx;  else pivot1=ee[1].cBufIdx;
-
-//     qDebug() << "Indices (idx, Gidx Previous vs. actual)";
-//     qDebug() << "Buf0Idx P,N (Amp1): " << ee[0].cBufIdxP << " " << ee[0].cBufIdx << " -- (Amp 2):" << ee[1].cBufIdxP << " " << ee[1].cBufIdx;
-//     qDebug() << "Pivot: " << pivot0 << " " << pivot1;
-//     qDebug() << "---------";
-
-// ---------------------------------------------------------------------------------------------------
-
      mutex->lock();
-
-      //quint64 tcpDataSize=pivot1-pivot0;
       quint64 tcpDataSize=cBufPivot-cBufPivotP;
       //qDebug() << cBufPivotP << " " << cBufPivot;
-
       for (quint64 i=0;i<tcpDataSize;i++) {
-       //tcpS.amp[0]=ee[0].cBuf[(pivot0+i-convN2)%cBufSz];
-       //tcpS.amp[1]=ee[1].cBuf[(pivot0+i-convN2)%cBufSz];
-       //(*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
        tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2)%cBufSz];
        tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2)%cBufSz];
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
       (*tcpBufPivot)+=tcpDataSize; // Update producer index
-
      mutex->unlock();
 
      cBufPivotP=cBufPivot;
-
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_eeg_msecs));
      //qDebug("octopus_acqd: <acqthread> Data validated to buffer..");
     } // eegImpedanceMode
@@ -258,9 +322,15 @@ class AcqThread : public QThread {
   std::vector<eex> ee; chninfo *chnInfo; unsigned int cBufSz,smpCount,chnCount;
   std::vector<unsigned int> cBufIdxList;
 
-  int convN2,convN; quint64 cBufPivot,cBufPivotP;
+  int convN2,convN,convL2,convL; quint64 cBufPivot,cBufPivotP;
 
   QMutex *mutex; bool *daemonRunning,*eegImpedanceMode;
+
+  bool filterMA,filterIIR_1_40;
+
+  // Butterworth coefficients (replace with MATLAB-generated values)
+  HighPassFilter hpf;
+  BandPassFilter bpf;
 };
 
 #endif

@@ -117,7 +117,7 @@ class CntFrame : public QFrame {
     scrPrvDataFX=acqM->scrPrvDataF[i]; scrCurDataFX=acqM->scrCurDataF[i];
 
     scrollPainter.setPen(Qt::darkGray);
-    scrollPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
+    //scrollPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
 
     if (acqM->notch) {
     scrollPainter.setPen(Qt::black); // Filtered in Red
@@ -333,6 +333,20 @@ class CntFrame : public QFrame {
     scroll=false;
  
    mainPainter.end();
+  }
+
+ protected:
+  void resizeEvent(QResizeEvent *event) {
+	  ;
+   //resizeEvent(event); // Call base class event handler
+   //setGeometry(x(),y(),parent->width()-9,parent->width()-60);
+
+   //int width = event->size().width();
+   //int height = event->size().height();
+
+   // Resize child widgets proportionally
+   //label1->setGeometry(width / 4, height / 4, width / 2, 30);
+   //label2->setGeometry(width / 4, height / 2, width / 2, 30);
   }
 
  private:
