@@ -132,7 +132,7 @@ class AcqMaster : QObject {
 
     serial.devname="/dev/ttyS0"; serial.baudrate=B115200;
     serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
-    guiX=hwX=guiY=hwY=0; guiWidth=800; guiHeight=600;
+    guiX=hwX=guiY=hwY=0; guiWidth=2800; guiHeight=1400;
     hwWidth=640; hwHeight=400;
     gizmoExists=digExists=scalpExists=skullExists=brainExists=false;
    } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string

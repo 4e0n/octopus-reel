@@ -35,7 +35,7 @@ class AcqClient : public QMainWindow {
  public:
   AcqClient(AcqMaster *acqm,QWidget *parent=0) : QMainWindow(parent) {
    acqM=acqm; setGeometry(acqM->guiX,acqM->guiY,acqM->guiWidth,acqM->guiHeight);
-   //setFixedSize(acqM->guiWidth,acqM->guiHeight);
+   setFixedSize(acqM->guiWidth,acqM->guiHeight);
 
    // *** TABS & TABWIDGETS ***
 

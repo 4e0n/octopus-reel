@@ -125,7 +125,7 @@ class AcqThread : public QThread {
    convN=chnInfo->sampleRate/50; convN2=convN/2;
    convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
 
-   filterMA=true; filterIIR_1_40=false;
+   filterIIR_1_40=false;
   }
 
   void switchToImpedanceMode() { // Will be checked for mutual exclusion
@@ -170,6 +170,46 @@ class AcqThread : public QThread {
    }
   }
 
+  void fetchEegData0() { float sum0,sum1;
+#ifdef EEMAGINE
+   using namespace eemagine::sdk;
+#else
+   using namespace eesynth;
+#endif
+   std::vector<double> v;
+   //for (eex& e:ee) {
+   for (unsigned int i=0;i<ee.size();i++) {
+    try {
+     ee[i].buf=ee[i].str->getData(); chnCount=ee[i].buf.getChannelCount();
+     ee[i].smpCount=ee[i].buf.getSampleCount();
+     if (chnCount!=chnInfo->totalChnCount) qDebug() << "octopus_acqd: <fetchEegData> Channel count mismatch!!!";
+    } catch (const exceptions::internalError& ex) {
+     std::cout << "Exception" << ex.what() << std::endl;
+    }
+    cBufIdxList[i]=ee[i].cBufIdxP=ee[i].cBufIdx;
+    for (unsigned int j=0;j<ee[i].smpCount;j++) { smp.marker=M_PI;
+     for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=ee[i].buf.getSample(k,j);
+     smp.trigger=ee[i].buf.getSample(chnCount-2,j);
+     smp.offset=ee[i].absSmpIdx=ee[i].buf.getSample(chnCount-1,j);
+     ee[i].cBuf[(ee[i].cBufIdx+j)%cBufSz]=smp;
+    }
+    // MA sums -- first computation
+    for (unsigned int j=0;j<chnCount-2;j++) {
+     for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+      sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum0[j]=sum0;
+
+      sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum1[j]=sum1;
+
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
+     }
+    }
+    ee[i].cBufIdx+=ee[i].smpCount;
+   }
+   cBufPivotP=cBufPivot; cBufPivot=*std::min_element(cBufIdxList.begin(),cBufIdxList.end());
+  }
+
   void fetchEegData() { float sum0,sum1;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -206,27 +246,23 @@ class AcqThread : public QThread {
 
     // Past average subtraction for High Pass + Moving Average for 50Hz and harmonics
 
-    //if (filterMA)
-    // for (unsigned int j=0;j<chnCount-2;j++) {
-    //  for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
-    //   //sum0=0.; for (int m=-convL;m<0;m++)
-    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j] -= ee[i].cBuf[(ee[i].cBufIdx+k-convL-1)%cBufSz].data[j];
-    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j] += ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
-    //   sum1=0.; for (int m=-convN2;m<convN2;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum1/convN - ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j]/convL;
-    //  }
-    // }
-    if (filterMA)
-     for (unsigned int j=0;j<chnCount-2;j++) {
-      for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
-       sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-       sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-       //ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j]+=
-       // (ee[i].cBuf[(ee[i].cBufIdx+k+k)%cBufSz].data[j]-ee[i].cBuf[(ee[i].cBufIdx+k+k-convL-1)%cBufSz].data[j]);
-       //sum1=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j];
-       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
-      }
+    for (unsigned int j=0;j<chnCount-2;j++) {
+     for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+      sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      //sum0=ee[i].cBuf[(ee[i].cBufIdx+k+convN2-1)%cBufSz].sum0[j];
+      //sum0-=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
+      //sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+convN-1)%cBufSz].data[j];
+      //ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum0[j]=sum0;
+
+      //sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      sum1=ee[i].cBuf[(ee[i].cBufIdx+k+convN2-1)%cBufSz].sum1[j];
+      sum1-=ee[i].cBuf[(ee[i].cBufIdx+k-convL-1)%cBufSz].data[j];
+      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum1[j]=sum1;
+
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
      }
+    }
 
     if (filterIIR_1_40) // Cascade to MA50Hz
      for (unsigned int j=0;j<chnCount-2;j++) {
@@ -292,6 +328,7 @@ class AcqThread : public QThread {
 
    // Main Loop
 
+   if (!(*eegImpedanceMode)) fetchEegData0();
    while (*daemonRunning) {
     if (*eegImpedanceMode) {
      fetchImpedanceData();
@@ -339,7 +376,7 @@ class AcqThread : public QThread {
 
   QMutex *mutex; bool *daemonRunning,*eegImpedanceMode;
 
-  bool filterMA,filterIIR_1_40;
+  bool filterIIR_1_40;
 
   // Butterworth coefficients (replace with MATLAB-generated values)
   HighPassFilter hpf;
