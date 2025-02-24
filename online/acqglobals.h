@@ -34,10 +34,10 @@ const int SAMPLE_RATE=1000;
 const int EEG_PROBE_MSECS=100;
 const int IMPEDANCE_PROBE_MSECS=100;
 
-const int REF_CHN_COUNT=0;
+const int REF_CHN_COUNT=64; // 0
 const int REF_CHN_MAXCOUNT=64;
 
-const int BIP_CHN_COUNT=1; // 2
+const int BIP_CHN_COUNT=2; // 2
 const int BIP_CHN_MAXCOUNT=24;
 
 const int PHYS_CHN_COUNT=REF_CHN_COUNT+BIP_CHN_COUNT;

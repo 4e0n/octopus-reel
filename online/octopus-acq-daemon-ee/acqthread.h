@@ -35,7 +35,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cmath>
 #include <stdio.h>
 
-//#define EEMAGINE
 #include "../acqglobals.h"
 
 #ifdef EEMAGINE
@@ -206,12 +205,26 @@ class AcqThread : public QThread {
     // ----- Filtering -----
 
     // Past average subtraction for High Pass + Moving Average for 50Hz and harmonics
+
+    //if (filterMA)
+    // for (unsigned int j=0;j<chnCount-2;j++) {
+    //  for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+    //   //sum0=0.; for (int m=-convL;m<0;m++)
+    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j] -= ee[i].cBuf[(ee[i].cBufIdx+k-convL-1)%cBufSz].data[j];
+    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j] += ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
+    //   sum1=0.; for (int m=-convN2;m<convN2;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+    //   ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum1/convN - ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j]/convL;
+    //  }
+    // }
     if (filterMA)
      for (unsigned int j=0;j<chnCount-2;j++) {
       for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
-       sum0=0.; for (int m=k-convL;m<k;m++)      sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-       sum1=0.; for (int m=-convN2;m<convN2;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
-       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum1/convN-sum0/convL;
+       sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+       sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+       //ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j]+=
+       // (ee[i].cBuf[(ee[i].cBufIdx+k+k)%cBufSz].data[j]-ee[i].cBuf[(ee[i].cBufIdx+k+k-convL-1)%cBufSz].data[j]);
+       //sum1=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum[j];
+       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
       }
      }
 

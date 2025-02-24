@@ -24,7 +24,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef _EEX_H
 #define _EEX_H
 
-//#define EEMAGINE
 #include "../acqglobals.h"
 
 #ifdef EEMAGINE
