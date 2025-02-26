@@ -100,10 +100,7 @@ class AcqMaster : QObject {
    recording=calibration=stimulation=trigger=averaging=eventOccured=false; notch=true;
    notchN=20; notchThreshold=20.;
    seconds=cp.cntPastIndex=avgCounter=calPts=0;
-   currentGizmo=currentElectrode=curElecInSeq=0;
-   scalpParamR=15.; scalpNasion=9.; scalpCzAngle=11.;
    cntSpeedX=4; scrCounter=0;
-   gizmoOnReal=elecOnReal=false;
 
 
    // Two representative sources
@@ -118,12 +115,8 @@ class AcqMaster : QObject {
    source.append(dummySrc);
    dummySrc=new Source(); source.append(dummySrc);
 
-   // Initial Visualization of Head Window
-   hwFrameV=hwGridV=hwDigV=hwParamV=hwRealV=hwGizmoV=hwAvgsV=
-   hwScalpV=hwSkullV=hwBrainV=true; hwSourceV=true;
-
-
    // *** LOAD CONFIG FILE AND READ ALL LINES ***
+
 
    QString cfgLine; QStringList cfgLines; cfgFile.setFileName("octopus.cfg");
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -143,10 +136,15 @@ class AcqMaster : QObject {
     ctrlGuiX=ctrlGuiY=0; ctrlGuiW=800; ctrlGuiH=600;
     contGuiX=gl3DGuiX=contGuiY=gl3DGuiY=0; contGuiW=2800; contGuiH=1400;
     gl3DGuiW=640; gl3DGuiH=400;
-    gizmoExists=digExists=scalpExists=skullExists=brainExists=false;
    } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string
+    gizmoExists.resize(ampCount); digExists.resize(ampCount);
+    scalpExists.resize(ampCount); skullExists.resize(ampCount); brainExists.resize(ampCount);
+    for (int i=0;i<ampCount;i++) {
+     gizmoExists[i]=digExists[i]=scalpExists[i]=skullExists[i]=brainExists[i]=false;
+    }
     while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160);
      cfgLines.append(cfgLine); } cfgFile.close();
+
     parseConfig(cfgLines);
    }
 
@@ -154,6 +152,28 @@ class AcqMaster : QObject {
 
    // *** POST SETUP ***
 
+   acqFrameW=(int)(.66*(float)(contGuiW)); if (acqFrameW%2==1) acqFrameW--;
+   acqFrameH=contGuiH-90;
+   glFrameW=(int)(.33*(float)(contGuiW)); if (glFrameW%2==1) glFrameW--;
+   glFrameH=glFrameW;
+
+   cntAmpX.resize(ampCount); avgAmpX.resize(ampCount);
+   gizmoOnReal.resize(ampCount); elecOnReal.resize(ampCount);
+   hwFrameV.resize(ampCount); hwGridV.resize(ampCount); hwDigV.resize(ampCount);
+   hwParamV.resize(ampCount); hwRealV.resize(ampCount); hwGizmoV.resize(ampCount);
+   hwAvgsV.resize(ampCount); hwScalpV.resize(ampCount); hwSkullV.resize(ampCount);
+   hwBrainV.resize(ampCount); hwSourceV.resize(ampCount);
+   currentGizmo.resize(ampCount); currentElectrode.resize(ampCount); curElecInSeq.resize(ampCount);
+   scalpParamR.resize(ampCount); scalpNasion.resize(ampCount); scalpCzAngle.resize(ampCount);
+   for (int i=0;i<ampCount;i++) {
+    gizmoOnReal[i]=elecOnReal[i]=false;
+    // Initial Visualization of Head Window
+    hwFrameV[i]=hwGridV[i]=hwDigV[i]=hwParamV[i]=hwRealV[i]=true;
+    hwGizmoV[i]=hwAvgsV[i]=hwScalpV[i]=hwSkullV[i]=hwBrainV[i]=true;
+    hwSourceV[i]=true;
+    currentGizmo[i]=currentElectrode[i]=curElecInSeq[i]=0;
+    scalpParamR[i]=15.; scalpNasion[i]=9.; scalpCzAngle[i]=11.;
+   }
    slTimePt=(100-cp.avgBwd)*sampleRate/1000;
 
    stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
@@ -179,7 +199,7 @@ class AcqMaster : QObject {
    if (!digitizer->connected)
     qDebug("Octopus Acq Client: "
            "Cannot connect to Polhemus digitizer!.. Continuing without it..");
-   else { digExists=true;
+   else { for (int i=0;i<ampCount;i++) digExists[i]=true;
     connect(digitizer,SIGNAL(digMonitor()),this,SLOT(slotDigMonitor()));
     connect(digitizer,SIGNAL(digResult()),this,SLOT(slotDigResult()));
    }
@@ -303,11 +323,11 @@ class AcqMaster : QObject {
     } else { gError=true;
      qDebug("Octopus Acq Client: Error in gizmo file!");
     }
-   } if (!gError) gizmoExists=true;
+   } if (!gError) for (int i=0;i<ampCount;i++) gizmoExists[i]=true;
   }
 
   void loadScalp_ObjFile(QString fn) {
-   scalpExists=false;
+   for (int i=0;i<ampCount;i++) scalpExists[i]=false;
    QFile scalpFile; QTextStream scalpStream;
    QString dummyStr; QStringList dummySL,dummySL2;
    Coord3D c; QVector<int> idx;
@@ -331,11 +351,11 @@ class AcqMaster : QObject {
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
      scalpIndex.append(idx);
     }
-   } scalpStream.setDevice(0); scalpFile.close(); scalpExists=true;
+   } scalpStream.setDevice(0); scalpFile.close(); for (int i=0;i<ampCount;i++) scalpExists[i]=true;
   }
 
   void loadSkull_ObjFile(QString fn) {
-   skullExists=false;
+   for (int i=0;i<ampCount;i++) skullExists[i]=false;
    QFile skullFile; QTextStream skullStream;
    QString dummyStr; QStringList dummySL,dummySL2;
    Coord3D c; QVector<int> idx;
@@ -359,11 +379,11 @@ class AcqMaster : QObject {
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
      skullIndex.append(idx);
     }
-   } skullStream.setDevice(0); skullFile.close(); skullExists=true;
+   } skullStream.setDevice(0); skullFile.close(); for (int i=0;i<ampCount;i++) skullExists[i]=true;
   }
 
   void loadBrain_ObjFile(QString fn) {
-   brainExists=false;
+   for (int i=0;i<ampCount;i++) brainExists[i]=false;
    QFile brainFile; QTextStream brainStream;
    QString dummyStr; QStringList dummySL,dummySL2;
    Coord3D c; QVector<int> idx;
@@ -387,7 +407,7 @@ class AcqMaster : QObject {
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
      brainIndex.append(idx);
     }
-   } brainStream.setDevice(0); brainFile.close(); brainExists=true;
+   } brainStream.setDevice(0); brainFile.close(); for (int i=0;i<ampCount;i++) brainExists[i]=true;
   }
 
   void loadCalib_OacFile(QString fn) {
@@ -514,8 +534,8 @@ class AcqMaster : QObject {
   int gl3DGuiX,gl3DGuiY,gl3DGuiW,gl3DGuiH;
 
   // Gizmo
-  QVector<Gizmo* > gizmo; bool gizmoOnReal,elecOnReal;
-  int currentGizmo,currentElectrode,curElecInSeq;
+  QVector<Gizmo* > gizmo; QVector<bool> gizmoOnReal,elecOnReal;
+  QVector<int> currentGizmo,currentElectrode,curElecInSeq;
 
   // Digitizer
   Vec3 sty,xp,yp,zp;
@@ -530,24 +550,26 @@ class AcqMaster : QObject {
   QVector<tcpsample> acqCurData; int notchN; float notchThreshold;
   bool eventOccured; int eIndex;
   channel_params cp; int tChns,sampleRate,cntSpeedX;
-  QVector<QVector<float> > scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; float cntAmpX,avgAmpX;
+  QVector<QVector<float> > scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; QVector<float> cntAmpX,avgAmpX;
   QString curEventName; int curEventType;
 
-  bool hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,
-       hwScalpV,hwSkullV,hwBrainV,hwSourceV,
-       digExists,gizmoExists,scalpExists,skullExists,brainExists;
+  QVector<bool> hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,
+                hwScalpV,hwSkullV,hwBrainV,hwSourceV,
+                digExists,gizmoExists,scalpExists,skullExists,brainExists;
 
-  QVector<Coord3D> paramCoord,realCoord; QVector<QVector<int> > paramIndex;
+//  QVector<Coord3D> paramCoord,realCoord; QVector<QVector<int> > paramIndex;
   QVector<Coord3D> scalpCoord; QVector<QVector<int> > scalpIndex;
   QVector<Coord3D> skullCoord; QVector<QVector<int> > skullIndex;
   QVector<Coord3D> brainCoord; QVector<QVector<int> > brainIndex;
-  float scalpParamR,scalpNasion,scalpCzAngle;
+  QVector<float> scalpParamR,scalpNasion,scalpCzAngle;
 
   float slTimePt;
 
   QVector<Source*> source;
 
   bool clientRunning;
+
+  int acqFrameW,acqFrameH,glFrameW,glFrameH;
 
  signals:
   void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow();
@@ -846,13 +868,17 @@ class AcqMaster : QObject {
 
   void slotDigResult() {
    digitizer->mutex.lock();
-    acqChannels[0][currentElectrode]->real=digitizer->stylusF;
-    acqChannels[0][currentElectrode]->realS=digitizer->stylusSF;
-   digitizer->mutex.unlock(); curElecInSeq++;
-   if (curElecInSeq==gizmo[currentGizmo]->seq.size()) curElecInSeq=0;
-   for (int i=0;i<acqChannels.size();i++)
-    if (acqChannels[0][i]->physChn==gizmo[currentGizmo]->seq[curElecInSeq]-1)
-     { currentElectrode=i; break; }
+    for (int i=0;i<ampCount;i++) {
+     acqChannels[0][currentElectrode[i]]->real=digitizer->stylusF;
+     acqChannels[0][currentElectrode[i]]->realS=digitizer->stylusSF;
+    }
+   digitizer->mutex.unlock(); for (int i=0;i<ampCount;i++) curElecInSeq[i]++;
+   for (int i=0;i<ampCount;i++) {
+    if (curElecInSeq[i]==gizmo[currentGizmo[i]]->seq.size()) curElecInSeq[i]=0;
+    for (int j=0;j<acqChannels.size();j++)
+     if (acqChannels[i][j]->physChn==gizmo[currentGizmo[i]]->seq[curElecInSeq[i]]-1)
+      { currentElectrode[i]=j; break; }
+   }
    emit repaintHeadWindow(); emit repaintGL(1);
   }
 

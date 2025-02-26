@@ -36,8 +36,7 @@ class CntFrame : public QFrame {
  Q_OBJECT
  public:
   CntFrame(QWidget *p,AcqMaster *acqm,unsigned int a) : QFrame(p) {
-   parent=p; acqM=acqm; ampNo=a;
-   setGeometry(2,2,acqM->contGuiW,acqM->contGuiH); scroll=false;
+   parent=p; acqM=acqm; ampNo=a; scroll=false;
 
    //setAttribute(Qt::WA_NativeWindow,true);
    //setAttribute(Qt::WA_PaintOnScreen,true);
@@ -48,9 +47,9 @@ class CntFrame : public QFrame {
    chnCount=acqM->cntVisChns[ampNo].size();
    colCount=ceil((float)chnCount/(float)(33.));
    chnPerCol=ceil((float)(chnCount)/(float)(colCount));
-   int ww=(int)((float)(acqM->contGuiW)/(float)colCount);
+   int ww=(int)((float)(acqM->acqFrameW)/(float)colCount);
    for (int i=0;i<colCount;i++) { w0.append(i*ww+1); wX.append(i*ww+1); }
-   for (int i=0;i<colCount-1;i++) wn.append((i+1)*ww-1); wn.append(acqM->contGuiW-1);
+   for (int i=0;i<colCount-1;i++) wn.append((i+1)*ww-1); wn.append(acqM->acqFrameW-1);
 
    if (chnCount<16)
     chnFont=QFont("Helvetica",12,QFont::Bold);
@@ -61,13 +60,13 @@ class CntFrame : public QFrame {
    evtFont=QFont("Helvetica",8,QFont::Bold);
    rMatrix.rotate(-90);
 
-   scrollBuffer=QPixmap(acqM->contGuiW,acqM->contGuiH); resetScrollBuffer();
+   scrollBuffer=QPixmap(acqM->acqFrameW,acqM->acqFrameH); resetScrollBuffer();
 
    acqM->registerScrollHandler(this);
   }
 
   void resetScrollBuffer() {
-   QPainter scrollPainter; QRect cr(0,0,acqM->contGuiW-1,acqM->contGuiH-1);
+   QPainter scrollPainter; QRect cr(0,0,acqM->acqFrameW-1,acqM->acqFrameH-1);
    scrollBuffer.fill(Qt::white);
    scrollPainter.begin(&scrollBuffer);
     //scrollPainter.setBackgroundMode(Qt::OpaqueMode);
@@ -76,7 +75,7 @@ class CntFrame : public QFrame {
    // scrollPainter.setBackground(QBrush(Qt::white));
    // scrollPainter.fillRect(cr,QBrush(Qt::white));
     scrollPainter.drawRect(cr);
-    scrollPainter.drawLine(0,0,acqM->contGuiW-1,acqM->contGuiH-1);
+    scrollPainter.drawLine(0,0,acqM->acqFrameW-1,acqM->acqFrameH-1);
    scrollPainter.end();
   }
   //QPaintEngine* paintEngine() const override {
@@ -90,27 +89,27 @@ class CntFrame : public QFrame {
    for (c=0;c<colCount;c++) {
     if (wX[c]<=wn[c]) {
      scrollPainter.setPen(Qt::white); //white
-     scrollPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
+     scrollPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
      if (wX[c]<(wn[c]-1)) {
       scrollPainter.setPen(Qt::black);
-      scrollPainter.drawLine(wX[c]+1,1,wX[c]+1,acqM->contGuiH-2);
+      scrollPainter.drawLine(wX[c]+1,1,wX[c]+1,acqM->acqFrameH-2);
      }
     }
    }
 
    if (tick) {
     scrollPainter.setPen(Qt::darkGray);
-    scrollPainter.drawRect(0,0,acqM->contGuiW-1,acqM->contGuiH-1);
+    scrollPainter.drawRect(0,0,acqM->acqFrameW-1,acqM->acqFrameH-1);
     for (c=0;c<colCount;c++) {
-     scrollPainter.drawLine(w0[c]-1,1,w0[c]-1,acqM->contGuiH-2);
-     scrollPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
+     scrollPainter.drawLine(w0[c]-1,1,w0[c]-1,acqM->acqFrameH-2);
+     scrollPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
     }
    }
 
    for (int i=0;i<chnCount;i++) {
     c=chnCount/chnPerCol; curCol=i/chnPerCol;
     chHeight=100.0; // 100 pixel is the indicated amp..
-    chY=(float)(acqM->contGuiH)/(float)(chnPerCol);
+    chY=(float)(acqM->acqFrameH)/(float)(chnPerCol);
     scrCurY=(int)(chY/2.0+chY*(i%chnPerCol));
 
     scrPrvDataX=acqM->scrPrvData[ampNo][i]; scrCurDataX=acqM->scrCurData[ampNo][i];
@@ -122,13 +121,13 @@ class CntFrame : public QFrame {
     if (acqM->notch) {
     scrollPainter.setPen(Qt::black); // Filtered in Red
     scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-     wX[curCol]-1,scrCurY-(int)(scrPrvDataFX*chHeight*acqM->cntAmpX/4.0),
-     wX[curCol],scrCurY-(int)(scrCurDataFX*chHeight*acqM->cntAmpX/4.0));
+     wX[curCol]-1,scrCurY-(int)(scrPrvDataFX*chHeight*acqM->cntAmpX[ampNo]/4.0),
+     wX[curCol],scrCurY-(int)(scrCurDataFX*chHeight*acqM->cntAmpX[ampNo]/4.0));
     } else {
     scrollPainter.setPen(Qt::black);
     scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-     wX[curCol]-1,scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX/4.0),
-     wX[curCol],scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX/4.0));
+     wX[curCol]-1,scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX[ampNo]/4.0),
+     wX[curCol],scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX[ampNo]/4.0));
     }
 //      if (i==0) qDebug("%2.2f",scrCurDataX);
    }
@@ -145,9 +144,9 @@ class CntFrame : public QFrame {
     *rBuffer=rBuffer->transformed(rMatrix,Qt::SmoothTransformation);
 
     for (c=0;c<colCount;c++) {
-     scrollPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
-     if (wX[c]<(w0[c]+15)) scrollPainter.drawPixmap(wn[c]-15,acqM->contGuiH-104,*rBuffer);
-     else scrollPainter.drawPixmap(wX[c]-14,acqM->contGuiH-104,*rBuffer);
+     scrollPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
+     if (wX[c]<(w0[c]+15)) scrollPainter.drawPixmap(wn[c]-15,acqM->acqFrameH-104,*rBuffer);
+     else scrollPainter.drawPixmap(wX[c]-14,acqM->acqFrameH-104,*rBuffer);
     } delete rBuffer;
    } 
 
@@ -156,7 +155,7 @@ class CntFrame : public QFrame {
     for (int i=0;i<chnCount;i++) {
      c=chnCount/chnPerCol; curCol=i/chnPerCol;
      chHeight=100.0; // 100 pixel is the indicated amp..
-     chY=(float)(acqM->contGuiH)/(float)(chnPerCol);
+     chY=(float)(acqM->acqFrameH)/(float)(chnPerCol);
      scrCurY=(int)(5+chY/2.0+chY*(i%chnPerCol));
      scrollPainter.drawText(w0[curCol]+4,scrCurY,
       dummyString.setNum((acqM->acqChannels)[ampNo][acqM->cntVisChns[ampNo][i]]->physChn+1)+" "+
@@ -167,7 +166,7 @@ class CntFrame : public QFrame {
 //    for (int i=0;i<chnCount;i++) {
 //     c=chnCount/chnPerCol; curCol=i/chnPerCol;
 //     chHeight=100.0; // 100 pixel is the indicated amp..
-//     chY=(float)(acqM->contGuiH)/(float)(chnPerCol);
+//     chY=(float)(acqM->acqFrameH)/(float)(chnPerCol);
 //     scrCurY=(int)(5+chY/2.0+chY*(i%chnPerCol));
 //     scrollPainter.drawText(w0[curCol]+4,scrCurY,
 //      dummyString.setNum((acqM->acqChannels)[acqM->cntVisChns[i]]->physChn+1)+" "+
@@ -181,7 +180,7 @@ class CntFrame : public QFrame {
 //      for (int i=0;i<chnCount;i++) { // 50Hz Levels
 //       c=chnCount/chnPerCol; curCol=i/chnPerCol;
 //       chHeight=100.0; // 100 pixel is the indicated amp..
-//       chY=(float)(acqM->contGuiH)/(float)(chnPerCol);
+//       chY=(float)(acqM->acqFrameH)/(float)(chnPerCol);
 //       scrCurY=(int)(chY/2.0+chY*(i%chnPerCol));
 //      }
 //     }
@@ -218,7 +217,7 @@ class CntFrame : public QFrame {
     // *** SO, ALL/OBSCURED SCROLLING DATA ARE NEEDED TO BE REDRAWN ***
 
     if (!scroll) { // Restore backwards data
-     //mainPainter.eraseRect(0,0,acqM->contGuiW-1,acqM->contGuiH-1);
+     //mainPainter.eraseRect(0,0,acqM->acqFrameW-1,acqM->acqFrameH-1);
      mainPainter.setPen(Qt::red);
      mainPainter.setBrush(Qt::white);
      ////mainPainter.setBackground(QBrush(Qt::white));
@@ -233,20 +232,20 @@ class CntFrame : public QFrame {
      for (c=0;c<colCount;c++) {
       if (wX[c]<=wn[c]) {
        mainPainter.setPen(Qt::white); //white
-       mainPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
+       mainPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
        if (wX[c]<(wn[c]-1)) {
         mainPainter.setPen(Qt::black);
-        mainPainter.drawLine(wX[c]+1,1,wX[c]+1,acqM->contGuiH-2);
+        mainPainter.drawLine(wX[c]+1,1,wX[c]+1,acqM->acqFrameH-2);
        }
       }
      }
 
      if (tick) {
       mainPainter.setPen(Qt::darkGray);
-      mainPainter.drawRect(0,0,acqM->contGuiW-1,acqM->contGuiH-1);
+      mainPainter.drawRect(0,0,acqM->acqFrameW-1,acqM->acqFrameH-1);
       for (c=0;c<colCount;c++) {
-       mainPainter.drawLine(w0[c]-1,1,w0[c]-1,acqM->contGuiH-2);
-       mainPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
+       mainPainter.drawLine(w0[c]-1,1,w0[c]-1,acqM->acqFrameH-2);
+       mainPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
       }
      }
 
@@ -261,9 +260,9 @@ class CntFrame : public QFrame {
       mainPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
       mainPainter.setPen(Qt::black);
       mainPainter.drawLine(wX[curCol]-1, // Div400 bcs. range is 400uVpp..
-//       scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX/400.0),
+//       scrCurY-(int)(scrPrvDataX*chHeight*acqM->cntAmpX[ampNo]/400.0),
                            wX[curCol],
-//       scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX/400.0));
+//       scrCurY-(int)(scrCurDataX*chHeight*acqM->cntAmpX[ampNo]/400.0));
 
 //      if (i==0) qDebug("%2.2f",scrCurDataX);
      }
@@ -280,9 +279,9 @@ class CntFrame : public QFrame {
       *rBuffer=rBuffer->transformed(rMatrix,Qt::SmoothTransformation);
 
       for (c=0;c<colCount;c++) {
-       mainPainter.drawLine(wX[c],1,wX[c],acqM->contGuiH-2);
-       if (wX[c]<(w0[c]+15)) mainPainter.drawPixmap(wn[c]-15,acqM->contGuiH-104,*rBuffer);
-       else mainPainter.drawPixmap(wX[c]-14,acqM->contGuiH-104,*rBuffer);
+       mainPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
+       if (wX[c]<(w0[c]+15)) mainPainter.drawPixmap(wn[c]-15,acqM->acqFrameH-104,*rBuffer);
+       else mainPainter.drawPixmap(wX[c]-14,acqM->acqFrameH-104,*rBuffer);
       } delete rBuffer;
      } 
 

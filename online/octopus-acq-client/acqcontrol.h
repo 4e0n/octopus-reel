@@ -41,7 +41,6 @@ class AcqControl : public QMainWindow {
   AcqControl(AcqMaster *acqm,QWidget *parent=0) : QMainWindow(parent) {
    acqM=acqm; setGeometry(acqM->ctrlGuiX,acqM->ctrlGuiY,acqM->ctrlGuiW,acqM->ctrlGuiH);
    setFixedSize(acqM->ctrlGuiW,acqM->ctrlGuiH);
-   //qDebug() << acqM->ctrlGuiX << " " << acqM->ctrlGuiY << " " << acqM->ctrlGuiW << " " << acqM->ctrlGuiH;
 
    // *** TABS & TABWIDGETS ***
 
@@ -49,15 +48,10 @@ class AcqControl : public QMainWindow {
    mainTabWidget->setGeometry(1,32,width()-2,height()-60);
    cntWidget=new QWidget(mainTabWidget);
    cntWidget->setGeometry(0,0,mainTabWidget->width(),mainTabWidget->height());
-//   cntFrame=new CntFrame(cntWidget,acqM,ampNo);
    cntWidget->show();
    mainTabWidget->addTab(cntWidget,"EEG"); mainTabWidget->show();
 
-
    // *** HEAD & CONFIG WINDOW ***
-
-//   headWin=new HeadWindow(this,acqM,ampNo); headWin->show();
-
 
    // *** STATUSBAR ***
 
@@ -152,37 +146,37 @@ class AcqControl : public QMainWindow {
 
    // *** BUTTONS AT THE TOP ***
 
-   toggleRecordingButton=new QPushButton("REC",cntWidget);
-   toggleStimulationButton=new QPushButton("STIM",cntWidget);
-   toggleTriggerButton=new QPushButton("TRIG",cntWidget);
-   manualTrigButton=new QPushButton("PING",cntWidget);
-   toggleNotchButton=new QPushButton("NOTCH FILTER",cntWidget);
-
-   toggleRecordingButton->setGeometry(20,mainTabWidget->height()-54,48,20);
-   toggleStimulationButton->setGeometry(450,mainTabWidget->height()-54,48,20);
-   toggleTriggerButton->setGeometry(505,mainTabWidget->height()-54,48,20);
-   toggleNotchButton->setGeometry(530,mainTabWidget->height()-54,48,20);
-   manualTrigButton->setGeometry(580,mainTabWidget->height()-54,48,20);
-
+   toggleRecordingButton=new QPushButton("RECORD",cntWidget);
+   toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,100,20);
    toggleRecordingButton->setCheckable(true);
-   toggleStimulationButton->setCheckable(true);
-   toggleTriggerButton->setCheckable(true);
-   toggleNotchButton->setCheckable(true);
-   toggleNotchButton->setChecked(true);
-
    connect(toggleRecordingButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleRecording()));
+
+   acqM->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
+   acqM->timeLabel->setGeometry(110,mainTabWidget->height()-52,190,20);
+
+   toggleStimulationButton=new QPushButton("STIM",cntWidget);
+   toggleStimulationButton->setGeometry(310,mainTabWidget->height()-54,60,20);
+   toggleStimulationButton->setCheckable(true);
    connect(toggleStimulationButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleStimulation()));
+
+   toggleTriggerButton=new QPushButton("TRIG",cntWidget);
+   toggleTriggerButton->setGeometry(374,mainTabWidget->height()-54,60,20);
+   toggleTriggerButton->setCheckable(true);
    connect(toggleTriggerButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleTrigger()));
-   connect(toggleNotchButton,SIGNAL(clicked()),
-           (QObject *)acqM,SLOT(slotToggleNotch()));
+
+   manualTrigButton=new QPushButton("PING",cntWidget);
+   manualTrigButton->setGeometry(460,mainTabWidget->height()-54,60,20);
    connect(manualTrigButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotManualTrig()));
 
-   acqM->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
-   acqM->timeLabel->setGeometry(200,mainTabWidget->height()-52,150,20);
+   toggleNotchButton=new QPushButton("MABPF",cntWidget);
+   toggleNotchButton->setGeometry(550,mainTabWidget->height()-54,60,20);
+   toggleNotchButton->setCheckable(true); toggleNotchButton->setChecked(true);
+   connect(toggleNotchButton,SIGNAL(clicked()),
+           (QObject *)acqM,SLOT(slotToggleNotch()));
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
@@ -193,10 +187,9 @@ class AcqControl : public QMainWindow {
    cntSpdBG->setExclusive(true);
    for (int i=0;i<5;i++) { // EEG SPEED
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-326+i*60,
+    dummyButton->setGeometry(mainTabWidget->width()-310+i*60,
                              mainTabWidget->height()-54,60,20);
     cntSpdBG->addButton(dummyButton,i); }
-
    cntSpdBG->button(0)->setText("4s");
    cntSpdBG->button(1)->setText("2s");
    cntSpdBG->button(2)->setText("800ms");

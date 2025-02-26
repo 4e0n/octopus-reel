@@ -53,7 +53,7 @@ class HeadGLWidget : public QGLWidget {
  public:
   HeadGLWidget(QWidget *p,AcqMaster *acqm,unsigned int a) :
                                  QGLWidget(QGLFormat(QGL::SampleBuffers),p) {
-   parent=p; acqM=acqm; ampNo=a; setGeometry(acqM->contGuiX+2,2,acqM->gl3DGuiW,acqM->gl3DGuiH);
+   parent=p; acqM=acqm; ampNo=a; //setGeometry(acqM->contGuiX+2,2,acqM->gl3DGuiW,acqM->gl3DGuiH);
    xRot=yRot=zRot=0; zTrans=CAMERA_DISTANCE;
    setMouseTracking(true); setAutoFillBackground(false); acqM->regRepaintGL(this);
   }
@@ -61,14 +61,14 @@ class HeadGLWidget : public QGLWidget {
   ~HeadGLWidget() {
    makeCurrent();
    glDeleteLists(source,11);
-   if (acqM->brainExists) glDeleteLists(brain,10);
-   if (acqM->skullExists) glDeleteLists(skull,9);
-   if (acqM->scalpExists) glDeleteLists(scalp,8);
+   if (acqM->brainExists[ampNo]) glDeleteLists(brain,10);
+   if (acqM->skullExists[ampNo]) glDeleteLists(skull,9);
+   if (acqM->scalpExists[ampNo]) glDeleteLists(scalp,8);
    glDeleteLists(avgs,7);
-   if (acqM->gizmoExists) glDeleteLists(gizmo,6);
+   if (acqM->gizmoExists[ampNo]) glDeleteLists(gizmo,6);
    glDeleteLists(realistic,5);
    glDeleteLists(parametric,4);
-   if (acqM->digExists) glDeleteLists(dig,3);
+   if (acqM->digExists[ampNo]) glDeleteLists(dig,3);
    glDeleteLists(grid,2);
    glDeleteLists(frame,1);
   }
@@ -96,14 +96,14 @@ class HeadGLWidget : public QGLWidget {
   void initializeGL() {
    frame=makeFrame();
    grid=makeGrid();
-   if (acqM->digExists) dig=makeDigitizer();
+   if (acqM->digExists[ampNo]) dig=makeDigitizer();
    parametric=makeParametric();
    realistic=makeRealistic();
-   if (acqM->gizmoExists) gizmo=makeGizmo();
+   if (acqM->gizmoExists[ampNo]) gizmo=makeGizmo();
    avgs=makeAverages();
-   if (acqM->scalpExists) scalp=makeScalp();
-   if (acqM->skullExists) skull=makeSkull();
-   if (acqM->brainExists) brain=makeBrain();
+   if (acqM->scalpExists[ampNo]) scalp=makeScalp();
+   if (acqM->skullExists[ampNo]) skull=makeSkull();
+   if (acqM->brainExists[ampNo]) brain=makeBrain();
    source=makeSource();
 
    static GLfloat ambientLight[4]={0.45,0.45,0.45,1.};
@@ -169,22 +169,22 @@ class HeadGLWidget : public QGLWidget {
      glLightfv(GL_LIGHT0,GL_SPOT_DIRECTION,spotDir);
      glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
-     if (acqM->hwFrameV) glCallList(frame);
-     if (acqM->hwGridV)  glCallList(grid);
-     if (acqM->hwSourceV) glCallList(source);
-     if (acqM->brainExists && acqM->hwBrainV) glCallList(brain);
-     if (acqM->skullExists && acqM->hwSkullV) glCallList(skull);
-     if (acqM->scalpExists && acqM->hwScalpV) glCallList(scalp);
-     if (acqM->hwRealV) glCallList(realistic);
-     if (acqM->hwParamV) glCallList(parametric);
+     if (acqM->hwFrameV[ampNo]) glCallList(frame);
+     if (acqM->hwGridV[ampNo])  glCallList(grid);
+     if (acqM->hwSourceV[ampNo]) glCallList(source);
+     if (acqM->brainExists[ampNo] && acqM->hwBrainV[ampNo]) glCallList(brain);
+     if (acqM->skullExists[ampNo] && acqM->hwSkullV[ampNo]) glCallList(skull);
+     if (acqM->scalpExists[ampNo] && acqM->hwScalpV[ampNo]) glCallList(scalp);
+     if (acqM->hwRealV[ampNo]) glCallList(realistic);
+     if (acqM->hwParamV[ampNo]) glCallList(parametric);
 
      glDisable(GL_CULL_FACE);
-      if (acqM->gizmoExists && acqM->hwGizmoV) glCallList(gizmo);
-      if (acqM->hwAvgsV) glCallList(avgs);
+      if (acqM->gizmoExists[ampNo] && acqM->hwGizmoV[ampNo]) glCallList(gizmo);
+      if (acqM->hwAvgsV[ampNo]) glCallList(avgs);
      glEnable(GL_CULL_FACE);
 
      glDisable(GL_LIGHTING);
-     if (acqM->digExists && acqM->hwDigV) glCallList(dig);
+     if (acqM->digExists[ampNo] && acqM->hwDigV[ampNo]) glCallList(dig);
      glEnable(GL_LIGHTING);
 
     glPopMatrix();
@@ -306,7 +306,7 @@ class HeadGLWidget : public QGLWidget {
   }
 
   void electrodeBorder(bool mode,int chn,float r,float th,float phi,float eR) {
-   float elecR; if (chn==acqM->currentElectrode) elecR=eR*3; else elecR=eR;
+   float elecR; if (chn==acqM->currentElectrode[ampNo]) elecR=eR*3; else elecR=eR;
    if (mode) qglColor(QColor(255,255,255,224));
    else qglColor(QColor(0,0,0,224));
    glPushMatrix(); glRotatef(phi,0,0,1); glRotatef(th,0,1,0);
@@ -322,7 +322,7 @@ class HeadGLWidget : public QGLWidget {
   void electrodeAvg(int chn,int idx,float r,float th,float ph,float eR) {
    QVector<float> *data=acqM->acqChannels[ampNo][chn]->avgData[idx]; int sz=data->size();
    QColor evtColor=acqM->acqEvents[idx]->color;
-   float elecR,zPt,c,m; if (chn==acqM->currentElectrode) elecR=eR*3; else elecR=eR;
+   float elecR,zPt,c,m; if (chn==acqM->currentElectrode[ampNo]) elecR=eR*3; else elecR=eR;
    glPushMatrix(); glRotatef(ph,0,0,1); glRotatef(th,0,1,0);
     glPushMatrix(); glTranslatef(0.0,0.0,r+ELECTRODE_HEIGHT*3./5.+0.002);
      glPushMatrix();
@@ -355,9 +355,9 @@ class HeadGLWidget : public QGLWidget {
 
        qglColor(evtColor);
        for (int t=0;t<sz-1;t++) {
-        glVertex3f(-(*data)[t]*2.*elecR/(acqM->avgAmpX*8.),
+        glVertex3f(-(*data)[t]*2.*elecR/(acqM->avgAmpX[ampNo]*8.),
                    -elecR+2.*elecR*(float)(t)/(float)(sz),0.0025);
-        glVertex3f(-(*data)[t+1]*2.*elecR/(acqM->avgAmpX*8.),
+        glVertex3f(-(*data)[t+1]*2.*elecR/(acqM->avgAmpX[ampNo]*8.),
                    -elecR+2.*elecR*(float)(t+1)/(float)(sz),0.0025);
        }
       glEnd();
@@ -420,10 +420,10 @@ class HeadGLWidget : public QGLWidget {
    GLuint list=glGenLists(4); glNewList(list,GL_COMPILE); glEnable(GL_BLEND);
    for (int i=0;i<acqM->acqChannels[ampNo].size();i++) {
     r=ELECTRODE_RADIUS; h=ELECTRODE_HEIGHT;
-    if (i==acqM->currentElectrode) { r=r*3;
+    if (i==acqM->currentElectrode[ampNo]) { r=r*3;
      qglColor(QColor(255,255,255,144)); // Hilite
     } else qglColor(acqM->acqChannels[ampNo][i]->notchColor);
-    electrode(acqM->scalpParamR,
+    electrode(acqM->scalpParamR[ampNo],
               acqM->acqChannels[ampNo][i]->param.y,      // theta
               acqM->acqChannels[ampNo][i]->param.z,r,h); // phi
    } glDisable(GL_BLEND); glEndList(); return list;
@@ -432,7 +432,7 @@ class HeadGLWidget : public QGLWidget {
   GLuint makeRealistic() { float sdx,sdy,sdz,error; // Make realistic set..
    GLuint list=glGenLists(5); glNewList(list,GL_COMPILE); glEnable(GL_BLEND);
    for (int i=0;i<acqM->acqChannels[ampNo].size();i++) {
-    if (i==acqM->currentElectrode) qglColor(QColor(255,255,255,128)); // Hilite
+    if (i==acqM->currentElectrode[ampNo]) qglColor(QColor(255,255,255,128)); // Hilite
     else qglColor(acqM->acqChannels[ampNo][i]->notchColor);
     sdx=acqM->acqChannels[ampNo][i]->realS[0];
     sdy=acqM->acqChannels[ampNo][i]->realS[1];
@@ -453,9 +453,9 @@ class HeadGLWidget : public QGLWidget {
 
    glBegin(GL_TRIANGLES);
     for (int k=0;k<acqM->gizmo.size();k++) {
-     if (k==acqM->currentGizmo) qglColor(QColor(255,0,0,96)); // Hilite (red)
+     if (k==acqM->currentGizmo[ampNo]) qglColor(QColor(255,0,0,96)); // Hilite (red)
      else qglColor(QColor(0,0,255,96)); // Red or blue - default cap color
-     if (acqM->gizmoOnReal) {
+     if (acqM->gizmoOnReal[ampNo]) {
       for (int i=0;i<acqM->gizmo[k]->tri.size();i++) { v0=v1=v2=0;
        for (int j=0;j<acqM->acqChannels[ampNo].size();j++) {
         if (acqM->acqChannels[ampNo][j]->physChn==acqM->gizmo[k]->tri[i][0]-1) v0=j;
@@ -482,7 +482,7 @@ class HeadGLWidget : public QGLWidget {
         if (acqM->acqChannels[ampNo][j]->physChn==acqM->gizmo[k]->tri[i][1]-1) v1=j;
         if (acqM->acqChannels[ampNo][j]->physChn==acqM->gizmo[k]->tri[i][2]-1) v2=j;
        }
-       v0c0S=v1c0S=v2c0S=acqM->scalpParamR;
+       v0c0S=v1c0S=v2c0S=acqM->scalpParamR[ampNo];
        v0c1S=acqM->acqChannels[ampNo][v0]->param.y; // theta
        v0c2S=acqM->acqChannels[ampNo][v0]->param.z; // phi
        v1c1S=acqM->acqChannels[ampNo][v1]->param.y;
@@ -517,7 +517,7 @@ class HeadGLWidget : public QGLWidget {
    for (int i=0;i<acqM->acqChannels.size();i++) { chn=-1;
     for (int j=0;j<acqM->avgVisChns.size();j++)
      if (acqM->avgVisChns[ampNo][j]==i) { chn=i; break; }
-    if (acqM->elecOnReal) { Vec3 dummyVec,vs;
+    if (acqM->elecOnReal[ampNo]) { Vec3 dummyVec,vs;
      if (chn>=0) {
       dummyVec=acqM->acqChannels[ampNo][chn]->real;
       vs[0]=dummyVec.sphR();
@@ -537,20 +537,20 @@ class HeadGLWidget : public QGLWidget {
                             ELECTRODE_RADIUS*5./6.);
     } else {
      if (chn>=0) {
-      electrodeBorder(true,chn,acqM->scalpParamR,
+      electrodeBorder(true,chn,acqM->scalpParamR[ampNo],
                       acqM->acqChannels[ampNo][chn]->param.y, // theta
                       acqM->acqChannels[ampNo][chn]->param.z, // phi
                       ELECTRODE_RADIUS*5./6.);
       for (int j=0;j<acqM->acqEvents.size();j++) {
        if (acqM->acqEvents[j]->rejected || acqM->acqEvents[j]->accepted) {
         evtIndex=acqM->eventIndex(acqM->acqEvents[j]->no,acqM->acqEvents[j]->type),
-        electrodeAvg(chn,evtIndex,acqM->scalpParamR,
+        electrodeAvg(chn,evtIndex,acqM->scalpParamR[ampNo],
                      acqM->acqChannels[ampNo][chn]->param.y, // theta
                      acqM->acqChannels[ampNo][chn]->param.z, // phi
                      ELECTRODE_RADIUS*5./6.);
        }
       }
-     } else electrodeBorder(false,i,acqM->scalpParamR,
+     } else electrodeBorder(false,i,acqM->scalpParamR[ampNo],
                             acqM->acqChannels[ampNo][i]->param.y, // theta
                             acqM->acqChannels[ampNo][i]->param.z, // phi
                             ELECTRODE_RADIUS*5./6.);

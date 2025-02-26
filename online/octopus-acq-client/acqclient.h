@@ -47,8 +47,8 @@ class AcqClient : public QMainWindow {
  Q_OBJECT
  public:
   AcqClient(AcqMaster *acqm,unsigned int a,QWidget *parent=0) : QMainWindow(parent) {
-   acqM=acqm; ampNo=a; setGeometry(acqM->contGuiX,acqM->contGuiY,acqM->contGuiW+acqM->gl3DGuiW+36,acqM->contGuiH+60);
-   //setFixedSize(acqM->contGuiW+acqM->gl3DGuiW+4,acqM->contGuiH);
+   acqM=acqm; ampNo=a; setGeometry(acqM->contGuiX+ampNo*(acqM->contGuiW+12),acqM->contGuiY,acqM->contGuiW,acqM->contGuiH);
+   setFixedSize(acqM->contGuiW,acqM->contGuiH);
 
    // *** TABS & TABWIDGETS ***
 
@@ -56,51 +56,84 @@ class AcqClient : public QMainWindow {
    mainTabWidget->setGeometry(1,32,this->width()-2,this->height());
 
    cntWidget=new QWidget(mainTabWidget);
-   cntWidget->setGeometry(0,0,acqM->contGuiW,acqM->contGuiH+60);
-   cntFrame=new CntFrame(cntWidget,acqM,ampNo); cntWidget->show();
-   headGLWidget=new HeadGLWidget(this,acqM,ampNo); headGLWidget->show();
+   cntFrame=new CntFrame(cntWidget,acqM,ampNo);
+   cntFrame->setGeometry(2,2,acqM->acqFrameW,acqM->acqFrameH); cntWidget->show();
+   headGLWidget=new HeadGLWidget(cntWidget,acqM,ampNo);
+   headGLWidget->setGeometry(2+acqM->acqFrameW+5,2,acqM->glFrameW,acqM->glFrameH); headGLWidget->show();
 
-   mainTabWidget->addTab(cntWidget,"EEG"); mainTabWidget->show();
+   mainTabWidget->addTab(cntWidget,"EEG/ERP"); mainTabWidget->show();
+
+   // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
+
+   QPushButton *dummyButton;
+   cntAmpBG=new QButtonGroup(); cntAmpBG->setExclusive(true);
+   for (int i=0;i<6;i++) { // EEG AMP
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(100+i*60,cntWidget->height(),60,20);
+    cntAmpBG->addButton(dummyButton,i);
+   }
+   cntAmpBG->button(0)->setText("1mV");
+   cntAmpBG->button(1)->setText("500uV");
+   cntAmpBG->button(2)->setText("200uV");
+   cntAmpBG->button(3)->setText("100uV");
+   cntAmpBG->button(4)->setText("50uV");
+   cntAmpBG->button(5)->setText("20uV");
+   cntAmpBG->button(3)->setDown(true);
+   acqM->cntAmpX[ampNo]=(1000000.0/100.0);
+   connect(cntAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntAmp(int)));
+
    // *** HEAD & CONFIG WINDOW ***
 
-   acqM->regRepaintHeadWindow(this);
+   avgAmpBG=new QButtonGroup(); avgAmpBG->setExclusive(true);
+   for (int i=0;i<6;i++) { // ERP AMP
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(acqM->acqFrameW+(acqM->glFrameW-360)/2+i*60,acqM->glFrameH+4,60,20);
+    avgAmpBG->addButton(dummyButton,i);
+   }
+   avgAmpBG->button(0)->setText("2uV");
+   avgAmpBG->button(1)->setText("5uV");
+   avgAmpBG->button(2)->setText("10uV");
+   avgAmpBG->button(3)->setText("20uV");
+   avgAmpBG->button(4)->setText("50uV");
+   avgAmpBG->button(5)->setText("100uV");
+   avgAmpBG->button(5)->setDown(true);
+   acqM->avgAmpX[ampNo]=100;
 
-   paramRLabel=new QLabel("Parametric Radius ("+
-                          dummyString.setNum(acqM->scalpParamR)+" cm):",this);
-   paramRLabel->setGeometry(acqM->gl3DGuiH+30-20,40,acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
+   connect(avgAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotAvgAmp(int)));
 
-   QSlider *paramRSlider=new QSlider(Qt::Horizontal,this);
-   paramRSlider->setGeometry(acqM->gl3DGuiH+30-20,60,acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
-   paramRSlider->setRange(70,500); // in mm because of int - divide by ten
+//   acqM->regRepaintHeadWindow(this);
+
+   paramRLabel=new QLabel("Param.Radius ("+
+                          dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):",cntWidget);
+   paramRLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+34,190,20);
+
+   QSlider *paramRSlider=new QSlider(Qt::Horizontal,cntWidget);
+   paramRSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+36,acqM->glFrameW-210,20);
+   paramRSlider->setRange(70,300); // in mm because of int - divide by ten
    paramRSlider->setSingleStep(1);
    paramRSlider->setPageStep(10); // step in cms..
-   paramRSlider->setSliderPosition(acqM->scalpParamR*10);
+   paramRSlider->setSliderPosition(acqM->scalpParamR[ampNo]*10);
    paramRSlider->setEnabled(true);
    connect(paramRSlider,SIGNAL(valueChanged(int)),
            this,SLOT(slotSetScalpParamR(int)));
 
-   QLabel *gizmoLabel=new QLabel("Gizmo",this);
-   gizmoLabel->setGeometry(acqM->gl3DGuiH+30+4,80,
-                           (acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2-10,20);
-   QLabel *electrodeLabel=new QLabel("Electrode",this);
-   electrodeLabel->setGeometry(acqM->gl3DGuiH+30+(acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2+14,80,
-                               (acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2-10,20);
+   gizmoRealCB=new QCheckBox("Gizmos",cntWidget); gizmoRealCB->setChecked(true);
+   gizmoRealCB->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+70,100,20);
+   connect(gizmoRealCB,SIGNAL(clicked()),this,SLOT(slotGizmoRealCB()));
+   elecRealCB=new QCheckBox("Electrodes",cntWidget); elecRealCB->setChecked(true);
+   elecRealCB->setGeometry(acqM->acqFrameW+acqM->glFrameW/2+15,acqM->glFrameH+70,100,20);
+   connect(elecRealCB,SIGNAL(clicked()),this,SLOT(slotElecRealCB()));
 
-   gizmoList=new QListWidget(this);
-   gizmoList->setGeometry(acqM->gl3DGuiH+30-20,100,
-                          (acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2-10,acqM->gl3DGuiH+30-430);
-   electrodeList=new QListWidget(this);
-   electrodeList->setGeometry(acqM->gl3DGuiH+30+(acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2-20,100,
-                              (acqM->gl3DGuiW+30-acqM->gl3DGuiH+30)/2-10,acqM->gl3DGuiH+30-430);
+   gizmoList=new QListWidget(cntWidget);
+   gizmoList->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+100,acqM->glFrameW/2-10,100);
+   electrodeList=new QListWidget(cntWidget);
+   electrodeList->setGeometry(acqM->acqFrameW+acqM->glFrameW/2+15,acqM->glFrameH+100,acqM->glFrameW/2-10,100);
 
    notchLabel=new QLabel("Notch Level (RMS) ("+
-                    dummyString.setNum(acqM->notchThreshold)+" uV):",this);
-   notchLabel->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-326,
-                           acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
-
-   QSlider *notchSlider=new QSlider(Qt::Horizontal,this);
-   notchSlider->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-306,
-                            acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
+                    dummyString.setNum(acqM->notchThreshold)+" uV):",cntWidget);
+   notchLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+210,190,20);
+   QSlider *notchSlider=new QSlider(Qt::Horizontal,cntWidget);
+   notchSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+212,acqM->glFrameW-210,20);
    notchSlider->setRange(1,100); // in mm because of int - divide by ten
    notchSlider->setSingleStep(1);
    notchSlider->setPageStep(10); // step in uVs..
@@ -108,16 +141,6 @@ class AcqClient : public QMainWindow {
    notchSlider->setEnabled(true);
    connect(notchSlider,SIGNAL(valueChanged(int)),
            this,SLOT(slotSetNotchThr(int)));
-
-   gizmoRealCB=new QCheckBox("Gizmo on Real Model",this);
-   gizmoRealCB->setGeometry(acqM->gl3DGuiH+30+4,acqM->gl3DGuiH+30-286,
-                            acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-20,20);
-   connect(gizmoRealCB,SIGNAL(clicked()),this,SLOT(slotGizmoRealCB()));
-
-   elecRealCB=new QCheckBox("Electrodes on Real Model",this);
-   elecRealCB->setGeometry(acqM->gl3DGuiH+30+4,acqM->gl3DGuiH+30-266,
-                            acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-20,20);
-   connect(elecRealCB,SIGNAL(clicked()),this,SLOT(slotElecRealCB()));
 
    connect(gizmoList,SIGNAL(currentRowChanged(int)),
            this,SLOT(slotSelectGizmo(int)));
@@ -128,21 +151,16 @@ class AcqClient : public QMainWindow {
 
    for (int i=0;i<acqM->gizmo.size();i++) gizmoList->addItem(acqM->gizmo[i]->name);
 
-   QLabel *legendLabel=new QLabel("Event Counts/Legend:",this);
-   legendLabel->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-240,170,20);
-   legendFrame=new LegendFrame(this,acqM);
-   legendFrame->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-220,
-                            acqM->gl3DGuiW+30-acqM->gl3DGuiH+30+10,120);
-
-   timePtLabel=new QLabel("Localization Time Point ("+dummyString.setNum(
+   QLabel *legendLabel=new QLabel("Event Counts/Legend:",cntWidget);
+   legendLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+240,200,20);
+   legendFrame=new LegendFrame(cntWidget,acqM);
+   legendFrame->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+266,acqM->glFrameW-4,80);
+   timePtLabel=new QLabel("Src. Time Point ("+dummyString.setNum(
                           acqM->cp.avgBwd+acqM->slTimePt*1000/acqM->sampleRate
-                           )+" ms):",this);
-   timePtLabel->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-80,
-                            acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
-
-   QSlider *timePtSlider=new QSlider(Qt::Horizontal,this);
-   timePtSlider->setGeometry(acqM->gl3DGuiH+30-20,acqM->gl3DGuiH+30-60,
-                             acqM->gl3DGuiW+30-acqM->gl3DGuiH+30-10,20);
+                           )+" ms):",cntWidget);
+   timePtLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+354,200,20);
+   QSlider *timePtSlider=new QSlider(Qt::Horizontal,cntWidget);
+   timePtSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+356,acqM->glFrameW-210,20);
    timePtSlider->setRange(0,acqM->cp.avgCount-1);
    timePtSlider->setSingleStep(1);
    timePtSlider->setPageStep(1);
@@ -151,30 +169,9 @@ class AcqClient : public QMainWindow {
    connect(timePtSlider,SIGNAL(valueChanged(int)),
            this,SLOT(slotSetTimePt(int)));
 
-   QPushButton *dummyButton;
-
-   avgAmpBG=new QButtonGroup();
-   avgAmpBG->setExclusive(true);
-   for (int i=0;i<6;i++) { // ERP AMP
-    dummyButton=new QPushButton(this); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(20+i*60,height()-24,60,20);
-    avgAmpBG->addButton(dummyButton,i);
-   }
-   avgAmpBG->button(0)->setText("2uV");
-   avgAmpBG->button(1)->setText("5uV");
-   avgAmpBG->button(2)->setText("10uV");
-   avgAmpBG->button(3)->setText("20uV");
-   avgAmpBG->button(4)->setText("50uV");
-   avgAmpBG->button(5)->setText("100uV");
-   avgAmpBG->button(5)->setDown(true);
-   acqM->avgAmpX=100;
-   connect(avgAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotAvgAmp(int)));
-
-
-   clrAvgsButton=new QPushButton("CLR",this);
-   clrAvgsButton->setGeometry(550,height()-24,60,20);
+   clrAvgsButton=new QPushButton("CLR",cntWidget);
+   clrAvgsButton->setGeometry(acqM->acqFrameW+acqM->glFrameW-50,acqM->glFrameH+240,40,20);
    connect(clrAvgsButton,SIGNAL(clicked()),(QObject *)acqM,SLOT(slotClrAvgs()));
-
 
    //if (gizmoList->count()>0) {
    // gizmoList->setCurrentRow(0); slotSelectGizmo(0);
@@ -272,27 +269,8 @@ class AcqClient : public QMainWindow {
    viewMenu->addAction(toggleBrainAction);
    viewMenu->addSeparator();
    viewMenu->addAction(toggleSourceAction);
-   // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
-   cntAmpBG=new QButtonGroup(); cntAmpBG->setExclusive(true);
-   for (int i=0;i<6;i++) { // EEG AMP
-    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-676+i*60,
-                             mainTabWidget->height()-54,60,20);
-    cntAmpBG->addButton(dummyButton,i); }
-
-   cntAmpBG->button(0)->setText("1mV");
-   cntAmpBG->button(1)->setText("500uV");
-   cntAmpBG->button(2)->setText("200uV");
-   cntAmpBG->button(3)->setText("100uv");
-   cntAmpBG->button(4)->setText("50uV");
-   cntAmpBG->button(5)->setText("20uV");
-   cntAmpBG->button(3)->setDown(true);
-
-   acqM->cntAmpX=(1000000.0/100.0);
-   connect(cntAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntAmp(int)));
-
-   setWindowTitle("Octopus EEG/ERP Amp#");
+   setWindowTitle("Octopus Hyper EEG/ERP Amp #"+QString::number(ampNo+1));
   }
 
  signals: void scrollData();
@@ -303,17 +281,17 @@ class AcqClient : public QMainWindow {
 
   void slotCntAmp(int x) {
    switch (x) {
-    case 0: acqM->cntAmpX=(1000000.0/1000.0);cntAmpBG->button(3)->setDown(false);break;
-    case 1: acqM->cntAmpX=(1000000.0/500.0);cntAmpBG->button(3)->setDown(false);break;
-    case 2: acqM->cntAmpX=(1000000.0/200.0);cntAmpBG->button(3)->setDown(false);break;
-    case 3: acqM->cntAmpX=(1000000.0/100.0);break;
-    case 4: acqM->cntAmpX=(1000000.0/50.0);cntAmpBG->button(3)->setDown(false);break;
-    case 5: acqM->cntAmpX=(1000000.0/20.0);cntAmpBG->button(3)->setDown(false);break;
+    case 0: acqM->cntAmpX[ampNo]=(1000000.0/1000.0);cntAmpBG->button(3)->setDown(false);break;
+    case 1: acqM->cntAmpX[ampNo]=(1000000.0/500.0);cntAmpBG->button(3)->setDown(false);break;
+    case 2: acqM->cntAmpX[ampNo]=(1000000.0/200.0);cntAmpBG->button(3)->setDown(false);break;
+    case 3: acqM->cntAmpX[ampNo]=(1000000.0/100.0);break;
+    case 4: acqM->cntAmpX[ampNo]=(1000000.0/50.0);cntAmpBG->button(3)->setDown(false);break;
+    case 5: acqM->cntAmpX[ampNo]=(1000000.0/20.0);cntAmpBG->button(3)->setDown(false);break;
    }
   }
 
   void slotRepaint() {
-   electrodeList->setCurrentRow(acqM->curElecInSeq); legendFrame->repaint();
+   electrodeList->setCurrentRow(acqM->curElecInSeq[ampNo]); legendFrame->repaint();
   }
 
   void slotLoadReal() {
@@ -330,22 +308,22 @@ class AcqClient : public QMainWindow {
    else { qDebug("An error has been occured while saving measured coords!"); }
   }
 
-  void slotToggleFrame()     { acqM->hwFrameV   =(acqM->hwFrameV)   ? false:true; }
-  void slotToggleGrid()      { acqM->hwGridV    =(acqM->hwGridV)    ? false:true; }
-  void slotToggleDig()       { acqM->hwDigV     =(acqM->hwDigV)     ? false:true; }
-  void slotToggleParam()     { acqM->hwParamV   =(acqM->hwParamV)   ? false:true; }
-  void slotToggleReal()      { acqM->hwRealV    =(acqM->hwRealV)    ? false:true; }
-  void slotToggleGizmo()     { acqM->hwGizmoV   =(acqM->hwGizmoV)   ? false:true; }
-  void slotToggleAvgs()      { acqM->hwAvgsV    =(acqM->hwAvgsV)    ? false:true; }
-  void slotToggleScalp()     { acqM->hwScalpV   =(acqM->hwScalpV)   ? false:true; }
-  void slotToggleSkull()     { acqM->hwSkullV   =(acqM->hwSkullV)   ? false:true; }
-  void slotToggleBrain()     { acqM->hwBrainV   =(acqM->hwBrainV)   ? false:true; }
-  void slotToggleSource()    { acqM->hwSourceV  =(acqM->hwSourceV)  ? false:true; }
+  void slotToggleFrame()  { acqM->hwFrameV[ampNo]  = (acqM->hwFrameV[ampNo])  ? false:true; }
+  void slotToggleGrid()   { acqM->hwGridV[ampNo]   = (acqM->hwGridV[ampNo])   ? false:true; }
+  void slotToggleDig()    { acqM->hwDigV[ampNo]    = (acqM->hwDigV)[ampNo]    ? false:true; }
+  void slotToggleParam()  { acqM->hwParamV[ampNo]  = (acqM->hwParamV)[ampNo]  ? false:true; }
+  void slotToggleReal()   { acqM->hwRealV[ampNo]   = (acqM->hwRealV)[ampNo]   ? false:true; }
+  void slotToggleGizmo()  { acqM->hwGizmoV[ampNo]  = (acqM->hwGizmoV)[ampNo]  ? false:true; }
+  void slotToggleAvgs()   { acqM->hwAvgsV[ampNo]   = (acqM->hwAvgsV)[ampNo]   ? false:true; }
+  void slotToggleScalp()  { acqM->hwScalpV[ampNo]  = (acqM->hwScalpV)[ampNo]  ? false:true; }
+  void slotToggleSkull()  { acqM->hwSkullV[ampNo]  = (acqM->hwSkullV)[ampNo]  ? false:true; }
+  void slotToggleBrain()  { acqM->hwBrainV[ampNo]  = (acqM->hwBrainV)[ampNo]  ? false:true; }
+  void slotToggleSource() { acqM->hwSourceV[ampNo] = (acqM->hwSourceV)[ampNo] ? false:true; }
 
   void slotSetScalpParamR(int x) {
-   acqM->scalpParamR=(float)(x)/10.;
+   acqM->scalpParamR[ampNo]=(float)(x)/10.;
    paramRLabel->setText("Parametric Radius ("+
-                        dummyString.setNum(acqM->scalpParamR)+" cm):");
+                        dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):");
    headGLWidget->slotRepaintGL(2+8+16); // update real+gizmo+avgs
   }
 
@@ -363,25 +341,25 @@ class AcqClient : public QMainWindow {
   }
 
   void slotSelectGizmo(int k) { int idx; Gizmo *g=acqM->gizmo[k];
-   acqM->currentGizmo=k; electrodeList->clear();
+   acqM->currentGizmo[ampNo]=k; electrodeList->clear();
    for (int i=0;i<g->seq.size();i++) {
     for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
      if (acqM->acqChannels[ampNo][j]->physChn==g->seq[i]-1) { idx=j; break; }
     dummyString.setNum(acqM->acqChannels[ampNo][idx]->physChn+1);
     electrodeList->addItem(dummyString+" "+acqM->acqChannels[ampNo][idx]->name);
    }
-   acqM->curElecInSeq=0;
+   acqM->curElecInSeq[ampNo]=0;
    for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
     if (acqM->acqChannels[ampNo][j]->physChn==g->seq[0]-1) { idx=j; break; }
-   acqM->currentElectrode=idx;
-   electrodeList->setCurrentRow(acqM->curElecInSeq);
+   acqM->currentElectrode[ampNo]=idx;
+   electrodeList->setCurrentRow(acqM->curElecInSeq[ampNo]);
    headGLWidget->slotRepaintGL(8);
   }
 
-  void slotSelectElectrode(int k) { acqM->curElecInSeq=k;
+  void slotSelectElectrode(int k) { acqM->curElecInSeq[ampNo]=k;
    for (int i=0;i<acqM->acqChannels[ampNo].size();i++)
-    if (acqM->acqChannels[ampNo][i]->physChn==acqM->gizmo[acqM->currentGizmo]->seq[k]-1)
-     { acqM->currentElectrode=i; break; }
+    if (acqM->acqChannels[ampNo][i]->physChn==acqM->gizmo[acqM->currentGizmo[ampNo]]->seq[k]-1)
+     { acqM->currentElectrode[ampNo]=i; break; }
    headGLWidget->slotRepaintGL(2+16); // update real+avgs
   }
 
@@ -395,46 +373,46 @@ class AcqClient : public QMainWindow {
   }
 
   void slotGizmoRealCB() {
-   acqM->gizmoOnReal=gizmoRealCB->isChecked();
+   acqM->gizmoOnReal[ampNo]=gizmoRealCB->isChecked();
    headGLWidget->slotRepaintGL(8); // update gizmo
   }
 
   void slotElecRealCB() {
-   acqM->elecOnReal=elecRealCB->isChecked();
+   acqM->elecOnReal[ampNo]=elecRealCB->isChecked();
    headGLWidget->slotRepaintGL(16); // update averages
   }
 
   void slotAvgAmp(int x) {
    switch (x) {
-    case 0: acqM->avgAmpX=  2.0; avgAmpBG->button(5)->setDown(false); break;
-    case 1: acqM->avgAmpX=  5.0; avgAmpBG->button(5)->setDown(false); break;
-    case 2: acqM->avgAmpX= 10.0; avgAmpBG->button(5)->setDown(false); break;
-    case 3: acqM->avgAmpX= 20.0; avgAmpBG->button(5)->setDown(false); break;
-    case 4: acqM->avgAmpX= 50.0; avgAmpBG->button(5)->setDown(false); break;
-    case 5: acqM->avgAmpX=100.0; avgAmpBG->button(5)->setDown(false); break;
+    case 0: acqM->avgAmpX[ampNo]=  2.0; avgAmpBG->button(5)->setDown(false); break;
+    case 1: acqM->avgAmpX[ampNo]=  5.0; avgAmpBG->button(5)->setDown(false); break;
+    case 2: acqM->avgAmpX[ampNo]= 10.0; avgAmpBG->button(5)->setDown(false); break;
+    case 3: acqM->avgAmpX[ampNo]= 20.0; avgAmpBG->button(5)->setDown(false); break;
+    case 4: acqM->avgAmpX[ampNo]= 50.0; avgAmpBG->button(5)->setDown(false); break;
+    case 5: acqM->avgAmpX[ampNo]=100.0; avgAmpBG->button(5)->setDown(false); break;
    }
   }
- protected:
-  void resizeEvent(QResizeEvent *event) {
-   int w,h;
+ //protected:
+  //void resizeEvent(QResizeEvent *event) {
+   //int w,h;
    //resizeEvent(event); // Call base class event handler
 
    //if (acqM->clientRunning) {
-   acqM->contGuiW=w=event->size().width();
-   acqM->contGuiH=h=event->size().height();
+   //acqM->contGuiW=w=event->size().width();
+   //acqM->contGuiH=h=event->size().height();
 
    // Resize child widgets proportionally
-   cntFrame->setGeometry(2,2,w-9,h-60);
-   mainTabWidget->setGeometry(1,32,w-2,h-60);
-   cntWidget->setGeometry(0,0,w,h);
-   acqM->guiStatusBar->setGeometry(0,h-20,w,20);
-   acqM->timeLabel->setGeometry(acqM->timeLabel->x(),mainTabWidget->height()-52,
-                                acqM->timeLabel->width(),acqM->timeLabel->height());
-   menuBar->setFixedWidth(w);
-   for (int i=0;i<6;i++) cntAmpBG->button(i)->setGeometry(mainTabWidget->width()-676+i*60,mainTabWidget->height()-54,
-                                                          cntAmpBG->button(i)->width(),cntAmpBG->button(i)->height());
+   //cntFrame->setGeometry(2,2,w-9,h-60);
+   //mainTabWidget->setGeometry(1,32,w-2,h-60);
+   //cntWidget->setGeometry(0,0,w,h);
+   //acqM->guiStatusBar->setGeometry(0,h-20,w,20);
+   //acqM->timeLabel->setGeometry(acqM->timeLabel->x(),mainTabWidget->height()-52,
+   //                             acqM->timeLabel->width(),acqM->timeLabel->height());
+   //menuBar->setFixedWidth(w);
+   //for (int i=0;i<6;i++) cntAmpBG->button(i)->setGeometry(mainTabWidget->width()-676+i*60,mainTabWidget->height()-54,
+   //                                                       cntAmpBG->button(i)->width(),cntAmpBG->button(i)->height());
    //}
-  }
+  //}
 
  private:
   AcqMaster *acqM; CntFrame *cntFrame; HeadGLWidget *headGLWidget; unsigned int ampNo;
