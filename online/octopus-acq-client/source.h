@@ -21,20 +21,22 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_EVENT_H
-#define OCTOPUS_EVENT_H
+#ifndef SOURCE_H
+#define SOURCE_H
 
 #include <QObject>
 #include <QString>
 
-class Event : QObject {
- public:
-  Event(int evtNo,QString evtName,int evtType,QColor c) : QObject() {
-   no=evtNo; name=evtName; type=evtType; accepted=rejected=0; color=c;
-  }
-  ~Event() {}
+#include "../../common/vec3.h"
 
-  int no,type,accepted,rejected; QString name; QColor color;
+class Source : QObject {
+ public:
+  Source() : QObject() {
+   pos.zero();
+  }
+  ~Source() {}
+
+  Vec3 pos; float theta,phi;
 };
 
 #endif

@@ -27,7 +27,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFrame>
 #include <QPainter>
 
-#include "octopus_acq_master.h"
+#include "acqmaster.h"
 
 class LegendFrame : public QFrame {
  Q_OBJECT

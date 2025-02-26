@@ -265,8 +265,7 @@ void parseConfig(QStringList cfgLines) {
       qDebug(".cfg: Syntax/logic Error in CHN|APPEND parameters!");
       initSuccess=false; break;
      } else { // Set and append new channel..
-      dummyChn=new Channel(opts2[0].toInt(),     // Amp#
-                           opts2[1].toInt(),	 // Physical channel
+      dummyChn=new Channel(opts2[1].toInt(),	 // Physical channel
                            opts2[2].trimmed(),	 // Channel Name
                            opts2[3].toInt(),	 // Rejection Level
                            opts2[4].toInt(),	 // Rejection Reference
@@ -277,7 +276,7 @@ void parseConfig(QStringList cfgLines) {
       dummyChn->pastData.resize(cp.cntPastSize);
       dummyChn->pastFilt.resize(cp.cntPastSize); // Line-noise component
       dummyChn->setEventProfile(acqEvents.size(),cp.avgCount);
-      acqChannels.append(dummyChn);
+      acqChannels[opts2[0].toInt()-1].append(dummyChn); // add channel to the respective amplifier
      }
     } else {
      qDebug(".cfg: Parse error in CHN|APPEND parameters!");
@@ -297,10 +296,10 @@ void parseConfig(QStringList cfgLines) {
   for (int i=0;i<2;i++) {
    for (int j=0;j<chnInfo.physChnCount;j++) {
     chnString="Chn#"+noString.setNum(j);
-    dummyChn=new Channel(i+1,j+1,chnString,0,0,"t","t","t","t",0.,0.);
+    dummyChn=new Channel(j+1,chnString,0,0,"t","t","t","t",0.,0.);
     dummyChn->pastData.resize(cp.cntPastSize);
     dummyChn->pastFilt.resize(cp.cntPastSize);
-    acqChannels.append(dummyChn);
+    acqChannels[i].append(dummyChn);
    }
   }
  } if (!initSuccess) return;
@@ -363,15 +362,30 @@ void parseConfig(QStringList cfgLines) {
  // GUI
  if (guiSection.size()>0) {
   for (int i=0;i<guiSection.size();i++) { opts=guiSection[i].split("=");
-    if (opts[0].trimmed()=="MAIN") { opts2=opts[1].split(",");
+   if (opts[0].trimmed()=="CTRL") { opts2=opts[1].split(",");
     if (opts2.size()==4) {
-     guiX=opts2[0].toInt(); guiY=opts2[1].toInt();
-     guiWidth=opts2[2].toInt(); guiHeight=opts2[3].toInt();
-     if ((!(guiX      >= -2000 && guiX      <= 2000)) ||
-         (!(guiY      >= -2000 && guiY      <= 2000)) ||
-         (!(guiWidth  >=   640 && guiWidth  <= 2000)) ||
-         (!(guiHeight >=   480 && guiHeight <= 2000))) {
-      qDebug(".cfg: GUI|MAIN size settings not in appropriate range!");
+     ctrlGuiX=opts2[0].toInt(); ctrlGuiY=opts2[1].toInt();
+     ctrlGuiW=opts2[2].toInt(); ctrlGuiH=opts2[3].toInt();
+     if ((!(ctrlGuiX >= -4000 && ctrlGuiX <= 4000)) ||
+         (!(ctrlGuiY >= -3000 && ctrlGuiY <= 3000)) ||
+         (!(ctrlGuiW >=   400 && ctrlGuiW <= 2000)) ||
+         (!(ctrlGuiH >=    60 && ctrlGuiH <= 1800))) {
+      qDebug(".cfg: GUI|CTRL size settings not in appropriate range!");
+      initSuccess=false; break;
+     }
+    } else {
+     qDebug(".cfg: Parse error in GUI settings!");
+     initSuccess=false; break;
+    }
+  } else if (opts[0].trimmed()=="STRM") { opts2=opts[1].split(",");
+    if (opts2.size()==4) {
+     contGuiX=opts2[0].toInt(); contGuiY=opts2[1].toInt();
+     contGuiW=opts2[2].toInt(); contGuiH=opts2[3].toInt();
+     if ((!(contGuiX >= -4000 && contGuiX <= 4000)) ||
+         (!(contGuiY >= -3000 && contGuiY <= 3000)) ||
+         (!(contGuiW >=   400 && contGuiW <= 4000)) ||
+         (!(contGuiH >=   800 && contGuiH <= 4000))) {
+      qDebug(".cfg: GUI|STRM size settings not in appropriate range!");
       initSuccess=false; break;
      }
     } else {
@@ -380,12 +394,12 @@ void parseConfig(QStringList cfgLines) {
     }
    } else if (opts[0].trimmed()=="HEAD") { opts2=opts[1].split(",");
     if (opts2.size()==4) {
-     hwX=opts2[0].toInt(); hwY=opts2[1].toInt();
-     hwWidth=opts2[2].toInt(); hwHeight=opts2[3].toInt();
-     if ((!(hwX      >= -2000 && hwX      <= 2000)) ||
-         (!(hwY      >= -2000 && hwY      <= 2000)) ||
-         (!(hwWidth  >=   400 && hwWidth  <= 2000)) ||
-         (!(hwHeight >=   300 && hwHeight <= 2000))) {
+     gl3DGuiX=opts2[0].toInt(); gl3DGuiY=opts2[1].toInt();
+     gl3DGuiW=opts2[2].toInt(); gl3DGuiH=opts2[3].toInt();
+     if ((!(gl3DGuiX >= -2000 && gl3DGuiX <= 2000)) ||
+         (!(gl3DGuiY >= -2000 && gl3DGuiY <= 2000)) ||
+         (!(gl3DGuiW >=   400 && gl3DGuiW <= 2000)) ||
+         (!(gl3DGuiH >=   300 && gl3DGuiH <= 2000))) {
       qDebug(".cfg: GUI|HEAD size settings not in appropriate range!");
       initSuccess=false; break;
      }
@@ -396,8 +410,9 @@ void parseConfig(QStringList cfgLines) {
    }
   }
  } else {
-  guiX=60; guiY=60; guiWidth=640; guiHeight=480;
-  hwX=160; hwY=160; hwWidth=400; hwHeight=300;
+  ctrlGuiX=60; ctrlGuiY=60; ctrlGuiW=640; ctrlGuiH=480;
+  contGuiX=60; contGuiY=60; contGuiW=640; contGuiH=480;
+  gl3DGuiX=160; gl3DGuiY=160; gl3DGuiW=400; gl3DGuiH=300;
  } if (!initSuccess) return;
 
  // MOD

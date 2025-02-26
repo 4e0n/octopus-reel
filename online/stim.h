@@ -25,8 +25,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    Since this file is included both from kernel space backend C, and the
    frontend C++ routines, common convention is preferred for the definitions.*/
 
-#ifndef OCTOPUS_STIM_H
-#define OCTOPUS_STIM_H
+#ifndef STIM_H
+#define STIM_H
 
 /* FIFOs for frontend<->backend communication of stim. */
 #define FBFIFO			(0)

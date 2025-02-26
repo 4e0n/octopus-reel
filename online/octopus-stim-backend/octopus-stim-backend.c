@@ -74,7 +74,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #endif
 
 #include "../fb_command.h"
-#include "../octopus-stim.h"
+#include "../stim.h"
 #include "../stim_event_codes.h"
 #include "../stim_test_para.h"
 

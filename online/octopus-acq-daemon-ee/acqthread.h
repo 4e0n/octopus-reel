@@ -119,8 +119,8 @@ class AcqThread : public QThread {
  Q_OBJECT
  public:
   AcqThread(QObject* parent,chninfo *ci,QVector<tcpsample> *tb,quint64 *pidx,
-            bool *r,bool *im,QMutex *m) : QThread(parent) {
-   mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPivot=pidx; daemonRunning=r; eegImpedanceMode=im;
+            bool *r,bool *im,QMutex *m,unsigned int *et) : QThread(parent) {
+   mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPivot=pidx; daemonRunning=r; eegImpedanceMode=im; extTrig=et;
    tcpS.trigger=0;
    convN=chnInfo->sampleRate/50; convN2=convN/2;
    convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
@@ -343,6 +343,7 @@ class AcqThread : public QThread {
       for (quint64 i=0;i<tcpDataSize;i++) {
        tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2)%cBufSz];
        tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2)%cBufSz];
+       if (*extTrig) { tcpS.trigger=*extTrig; *extTrig=0; }
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
       (*tcpBufPivot)+=tcpDataSize; // Update producer index
@@ -374,7 +375,7 @@ class AcqThread : public QThread {
 
   int convN2,convN,convL2,convL; quint64 cBufPivot,cBufPivotP;
 
-  QMutex *mutex; bool *daemonRunning,*eegImpedanceMode;
+  QMutex *mutex; bool *daemonRunning,*eegImpedanceMode; unsigned int *extTrig;
 
   bool filterIIR_1_40;
 

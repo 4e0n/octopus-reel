@@ -31,7 +31,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_fifos.h>
 #include <rtai_shm.h>
 
-#include "../octopus-stim.h"
+#include "../stim.h"
 #include "../fb_command.h"
 #include "../cs_command.h"
 #include "stimdaemon.h"

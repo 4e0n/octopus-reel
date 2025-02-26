@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QThread>
 #include <QVector>
 #include <unistd.h>
-#include "../octopus-stim.h"
+#include "../stim.h"
 #include "../patt_datagram.h"
 #include "../fb_command.h"
 #include "../cs_command.h"

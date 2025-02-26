@@ -21,36 +21,42 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_ACQ_CLIENT_H
-#define OCTOPUS_ACQ_CLIENT_H
+#ifndef ACQCONTROL_H
+#define ACQCONTROL_H
 
 #include <QtGui>
+#include <QMainWindow>
+#include <QButtonGroup>
+#include <QAbstractButton>
+#include <QPushButton>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
 
-#include "octopus_acq_master.h"
-#include "headwindow.h"
-#include "cntframe.h"
+#include "acqmaster.h"
 
-class AcqClient : public QMainWindow {
+class AcqControl : public QMainWindow {
  Q_OBJECT
  public:
-  AcqClient(AcqMaster *acqm,QWidget *parent=0) : QMainWindow(parent) {
-   acqM=acqm; setGeometry(acqM->guiX,acqM->guiY,acqM->guiWidth,acqM->guiHeight);
-   setFixedSize(acqM->guiWidth,acqM->guiHeight);
+  AcqControl(AcqMaster *acqm,QWidget *parent=0) : QMainWindow(parent) {
+   acqM=acqm; setGeometry(acqM->ctrlGuiX,acqM->ctrlGuiY,acqM->ctrlGuiW,acqM->ctrlGuiH);
+   setFixedSize(acqM->ctrlGuiW,acqM->ctrlGuiH);
+   //qDebug() << acqM->ctrlGuiX << " " << acqM->ctrlGuiY << " " << acqM->ctrlGuiW << " " << acqM->ctrlGuiH;
 
    // *** TABS & TABWIDGETS ***
 
    mainTabWidget=new QTabWidget(this);
    mainTabWidget->setGeometry(1,32,width()-2,height()-60);
-
    cntWidget=new QWidget(mainTabWidget);
    cntWidget->setGeometry(0,0,mainTabWidget->width(),mainTabWidget->height());
-   cntFrame=new CntFrame(cntWidget,acqM); cntWidget->show();
+//   cntFrame=new CntFrame(cntWidget,acqM,ampNo);
+   cntWidget->show();
    mainTabWidget->addTab(cntWidget,"EEG"); mainTabWidget->show();
 
 
    // *** HEAD & CONFIG WINDOW ***
 
-   headWin=new HeadWindow(this,acqM); headWin->show();
+//   headWin=new HeadWindow(this,acqM,ampNo); headWin->show();
 
 
    // *** STATUSBAR ***
@@ -149,12 +155,14 @@ class AcqClient : public QMainWindow {
    toggleRecordingButton=new QPushButton("REC",cntWidget);
    toggleStimulationButton=new QPushButton("STIM",cntWidget);
    toggleTriggerButton=new QPushButton("TRIG",cntWidget);
+   manualTrigButton=new QPushButton("PING",cntWidget);
    toggleNotchButton=new QPushButton("NOTCH FILTER",cntWidget);
 
    toggleRecordingButton->setGeometry(20,mainTabWidget->height()-54,48,20);
    toggleStimulationButton->setGeometry(450,mainTabWidget->height()-54,48,20);
    toggleTriggerButton->setGeometry(505,mainTabWidget->height()-54,48,20);
-   toggleNotchButton->setGeometry(570,mainTabWidget->height()-54,88,20);
+   toggleNotchButton->setGeometry(530,mainTabWidget->height()-54,48,20);
+   manualTrigButton->setGeometry(580,mainTabWidget->height()-54,48,20);
 
    toggleRecordingButton->setCheckable(true);
    toggleStimulationButton->setCheckable(true);
@@ -170,33 +178,24 @@ class AcqClient : public QMainWindow {
            (QObject *)acqM,SLOT(slotToggleTrigger()));
    connect(toggleNotchButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleNotch()));
+   connect(manualTrigButton,SIGNAL(clicked()),
+           (QObject *)acqM,SLOT(slotManualTrig()));
 
    acqM->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
    acqM->timeLabel->setGeometry(200,mainTabWidget->height()-52,150,20);
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
+   acqM->cntSpeedX=4;
+
    QPushButton *dummyButton;
-   cntAmpBG=new QButtonGroup(); cntSpdBG=new QButtonGroup();
-   cntAmpBG->setExclusive(true); cntSpdBG->setExclusive(true);
-   for (int i=0;i<6;i++) { // EEG AMP
-    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-676+i*60,
-                             mainTabWidget->height()-54,60,20);
-    cntAmpBG->addButton(dummyButton,i); }
+   cntSpdBG=new QButtonGroup();
+   cntSpdBG->setExclusive(true);
    for (int i=0;i<5;i++) { // EEG SPEED
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
     dummyButton->setGeometry(mainTabWidget->width()-326+i*60,
                              mainTabWidget->height()-54,60,20);
     cntSpdBG->addButton(dummyButton,i); }
-
-   cntAmpBG->button(0)->setText("1mV");
-   cntAmpBG->button(1)->setText("500uV");
-   cntAmpBG->button(2)->setText("200uV");
-   cntAmpBG->button(3)->setText("100uv");
-   cntAmpBG->button(4)->setText("50uV");
-   cntAmpBG->button(5)->setText("20uV");
-   cntAmpBG->button(3)->setDown(true);
 
    cntSpdBG->button(0)->setText("4s");
    cntSpdBG->button(1)->setText("2s");
@@ -205,11 +204,9 @@ class AcqClient : public QMainWindow {
    cntSpdBG->button(4)->setText("200ms");
    cntSpdBG->button(2)->setDown(true);
 
-   acqM->cntAmpX=(1000000.0/100.0);
-   connect(cntAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntAmp(int)));
    connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntSpeed(int)));
 
-   setWindowTitle("Octopus EEG/ERP GUI Client v1.1.0");
+   setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
   }
 
  signals: void scrollData();
@@ -227,27 +224,16 @@ class AcqClient : public QMainWindow {
   }
 
   void slotAbout() {
-   QMessageBox::about(this,"About Octopus-ReEL",
-                           "EEG/ERP Dashboard (visual&rec. GUI)\n"
+   QMessageBox::about(this,"About Octopus-ReEL HyperEEG/ERP Client",
+                           "EEG/ERP Dashboard (VisRec GUI)\n"
                            "(c) 2007-2025 Barkin Ilhan (barkin@unrlabs.org)\n"
                            "This is free software coming with\n"
                            "ABSOLUTELY NO WARRANTY; You are welcome\n"
-                           "to redistribute it under conditions of GPL v3.\n");
+                           "to extend/redistribute it under conditions of GPL v3.\n");
   }
 
 
-  // *** AMPLITUDE & SPEED OF THE VISUALS ***
-
-  void slotCntAmp(int x) {
-   switch (x) {
-    case 0: acqM->cntAmpX=(1000000.0/1000.0);cntAmpBG->button(3)->setDown(false);break;
-    case 1: acqM->cntAmpX=(1000000.0/500.0);cntAmpBG->button(3)->setDown(false);break;
-    case 2: acqM->cntAmpX=(1000000.0/200.0);cntAmpBG->button(3)->setDown(false);break;
-    case 3: acqM->cntAmpX=(1000000.0/100.0);break;
-    case 4: acqM->cntAmpX=(1000000.0/50.0);cntAmpBG->button(3)->setDown(false);break;
-    case 5: acqM->cntAmpX=(1000000.0/20.0);cntAmpBG->button(3)->setDown(false);break;
-   }
-  }
+  // *** SPEED OF THE VISUALS ***
 
   void slotCntSpeed(int x) {
    switch (x) {
@@ -259,49 +245,18 @@ class AcqClient : public QMainWindow {
    }
   }
 
- protected:
-  void resizeEvent(QResizeEvent *event) {
-   int w,h;
-   //resizeEvent(event); // Call base class event handler
-
-   //if (acqM->clientRunning) {
-   acqM->guiWidth=w=event->size().width();
-   acqM->guiHeight=h=event->size().height();
-
-   // Resize child widgets proportionally
-   cntFrame->setGeometry(2,2,w-9,h-60);
-   mainTabWidget->setGeometry(1,32,w-2,h-60);
-   cntWidget->setGeometry(0,0,w,h);
-   acqM->guiStatusBar->setGeometry(0,h-20,w,20);
-   acqM->timeLabel->setGeometry(acqM->timeLabel->x(),mainTabWidget->height()-52,
-                                acqM->timeLabel->width(),acqM->timeLabel->height());
-   menuBar->setFixedWidth(w);
-   toggleRecordingButton->setGeometry(toggleRecordingButton->x(),mainTabWidget->height()-54,
-                                      toggleRecordingButton->width(),toggleRecordingButton->height());
-   toggleStimulationButton->setGeometry(toggleStimulationButton->x(),mainTabWidget->height()-54,
-                                        toggleStimulationButton->width(),toggleStimulationButton->height());
-   toggleTriggerButton->setGeometry(toggleTriggerButton->x(),mainTabWidget->height()-54,
-                                    toggleTriggerButton->width(),toggleTriggerButton->height());
-   toggleNotchButton->setGeometry(toggleNotchButton->x(),mainTabWidget->height()-54,
-                                  toggleNotchButton->width(),toggleNotchButton->height());
-   for (int i=0;i<6;i++) cntAmpBG->button(i)->setGeometry(mainTabWidget->width()-676+i*60,mainTabWidget->height()-54,
-                                                          cntAmpBG->button(i)->width(),cntAmpBG->button(i)->height());
-   for (int i=0;i<5;i++) cntSpdBG->button(i)->setGeometry(mainTabWidget->width()-326+i*60,mainTabWidget->height()-54,
-                                                          cntSpdBG->button(i)->width(),cntSpdBG->button(i)->height());
-   //}
-  }
-
  private:
-  AcqMaster *acqM; CntFrame *cntFrame; HeadWindow *headWin; QMenuBar *menuBar;
+  AcqMaster *acqM; //CntFrame *cntFrame; unsigned int ampNo; HeadWindow *headWin;
+  QMenuBar *menuBar;
   QAction *toggleCalAction,*rebootAction,*shutdownAction,
           *quitAction,*aboutAction,*testSCAction,*testSquareAction,
           *paraLoadPatAction,*paraClickAction,*paraSquareBurstAction,
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action;
-  QTabWidget *mainTabWidget; QWidget *cntWidget;
+  QTabWidget *mainTabWidget; QWidget *cntWidget; QPushButton *manualTrigButton;
   QPushButton *toggleRecordingButton,*toggleStimulationButton,
               *toggleTriggerButton,*toggleNotchButton;
-  QButtonGroup *cntAmpBG,*cntSpdBG;
-  QVector<QPushButton*> cntAmpButtons,cntSpeedButtons;
+  QButtonGroup *cntSpdBG;
+  QVector<QPushButton*> cntSpeedButtons;
 };
 
 #endif

@@ -25,8 +25,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     This is the predefined parameters, configuration and management class
     shared over all other classes of octopus-acq-client. */
 
-#ifndef OCTOPUS_ACQ_MASTER_H
-#define OCTOPUS_ACQ_MASTER_H
+#ifndef ACQMASTER_H
+#define ACQMASTER_H
 
 #include <QObject>
 #include <QApplication>
@@ -49,11 +49,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "serial_device.h"
 #include "channel_params.h"
-#include "octopus_channel.h"
-#include "../../common/octopus_event.h"
-#include "../../common/octopus_gizmo.h"
-#include "octopus_source.h"
-#include "octopus_digitizer.h"
+#include "channel.h"
+#include "../../common/event.h"
+#include "../../common/gizmo.h"
+#include "source.h"
+#include "digitizer.h"
 #include "coord3d.h"
 #include "../cs_command.h"
 #include "../sample.h"
@@ -74,6 +74,13 @@ class AcqMaster : QObject {
  public:
   AcqMaster(QApplication *app) : QObject() { application=app;
    clientRunning=false;
+   
+   ampCount=EE_AMPCOUNT; acqChannels.resize(ampCount);
+   cntVisChns.resize(ampCount); cntRecChns.resize(ampCount);
+   avgVisChns.resize(ampCount); avgRecChns.resize(ampCount);
+   scrPrvData.resize(ampCount); scrCurData.resize(ampCount);
+   scrPrvDataF.resize(ampCount); scrCurDataF.resize(ampCount);
+
    stimCommandSocket=new QTcpSocket(this); stimDataSocket=new QTcpSocket(this);
    acqCommandSocket=new QTcpSocket(this); acqDataSocket=new QTcpSocket(this);
  
@@ -86,7 +93,7 @@ class AcqMaster : QObject {
    connect(acqDataSocket,SIGNAL(error(QAbstractSocket::SocketError)),
            this,SLOT(slotAcqDataError(QAbstractSocket::SocketError)));
 
-   ampChkP.resize(EE_AMPCOUNT); globalCounter=0;
+   ampChkP.resize(ampCount); globalCounter=0;
 
    // *** INITIAL VALUES OF RUNTIME VARIABLES ***
 
@@ -98,6 +105,7 @@ class AcqMaster : QObject {
    cntSpeedX=4; scrCounter=0;
    gizmoOnReal=elecOnReal=false;
 
+
    // Two representative sources
    Source *dummySrc;
    dummySrc=new Source();
@@ -108,11 +116,11 @@ class AcqMaster : QObject {
    dummySrc->pos[0]=-2.; dummySrc->pos[1]=2.; dummySrc->pos[1]=0.;
    dummySrc->theta=45.; dummySrc->phi=45.;
    source.append(dummySrc);
-//   dummySrc=new Source(); source.append(dummySrc);
+   dummySrc=new Source(); source.append(dummySrc);
 
    // Initial Visualization of Head Window
    hwFrameV=hwGridV=hwDigV=hwParamV=hwRealV=hwGizmoV=hwAvgsV=
-   hwScalpV=hwSkullV=hwBrainV=hwSourceV=true;
+   hwScalpV=hwSkullV=hwBrainV=true; hwSourceV=true;
 
 
    // *** LOAD CONFIG FILE AND READ ALL LINES ***
@@ -132,12 +140,14 @@ class AcqMaster : QObject {
 
     serial.devname="/dev/ttyS0"; serial.baudrate=B115200;
     serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
-    guiX=hwX=guiY=hwY=0; guiWidth=2800; guiHeight=1400;
-    hwWidth=640; hwHeight=400;
+    ctrlGuiX=ctrlGuiY=0; ctrlGuiW=800; ctrlGuiH=600;
+    contGuiX=gl3DGuiX=contGuiY=gl3DGuiY=0; contGuiW=2800; contGuiH=1400;
+    gl3DGuiW=640; gl3DGuiH=400;
     gizmoExists=digExists=scalpExists=skullExists=brainExists=false;
    } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string
     while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160);
-     cfgLines.append(cfgLine); } cfgFile.close(); parseConfig(cfgLines);
+     cfgLines.append(cfgLine); } cfgFile.close();
+    parseConfig(cfgLines);
    }
 
    if (!initSuccess) return;
@@ -148,15 +158,22 @@ class AcqMaster : QObject {
 
    stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
 
-   for (int i=0;i<acqChannels.size();i++) { // Channel visibitility & recording
-    if (acqChannels[i]->cntVis) cntVisChns.append(i);
-    if (acqChannels[i]->cntRec) cntRecChns.append(i);
-    if (acqChannels[i]->avgVis) avgVisChns.append(i);
-    if (acqChannels[i]->avgRec) avgRecChns.append(i);
+   for (int i=0;i<acqChannels.size();i++) {
+    for (int j=0;j<acqChannels[i].size();j++) { // Channel visibitility & recording
+     if (acqChannels[i][j]->cntVis) cntVisChns[i].append(j);
+     if (acqChannels[i][j]->cntRec) cntRecChns[i].append(i);
+     if (acqChannels[i][j]->avgVis) avgVisChns[i].append(i);
+     if (acqChannels[i][j]->avgRec) avgRecChns[i].append(i);
+    }
    }
-   scrPrvData.resize(cntVisChns.size()); scrCurData.resize(cntVisChns.size());
-   scrPrvDataF.resize(cntVisChns.size()); scrCurDataF.resize(cntVisChns.size());
 
+   for (int i=0;i<acqChannels.size();i++) {
+    scrPrvData[i].resize(cntVisChns[i].size());
+    scrCurData[i].resize(cntVisChns[i].size());
+    scrPrvDataF[i].resize(cntVisChns[i].size());
+    scrCurDataF[i].resize(cntVisChns[i].size());
+   }
+   
 
    digitizer=new Digitizer(this,&serial); digitizer->serialOpen();
    if (!digitizer->connected)
@@ -175,6 +192,7 @@ class AcqMaster : QObject {
    clientRunning=true;
   }
 
+  unsigned int getAmpCount() { return ampCount; }
 
   // *** EXTERNAL OBJECT REGISTRY ***
 
@@ -414,21 +432,24 @@ class AcqMaster : QObject {
      realValidLines.append(realLines[i]);
 
    // Find the essential line defining gizmo names
-   for (int i=0;i<realValidLines.size();i++) {
-    opts=realValidLines[i].split(" ",QString::SkipEmptyParts);
+   for (int ll=0;ll<realValidLines.size();ll++) {
+    opts=realValidLines[ll].split(" ",QString::SkipEmptyParts);
     if (opts.size()==8 && opts[0]=="v") {
      opts.removeFirst(); p=opts[0].toInt()-1; c=-1;
-     for (int i=0;i<acqChannels.size();i++)
-      if (p==acqChannels[i]->physChn) { c=i; break; }
+     for (int i=0;i<acqChannels.size();i++) {
+      for (int j=0;j<acqChannels[i].size();j++) {
+       if (p==acqChannels[i][j]->physChn) { c=i; break; }
 //     if (c!=-1)
 //      printf("%d - %d\n",p,c);
 //     else qDebug("channel does not exist!");
-     acqChannels[c]->real[0]=opts[1].toFloat();
-     acqChannels[c]->real[1]=opts[2].toFloat();
-     acqChannels[c]->real[2]=opts[3].toFloat();
-     acqChannels[c]->realS[0]=opts[4].toFloat();
-     acqChannels[c]->realS[1]=opts[5].toFloat();
-     acqChannels[c]->realS[2]=opts[6].toFloat();
+       acqChannels[i][c]->real[0]=opts[1].toFloat();
+       acqChannels[i][c]->real[1]=opts[2].toFloat();
+       acqChannels[i][c]->real[2]=opts[3].toFloat();
+       acqChannels[i][c]->realS[0]=opts[4].toFloat();
+       acqChannels[i][c]->realS[1]=opts[5].toFloat();
+       acqChannels[i][c]->realS[2]=opts[6].toFloat();
+      }
+     }
     } else {
      qDebug("Erroneous real coord file..%d",opts.size()); break;
     }
@@ -441,14 +462,17 @@ class AcqMaster : QObject {
    realStream << "# Octopus real head coordset in headframe xyz's..\n";
    realStream << "# Generated by Octopus-recorder 0.9.5\n\n";
    realStream << "# Coord count = " << acqChannels.size() << "\n";
-   for (int i=0;i<acqChannels.size();i++)
-    realStream << "v " << acqChannels[i]->physChn << " "
-                       << acqChannels[i]->real[0] << " "
-                       << acqChannels[i]->real[1] << " "
-                       << acqChannels[i]->real[2] << " "
-                       << acqChannels[i]->realS[0] << " "
-                       << acqChannels[i]->realS[1] << " "
-                       << acqChannels[i]->realS[2] << "\n";
+   for (int i=0;i<acqChannels.size();i++) {
+    for (int j=0;j<acqChannels[i].size();j++) {
+     realStream << "v " << acqChannels[i][j]->physChn << " "
+                        << acqChannels[i][j]->real[0] << " "
+                        << acqChannels[i][j]->real[1] << " "
+                        << acqChannels[i][j]->real[2] << " "
+                        << acqChannels[i][j]->realS[0] << " "
+                        << acqChannels[i][j]->realS[1] << " "
+                        << acqChannels[i][j]->realS[2] << "\n";
+    }
+   }
    realFile.close();
   }
 
@@ -481,11 +505,13 @@ class AcqMaster : QObject {
   QString stimHost,acqHost; int stimCommPort,stimDataPort,acqCommPort,acqDataPort;
 
   // CHN
-  QVector<Channel*> acqChannels; QVector<Event*> acqEvents;
-  QVector<int> cntVisChns,cntRecChns,avgVisChns,avgRecChns;
+  QVector<QVector<Channel*> > acqChannels; QVector<Event*> acqEvents;
+  QVector<QVector<int> > cntVisChns,cntRecChns,avgVisChns,avgRecChns;
 
   // GUI
-  int guiX,guiY,guiWidth,guiHeight,hwX,hwY,hwWidth,hwHeight;
+  int ctrlGuiX,ctrlGuiY,ctrlGuiW,ctrlGuiH;
+  int contGuiX,contGuiY,contGuiW,contGuiH;
+  int gl3DGuiX,gl3DGuiY,gl3DGuiW,gl3DGuiH;
 
   // Gizmo
   QVector<Gizmo* > gizmo; bool gizmoOnReal,elecOnReal;
@@ -498,13 +524,13 @@ class AcqMaster : QObject {
   QApplication *application; cs_command csCmd,csAck;
   QTcpSocket *stimCommandSocket,*stimDataSocket,
              *acqCommandSocket,*acqDataSocket;
-  QStatusBar *guiStatusBar,*hwStatusBar; QLabel *timeLabel;
+  QStatusBar *guiStatusBar; QLabel *timeLabel;
 
   bool recording,calibration,stimulation,trigger,averaging,notch;
   QVector<tcpsample> acqCurData; int notchN; float notchThreshold;
   bool eventOccured; int eIndex;
   channel_params cp; int tChns,sampleRate,cntSpeedX;
-  QVector<float> scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; float cntAmpX,avgAmpX;
+  QVector<QVector<float> > scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; float cntAmpX,avgAmpX;
   QString curEventName; int curEventType;
 
   bool hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,
@@ -527,6 +553,7 @@ class AcqMaster : QObject {
   void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow();
 
  private slots:
+
   void slotExportAvgs() { QString avgFN;
    QDateTime currentDT(QDateTime::currentDateTime());
    for (int i=0;i<acqEvents.size();i++) {
@@ -552,16 +579,16 @@ class AcqMaster : QObject {
 
      for (int j=0;j<cp.avgCount;j++) {
       for (int k=0;k<avgRecChns.size();k++)
-       avgStream << acqChannels[avgRecChns[k]]->avgData[j];
+       avgStream << acqChannels[0][avgRecChns[0][k]]->avgData[j];
       for (int k=0;k<avgRecChns.size();k++)
-       avgStream << acqChannels[avgRecChns[k]]->stdData[j];
+       avgStream << acqChannels[0][avgRecChns[0][k]]->stdData[j];
      } avgFile.close();
     }
    }
   }
 
   void slotClrAvgs() {
-   for (int i=0;i<acqChannels.size();i++) acqChannels[i]->resetEvents();
+   for (int i=0;i<acqChannels.size();i++) acqChannels[0][i]->resetEvents();
    for (int i=0;i<acqEvents.size();i++) {
     acqEvents[i]->accepted=acqEvents[i]->rejected=0;
    } emit repaintGL(16); emit repaintHeadWindow();
@@ -575,13 +602,13 @@ class AcqMaster : QObject {
    while (acqDataSocket->bytesAvailable() >= chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample))) {
     acqDataStream.readRawData((char*)(acqCurData.data()),chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample)));
 
-    for (int zumbek=0;zumbek<chnInfo.probe_eeg_msecs;zumbek++) {
+    for (int dOffset=0;dOffset<chnInfo.probe_eeg_msecs;dOffset++) {
      // Check Sample Offset Delta for all amps
-     for (int i=0;i<EE_AMPCOUNT;i++) {
-      offsetC=(unsigned int)(acqCurData[zumbek].amp[i].offset); offsetP=ampChkP[i];
+     for (int i=0;i<ampCount;i++) {
+      offsetC=(unsigned int)(acqCurData[dOffset].amp[i].offset); offsetP=ampChkP[i];
       if ((offsetC-offsetP)!=1)
        qDebug() << "Offset leak!!! Amp " << i << " OffsetC=" << offsetC << " OffsetP=" << offsetP;
-      ampChkP[i]=(unsigned int)(acqCurData[zumbek].amp[i].offset);
+      ampChkP[i]=(unsigned int)(acqCurData[dOffset].amp[i].offset);
      }
 
      if (!(globalCounter%10000)) {
@@ -598,9 +625,10 @@ class AcqMaster : QObject {
           calPts<((CAL_DC_END-5)*sampleRate)) { // ~<20 min of DC
        n1=(float)(calPts-5*sampleRate);
        for (int j=0;j<acqChannels.size();j++) { // Averages
-        curChn=acqChannels[j];
+        curChn=acqChannels[0][j];
         k1=calB[j];
-        k2 = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
+	k2=0;
+        //k2 = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].data[curChn->physChn] : acqCurData[dOffset].amp[1].data[curChn->physChn];
         calB[j]=(k1*n1+k2)/(n1+1.);
        }
 //       printf("%d %2.2f\n",(int)n1,calB[0]);
@@ -610,9 +638,10 @@ class AcqMaster : QObject {
                  calPts<((CAL_SINE_END-5)*sampleRate)) {
        n1=(float)(calPts-(CAL_DC_END+5)*sampleRate);
        for (int j=0;j<acqChannels.size();j++) { // Averages of squares
-        curChn=acqChannels[j];
+        curChn=acqChannels[0][j];
         // CD corrected sinus
-        z = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn]-calB[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn]-calB[curChn->physChn];
+	z=0;
+        //z = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].data[curChn->physChn]-calB[curChn->physChn] : acqCurData[dOffset].amp[1].data[curChn->physChn]-calB[curChn->physChn];
         k1=calA[j]; k2=z*z;
         calA[j]=(k1*n1+k2)/(n1+1.);
        }
@@ -643,22 +672,22 @@ class AcqMaster : QObject {
       //for (int i=0;i<acqChannels.size();i++) {
       // curChn=acqChannels[i];
       // if (curChn->ampNo==1) {
-      //  acqCurData[zumbek].amp[0].data[curChn->physChn]-=calN[curChn->physChn];
-      //  acqCurData[zumbek].amp[0].data[curChn->physChn]*=calM[curChn->physChn];
+      //  acqCurData[dOffset].amp[0].data[curChn->physChn]-=calN[curChn->physChn];
+      //  acqCurData[dOffset].amp[0].data[curChn->physChn]*=calM[curChn->physChn];
       // } else {
-      //  acqCurData[zumbek].amp[1].data[curChn->physChn]-=calN[curChn->physChn];
-      //  acqCurData[zumbek].amp[1].data[curChn->physChn]*=calM[curChn->physChn];
+      //  acqCurData[dOffset].amp[1].data[curChn->physChn]-=calN[curChn->physChn];
+      //  acqCurData[dOffset].amp[1].data[curChn->physChn]*=calM[curChn->physChn];
       // }
       //}
 
-      acqCurStimEvent=(int)(acqCurData[zumbek].trigger); // Stim Event
-      acqCurRespEvent=(int)(acqCurData[zumbek].trigger); // Resp Event
+      acqCurStimEvent=(int)(acqCurData[dOffset].trigger); // Stim Event
+      acqCurRespEvent=(int)(acqCurData[dOffset].trigger); // Resp Event
 
       if (recording) { // .. to disk ..
        for (int i=0;i<cntRecChns.size();i++) {
-        curChn=acqChannels[cntRecChns[i]];
-        if (curChn->ampNo==1) cntStream << acqCurData[zumbek].amp[0].data[curChn->physChn];
-	else cntStream << acqCurData[zumbek].amp[1].data[curChn->physChn];
+        curChn=acqChannels[0][cntRecChns[0][i]];
+        //if (curChn->ampNo==1) cntStream << acqCurData[dOffset].amp[0].data[curChn->physChn];
+	//else cntStream << acqCurData[dOffset].amp[1].data[curChn->physChn];
        }
        cntStream << acqCurStimEvent; cntStream << acqCurRespEvent;
        recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
@@ -670,9 +699,9 @@ class AcqMaster : QObject {
       int notchCount=notchN*(chnInfo.sampleRate/50);
       int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
       for (int j=0;j<acqChannels.size();j++) {
-       curChn=acqChannels[j];
-       curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].data[curChn->physChn] : acqCurData[zumbek].amp[1].data[curChn->physChn];
-       curChn->pastFilt[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[zumbek].amp[0].dataF[curChn->physChn] : acqCurData[zumbek].amp[1].dataF[curChn->physChn];
+       curChn=acqChannels[0][j];
+       //curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].data[curChn->physChn] : acqCurData[dOffset].amp[1].data[curChn->physChn];
+       //curChn->pastFilt[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].dataF[curChn->physChn] : acqCurData[dOffset].amp[1].dataF[curChn->physChn];
 
        // Compute Absolute "50Hz+Harmonics" Level of that channel..
        dummyAvg=0.;
@@ -719,11 +748,11 @@ class AcqMaster : QObject {
         // Check rejection backwards on pastdata
         bool rejFlag=false; int rejChn;
         for (int i=0;i<acqChannels.size();i++) {
-         if (acqChannels[i]->rejLev>0) {
+         if (acqChannels[0][i]->rejLev>0) {
           for (int j=0;j<cp.rejCount;j++) {
-           if (abs(acqChannels[i]->pastData[
+           if (abs(acqChannels[0][i]->pastData[
             (cp.cntPastSize+cp.cntPastIndex-cp.rejCount+j)%cp.cntPastSize])>
-            acqChannels[i]->rejLev) { rejFlag=true; rejChn=i; break; }
+            acqChannels[0][i]->rejLev) { rejFlag=true; rejChn=i; break; }
           }
          } if (rejFlag==true) break;
         }
@@ -732,7 +761,7 @@ class AcqMaster : QObject {
          // Rejected, increment rejected count
          acqEvents[eIndex]->rejected++;
          qDebug("Octopus Acq Client: Rejected because of %s!",
-                acqChannels[rejChn]->name.toLatin1().data());
+                acqChannels[0][rejChn]->name.toLatin1().data());
         } else {
          // Not rejected: compute average and increment accepted for the event
          acqEvents[eIndex]->accepted++; eventOccured=true;
@@ -743,14 +772,14 @@ class AcqMaster : QObject {
           avgStartOffset=
            (cp.cntPastSize+cp.cntPastIndex-cp.avgCount-cp.postRejCount)%
                                                               cp.cntPastSize;
-          avgInChn=(acqChannels[i]->avgData)[eIndex];
-          stdInChn=(acqChannels[i]->stdData)[eIndex];
+          avgInChn=(acqChannels[0][i]->avgData)[eIndex];
+          stdInChn=(acqChannels[0][i]->stdData)[eIndex];
           n1=(float)(acqEvents[eIndex]->accepted); // n2=1
           avgDataCount=avgInChn->size();
 
           for (int j=0;j<avgDataCount;j++) {
            k1=(*avgInChn)[j];
-           k2=acqChannels[i]->pastData[(avgStartOffset+j)%cp.cntPastSize];
+           k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize];
            (*avgInChn)[j]=(k1*n1+k2)/(n1+1.);
           }
          } emit repaintGL(16); emit repaintHeadWindow();
@@ -764,12 +793,20 @@ class AcqMaster : QObject {
      cp.cntPastIndex++; cp.cntPastIndex%=cp.cntPastSize;
 
      if (!scrCounter) {
-      for (int i=0;i<acqChannels.size();i++) {
-       curChn=acqChannels[i];
-       scrPrvData[i]=scrCurData[i];
-       scrCurData[i] = acqCurData[zumbek].amp[curChn->ampNo-1].data[curChn->physChn];
-       scrPrvDataF[i]=scrCurDataF[i];
-       scrCurDataF[i] = acqCurData[zumbek].amp[curChn->ampNo-1].dataF[curChn->physChn];
+      //for (int i=0;i<acqChannels.size();i++) {
+      // curChn=acqChannels[i];
+      // scrPrvData[i]=scrCurData[i];
+      // scrCurData[i] = acqCurData[dOffset].amp[curChn->ampNo-1].data[curChn->physChn];
+      // scrPrvDataF[i]=scrCurDataF[i];
+      // scrCurDataF[i] = acqCurData[dOffset].amp[curChn->ampNo-1].dataF[curChn->physChn];
+      for (unsigned int i=0;i<ampCount;i++) {
+       for (unsigned int j=0;j<scrCurData[i].size();j++) {
+        curChn=acqChannels[i][j];
+        scrPrvData[i][j] =scrCurData[i][j];
+        scrCurData[i][j] =acqCurData[dOffset].amp[i].data[curChn->physChn];
+        scrPrvDataF[i][j]=scrCurDataF[i][j];
+        scrCurDataF[i][j]=acqCurData[dOffset].amp[i].dataF[curChn->physChn];
+       }
       } emit scrData(tick,event); tick=event=false; // Update CntFrame
      } scrCounter++; scrCounter%=cntSpeedX;
 
@@ -809,12 +846,12 @@ class AcqMaster : QObject {
 
   void slotDigResult() {
    digitizer->mutex.lock();
-    acqChannels[currentElectrode]->real=digitizer->stylusF;
-    acqChannels[currentElectrode]->realS=digitizer->stylusSF;
+    acqChannels[0][currentElectrode]->real=digitizer->stylusF;
+    acqChannels[0][currentElectrode]->realS=digitizer->stylusSF;
    digitizer->mutex.unlock(); curElecInSeq++;
    if (curElecInSeq==gizmo[currentGizmo]->seq.size()) curElecInSeq=0;
    for (int i=0;i<acqChannels.size();i++)
-    if (acqChannels[i]->physChn==gizmo[currentGizmo]->seq[curElecInSeq]-1)
+    if (acqChannels[0][i]->physChn==gizmo[currentGizmo]->seq[curElecInSeq]-1)
      { currentElectrode=i; break; }
    emit repaintHeadWindow(); emit repaintGL(1);
   }
@@ -839,19 +876,19 @@ class AcqMaster : QObject {
     cntStream << cntRecChns.size();	// Channel count
 
     for (int i=0;i<cntRecChns.size();i++) // Channel names - Cstyle
-     cntStream << acqChannels[cntRecChns[i]]->name.toLatin1().data();
+     cntStream << acqChannels[0][cntRecChns[0][i]]->name.toLatin1().data();
 
     for (int i=0;i<cntRecChns.size();i++) { // Param coords
-     cntStream << acqChannels[cntRecChns[i]]->param.y;
-     cntStream << acqChannels[cntRecChns[i]]->param.z;
+     cntStream << acqChannels[0][cntRecChns[0][i]]->param.y;
+     cntStream << acqChannels[0][cntRecChns[0][i]]->param.z;
     }
     for (int i=0;i<cntRecChns.size();i++) { // Real/measured coords
-     cntStream << acqChannels[cntRecChns[i]]->real[0];
-     cntStream << acqChannels[cntRecChns[i]]->real[1];
-     cntStream << acqChannels[cntRecChns[i]]->real[2];
-     cntStream << acqChannels[cntRecChns[i]]->realS[0];
-     cntStream << acqChannels[cntRecChns[i]]->realS[1];
-     cntStream << acqChannels[cntRecChns[i]]->realS[2];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->real[0];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->real[1];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->real[2];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->realS[0];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->realS[1];
+     cntStream << acqChannels[0][cntRecChns[0][i]]->realS[2];
     }
 
     cntStream << acqEvents.size();	// Event count
@@ -882,9 +919,11 @@ class AcqMaster : QObject {
    if (!trigger) { stimSendCommand(CS_TRIG_START,0,0,0); trigger=true; }
    else { stimSendCommand(CS_TRIG_STOP,0,0,0); trigger=false; }
   }
-
   void slotToggleNotch() {
    if (!notch) notch=true; else notch=false; 
+  }
+  void slotManualTrig() {
+   acqSendCommand(CS_ACQ_SYNC_TRIG,0xfe,0,0);
   }
 
   // *** TCP HANDLERS
@@ -1052,6 +1091,7 @@ class AcqMaster : QObject {
 
   QObject *recorder; QString calibMsg;
 
+  unsigned int ampCount;
   int recCounter,avgCounter; QString rHour,rMin,rSec;
 
   // Calibration

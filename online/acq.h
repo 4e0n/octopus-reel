@@ -25,8 +25,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    Since this file is included both from kernel space backend C, and the
    frontend C++ routines, common convention is preferred for the definitions.*/
 
-#ifndef OCTOPUS_ACQ_H
-#define OCTOPUS_ACQ_H
+#ifndef ACQ_H
+#define ACQ_H
 
 /* FIFOs for frontend<->backend communication of acq. */
 #define ACQ_F2BFIFO	(2)

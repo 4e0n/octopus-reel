@@ -21,8 +21,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_GIZMO_H
-#define OCTOPUS_GIZMO_H
+#ifndef GIZMO_H
+#define GIZMO_H
 
 #include <QString>
 #include <QVector>

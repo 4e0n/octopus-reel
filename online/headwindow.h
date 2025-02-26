@@ -25,16 +25,26 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define HEADWINDOW_H
 
 #include <QtGui>
+#include <QCheckBox>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QSlider>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMainWindow>
+#include <QButtonGroup>
+#include <QAbstractButton>
+#include <QPushButton>
 
-#include "octopus_acq_master.h"
-#include "octopus_head_glwidget.h"
+#include "acqmaster.h"
+#include "headglwidget.h"
 #include "legendframe.h"
 
 class HeadWindow : public QMainWindow {
  Q_OBJECT
  public:
-  HeadWindow(QWidget *p,AcqMaster* acqm) : QMainWindow(p,Qt::Window) {
-   parent=p; acqM=acqm; setGeometry(acqM->hwX,acqM->hwY,acqM->hwWidth,acqM->hwHeight);
+  HeadWindow(QWidget *p,AcqMaster* acqm,unsigned int a) : QMainWindow(p,Qt::Window) {
+   parent=p; acqM=acqm; ampNo=a; setGeometry(acqM->hwX,acqM->hwY,acqM->hwWidth,acqM->hwHeight);
    //setFixedSize(acqM->hwWidth,acqM->hwHeight);
 
    acqM->regRepaintHeadWindow(this);
@@ -247,7 +257,7 @@ class HeadWindow : public QMainWindow {
    clrAvgsButton->setGeometry(550,height()-24,60,20);
    connect(clrAvgsButton,SIGNAL(clicked()),(QObject *)acqM,SLOT(slotClrAvgs()));
 
-   headGLWidget=new HeadGLWidget(this,acqM);
+   headGLWidget=new HeadGLWidget(this,acqM,ampNo);
 
    //if (gizmoList->count()>0) {
    // gizmoList->setCurrentRow(0); slotSelectGizmo(0);
@@ -310,32 +320,32 @@ class HeadWindow : public QMainWindow {
   void slotSelectGizmo(int k) { int idx; Gizmo *g=acqM->gizmo[k];
    acqM->currentGizmo=k; electrodeList->clear();
    for (int i=0;i<g->seq.size();i++) {
-    for (int j=0;j<acqM->acqChannels.size();j++)
-     if (acqM->acqChannels[j]->physChn==g->seq[i]-1) { idx=j; break; }
-    dummyString.setNum(acqM->acqChannels[idx]->physChn+1);
-    electrodeList->addItem(dummyString+" "+acqM->acqChannels[idx]->name);
+    for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
+     if (acqM->acqChannels[ampNo][j]->physChn==g->seq[i]-1) { idx=j; break; }
+    dummyString.setNum(acqM->acqChannels[ampNo][idx]->physChn+1);
+    electrodeList->addItem(dummyString+" "+acqM->acqChannels[ampNo][idx]->name);
    }
    acqM->curElecInSeq=0;
-   for (int j=0;j<acqM->acqChannels.size();j++)
-    if (acqM->acqChannels[j]->physChn==g->seq[0]-1) { idx=j; break; }
+   for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
+    if (acqM->acqChannels[ampNo][j]->physChn==g->seq[0]-1) { idx=j; break; }
    acqM->currentElectrode=idx;
    electrodeList->setCurrentRow(acqM->curElecInSeq);
    headGLWidget->slotRepaintGL(8);
   }
 
   void slotSelectElectrode(int k) { acqM->curElecInSeq=k;
-   for (int i=0;i<acqM->acqChannels.size();i++)
-    if (acqM->acqChannels[i]->physChn==acqM->gizmo[acqM->currentGizmo]->seq[k]-1)
+   for (int i=0;i<acqM->acqChannels[ampNo].size();i++)
+    if (acqM->acqChannels[ampNo][i]->physChn==acqM->gizmo[acqM->currentGizmo]->seq[k]-1)
      { acqM->currentElectrode=i; break; }
    headGLWidget->slotRepaintGL(2+16); // update real+avgs
   }
 
   void slotViewElectrode(QListWidgetItem *item) { int idx,pChn;
    QString s=item->text(); QStringList l=s.split(" "); pChn=l[0].toInt()-1;
-   for (int i=0;i<acqM->acqChannels.size();i++)
-    if (acqM->acqChannels[i]->physChn==pChn) { idx=i; break; }
-   float theta=acqM->acqChannels[idx]->param.y;
-   float phi=acqM->acqChannels[idx]->param.z;
+   for (int i=0;i<acqM->acqChannels[ampNo].size();i++)
+    if (acqM->acqChannels[ampNo][i]->physChn==pChn) { idx=i; break; }
+   float theta=acqM->acqChannels[ampNo][idx]->param.y;
+   float phi=acqM->acqChannels[ampNo][idx]->param.z;
    headGLWidget->setView(theta,phi);
   }
 
@@ -376,7 +386,7 @@ class HeadWindow : public QMainWindow {
  private:
   AcqMaster *acqM; QWidget *parent; HeadGLWidget *headGLWidget;
 
-  QMenuBar *menuBar;
+  QMenuBar *menuBar; unsigned int ampNo;
   QAction *loadRealAction,*saveRealAction,*saveAvgsAction,
           *toggleFrameAction,*toggleGridAction,*toggleDigAction,
           *toggleParamAction,*toggleRealAction,

@@ -17,7 +17,7 @@ QT += widgets network
 
 # Input
 HEADERS += stimdaemon.h \
-           ../octopus-stim.h \
+           ../stim.h \
            ../fb_command.h \
            ../cs_command.h \
            ../patt_datagram.h

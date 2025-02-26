@@ -21,8 +21,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_DIGITIZER_H
-#define OCTOPUS_DIGITIZER_H
+#ifndef DIGITIZER_H
+#define DIGITIZER_H
 
 #include <QThread>
 #include <QMutex>

@@ -45,16 +45,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    to stream continuously from the pre-connected ACQ daemon over TCP/IP
    network. */
 
-#include "octopus_acq_master.h"
-#include "octopus_acq_client.h"
+#include "acqmaster.h"
+#include "acqcontrol.h"
+#include "acqclient.h"
 
 int main(int argc,char** argv) {
- QApplication app(argc,argv); AcqMaster *acqM=new AcqMaster(&app);
+ AcqMaster *acqM; AcqControl *acqControl; AcqClient *acqClient;
+ QApplication app(argc,argv); acqM=new AcqMaster(&app);
  if (!acqM->initSuccess) {
   qDebug("Octopus-Recorder: Initialization failed.. exiting.."); return -1;
  } else {
-	 AcqClient acqClient(acqM);
-	 acqClient.show();
-	 return app.exec();
+  acqControl=new AcqControl(acqM); acqControl->show();
+  for (unsigned int i=0;i<acqM->getAmpCount();i++) { acqClient=new AcqClient(acqM,i); acqClient->show(); }
+  return app.exec();
  }
 }

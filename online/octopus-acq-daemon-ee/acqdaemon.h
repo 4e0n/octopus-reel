@@ -68,6 +68,7 @@ class AcqDaemon : public QTcpServer {
      else { qDebug() << "octopus_acqd: <.conf> Unknown section in .conf file!";
       app->quit();
      }
+     extTrig=0;
     }
 
     // BUF
@@ -131,7 +132,7 @@ class AcqDaemon : public QTcpServer {
    tcpBuffer.resize(confTcpBufSize*chnInfo->sampleRate); tcpBufPIdx=tcpBufCIdx=0;
 
    daemonRunning=true; eegImpedanceMode=false; clientConnected=false;
-   acqThread=new AcqThread(this,chnInfo,&tcpBuffer,&tcpBufPIdx,&daemonRunning,&eegImpedanceMode,&mutex);
+   acqThread=new AcqThread(this,chnInfo,&tcpBuffer,&tcpBufPIdx,&daemonRunning,&eegImpedanceMode,&mutex,&extTrig);
    acqThread->start(QThread::HighestPriority);
   }
 
@@ -148,7 +149,7 @@ class AcqDaemon : public QTcpServer {
     qDebug("octopus_acqd: Command received -> 0x%x.",csCmd.cmd);
     switch (csCmd.cmd) {
      case CS_ACQ_INFO: qDebug(
-                        "octopus_acqd: Sending Chn.Info..");
+                        "octopus_acqd: <TCPcmd> Sending Chn.Info..");
                        csCmd.cmd=CS_ACQ_INFO_RESULT;
 		       csCmd.iparam[0]=chnInfo->sampleRate;
                        csCmd.iparam[1]=chnInfo->refChnCount;
@@ -168,6 +169,11 @@ class AcqDaemon : public QTcpServer {
      case CS_ACQ_SETMODE:
 		       if (csCmd.iparam[0]==0) eegImpedanceMode=true;
 		       else eegImpedanceMode=false;
+		       break;
+     case CS_ACQ_SYNC_TRIG:
+		       extTrig=csCmd.iparam[0];
+                       qDebug() << "octopus_acqd: <TCPcmd> External Trigger acknownledged. TCode: "
+                                << extTrig;
 		       break;
      case CS_REBOOT:   qDebug("octopus_acqd: <privileged cmd received> System rebooting..");
                        system("/sbin/shutdown -r now"); commandSocket->close(); break;
@@ -241,7 +247,7 @@ class AcqDaemon : public QTcpServer {
   AcqThread *acqThread; TcpThread *tcpThread; QMutex mutex;
   cs_command csCmd; chninfo *chnInfo;
 
-  QString confHost; 
+  QString confHost; unsigned int extTrig;
   int confTcpBufSize,confCommP,confDataP;
 };
 

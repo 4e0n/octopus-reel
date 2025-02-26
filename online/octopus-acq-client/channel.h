@@ -21,8 +21,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef OCTOPUS_CHANNEL_H
-#define OCTOPUS_CHANNEL_H
+#ifndef CHANNEL_H
+#define CHANNEL_H
 
 #include <QObject>
 #include <QString>
@@ -32,9 +32,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 class Channel : QObject {
  public:
-  Channel(int amp,int pc,QString n,int chRejLev,int chRejRef,QString cv,QString cr,
+  Channel(int pc,QString n,int chRejLev,int chRejRef,QString cv,QString cr,
           QString av,QString ar,float th,float ph) : QObject() {
-   ampNo=amp; physChn=pc-1; name=n; rejLev=(float)chRejLev; rejRef=chRejRef;
+   physChn=pc-1; name=n; rejLev=(float)chRejLev; rejRef=chRejRef;
    cntVis = (cv=="T" || cv=="t") ? true : false;
    cntRec = (cr=="T" || cr=="t") ? true : false;
    avgVis = (av=="T" || av=="t") ? true : false;
@@ -61,7 +61,7 @@ class Channel : QObject {
 
   // Continuous and Average visibility and recording flags exist as strings
   // in the constructor, which is how they are read from the config file..
-  int ampNo,physChn,rejRef; QString name; bool cntVis,cntRec,avgVis,avgRec;
+  int physChn,rejRef; QString name; bool cntVis,cntRec,avgVis,avgRec;
 
   Coord3D param; Vec3 real,realS; // Parametric and realistic coords..
 
