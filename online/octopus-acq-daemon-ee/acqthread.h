@@ -36,6 +36,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <stdio.h>
 
 #include "../acqglobals.h"
+#include "../serial_device.h"
 
 #ifdef EEMAGINE
 #define _UNICODE
@@ -170,6 +171,38 @@ class AcqThread : public QThread {
    }
   }
 
+  void syncTrigger(unsigned char t) {
+   unsigned char trig=t;
+   serial.devname="/dev/ttyACM0"; serial.baudrate=B115200;
+   serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
+   if ((serial.device=open(serial.devname.toLatin1().data(),O_RDWR|O_NOCTTY))>0) {
+    tcgetattr(serial.device,&oldtio);     // Save current port settings..
+    bzero(&newtio,sizeof(newtio)); // Clear struct for new settings..
+
+    // CLOCAL: Local connection, no modem control
+    // CREAD:  Enable receiving chars
+    newtio.c_cflag=serial.baudrate | serial.databits |
+                   serial.parity   | serial.par_on   |
+                   serial.stopbit  | CLOCAL |CREAD;
+
+    newtio.c_iflag=IGNPAR | ICRNL;  // Ignore bytes with parity errors,
+                                    // map CR to NL, as it will terminate the
+                                    // input for canonical mode..
+
+    newtio.c_oflag=0;               // Raw Output
+
+    newtio.c_lflag=ICANON;          // Enable Canonical Input
+
+    tcflush(serial.device,TCIFLUSH); // Clear line and activate settings..
+    tcsetattr(serial.device,TCSANOW,&newtio); sleep(1);
+
+    write(serial.device,&trig,sizeof(unsigned char));
+
+    tcsetattr(serial.device,TCSANOW,&oldtio); // Restore old serial context..
+    close(serial.device);
+   }
+  }
+
   void fetchEegData0() { float sum0,sum1;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -208,6 +241,9 @@ class AcqThread : public QThread {
     ee[i].cBufIdx+=ee[i].smpCount;
    }
    cBufPivotP=cBufPivot; cBufPivot=*std::min_element(cBufIdxList.begin(),cBufIdxList.end());
+
+   syncTrigger(0x80);
+   qDebug() << "octopus_acqd: <AmpSync> Sync Trigger sent..";
   }
 
   void fetchEegData() { float sum0,sum1;
@@ -236,8 +272,11 @@ class AcqThread : public QThread {
     //}
     for (unsigned int j=0;j<ee[i].smpCount;j++) { smp.marker=M_PI;
      for (unsigned int k=0;k<chnCount-2;k++) smp.data[k]=ee[i].buf.getSample(k,j);
-     smp.trigger=ee[i].buf.getSample(chnCount-2,j);
-     smp.offset=ee[i].absSmpIdx=ee[i].buf.getSample(chnCount-1,j);
+     smp.trigger=ee[i].buf.getSample(chnCount-2,j); smp.offset=ee[i].absSmpIdx=ee[i].buf.getSample(chnCount-1,j);
+     if (smp.trigger != 0) {
+      qDebug() << "---> Trigger (" << smp.trigger << ") arrived to AMP #" << i << " !! -- OFFSET:" << smp.offset;
+      arrivedTrig[i]=smp.offset; syncTrig++;
+     }
      ee[i].cBuf[(ee[i].cBufIdx+j)%cBufSz]=smp;
      //if (j==e.smpCount-1) e.absSmpIdx=smp.offset;
     }
@@ -318,8 +357,10 @@ class AcqThread : public QThread {
     e.fX.resize(chnInfo->physChnCount); for (int i=0;i<e.fX.size();i++) for (int j=0;j<e.fX[i].size();j++) e.fX[i][j]=0.;
     e.fY.resize(chnInfo->physChnCount); for (int i=0;i<e.fY.size();i++) for (int j=0;j<e.fY[i].size();j++) e.fY[i][j]=0.;
     ee.push_back(e);
+    arrivedTrig.push_back(0); // Zero for trigger for each channel.
    }
    cBufIdxList.resize(EE_AMPCOUNT);
+   syncTrig=0;
 
    // ----- List unsorted vs. sorted
    for (unsigned int i=0;i<ee.size();i++) qDebug() << stoi(ee[i].amp->getSerialNumber());
@@ -382,6 +423,14 @@ class AcqThread : public QThread {
   // Butterworth coefficients (replace with MATLAB-generated values)
   HighPassFilter hpf;
   BandPassFilter bpf;
+
+  serial_device serial;
+  int sDevice; // Actual serial dev..
+  struct termios oldtio,newtio; // place for old & new serial port settings..
+
+  QVector<int> arrivedTrig; // Trigger offsets for syncronization.
+  int syncTrig;
 };
 
 #endif
+

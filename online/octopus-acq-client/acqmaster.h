@@ -47,7 +47,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "../acqglobals.h"
 
-#include "serial_device.h"
+#include "../serial_device.h"
 #include "channel_params.h"
 #include "channel.h"
 #include "../../common/event.h"
@@ -617,7 +617,7 @@ class AcqMaster : QObject {
   }
 
   void slotAcqReadData() {
-   int acqCurStimEvent,acqCurRespEvent,avgDataCount,avgStartOffset;
+   int acqCurEvent,avgDataCount,avgStartOffset;
    QVector<float> *avgInChn,*stdInChn; float n1,k1,k2,z; unsigned int offsetC,offsetP;
    QDataStream acqDataStream(acqDataSocket);
 
@@ -702,8 +702,7 @@ class AcqMaster : QObject {
       // }
       //}
 
-      acqCurStimEvent=(int)(acqCurData[dOffset].trigger); // Stim Event
-      acqCurRespEvent=(int)(acqCurData[dOffset].trigger); // Resp Event
+      acqCurEvent=(int)(acqCurData[dOffset].trigger); // Event
 
       if (recording) { // .. to disk ..
        for (int i=0;i<cntRecChns.size();i++) {
@@ -711,7 +710,7 @@ class AcqMaster : QObject {
         //if (curChn->ampNo==1) cntStream << acqCurData[dOffset].amp[0].data[curChn->physChn];
 	//else cntStream << acqCurData[dOffset].amp[1].data[curChn->physChn];
        }
-       cntStream << acqCurStimEvent; cntStream << acqCurRespEvent;
+       cntStream << acqCurEvent;
        recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
       }
 
@@ -737,21 +736,15 @@ class AcqMaster : QObject {
       }
 
       // Handle Incoming Event..
-      if ((acqCurStimEvent || acqCurRespEvent) && trigger) { event=true;
-       if (acqCurStimEvent) {
+      if (acqCurEvent && trigger) { event=true;
+       if (acqCurEvent) {
         curEventName="Unknown STIM event #";
-        curEventName+=dummyString.setNum(acqCurStimEvent); curEventType=1;
-       } else if (acqCurRespEvent) {
-        curEventName="Unknown RESP event #";
-        curEventName+=dummyString.setNum(acqCurRespEvent); curEventType=2;
+        curEventName+=dummyString.setNum(acqCurEvent);
        }
-
-       int i1=eventIndex(acqCurStimEvent,1);
-       int i2=eventIndex(acqCurRespEvent,2);
-       if (i1>=0 || i2>=0) {
-        if (i1>=0) eIndex=i1; else if (i2>=0) eIndex=i2;
+       int idx=eventIndex(acqCurEvent,1);
+       if (idx>=0) {
+        eIndex=idx;
         curEventName=acqEvents[eIndex]->name;
-        curEventType=acqEvents[eIndex]->type;
         qDebug("Octopus Acq Client: Avg! -> Index=%d, Name=%s",
                eIndex,curEventName.toLatin1().data());
         if (averaging) {

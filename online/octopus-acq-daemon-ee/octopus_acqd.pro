@@ -31,6 +31,7 @@ HEADERS += acqdaemon.h \
            acqthread.h \
            tcpthread.h \
            eex.h \
+           ../serial_device.h \
            ../acqglobals.h \
 	   ../chninfo.h \
 	   ../sample.h \

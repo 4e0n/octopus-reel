@@ -37,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <sys/types.h>
 #include <cmath>
 
-#include "serial_device.h"
+#include "../serial_device.h"
 #include "../../common/vec3.h"
 
 const int AVG_N=100;

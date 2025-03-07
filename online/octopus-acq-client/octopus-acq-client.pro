@@ -28,6 +28,6 @@ HEADERS += acqmaster.h \
 #           headwindow.h \
            legendframe.h \
            rm_parse.h \
-           serial_device.h \
+           ../serial_device.h \
            source.h
 SOURCES += main.cpp

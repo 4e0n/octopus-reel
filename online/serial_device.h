@@ -28,7 +28,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QString>
 
+#include <termios.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/signal.h>
+#include <sys/types.h>
+#include <cmath>
+
 typedef struct _serial_device { QString devname;
- int baudrate,databits,parity,par_on,stopbit; } serial_device;
+ int device,baudrate,databits,parity,par_on,stopbit; } serial_device;
 
 #endif
