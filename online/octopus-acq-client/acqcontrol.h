@@ -167,13 +167,18 @@ class AcqControl : public QMainWindow {
    connect(toggleTriggerButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleTrigger()));
 
+   manualSyncButton=new QPushButton("SYNC",cntWidget);
+   manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
+   connect(manualSyncButton,SIGNAL(clicked()),
+           (QObject *)acqM,SLOT(slotManualSync()));
+
    manualTrigButton=new QPushButton("PING",cntWidget);
-   manualTrigButton->setGeometry(460,mainTabWidget->height()-54,60,20);
+   manualTrigButton->setGeometry(550,mainTabWidget->height()-54,60,20);
    connect(manualTrigButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotManualTrig()));
 
    toggleNotchButton=new QPushButton("MABPF",cntWidget);
-   toggleNotchButton->setGeometry(550,mainTabWidget->height()-54,60,20);
+   toggleNotchButton->setGeometry(650,mainTabWidget->height()-54,60,20);
    toggleNotchButton->setCheckable(true); toggleNotchButton->setChecked(true);
    connect(toggleNotchButton,SIGNAL(clicked()),
            (QObject *)acqM,SLOT(slotToggleNotch()));
@@ -245,7 +250,7 @@ class AcqControl : public QMainWindow {
           *quitAction,*aboutAction,*testSCAction,*testSquareAction,
           *paraLoadPatAction,*paraClickAction,*paraSquareBurstAction,
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action;
-  QTabWidget *mainTabWidget; QWidget *cntWidget; QPushButton *manualTrigButton;
+  QTabWidget *mainTabWidget; QWidget *cntWidget; QPushButton *manualSyncButton,*manualTrigButton;
   QPushButton *toggleRecordingButton,*toggleStimulationButton,
               *toggleTriggerButton,*toggleNotchButton;
   QButtonGroup *cntSpdBG;

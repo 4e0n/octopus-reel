@@ -942,7 +942,10 @@ class AcqMaster : QObject {
    if (!notch) notch=true; else notch=false; 
   }
   void slotManualTrig() {
-   acqSendCommand(CS_ACQ_SYNC_TRIG,0xfe,0,0);
+   acqSendCommand(CS_ACQ_MANUAL_TRIG,0xff,0,0);
+  }
+  void slotManualSync() {
+   acqSendCommand(CS_ACQ_MANUAL_SYNC,AMP_SYNC_TRIG,0,0);
   }
 
   // *** TCP HANDLERS

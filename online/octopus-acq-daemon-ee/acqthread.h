@@ -52,8 +52,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../tcpsample.h"
 #include "eex.h"
 
-const unsigned char AMP_SYNC_TRIG=0x80;
-
 class HighPassFilter {
  private:
   std::array<double,3> b={ 0.9956,-1.9911, 0.9956};
@@ -248,7 +246,7 @@ class AcqThread : public QThread {
    cBufPivotP=cBufPivot; cBufPivot=*std::min_element(cBufIdxList.begin(),cBufIdxList.end());
 
    sendTrigger(AMP_SYNC_TRIG);
-   qDebug() << "octopus_acqd: <AmpSync> Sync Trigger sent..";
+   qDebug() << "octopus_acqd: <AmpSync> SYNC sent..";
   }
 
   void fetchEegData() { float sum0,sum1;
@@ -272,41 +270,18 @@ class AcqThread : public QThread {
      smp.trigger=ee[i].buf.getSample(chnCount-2,j);
      smp.offset=ee[i].smpIdx=ee[i].buf.getSample(chnCount-1,j)-ee[i].baseSmpIdx; // Sample# after Epoch
      if (smp.trigger != 0) {
-      //qDebug() << "octopus_acqd: <AmpSync> Trigger (" << smp.trigger << ") arrived at AMP #" << i << " -- Offset:" << smp.offset;
-      if (smp.trigger == AMP_SYNC_TRIG) {
-       //qDebug() << "octopus_acqd: <AmpSync> SYNC @AMP#" << i << " -- " << smp.offset;
+      if (smp.trigger == (unsigned int)(AMP_SYNC_TRIG)) {
+       qDebug() << "octopus_acqd: <AmpSync> SYNC received by @AMP#" << i+1 << " -- " << smp.offset;
        arrivedTrig[i]=smp.offset; syncTrig++;
+      } else {
+       qDebug() << "octopus_acqd: <AmpSync> Trigger #" << smp.trigger << " arrived at AMP#" << i+1 << " -- " << smp.offset;
       }
      }
      ee[i].cBuf[(ee[i].cBufIdx+j)%cBufSz]=smp;
     }
-   }
 
-   // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
-   if (syncTrig==ee.size()) {
-    qDebug() << "octopus_acqd: <AmpSync> Trigger arrived to all amps... syncing offsets";
-    unsigned int trigOffsetMin=*std::min_element(arrivedTrig.begin(),arrivedTrig.end());
-    for (unsigned int i=0;i<ee.size();i++) arrivedTrig[i]-=trigOffsetMin;
-    unsigned int trigOffsetMax=*std::max_element(arrivedTrig.begin(),arrivedTrig.end());
-    qDebug() << "Min vs. Max trigger offsets: " << trigOffsetMin << " -- " << trigOffsetMax;
-    //if (trigOffsetMax==0) {
-    // qDebug() << "octopus_acqd: <AmpSync> <<< All amps seem to be in sync.>>>";
-    //} else if (trigOffsetMax>chnInfo->sampleRate) {
-    // qDebug() << "octopus_acqd: <AmpSync> ERROR! Sync.Trigger is still not recvd within 1 second in at least one amp!";
-    //} else {
-    for (unsigned int i=0;i<ee.size();i++)
-     qDebug() << "octopus_acqd: <AmpSync> SYNC Instants: AMP #" << i+1 << " -> " << arrivedTrig[i];
-
-    // Baseline alignment to the smallest offset
-    //for (unsigned int i=0;i<ee.size();i++) { ee[i].cBufIdx-=arrivedTrig[i]; cBufIdxList[i]-=arrivedTrig[i]; }
-    //qDebug() << "octopus_acqd: <AmpSync> Offsets now synced to the earliest amp.";
-    //}
-    //syncTrig=0; for (unsigned int i=0;i<ee.size();i++) arrivedTrig[i]=0; // Ready for future SYNCing
-   }
-
-   // ----- ONLINE FILTERING -----
-   // Past average subtraction for High Pass + Moving Average for 50Hz and harmonics
-   for (unsigned int i=0;i<ee.size();i++) {
+    // ----- ONLINE FILTERING -----
+    // Past average subtraction for High Pass + Moving Average for 50Hz and harmonics
     for (unsigned int j=0;j<chnCount-2;j++) {
      for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
       sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
@@ -325,14 +300,12 @@ class AcqThread : public QThread {
       for (int k=0;k<(int)(ee[i].smpCount);k++) ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].dataF[j]=v[k];
      }
     }
+
+    // Derive the minimum index among # of samples fetched via any amp (to use later in circular buffer updates)
+    cBufIdxList[i]=ee[i].cBufIdx; ee[i].cBufIdx+=ee[i].smpCount;
    }
 
    // ---------------------
-
-   // Derive the minimum index among # of samples fetched via any amp (to use later in circular buffer updates)
-   for (unsigned int i=0;i<ee.size();i++) {
-    cBufIdxList[i]=ee[i].cBufIdx; ee[i].cBufIdx+=ee[i].smpCount;
-   }
 
    cBufPivotP=cBufPivot; cBufPivot=*std::min_element(cBufIdxList.begin(),cBufIdxList.end());
   }
@@ -383,7 +356,7 @@ class AcqThread : public QThread {
    cBufIdxList.resize(ee.size()); syncTrig=0;
 
    // ----- List unsorted vs. sorted
-   for (unsigned int i=0;i<ee.size();i++) qDebug() << stoi(ee[i].amp->getSerialNumber());
+   for (unsigned int i=0;i<ee.size();i++) qDebug() << "octopus_acqd: <AmpSerial> Amp#" << i+1 << ":" << stoi(ee[i].amp->getSerialNumber());
 
    switchToEEGMode();
 
@@ -398,14 +371,36 @@ class AcqThread : public QThread {
     } else {
      fetchEegData();
 
+     // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
+     if (syncTrig==ee.size()) {
+      qDebug() << "octopus_acqd: <AmpSync> SYNC received by all amps.. validating offsets.. ";
+      unsigned int trigOffsetMin=*std::min_element(arrivedTrig.begin(),arrivedTrig.end());
+      for (unsigned int i=0;i<ee.size();i++) arrivedTrig[i]-=trigOffsetMin;
+      unsigned int trigOffsetMax=*std::max_element(arrivedTrig.begin(),arrivedTrig.end());
+      if (trigOffsetMax>chnInfo->sampleRate) {
+       qDebug() << "octopus_acqd: <AmpSync> ERROR! SYNC is not recvd within a second for at least one amp!";
+      } else {
+       qDebug() << "octopus_acqd: <AmpSync> SYNC retro-adjustments to be made: AMP#1->" << arrivedTrig[0] << " AMP#2->" << arrivedTrig[1];
+       qDebug() << "octopus_acqd: <AmpSync> SUCCESS. Offsets are now being synced on-the-fly to the earliest amp at TCPsample package level.";
+      }
+      syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
+     }
+
+     unsigned int trig0,trig1,toff;
      mutex->lock();
-      quint64 tcpDataSize=cBufPivot-cBufPivotP;
-      //qDebug() << cBufPivotP << " " << cBufPivot;
+      quint64 tcpDataSize=cBufPivot-cBufPivotP; // qDebug() << cBufPivotP << " " << cBufPivot;
       for (quint64 i=0;i<tcpDataSize;i++) {
-       //tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2)%cBufSz];
-       //tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2)%cBufSz];
-       tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2-arrivedTrig[0])%cBufSz];
-       tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2-arrivedTrig[1])%cBufSz];
+       // Baseline alignment to the latest offset by (+arrivedTrig[i])
+       tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2+arrivedTrig[0])%cBufSz];
+       tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2+arrivedTrig[1])%cBufSz];
+
+       // Trigger timing check in between amps
+       trig0=tcpS.amp[0].trigger; trig1=tcpS.amp[1].trigger; toff++;
+       if (trig0!=0 && trig1!=0) qDebug() << "octopus_acqd: <AmpSync> Yay! Syncronized triggers received!";
+       else if (trig0!=0 || trig1!=0) {
+        qDebug() << "octopus_acqd: <AmpSync> That's bad. Single offset lag.." << trig0 << "vs." << trig1 << "-> Offset:" << toff; toff=0;
+       }
+
        if (*extTrig) { tcpS.trigger=*extTrig; *extTrig=0; }
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }

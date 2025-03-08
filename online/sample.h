@@ -32,8 +32,8 @@ typedef struct _sample {
  float dataF[PHYS_CHN_COUNT];
  float sum0[PHYS_CHN_COUNT]; // avg of peri convN samples
  float sum1[PHYS_CHN_COUNT]; // avg of previous convL samples
- int trigger;
- int offset;
+ unsigned int trigger;
+ unsigned int offset;
 } sample;
 
 #endif

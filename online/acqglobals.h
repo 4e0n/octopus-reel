@@ -24,7 +24,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef GLOBALS
 #define GLOBALS
 
-//#define EEMAGINE
+#define EEMAGINE
 
 const unsigned int EE_AMPCOUNT=2;
 const unsigned int EE_MAX_AMPCOUNT=8;
@@ -47,5 +47,7 @@ const float EE_REF_GAIN=1.;
 const float EE_BIP_GAIN=4.;
 
 const unsigned int CBUF_SIZE_IN_SECS=10;
+
+const unsigned int AMP_SYNC_TRIG=0x80;
 
 #endif

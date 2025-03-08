@@ -170,10 +170,14 @@ class AcqDaemon : public QTcpServer {
 		       if (csCmd.iparam[0]==0) eegImpedanceMode=true;
 		       else eegImpedanceMode=false;
 		       break;
-     case CS_ACQ_SYNC_TRIG:
-		       extTrig=csCmd.iparam[0]; acqThread->sendTrigger(0x80);
+     case CS_ACQ_MANUAL_TRIG:
+		       extTrig=csCmd.iparam[0]; acqThread->sendTrigger(extTrig);
                        qDebug() << "octopus_acqd: <TCPcmd> External Trigger acknownledged. TCode: "
                                 << extTrig;
+		       break;
+     case CS_ACQ_MANUAL_SYNC:
+		       acqThread->sendTrigger(AMP_SYNC_TRIG);
+                       qDebug() << "octopus_acqd: <TCPcmd> External SYNC acknownledged.";
 		       break;
      case CS_REBOOT:   qDebug("octopus_acqd: <privileged cmd received> System rebooting..");
                        system("/sbin/shutdown -r now"); commandSocket->close(); break;
