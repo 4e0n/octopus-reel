@@ -43,9 +43,10 @@ typedef struct _eex {
  unsigned int t;
  unsigned int smpCount; // data count int buffer
  //unsigned int chnCount; // channel count int buffer -- redundant, to be asserted
- unsigned int absSmpIdx; // Absolute Sample Index, as sent from the amplifier
+ unsigned int baseSmpIdx; // Base Sample Index, to subtract from all upcoming basSmpIdx's
+ unsigned int smpIdx; // Absolute Sample Index, as sent from the amplifier
  std::vector<float> imps;
- quint64 cBufIdx,cBufIdxP;
+ quint64 cBufIdx; //,cBufIdxP;
  std::vector<sample> cBuf;
  std::vector<sample> cBufF;
  std::vector<std::array<double,IIR_HIST_SIZE> > fX,fY; // IIR filter History

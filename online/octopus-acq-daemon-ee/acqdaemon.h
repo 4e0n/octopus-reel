@@ -171,7 +171,7 @@ class AcqDaemon : public QTcpServer {
 		       else eegImpedanceMode=false;
 		       break;
      case CS_ACQ_SYNC_TRIG:
-		       extTrig=csCmd.iparam[0];
+		       extTrig=csCmd.iparam[0]; acqThread->sendTrigger(0x80);
                        qDebug() << "octopus_acqd: <TCPcmd> External Trigger acknownledged. TCode: "
                                 << extTrig;
 		       break;
