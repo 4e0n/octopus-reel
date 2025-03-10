@@ -35,6 +35,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cmath>
 #include <stdio.h>
 
+#include <alsa/asoundlib.h>
+#include <vector>
+#include <cstring>
+
 #include "../acqglobals.h"
 #include "../serial_device.h"
 
@@ -51,6 +55,33 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../sample.h"
 #include "../tcpsample.h"
 #include "eex.h"
+
+// Audio settings
+const int AUDIO_SAMPLE_RATE=48000;
+const int AUDIO_NUM_CHANNELS=2;
+const int AUDIO_BUFFER_SIZE=4800;
+
+/*
+const int CIRCULAR_BUFFER_SIZE=8192;
+
+// Circular buffer structure
+struct CircularBuffer {
+    std::vector<int16_t> buffer;
+    size_t head = 0, tail = 0, size;
+
+    CircularBuffer(size_t s) : buffer(s), size(s) {}
+
+    void push(const int16_t* data, size_t frames) {
+        for (size_t i = 0; i < frames * NUM_CHANNELS; ++i) {
+            buffer[head] = data[i];
+            head = (head + 1) % size;
+            if (head == tail) { // Overwrite oldest data
+                tail = (tail + 1) % size;
+            }
+        }
+    }
+};
+*/
 
 class HighPassFilter {
  private:
@@ -129,7 +160,52 @@ class AcqThread : public QThread {
    convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
 
    filterIIR_1_40=false;
+
+   toff=0;
+
+   //CircularBuffer circBuffer(CIRCULAR_BUFFER_SIZE);
+   audioOK=false; audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS);
   }
+
+  void initAlsa() {
+   // Open ALSA capture device
+   if (snd_pcm_open(&audioPCMHandle,"default",SND_PCM_STREAM_CAPTURE,0)==0) {
+    // Configure hardware parameters
+    snd_pcm_hw_params_alloca(&audioParams);
+    snd_pcm_hw_params_any(audioPCMHandle,audioParams);
+    snd_pcm_hw_params_set_access(audioPCMHandle,audioParams,SND_PCM_ACCESS_RW_INTERLEAVED);
+    snd_pcm_hw_params_set_format(audioPCMHandle,audioParams,SND_PCM_FORMAT_S16_LE);
+    snd_pcm_hw_params_set_channels(audioPCMHandle,audioParams,AUDIO_NUM_CHANNELS);
+    snd_pcm_hw_params_set_rate(audioPCMHandle,audioParams,AUDIO_SAMPLE_RATE,0);
+    snd_pcm_hw_params_set_buffer_size(audioPCMHandle,audioParams,AUDIO_BUFFER_SIZE);
+    if (snd_pcm_hw_params(audioPCMHandle,audioParams)==0) audioOK=true;
+    else qDebug() << "octopus_acqd: <AlsaAudioInit> Error setting PCM parameters.";
+   } else qDebug() << "octopus_acqd: <AlsaAudioInit> Error opening PCM device.";
+
+   if (audioOK) qDebug() << "octopus_acqd: <AlsaAudioInit> Alsa Audio Input successfully activated, audio streaming started.";
+  }
+
+  void instreamAudio() { // Call regularly within main loopthread
+   int err = snd_pcm_readi(audioPCMHandle,audioBuffer.data(),AUDIO_BUFFER_SIZE);
+   if (err==-EPIPE) {
+    qDebug() << "octopus_acqd: <AlsaAudioStream> BUFFER OVERRUN!!! Recovering...";
+    snd_pcm_prepare(audioPCMHandle);
+   } else if (err<0) {
+    qDebug() << "octopus_acqd: <AlsaAudioStream> ERROR READING AUDIO! Err.No:" << snd_strerror(err);
+   } else {
+    //circBuffer.push(buffer, BUFFER_SIZE);
+    qDebug() << "octopus_acqd: <AlsaAudioStream> Instreamed" << AUDIO_BUFFER_SIZE << "frames (48kHz, Stereo)";
+   }
+  }
+   
+  void stopAudio() {
+   // Cleanup
+   snd_pcm_drain(audioPCMHandle);
+   snd_pcm_close(audioPCMHandle);
+   std::cout << "Instreaming stopped.\n";
+  }
+
+  // --------
 
   void switchToImpedanceMode() { // Will be checked for mutual exclusion
    *eegImpedanceMode=true;
@@ -324,6 +400,8 @@ class AcqThread : public QThread {
 
    // --- Initial setup ---
 
+   initAlsa();
+
    std::vector<amplifier*> eeAmpsU,eeAmps; std::vector<unsigned int> snosU,snos; // Unsorted vs. sorted
    eeAmpsU=eeFact.getAmplifiers();
    if (eeAmpsU.size()<EE_AMPCOUNT) {
@@ -386,7 +464,8 @@ class AcqThread : public QThread {
       syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
      }
 
-     unsigned int trig0,trig1,toff;
+     instreamAudio();
+
      mutex->lock();
       quint64 tcpDataSize=cBufPivot-cBufPivotP; // qDebug() << cBufPivotP << " " << cBufPivot;
       for (quint64 i=0;i<tcpDataSize;i++) {
@@ -401,6 +480,8 @@ class AcqThread : public QThread {
         qDebug() << "octopus_acqd: <AmpSync> That's bad. Single offset lag.." << trig0 << "vs." << trig1 << "-> Offset:" << toff; toff=0;
        }
 
+       // Copy Audio L and Audio R in tcpS from Audio Circular Buffer
+
        if (*extTrig) { tcpS.trigger=*extTrig; *extTrig=0; }
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
@@ -408,6 +489,7 @@ class AcqThread : public QThread {
      mutex->unlock();
 
      cBufPivotP=cBufPivot;
+
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_eeg_msecs));
     } // eegImpedanceMode
    } // daemonRunning
@@ -446,7 +528,15 @@ class AcqThread : public QThread {
 
   QVector<unsigned int> arrivedTrig; // Trigger offsets for syncronization.
   unsigned int syncTrig;
+
+  unsigned int trig0,trig1,toff;
+
+  // Alsa Audio
+  snd_pcm_t* audioPCMHandle;
+  snd_pcm_hw_params_t* audioParams;
+  std::vector<int16_t> audioBuffer;
+
+  bool audioOK;
 };
 
 #endif
-
