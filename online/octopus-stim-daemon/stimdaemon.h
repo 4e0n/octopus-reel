@@ -25,9 +25,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define STIMDAEMON_H
 
 #include <QtNetwork>
-#include <QThread>
-#include <QVector>
 #include <unistd.h>
+#include <stdlib.h>
+#include <rtai_fifos.h>
+#include <rtai_shm.h>
 #include "../stimglobals.h"
 #include "../patt_datagram.h"
 #include "../fb_command.h"
@@ -41,13 +42,12 @@ class StimDaemon : public QTcpServer {
    application=app;
 
    // Parse system config file for variables
-   QStringList cfgValidLines,opts,opts2,bufSection,netSection;
+   QStringList cfgValidLines,opts,opts2,netSection;
    QFile cfgFile; QTextStream cfgStream;
    QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_stimd.conf");
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "octopus_stimd: <.conf> cannot load /etc/octopus_stimd.conf.";
     qDebug() << "octopus_stimd: <.conf> Falling back to hardcoded defaults.";
-    //confTcpBufSize=10;
     confHost="127.0.0.1";  confCommP=65000;  confDataP=65001;
    } else { cfgStream.setDevice(&cfgFile);
     while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); // Max Line Size
@@ -60,12 +60,10 @@ class StimDaemon : public QTcpServer {
 
     for (int i=0;i<cfgValidLines.size();i++) {
      opts=cfgValidLines[i].split("|");
-          if (opts[0].trimmed()=="NET") bufSection.append(opts[1]);
-     //else if (opts[0].trimmed()=="BUF") netSection.append(opts[1]);
+          if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else { qDebug() << "octopus_stimd: <.conf> Unknown section in .conf file!";
       app->quit();
      }
-     //extTrig=0;
     }
 
     // NET
@@ -98,7 +96,7 @@ class StimDaemon : public QTcpServer {
    }
 
    // FIFOs
-   if ((fbFifo=open("/dev/rtf0",O_WRONLY))==0 && (bfFifo=open("/dev/rtf1",O_RDONLY|O_NONBLOCK))==0) {
+   if ((fbFifo=open("/dev/rtf0",O_WRONLY))>0 && (bfFifo=open("/dev/rtf1",O_RDONLY|O_NONBLOCK))>0) {
     // Send RESET Backend Command
     reset_msg.id=STIM_RST_SYN;
     write(fbFifo,&reset_msg,sizeof(fb_command)); sleep(1); reset_msg.id=0;
@@ -106,7 +104,7 @@ class StimDaemon : public QTcpServer {
     if (reset_msg.id!=STIM_RST_ACK) {
      qDebug() << "octopus_stimd: <KernelFIFOs> Kernel-space backend does not respond!"; app->quit();
     } else { // Backend ACKd. Everything's OK. Close and repoen FIFO in blocking mode.
-     close(bfFifo); if ((bfFifo=open("/dev/rtf1",O_RDONLY))<0) {
+     ::close(bfFifo); if ((bfFifo=open("/dev/rtf1",O_RDONLY))<0) {
       qDebug() << "octopus_stimd: <KernelFIFOs> Error during reoping fifo in blocking mode!"; app->quit();
      }
     }
@@ -115,11 +113,14 @@ class StimDaemon : public QTcpServer {
    }
 
    // SHM
-   if ((shmBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE))==0) {
+   if ((shmBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE))<=0) {
     qDebug() << "octopus_stimd: Kernel-space backend SHM could not be opened!"; app->quit();
-   }
+   } //else {
+    //qDebug("octopus_stimd: Kernel-space backend SHM addr: 0x%x",shmBuffer);
+   //}
 
    QHostAddress hostAddress(confHost);
+   //qDebug() << hostAddress;
    // Initialize Tcp Command Server
    commandServer=new QTcpServer(this);
    commandServer->setMaxPendingConnections(1);
@@ -132,9 +133,8 @@ class StimDaemon : public QTcpServer {
    } else {
     qDebug() << "octopus_stimd: Daemon started successfully..";
     qDebug() << "octopus_stimd: Waiting for client connection..";
-    //fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0);
+    fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0);
    }
-
    daemonRunning=true; clientConnected=false;
   }
 

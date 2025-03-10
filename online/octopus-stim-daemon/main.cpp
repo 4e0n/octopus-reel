@@ -27,12 +27,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QApplication>
 #include <QtCore>
 //#include <QIntValidator>
-#include <stdlib.h>
-#include <rtai_fifos.h>
-#include <rtai_shm.h>
-#include "../stimglobals.h"
-#include "../fb_command.h"
-#include "../cs_command.h"
+//#include <stdlib.h>
+//#include <rtai_fifos.h>
+//#include <rtai_shm.h>
+//#include "../stimglobals.h"
+//#include "../fb_command.h"
+//#include "../cs_command.h"
 #include "stimdaemon.h"
 
 int main(int argc,char *argv[]) {

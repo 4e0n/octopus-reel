@@ -52,7 +52,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
 
-#define OCTOPUS_COMEDI_DIO_SUBDEV	(3)
+#define OCTOPUS_COMEDI_DIO_SUBDEV	(2)
 
 /* Highest 128M of 1G RAM is dedicated to stimulus pattern
    "memmap=128M!896M" should exist in kernel cmdline */
