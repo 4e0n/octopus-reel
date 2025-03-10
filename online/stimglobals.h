@@ -31,8 +31,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 //#define DACZERO16	/* Default is 16-bit DAC samplespace */
 
 /* FIFOs for frontend<->backend communication of stim. */
-#define FBFIFO				(0)
-#define BFFIFO				(1)
+#ifdef OCTOPUS_RTAI
+#define STIM_F2BFIFO	(2)
+#define STIM_B2FFIFO	(3)
+#endif
 
 /* DAQCard dependent settings */
 #ifdef DACZERO16

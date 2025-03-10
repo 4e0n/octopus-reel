@@ -1,4 +1,3 @@
-
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
    Copyright (C) 2007-2025 Barkin Ilhan

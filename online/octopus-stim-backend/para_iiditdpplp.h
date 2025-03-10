@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007 Barkin Ilhan
+   Copyright (C) 2007-2025 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -230,8 +230,8 @@ static void para_iiditdpplp(void) {
    comedi_data_write(daqcard,1,1,0,AREF_GROUND,dac_1);
 #endif
    rt_sem_wait(&audio_sem);
-    rtf_reset(BFFIFO);
-    rtf_reset(FBFIFO);
+    rtf_reset(STIM_B2FFIFO);
+    rtf_reset(STIM_F2BFIFO);
    rt_sem_signal(&audio_sem);
    rt_printk("octopus-stim-rtai.o: Stim stopped.\n");
   } else if (counter3%para_iiditdpplp_t5==0) {
