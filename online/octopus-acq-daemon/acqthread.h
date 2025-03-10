@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QtNetwork>
 #include <unistd.h>
-#include "../acq.h"
+#include "../acqglobals.h"
 #include "../fb_command.h"
 
 class AcqThread : public QThread {

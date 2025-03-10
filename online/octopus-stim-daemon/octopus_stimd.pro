@@ -3,7 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = octopus-stim-daemon
+TARGET = octopus_stimd
 INCLUDEPATH += .
 INCLUDEPATH += /usr/realtime/include
 QT += widgets network
@@ -17,7 +17,7 @@ QT += widgets network
 
 # Input
 HEADERS += stimdaemon.h \
-           ../stim.h \
+           ../stimglobals.h \
            ../fb_command.h \
            ../cs_command.h \
            ../patt_datagram.h

@@ -29,7 +29,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QVector>
 #include <unistd.h>
-#include "../acq.h"
+#include "../acqglobals.h"
 #include "../cs_command.h"
 #include "../fb_command.h"
 #include "acqthread.h"

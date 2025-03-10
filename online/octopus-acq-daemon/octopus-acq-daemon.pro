@@ -18,7 +18,7 @@ QT += widgets network
 # Input
 HEADERS += acqdaemon.h \
            acqthread.h \
-           ../acq.h \
+           ../acqglobals.h \
            ../fb_command.h \
            ../cs_command.h
 SOURCES += main.cpp

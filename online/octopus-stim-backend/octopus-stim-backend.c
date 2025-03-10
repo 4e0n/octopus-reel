@@ -74,7 +74,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #endif
 
 #include "../fb_command.h"
-#include "../stim.h"
+#include "../stimglobals.h"
 #include "../stim_event_codes.h"
 #include "../stim_test_para.h"
 
@@ -121,8 +121,8 @@ static void trigger_set(int t_code) {
 
 static void trigger_reset(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,1,1); /* Code - failsafe zeroing */
- comedi_dio_write(daqcard,2,0,1); /* Trigger */
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,1,1); /* Code - failsafe zeroing */
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,0,1); /* Trigger */
 #else
  outb(0x00,0x378);
 #endif
@@ -132,26 +132,26 @@ static void trigger_reset(void) {
 /* Experimental code */
 static void lights_on(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,4,1);
- comedi_dio_write(daqcard,2,5,1);
- comedi_dio_write(daqcard,2,6,1);
- comedi_dio_write(daqcard,2,7,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,4,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,5,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,6,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,7,1);
 #endif
 }
 static void lights_off(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,4,0);
- comedi_dio_write(daqcard,2,5,0);
- comedi_dio_write(daqcard,2,6,0);
- comedi_dio_write(daqcard,2,7,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,4,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,5,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,6,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,7,0);
 #endif
 }
 static void lights_dimm(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,2,4,1);
- comedi_dio_write(daqcard,2,5,0);
- comedi_dio_write(daqcard,2,6,1);
- comedi_dio_write(daqcard,2,7,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,4,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,5,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,6,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,7,0);
 #endif
 }
 
@@ -217,12 +217,12 @@ static void trigger_thread(int t) {
   if (trigger_bit_shift) {
 //   rt_sem_wait(&trigger_sem);
 
-   if (trigger_bit_shift==10) comedi_dio_write(daqcard,2,0,0); /* Trigger to low */
+   if (trigger_bit_shift==10) comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,0,0); /* Trigger to low */
 
-   comedi_dio_write(daqcard,2,1,trigger_code&0x01);
+   comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,1,trigger_code&0x01);
    trigger_code>>=1; trigger_bit_shift--;
    if (!trigger_bit_shift) {
-    comedi_dio_write(daqcard,2,1,1); comedi_dio_write(daqcard,2,0,1); /* Trigger to high */
+    comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,1,1); comedi_dio_write(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,0,1); /* Trigger to high */
    }
 //   rt_sem_signal(&trigger_sem);
   }
@@ -464,14 +464,14 @@ static int __init octopus_stim_init(void) {
 
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
  comedi_lock(daqcard,2);
- comedi_dio_config(daqcard,2,0,COMEDI_OUTPUT); /* Trigger direction -trig */
- comedi_dio_config(daqcard,2,1,COMEDI_OUTPUT); /* Trigger direction -code */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,0,COMEDI_OUTPUT); /* Trigger direction -trig */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,1,COMEDI_OUTPUT); /* Trigger direction -code */
 
  // For arduino test
- comedi_dio_config(daqcard,2,4,COMEDI_OUTPUT); /* Relay 0 */
- comedi_dio_config(daqcard,2,5,COMEDI_OUTPUT); /* Relay 1 */
- comedi_dio_config(daqcard,2,6,COMEDI_OUTPUT); /* Relay 2 */
- comedi_dio_config(daqcard,2,7,COMEDI_OUTPUT); /* Relay 3 */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,4,COMEDI_OUTPUT); /* Relay 0 */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,5,COMEDI_OUTPUT); /* Relay 1 */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,6,COMEDI_OUTPUT); /* Relay 2 */
+ comedi_dio_config(daqcard,OCTOPUS_COMEDI_DIO_SUBDEV,7,COMEDI_OUTPUT); /* Relay 3 */
 
  trigger_reset();
 

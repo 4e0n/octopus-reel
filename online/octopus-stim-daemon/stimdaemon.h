@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007 Barkin Ilhan
+   Copyright (C) 2007-2025 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with this program.  If no:t, see <https://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  Contact info:
  E-Mail:  barkin@unrlabs.org
@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QThread>
 #include <QVector>
 #include <unistd.h>
-#include "../stim.h"
+#include "../stimglobals.h"
 #include "../patt_datagram.h"
 #include "../fb_command.h"
 #include "../cs_command.h"
@@ -37,30 +37,105 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class StimDaemon : public QTcpServer {
  Q_OBJECT
  public:
-  StimDaemon(QObject *parent,QCoreApplication *app,
-             QString h,int comm,int data,
-             int fbf,int bff,char *shmb): QTcpServer(parent) {
-   application=app; fbFifo=fbf; bfFifo=bff; shmBuffer=shmb;
-   QHostAddress hostAddress(h);
+  StimDaemon(QObject *parent,QCoreApplication *app): QTcpServer(parent) {
+   application=app;
 
+   // Parse system config file for variables
+   QStringList cfgValidLines,opts,opts2,bufSection,netSection;
+   QFile cfgFile; QTextStream cfgStream;
+   QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_stimd.conf");
+   if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "octopus_stimd: <.conf> cannot load /etc/octopus_stimd.conf.";
+    qDebug() << "octopus_stimd: <.conf> Falling back to hardcoded defaults.";
+    //confTcpBufSize=10;
+    confHost="127.0.0.1";  confCommP=65000;  confDataP=65001;
+   } else { cfgStream.setDevice(&cfgFile);
+    while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); // Max Line Size
+     cfgLines.append(cfgLine); } cfgFile.close();
+
+    // Parse config
+    for (int i=0;i<cfgLines.size();i++) { // Isolate valid lines
+     if (!(cfgLines[i].at(0)=='#') &&
+         cfgLines[i].contains('|')) cfgValidLines.append(cfgLines[i]); }
+
+    for (int i=0;i<cfgValidLines.size();i++) {
+     opts=cfgValidLines[i].split("|");
+          if (opts[0].trimmed()=="NET") bufSection.append(opts[1]);
+     //else if (opts[0].trimmed()=="BUF") netSection.append(opts[1]);
+     else { qDebug() << "octopus_stimd: <.conf> Unknown section in .conf file!";
+      app->quit();
+     }
+     //extTrig=0;
+    }
+
+    // NET
+    if (netSection.size()>0) {
+     for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
+
+      if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
+       if (opts2.size()==3) { confHost=opts2[0].trimmed();
+        QHostInfo qhiAcq=QHostInfo::fromName(confHost);
+        confHost=qhiAcq.addresses().first().toString();
+        qDebug() << "octopus_stimd: <.conf> (this) Host IP is" << confHost;
+        confCommP=opts2[1].toInt(); confDataP=opts2[2].toInt();
+        // Simple port validation..
+        if ((!(confCommP >= 1024 && confCommP <= 65535)) ||
+            (!(confDataP >= 1024 && confDataP <= 65535))) {
+         qDebug() << "octopus_stimd: <.conf> Error in Hostname/IP and/or port settings!";
+         app->quit();
+        } else {
+         qDebug() << "octopus_stimd: <.conf> CommPort ->" << confCommP << "DataPort ->" << confDataP;
+	}
+       }
+      } else {
+       qDebug() << "octopus_stimd: <.conf> Parse error in Hostname/IP(v4) Address!";
+       app->quit();
+      }
+     }
+    } else {
+     confHost="127.0.0.1";  confCommP=65000;  confDataP=65001;
+    }
+   }
+
+   // FIFOs
+   if ((fbFifo=open("/dev/rtf0",O_WRONLY))==0 && (bfFifo=open("/dev/rtf1",O_RDONLY|O_NONBLOCK))==0) {
+    // Send RESET Backend Command
+    reset_msg.id=STIM_RST_SYN;
+    write(fbFifo,&reset_msg,sizeof(fb_command)); sleep(1); reset_msg.id=0;
+    read(bfFifo,&reset_msg,sizeof(fb_command));
+    if (reset_msg.id!=STIM_RST_ACK) {
+     qDebug() << "octopus_stimd: <KernelFIFOs> Kernel-space backend does not respond!"; app->quit();
+    } else { // Backend ACKd. Everything's OK. Close and repoen FIFO in blocking mode.
+     close(bfFifo); if ((bfFifo=open("/dev/rtf1",O_RDONLY))<0) {
+      qDebug() << "octopus_stimd: <KernelFIFOs> Error during reoping fifo in blocking mode!"; app->quit();
+     }
+    }
+   } else {
+    qDebug() << "octopus_stimd: Cannot open any of the f2b or b2f FIFOs!"; app->quit();
+   }
+
+   // SHM
+   if ((shmBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE))==0) {
+    qDebug() << "octopus_stimd: Kernel-space backend SHM could not be opened!"; app->quit();
+   }
+
+   QHostAddress hostAddress(confHost);
    // Initialize Tcp Command Server
    commandServer=new QTcpServer(this);
    commandServer->setMaxPendingConnections(1);
-   connect(commandServer,SIGNAL(newConnection()),this,SLOT(incomingCommand()));
-   connect(this,SIGNAL(newConnection()),this,SLOT(incomingData()));
-   commandServer->setMaxPendingConnections(1);
+   connect(commandServer,SIGNAL(newConnection()),this,SLOT(slotIncomingCommand()));
+   connect(this,SIGNAL(newConnection()),this,SLOT(slotIncomingData()));
    setMaxPendingConnections(1);
 
-   if (!commandServer->listen(hostAddress,comm) ||
-       !listen(hostAddress,data)) {
-    qDebug(
-     "octopus-stim-daemon: Error starting command and/or data server(s)!");
-    application->quit();
+   if (!commandServer->listen(hostAddress,confCommP) || !listen(hostAddress,confDataP)) {
+    qDebug() << "octopus_stimd: Error starting command and/or data server(s)!"; app->quit();
    } else {
-    qDebug(
-     "octopus-stim-daemon: Servers started.. Waiting for client connection..");
+    qDebug() << "octopus_stimd: Daemon started successfully..";
+    qDebug() << "octopus_stimd: Waiting for client connection..";
+    //fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0);
    }
-   fbWrite(STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0);
+
+   daemonRunning=true; clientConnected=false;
   }
 
   void fbWrite(unsigned short code,int p1,int p2) {
@@ -69,114 +144,91 @@ class StimDaemon : public QTcpServer {
   }
 
  public slots:
-  void incomingCommand() {
+  void slotIncomingCommand() {
    if ((commandSocket=commandServer->nextPendingConnection()))
-    connect(commandSocket,SIGNAL(readyRead()),this,SLOT(readCommand()));
+    connect(commandSocket,SIGNAL(readyRead()),this,SLOT(slotHandleCommand()));
   }
 
-  void readCommand() {
+  void slotHandleCommand() {
    QDataStream commandStream(commandSocket);
 //   commandStream.setVersion(QDataStream::Qt_4_0);
-   if (commandSocket->bytesAvailable() >= sizeof(cs_command)) {
-    commandStream.readRawData((char*)(&csCommand),sizeof(cs_command));
-    qDebug("octopus-stim-daemon: Command received -> 0x%x(%d,%d)",
-           csCommand.cmd,csCommand.iparam[0],csCommand.iparam[1]);
-    switch (csCommand.cmd) {
+   if ((quint64)commandSocket->bytesAvailable() >= sizeof(cs_command)) {
+    commandStream.readRawData((char*)(&csCmd),sizeof(cs_command));
+    qDebug("octopus_stimd: Command received -> 0x%x(%d,%d)",csCmd.cmd,csCmd.iparam[0],csCmd.iparam[1]);
+    switch (csCmd.cmd) {
      case CS_STIM_SET_PARADIGM:
-      qDebug("octopus-stim-daemon: Paradigm changed to %d.",
-             csCommand.iparam[0]);
-      fbWrite(STIM_SET_PARADIGM,csCommand.iparam[0],csCommand.iparam[1]);
+      qDebug("octopus_stimd: Paradigm changed to %d.",csCmd.iparam[0]);
+      fbWrite(STIM_SET_PARADIGM,csCmd.iparam[0],csCmd.iparam[1]);
       break;
-
      case CS_STIM_LOAD_PATTERN_SYN:
-      fileSize=csCommand.iparam[0]; csCommand.cmd=CS_STIM_LOAD_PATTERN_ACK;
-      qDebug("octopus-stim-daemon: Starting pattern stream. FileSize=%d",
-             fileSize);
-      commandStream.writeRawData((const char*)(&csCommand),sizeof(cs_command));
-      commandSocket->flush();
+      fileSize=csCmd.iparam[0]; csCmd.cmd=CS_STIM_LOAD_PATTERN_ACK;
+      qDebug("octopus_stimd: Starting pattern stream. FileSize=%d",fileSize);
+      commandStream.writeRawData((const char*)(&csCmd),sizeof(cs_command)); commandSocket->flush();
       incomingDataSize=0;
-      // Inform backend that data will come
-      fbWrite(STIM_LOAD_PATTERN,fileSize,0); // Inform b.e that data is coming.
+      fbWrite(STIM_LOAD_PATTERN,fileSize,0); // Inform backend that data will come.
       break;
-
      case CS_STIM_START:
-      qDebug("octopus-stim-daemon: Received start stim command.");
+      qDebug() << "octopus_stimd: Received start stim command.";
       fbWrite(STIM_START,0,0);
       break;
-
      case CS_STIM_STOP:
-      qDebug("octopus-stim-daemon: Received stop stim command.");
+      qDebug() << "octopus_stimd: Received stop stim command.";
       fbWrite(STIM_STOP,0,0);
       break;
-
      case CS_STIM_PAUSE:
-      qDebug("octopus-stim-daemon: Received pause stim command.");
+      qDebug() << "octopus_stimd: Received pause stim command.";
       fbWrite(STIM_PAUSE,0,0);
       break;
-
      case CS_STIM_RESUME:
-      qDebug("octopus-stim-daemon: Received resume stim command.");
+      qDebug() << "octopus_stimd: Received resume stim command.";
       fbWrite(STIM_RESUME,0,0);
       break;
-
      case CS_TRIG_START:
-      qDebug("octopus-stim-daemon: Received start trigger command.");
+      qDebug() << "octopus_stimd: Received start trigger command.";
       fbWrite(TRIG_START,0,0);
       break;
-
      case CS_TRIG_STOP:
-      qDebug("octopus-stim-daemon: Received stop trigger command.");
+      qDebug() << "octopus_stimd: Received stop trigger command.";
       fbWrite(TRIG_STOP,0,0);
       break;
-
      case CS_STIM_LIGHTS_ON:
-      qDebug("octopus-stim-daemon: Received lights on stim command.");
+      qDebug() << "octopus_stimd: Received lights on stim command.";
       fbWrite(STIM_LIGHTS_ON,0,0);
       break;
-
      case CS_STIM_LIGHTS_DIMM:
-      qDebug("octopus-stim-daemon: Received lights dimm stim command.");
+      qDebug() << "octopus_stimd: Received lights dimm stim command.";
       fbWrite(STIM_LIGHTS_DIMM,0,0);
       break;
-
      case CS_STIM_LIGHTS_OFF:
-      qDebug("octopus-stim-daemon: Received lights off stim command.");
+      qDebug() << "octopus_stimd: Received lights off stim command.";
       fbWrite(STIM_LIGHTS_OFF,0,0);
       break;
-
      case CS_STIM_SYNTHETIC_EVENT:
-      qDebug("octopus-stim-daemon: Received synthetic event.");
-      fbWrite(STIM_SYNTH_EVENT,csCommand.iparam[0],0);
+      qDebug() << "octopus_stimd: Received synthetic event.";
+      fbWrite(STIM_SYNTH_EVENT,csCmd.iparam[0],0);
       break;
-
      case CS_STIM_SET_PARAM_P1:
-      fbWrite(STIM_SET_PARAM_P1,csCommand.iparam[0],0);
+      fbWrite(STIM_SET_PARAM_P1,csCmd.iparam[0],0);
       break;
-
      case CS_STIM_SET_PARAM_P2:
-      fbWrite(STIM_SET_PARAM_P2,csCommand.iparam[0],0);
+      fbWrite(STIM_SET_PARAM_P2,csCmd.iparam[0],0);
       break;
-
      case CS_STIM_SET_PARAM_P3:
-      fbWrite(STIM_SET_PARAM_P3,csCommand.iparam[0],0);
+      fbWrite(STIM_SET_PARAM_P3,csCmd.iparam[0],0);
       break;
-
      case CS_STIM_SET_PARAM_P4:
-      fbWrite(STIM_SET_PARAM_P4,csCommand.iparam[0],0);
+      fbWrite(STIM_SET_PARAM_P4,csCmd.iparam[0],0);
       break;
-
      case CS_STIM_SET_PARAM_P5:
-      fbWrite(STIM_SET_PARAM_P5,csCommand.iparam[0],0);
+      fbWrite(STIM_SET_PARAM_P5,csCmd.iparam[0],0);
       break;
-
      case CS_REBOOT:
-      qDebug("octopus-stim-daemon: System rebooting..");
-      system("/sbin/reboot");
+      qDebug() << "octopus_stimd: <privileged cmd received> System rebooting..";
+      system("/sbin/shutdown -r now"); //commandSocket->close();
       break;
-
      case CS_SHUTDOWN:
-      qDebug("octopus-stim-daemon: System shutting down..");
-      system("/sbin/halt");
+      qDebug() << "octopus_stimd: <privileged cmd received> System shutting down..";
+      system("/sbin/shutdown -h now"); //commandSocket->close();
      default:
       break;
     }
@@ -184,28 +236,24 @@ class StimDaemon : public QTcpServer {
    }
   }
 
-  void incomingData() {
+  void slotIncomingData() {
    if ((dataSocket=this->nextPendingConnection()))
     connect(dataSocket,SIGNAL(readyRead()),this,SLOT(readData()));
   }
 
   void readData() {
-   // Incoming pattern data
-   QDataStream dataStream(dataSocket);
+   QDataStream dataStream(dataSocket); // Incoming pattern data
 //   dataStream.setVersion(QDataStream::Qt_4_0);
    while (dataSocket->bytesAvailable() >= sizeof(patt_datagram)) {
     dataStream.readRawData((char*)(&pattDatagram),sizeof(patt_datagram));
     incomingDataSize+=pattDatagram.size;
-
-//    qDebug("octopus-stim-daemon: MN= 0x%x, %d, %d, %d",
+//    qDebug("octopus_stimd: MN= 0x%x, %d, %d, %d",
 //           pattDatagram.magic_number,
 //           pattDatagram.size,
 //           incomingDataSize,
 //           fileSize);
-
     // Put the data over SHM transfer buffer..
-    for (int i=0;i<(int)pattDatagram.size;i++)
-     shmBuffer[i]=pattDatagram.data[i];
+    for (int i=0;i<(int)pattDatagram.size;i++) shmBuffer[i]=pattDatagram.data[i];
 
     // Send SYN(count) -- Inform backend
     fbMsg.id=STIM_XFER_SYN; fbMsg.iparam[0]=pattDatagram.size;
@@ -214,21 +262,18 @@ class StimDaemon : public QTcpServer {
     read(bfFifo,&bfMsg,sizeof(fb_command));
 
     if (incomingDataSize==fileSize)
-     qDebug("octopus-stim-daemon: %d data elements transferred succesfully.",
-            incomingDataSize);
+     qDebug("octopus_stimd: %d data elements transferred succesfully.",incomingDataSize);
    }
   }
 
  private:
   QCoreApplication *application;
-  QTcpServer *commandServer;
-  QTcpSocket *commandSocket,*dataSocket;
-
-  cs_command csCommand; fb_command fbMsg,bfMsg;
-  int fbFifo,bfFifo; char *shmBuffer;
-
-  int fileSize,incomingDataSize;
-  patt_datagram pattDatagram;
+  int fbFifo,bfFifo; fb_command fbMsg,bfMsg; char *shmBuffer; cs_command csCmd;
+  fb_command reset_msg;
+  QTcpServer *commandServer; QTcpSocket *commandSocket,*dataSocket;
+  QString confHost; int confTcpBufSize,confCommP,confDataP;
+  int fileSize,incomingDataSize; patt_datagram pattDatagram;
+  bool daemonRunning,clientConnected;
 };
 
 #endif
