@@ -41,10 +41,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_PIP_CTRAIN_LR	7	// Click Train Pip Left -> Right
 #define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
 
-#define RAMP0 ((double)(1.0001)/(double)(60.0001))
-#define RAMP1 ((double)(1.0001)-(double)(1.0001)/(double)(60.0001))
-#define RAMP2 ((double)(0.2001))
-#define RAMP3 ((double)(0.8001))
+#define PIP_CTRAIN_RAMP0 ((double)(1.0001)/(double)(60.0001))
+#define PIP_CTRAIN_RAMP1 ((double)(1.0001)-(double)(1.0001)/(double)(60.0001))
+#define PIP_CTRAIN_RAMP2 ((double)(0.2001))
+#define PIP_CTRAIN_RAMP3 ((double)(0.8001))
 
 static int para_itd_pip_ctrain_experiment_loop=1;
 
@@ -170,7 +170,7 @@ static void para_itd_pip_ctrain_resume(void) {
 }
 
 static void para_itd_pip_ctrain(void) {
- int dummy_counter=0;
+ //int dummy_counter=0;
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
@@ -243,16 +243,16 @@ static void para_itd_pip_ctrain(void) {
     if ((counter0-para_itd_pip_ctrain_stim_instant)%para_itd_pip_ctrain_iai \
  		                         < para_itd_pip_ctrain_adapter_total_period) {
      /* Intro and outro cosine ramps */
-     if (counter1 == para_itd_pip_ctrain_adapter_total_period*RAMP1)
+     if (counter1 == para_itd_pip_ctrain_adapter_total_period*PIP_CTRAIN_RAMP1)
       para_itd_pip_ctrain_theta2=0.0;
      /* Intro and outro cosine ramps */
      para_itd_pip_ctrain_adapter_region_norm1= \
-      (counter1 < para_itd_pip_ctrain_adapter_total_period*RAMP0) ? 1 : 0;
+      (counter1 < para_itd_pip_ctrain_adapter_total_period*PIP_CTRAIN_RAMP0) ? 1 : 0;
      para_itd_pip_ctrain_adapter_region_norm2= \
-      (counter1 >= para_itd_pip_ctrain_adapter_total_period*RAMP0 && \
-       counter1 <  para_itd_pip_ctrain_adapter_total_period*RAMP1) ? 1 : 0;
+      (counter1 >= para_itd_pip_ctrain_adapter_total_period*PIP_CTRAIN_RAMP0 && \
+       counter1 <  para_itd_pip_ctrain_adapter_total_period*PIP_CTRAIN_RAMP1) ? 1 : 0;
      para_itd_pip_ctrain_adapter_region_norm3= \
-      (counter1 >= para_itd_pip_ctrain_adapter_total_period*RAMP1 && \
+      (counter1 >= para_itd_pip_ctrain_adapter_total_period*PIP_CTRAIN_RAMP1 && \
        counter1 <  para_itd_pip_ctrain_adapter_total_period) ? 1 : 0;
      counter1++;
     } else {
@@ -271,12 +271,12 @@ static void para_itd_pip_ctrain(void) {
                                                   +para_itd_pip_ctrain_probe_period) {
    /* Intro and outro cosine ramps */
    para_itd_pip_ctrain_probe_region_norm1= \
-    (counter1 < para_itd_pip_ctrain_probe_period*RAMP2) ? 1 : 0;
+    (counter1 < para_itd_pip_ctrain_probe_period*PIP_CTRAIN_RAMP2) ? 1 : 0;
    para_itd_pip_ctrain_probe_region_norm2= \
-    (counter1 >= para_itd_pip_ctrain_probe_period*RAMP2 && \
-     counter1 <  para_itd_pip_ctrain_probe_period*RAMP3) ? 1 : 0;
+    (counter1 >= para_itd_pip_ctrain_probe_period*PIP_CTRAIN_RAMP2 && \
+     counter1 <  para_itd_pip_ctrain_probe_period*PIP_CTRAIN_RAMP3) ? 1 : 0;
    para_itd_pip_ctrain_probe_region_norm3= \
-    (counter1 >= para_itd_pip_ctrain_probe_period*RAMP3 && \
+    (counter1 >= para_itd_pip_ctrain_probe_period*PIP_CTRAIN_RAMP3 && \
      counter1 <  para_itd_pip_ctrain_probe_period) ? 1 : 0;
     counter1++;
   } else {
@@ -335,23 +335,23 @@ static void para_itd_pip_ctrain(void) {
 
  }
 
- /* ------ */
-
-//   if (para_itd_pip_ctrain_adapter_region_lead) {
-//    para_itd_pip_ctrain_stim_local_offset=counter0-para_itd_pip_ctrain_stim_instant_minus;
-//    if (para_itd_pip_ctrain_stim_local_offset%para_itd_pip_ctrain_click_period < \
-//                                                    para_itd_pip_ctrain_hi_period)
-//     dac_0=AMP_OPPCHN;
-//    else dac_0=0;
-//   }
-//   if (para_itd_pip_ctrain_probe_region_lead) {
-//    para_itd_pip_ctrain_stim_local_offset=counter0-para_itd_pip_ctrain_stim_instant_minus \
-//                                               -para_itd_pip_ctrain_ap_offset;
-//    if (para_itd_pip_ctrain_stim_local_offset%para_itd_pip_ctrain_click_period < \
-//                                                    para_itd_pip_ctrain_hi_period)
-//     dac_0=AMP_OPPCHN;
- //   else dac_0=0;
- //  }
+/*
+   if (para_itd_pip_ctrain_adapter_region_lead) {
+    para_itd_pip_ctrain_stim_local_offset=counter0-para_itd_pip_ctrain_stim_instant_minus;
+    if (para_itd_pip_ctrain_stim_local_offset%para_itd_pip_ctrain_click_period < \
+                                                    para_itd_pip_ctrain_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+   if (para_itd_pip_ctrain_probe_region_lead) {
+    para_itd_pip_ctrain_stim_local_offset=counter0-para_itd_pip_ctrain_stim_instant_minus \
+                                               -para_itd_pip_ctrain_ap_offset;
+    if (para_itd_pip_ctrain_stim_local_offset%para_itd_pip_ctrain_click_period < \
+                                                    para_itd_pip_ctrain_hi_period)
+     dac_0=AMP_OPPCHN;
+    else dac_0=0;
+   }
+*/
 
  dac_0=dac_1=DACZERO;
 

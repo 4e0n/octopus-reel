@@ -100,8 +100,8 @@ class StimDaemon : public QTcpServer {
 
    // FIFOs
    QString fifoStr1,fifoStr2;
-   fifoStr1="/dev/rtf"+QString::setNum(STIM_F2BFIFO);
-   fifoStr2="/dev/rtf"+QString::setNum(STIM_B2FFIFO);
+   fifoStr1.setNum(STIM_F2BFIFO); fifoStr1="/dev/rtf"+fifoStr1;
+   fifoStr2.setNum(STIM_B2FFIFO); fifoStr2="/dev/rtf"+fifoStr2;
    if ((fbFifo=open(fifoStr1.toLatin1().data(),O_WRONLY))>0 && (bfFifo=open(fifoStr2.toLatin1().data(),O_RDONLY|O_NONBLOCK))>0) {
     // Send RESET Backend Command
     reset_msg.id=STIM_RST_SYN;

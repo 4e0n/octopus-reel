@@ -24,6 +24,17 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 /* PARADIGM 'Testing of Opponent Channels hypothesis'
     counter0: soa counter */
 
+#define SEC_OPPCHN_CO		80	// "OPPCHN CO"
+#define SEC_OPPCHN_CC		81	// "OPPCHN CC"
+#define SEC_OPPCHN_CL		82	// "OPPCHN CL"
+#define SEC_OPPCHN_CR		83	// "OPPCHN CR"
+#define SEC_OPPCHN_LC		84	// "OPPCHN LC"
+#define SEC_OPPCHN_LL		85	// "OPPCHN LL"
+#define SEC_OPPCHN_LR		86	// "OPPCHN LR"
+#define SEC_OPPCHN_RC		87	// "OPPCHN RC"
+#define SEC_OPPCHN_RL		88	// "OPPCHN RL"
+#define SEC_OPPCHN_RR		89	// "OPPCHN RR"
+
 static int para_itdoppchn_pulse,para_itdoppchn_delta,
 	   para_itdoppchn_stim,para_itdoppchn_soa,
 	   para_itdoppchn_adapter_instant,para_itdoppchn_probe_instant,

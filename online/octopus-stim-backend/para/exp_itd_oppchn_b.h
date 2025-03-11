@@ -26,6 +26,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     -- longer SOA
     -- squareburst of 400ms stim duration */
 
+#define SEC_OPPCHN_LL		85	// "OPPCHN LL"
+#define SEC_OPPCHN_LR		86	// "OPPCHN LR"
+#define SEC_OPPCHN_RL		88	// "OPPCHN RL"
+#define SEC_OPPCHN_RR		89	// "OPPCHN RR"
+
 static int para_itdoppchn2_soa,para_itdoppchn2_trigger,
 	   para_itdoppchn2_delta,
 	   para_itdoppchn2_hilo_duration,para_itdoppchn2_hilo_duration2,

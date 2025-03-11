@@ -167,7 +167,7 @@ static void para_itd_tompres_resume(void) {
 }
 
 static void para_itd_tompres(void) {
- int dummy_counter=0;
+ //int dummy_counter=0;
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */

@@ -93,7 +93,7 @@ static unsigned short dac_0,dac_1;
 static char *himem_buffer,*xfer_shm,*patt_buf;
 static fb_command fb_msg,bf_msg;
 static RT_TASK audio_task,trigger_task;
-static RTIME tickperiod; static SEM audio_sem,trigger_sem;
+static RTIME tickperiod; static SEM audio_sem; //,trigger_sem;
 static int audio_rate=AUDIO_RATE,trigger_rate=TRIG_RATE;;
 static int trigger_code=0,trigger_bit_shift=0;
 static char current_pattern_data; static int current_pattern_offset=0;
@@ -103,9 +103,9 @@ static int manual_pause=0;
 
 /* ========================================================================= */
 
-static int counter0,counter1,counter2,counter3,counter4,counter5,
-           event0,event1,event2,event3,event4,event5,
-           var0,var1,var2,var3,var4,var5;
+static int counter0,counter1,counter2,counter3, //counter4,counter5,
+           event0, //event1,event2,event3,event4,event5,
+           var0; //,var1,var2,var3,var4,var5;
 static double theta=0.0;
 static int i=0;
 

@@ -41,10 +41,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
 #define SEC_PIP_PROBE		9	// Probe instant after any of the adapters
 
-#define RAMP0 ((double)(0.2001))
-#define RAMP1 ((double)(0.8001))
-#define RAMP2 ((double)(1.0001)/(double)(60.0001))
-#define RAMP3 ((double)(1.0001)-(double)(1.0001)/(double)(60.0001))
+#define PIP_RAND_RAMP0 ((double)(0.2001))
+#define PIP_RAND_RAMP1 ((double)(0.8001))
+#define PIP_RAND_RAMP2 ((double)(1.0001)/(double)(60.0001))
+#define PIP_RAND_RAMP3 ((double)(1.0001)-(double)(1.0001)/(double)(60.0001))
 
 static sampl_t *adac_0,*adac_1,*adac_2,*adac_3; /* for easy switching in between dac output channels */
 
@@ -122,13 +122,13 @@ static void para_itd_pip_rand_init(void) {
 		 	 para_itd_pip_rand_hi_period,		// 25    500us
 		 	 para_itd_pip_rand_click_period,	// 500   10ms
 			 para_itd_pip_rand_adaprobe_hi_dur,	// 2500 50ms
-			 (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP2),	// 41 820us -- ramp up-down
+			 (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP2),	// 41 820us -- ramp up-down
 		 	 para_itd_pip_rand_lr_delta,		// 30    600us
 		 	 para_itd_pip_rand_stim_instant,	// 10000 +200ms
 		 	 para_itd_pip_rand_stim_instant_minus,	//  9985 +200ms-300us
 		 	 para_itd_pip_rand_stim_instant_plus);	// 10015 +200ms+300us
 
- rt_printk("%d %d %d %d\n",(int)(1000.0*RAMP0),(int)(1000.0*RAMP1),(int)(1000.0*RAMP2),(int)(1000.0*RAMP3)); // 0.2,0.8,0.016,0.983
+ rt_printk("%d %d %d %d\n",(int)(1000.0*PIP_RAND_RAMP0),(int)(1000.0*PIP_RAND_RAMP1),(int)(1000.0*PIP_RAND_RAMP2),(int)(1000.0*PIP_RAND_RAMP3)); // 0.2,0.8,0.016,0.983
 
  //for (i=0;i<1000;i++) {
  // get_random_bytes(&para_itd_pip_rand_ad2_rand,sizeof(int));
@@ -167,7 +167,7 @@ static void para_itd_pip_rand_resume(void) {
 }
 
 static void para_itd_pip_rand(void) {
- double adapt_theta_add,probe_theta_add;
+ double adapt_theta_add,probe_theta_add; adapt_theta_add=probe_theta_add=0.;
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
@@ -264,11 +264,11 @@ static void para_itd_pip_rand(void) {
    }
 
    // Reset phi for outro damping
-   if (counter1 == (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1)) para_itd_pip_rand_phi=0.0;
+   if (counter1 == (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1)) para_itd_pip_rand_phi=0.0;
 
    /* Intro (cosine ramp up) */
-   //if (counter1 >=1 && counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP0)) { // Osc.trig config
-   if (counter1 >=0 && counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP0)) { // 0.2
+   //if (counter1 >=1 && counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP0)) { // Osc.trig config
+   if (counter1 >=0 && counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP0)) { // 0.2
     dac_0=dac_1=(short)( (double)(AMP_OPPCHN)* \
 		 sin(2.0*M_PI*para_itd_pip_rand_theta)* \
                  (1-cos(2.0*M_PI*para_itd_pip_rand_phi))/2.0 );
@@ -277,14 +277,14 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Plateau */
-   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP0) && \
-       counter1 <  (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1)) { // 0.8
+   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP0) && \
+       counter1 <  (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1)) { // 0.8
     dac_0=dac_1=(short)((double)(AMP_OPPCHN)*sin(2.0*M_PI*para_itd_pip_rand_theta));
     para_itd_pip_rand_theta+=adapt_theta_add; // Adapter
    }
 
    /* Outro (cosine ramp down) */
-   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1) && \
+   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1) && \
      counter1 <  para_itd_pip_rand_adaprobe_hi_dur) {
     dac_0=dac_1=(short)( (double)(AMP_OPPCHN)* \
 		 sin(2.0*M_PI*para_itd_pip_rand_theta)* \
@@ -370,10 +370,10 @@ static void para_itd_pip_rand(void) {
    }
 
    // Reset phi for outro damping
-   if (counter1 == (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1)) para_itd_pip_rand_phi=0.0;
+   if (counter1 == (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1)) para_itd_pip_rand_phi=0.0;
 
    /* Intro (cosine ramp up) */
-   if (counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP0)) { // 0.2
+   if (counter1 < (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP0)) { // 0.2
     dac_0=dac_1=(short)( (double)(AMP_OPPCHN)* \
 		 sin(2.0*M_PI*para_itd_pip_rand_theta)* \
                  (1-cos(2.0*M_PI*para_itd_pip_rand_phi))/2.0 );
@@ -382,14 +382,14 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Plateau */
-   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP0) && \
-       counter1 <  (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1)) { // 0.8
+   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP0) && \
+       counter1 <  (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1)) { // 0.8
     dac_0=dac_1=(short)((double)(AMP_OPPCHN)*sin(2.0*M_PI*para_itd_pip_rand_theta));
     para_itd_pip_rand_theta+=probe_theta_add; // Probe
    }
 
    /* Outro (cosine ramp down) */
-   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*RAMP1) && \
+   if (counter1 >= (int)(para_itd_pip_rand_adaprobe_hi_dur*PIP_RAND_RAMP1) && \
      counter1 <  para_itd_pip_rand_adaprobe_hi_dur) {
     dac_0=dac_1=(short)( (double)(AMP_OPPCHN)* \
 		 sin(2.0*M_PI*para_itd_pip_rand_theta)* \

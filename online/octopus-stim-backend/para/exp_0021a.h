@@ -59,7 +59,7 @@ static int para_0021a_trigger,
 	   para_0021a_adapter_period0,para_0021a_adapter_period1,para_0021a_probe_period,
 	   para_0021a_stim_local_offset,
 
-	   para_0021a_lr_delta,
+	   //para_0021a_lr_delta,
 	   para_0021a_lr_delta200,para_0021a_lr_delta600,
 
 	   para_0021a_adapter_region_center,
@@ -158,7 +158,7 @@ static void para_0021a_resume(void) {
 }
 
 static void para_0021a(void) {
- int dummy_counter=0;
+ //int dummy_counter=0;
 
  if (counter0==0) {
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
