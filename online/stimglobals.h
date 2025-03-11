@@ -32,8 +32,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* FIFOs for frontend<->backend communication of stim. */
 #ifdef OCTOPUS_RTAI
-#define STIM_F2BFIFO	(2)
-#define STIM_B2FFIFO	(3)
+#define STIM_F2BFIFO	(0)
+#define STIM_B2FFIFO	(1)
 #endif
 
 /* DAQCard dependent settings */

@@ -29,6 +29,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <stdlib.h>
 #include <rtai_fifos.h>
 #include <rtai_shm.h>
+
+#define OCTOPUS_RTAI
+
 #include "../stimglobals.h"
 #include "../patt_datagram.h"
 #include "../fb_command.h"
@@ -96,7 +99,10 @@ class StimDaemon : public QTcpServer {
    }
 
    // FIFOs
-   if ((fbFifo=open("/dev/rtf0",O_WRONLY))>0 && (bfFifo=open("/dev/rtf1",O_RDONLY|O_NONBLOCK))>0) {
+   QString fifoStr1,fifoStr2;
+   fifoStr1="/dev/rtf"+QString::setNum(STIM_F2BFIFO);
+   fifoStr2="/dev/rtf"+QString::setNum(STIM_B2FFIFO);
+   if ((fbFifo=open(fifoStr1.toLatin1().data(),O_WRONLY))>0 && (bfFifo=open(fifoStr2.toLatin1().data(),O_RDONLY|O_NONBLOCK))>0) {
     // Send RESET Backend Command
     reset_msg.id=STIM_RST_SYN;
     write(fbFifo,&reset_msg,sizeof(fb_command)); sleep(1); reset_msg.id=0;
