@@ -36,6 +36,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define STIM_B2FFIFO	(1)
 #endif
 
+#define DACZERO16
+
 /* DAQCard dependent settings */
 #ifdef DACZERO16
 #define DACZERO		(32768)		/* Zero-level for 16-bit DAC. */
@@ -54,7 +56,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
 
-#define OCTOPUS_COMEDI_DIO_SUBDEV	(2)
+#define OCTOPUS_COMEDI_AO_SUBDEV	(1)
+#define OCTOPUS_COMEDI_DO_SUBDEV	(2)
 
 /* Highest 128M of 1G RAM is dedicated to stimulus pattern
    "memmap=128M!896M" should exist in kernel cmdline */

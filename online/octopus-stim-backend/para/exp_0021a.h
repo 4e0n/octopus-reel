@@ -31,6 +31,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #define PARA_0021A_CONT_ADAPT
 
+#define PARA_0021A_L_L600	1	// PARA0021 L->L600 (Adapter->Probe)
+#define PARA_0021A_L_L200	2	// PARA0021 L->L200 (Adapter->Probe)
+#define PARA_0021A_L_C		3	// PARA0021 L->C    (Adapter->Probe)
+#define PARA_0021A_L_R200	4	// PARA0021 L->R200 (Adapter->Probe)
+#define PARA_0021A_L_R600	5	// PARA0021 L->R600 (Adapter->Probe)
+#define PARA_0021A_R_L600	6	// PARA0021 R->L600 (Adapter->Probe)
+#define PARA_0021A_R_L200	7	// PARA0021 R->L200 (Adapter->Probe)
+#define PARA_0021A_R_C		8	// PARA0021 R->C    (Adapter->Probe)
+#define PARA_0021A_R_R200	9	// PARA0021 R->R200 (Adapter->Probe)
+#define PARA_0021A_R_R600	10	// PARA0021 R->R600 (Adapter->Probe)
+#define PARA_0021A_C_C		11	// PARA0021 C->C    (Adapter->Probe)
+
 static int para_0021a_experiment_loop=1;
 
 static int para_0021a_trigger,
@@ -331,7 +343,7 @@ static void para_0021a(void) {
 
  /* ------ */
 
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  switch (para_0021a_adapter_type) {
   case 0: /* Center */
@@ -340,7 +352,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=dac_1=AMP_OPPCHN;
-    else dac_0=dac_1=0;
+    else dac_0=dac_1=DACZERO;
    }
    break;
   case 1: /* Left Lead */
@@ -349,14 +361,14 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_0021a_adapter_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus600;
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    break;
   case 2: /* Right Lead*/
@@ -365,14 +377,14 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_0021a_adapter_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus600;
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    break;
  }
@@ -385,7 +397,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=dac_1=AMP_OPPCHN;
-    else dac_0=dac_1=0;
+    else dac_0=dac_1=DACZERO;
    }
    break;
   case 1: /* Left Lead (L600,L200) */
@@ -395,7 +407,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_0021a_probe_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus \
@@ -403,7 +415,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    break;
   case 2: /* Right Lead (R200,R600) */
@@ -413,7 +425,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_0021a_probe_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus \
@@ -421,7 +433,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
   default: break;
  }

@@ -26,6 +26,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     -- longer SOA
     -- squareburst of 400ms stim duration */
 
+#define SEC_C_L300		101	// "A:   C  -> L300    "
+#define SEC_L300_L600		102	// "B: L300 -> L600    "
+#define SEC_L600_L300		103	// "C: L600 -> L300    "
+#define SEC_L300_C		104	// "D: L300 ->  C      "
+#define SEC_C_R300		105	// "E:   C  -> R300    "
+#define SEC_R300_R600		106	// "F: R300 -> R600    "
+#define SEC_R600_R300		107	// "G: R600 -> R300    "
+#define SEC_R300_C		108	// "H: R300 ->  C      "
+#define SEC_C_L600		109	// "I:   C  -> L600 *  "
+#define SEC_L600_R600		110	// "J: L600 -> R600 ** "
+#define SEC_R600_C		111	// "K: R600 ->  C   *  "
+#define SEC_C_R600		112	// "L:   C  -> R600 *  "
+#define SEC_R600_L600		113	// "M: R600 -> L600 ** "
+#define SEC_L600_C		114	// "N: L600 ->  C      "
+
 static int para_itdlintest_experiment_loop=0;
 
 static int para_itdlintest_rollback_count=3;
@@ -191,7 +206,7 @@ static void para_itdlintest(void) {
  /* ------------------------------------------------------------------- */
 
  dummy_counter=counter0%para_itdlintest_click_period;
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  switch (current_pattern_data) {
   case 'D':	// Destination is Center

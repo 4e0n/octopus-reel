@@ -32,6 +32,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
     -- multiple adapter support added. */
 
+#define SEC_PIP_TONE_LL		1	// Tone Pip 500Hz -> 500Hz
+#define SEC_PIP_TONE_HH		2	// Tone Pip 1250Hz -> 1250Hz
+#define SEC_PIP_TONE_LH		3	// Tone Pip 500Hz -> 1250Hz
+#define SEC_PIP_TONE_HL		4	// Tone Pip 1250Hz -> 500Hz
+#define SEC_PIP_CTRAIN_LL	5	// Click Train Pip Left -> Left
+#define SEC_PIP_CTRAIN_RR	6	// Click Train Pip Right -> Right
+#define SEC_PIP_CTRAIN_LR	7	// Click Train Pip Left -> Right
+#define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
+
 #define RAMP0 ((double)(1.0001)/(double)(60.0001))
 #define RAMP1 ((double)(1.0001)-(double)(1.0001)/(double)(60.0001))
 #define RAMP2 ((double)(0.2001))
@@ -344,7 +353,7 @@ static void para_itd_pip_ctrain(void) {
  //   else dac_0=0;
  //  }
 
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  switch (para_itd_pip_ctrain_laterality) {
   case 0: /* Center (0deg ITD) - 500Hz -> 500Hz  */

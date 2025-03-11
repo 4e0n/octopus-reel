@@ -23,6 +23,34 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* Psychophysical IIDITD Laterality Determination (PPLP). */
 
+#define SEC_PP_CENTER		50	// "PP CENTER",
+#define SEC_PP_IID_L6		51	// "PP IID -6",
+#define SEC_PP_IID_L5		52	// "PP IID -5",
+#define SEC_PP_IID_L4		53	// "PP IID -4",
+#define SEC_PP_IID_L3		54	// "PP IID -3",
+#define SEC_PP_IID_L2		55	// "PP IID -2",
+#define SEC_PP_IID_L1		56	// "PP IID -1",
+#define SEC_PP_IID_R1		57	// "PP IID +1",
+#define SEC_PP_IID_R2		58	// "PP IID +2",
+#define SEC_PP_IID_R3		59	// "PP IID +3",
+#define SEC_PP_IID_R4		60	// "PP IID +4",
+#define SEC_PP_IID_R5		61	// "PP IID +5",
+#define SEC_PP_IID_R6		62	// "PP IID +6",
+#define SEC_PP_ITD_L6		63	// "PP ITD -6",
+#define SEC_PP_ITD_L5		64	// "PP ITD -5",
+#define SEC_PP_ITD_L4		65	// "PP ITD -4",
+#define SEC_PP_ITD_L3		66	// "PP ITD -3",
+#define SEC_PP_ITD_L2		67	// "PP ITD -2",
+#define SEC_PP_ITD_L1		68	// "PP ITD -1",
+#define SEC_PP_ITD_R1		69	// "PP ITD +1",
+#define SEC_PP_ITD_R2		70	// "PP ITD +2",
+#define SEC_PP_ITD_R3		71	// "PP ITD +3",
+#define SEC_PP_ITD_R4		72	// "PP ITD +4",
+#define SEC_PP_ITD_R5		73	// "PP ITD +5",
+#define SEC_PP_ITD_R6		74	// "PP ITD +6",
+
+#define SEC_PAUSE		126	// "Pause"
+
 static int audio_paused=0,pause_trigger_hi=0;
 
 static int para_iiditdpplp_base_level_l,
@@ -53,9 +81,9 @@ static void para_iiditdpplp_init(void) {
 static void para_iiditdpplp(void) {
  if (!audio_paused) {
   if (para_iiditdpplp_base_level_l) /* Set IID Left Amplitude */
-   dac_0=para_iiditdpplp_current_iid_amp_l; else dac_0=0;
+   dac_0=para_iiditdpplp_current_iid_amp_l; else dac_0=DACZERO;
   if (para_iiditdpplp_base_level_r) /* Set IID Right Amplitude */
-   dac_1=para_iiditdpplp_current_iid_amp_r; else dac_1=0;
+   dac_1=para_iiditdpplp_current_iid_amp_r; else dac_1=DACZERO;
   counter1++; counter1%=para_iiditdpplp_t2;
   counter0=counter1-para_iiditdpplp_t2/2; /* Adjust to [-250,+250) */
 
@@ -235,7 +263,7 @@ static void para_iiditdpplp(void) {
    rt_sem_signal(&audio_sem);
    rt_printk("octopus-stim-rtai.o: Stim stopped.\n");
   } else if (counter3%para_iiditdpplp_t5==0) {
-   dac_0=dac_1=0; audio_paused=1; pause_trigger_hi=0; /* 39let? */
+   dac_0=dac_1=DACZERO; audio_paused=1; pause_trigger_hi=0; /* 39let? */
    trigger_set(SEC_PAUSE);
    rt_printk("offset: %d\n",counter3);
   }

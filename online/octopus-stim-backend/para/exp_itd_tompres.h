@@ -25,6 +25,39 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     counter0: Counter for single trial
     -- squareburst of 400ms stim duration */
 
+#define SEC_TOMPRES_L100	1	// TOMPRES Left 100ms
+#define SEC_TOMPRES_L200	2	// TOMPRES Left 200ms
+#define SEC_TOMPRES_L300	3	// TOMPRES Left 300ms
+#define SEC_TOMPRES_L400	4	// TOMPRES Left 400ms
+#define SEC_TOMPRES_L500	5	// TOMPRES Left 500ms
+#define SEC_TOMPRES_L600	6	// TOMPRES Left 600ms
+#define SEC_TOMPRES_L800	7	// TOMPRES Left 800ms
+#define SEC_TOMPRES_L1400	8	// TOMPRES Left 1400ms
+#define SEC_TOMPRES_R100	9	// TOMPRES Right 100ms
+#define SEC_TOMPRES_R200	10	// TOMPRES Right 200ms
+#define SEC_TOMPRES_R300	11	// TOMPRES Right 300ms
+#define SEC_TOMPRES_R400	12	// TOMPRES Right 400ms
+#define SEC_TOMPRES_R500	13	// TOMPRES Right 500ms
+#define SEC_TOMPRES_R600	14	// TOMPRES Right 600ms
+#define SEC_TOMPRES_R800	15	// TOMPRES Right 800ms
+#define SEC_TOMPRES_R1400	16	// TOMPRES Right 1400ms
+#define SEC_TOMPRES_L100X	17	// TOMPRES Left 100ms - Translateral
+#define SEC_TOMPRES_L200X	18	// TOMPRES Left 200ms - T
+#define SEC_TOMPRES_L300X	19	// TOMPRES Left 300ms - T
+#define SEC_TOMPRES_L400X	20	// TOMPRES Left 400ms - T
+#define SEC_TOMPRES_L500X	21	// TOMPRES Left 500ms - T
+#define SEC_TOMPRES_L600X	22	// TOMPRES Left 600ms - T
+#define SEC_TOMPRES_L800X	23	// TOMPRES Left 800ms - T
+#define SEC_TOMPRES_L1400X	24	// TOMPRES Left 1400ms - T
+#define SEC_TOMPRES_R100X	25	// TOMPRES Right 100ms - T
+#define SEC_TOMPRES_R200X	26	// TOMPRES Right 200ms - T
+#define SEC_TOMPRES_R300X	27	// TOMPRES Right 300ms - T
+#define SEC_TOMPRES_R400X	28	// TOMPRES Right 400ms - T
+#define SEC_TOMPRES_R500X	29	// TOMPRES Right 500ms - T
+#define SEC_TOMPRES_R600X	30	// TOMPRES Right 600ms - T
+#define SEC_TOMPRES_R800X	31	// TOMPRES Right 800ms - T
+#define SEC_TOMPRES_R1400X	32	// TOMPRES Right 1400ms - T
+
 static int para_itd_tompres_experiment_loop=1;
 
 static int para_itd_tompres_trigger,
@@ -346,7 +379,7 @@ static void para_itd_tompres(void) {
 
  /* --------------------------------- */
 
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  switch (para_itd_tompres_laterality) {
   case 0: /* RIGHT IPSILATERAL */
@@ -355,7 +388,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -363,14 +396,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -378,7 +411,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    break;
 
@@ -388,7 +421,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -396,14 +429,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -411,7 +444,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    break;
 
@@ -421,7 +454,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -429,14 +462,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -444,7 +477,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    break;
 
@@ -454,7 +487,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -462,14 +495,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -477,7 +510,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
   default: break;
  }

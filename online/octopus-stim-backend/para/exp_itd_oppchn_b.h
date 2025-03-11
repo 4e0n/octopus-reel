@@ -93,7 +93,7 @@ static void para_itdoppchn2(void) {
   trigger_set(para_itdoppchn2_trigger);
  /* ------------------------------------------------------------------- */
 
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  /* Adapter - Early */
  if ((counter0 >= para_itdoppchn2_adapter_instant_1) &&

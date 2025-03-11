@@ -31,6 +31,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  * which is relatively longer with a randomized duration (i.e. 200 to 500ms)
  * The probe coming afterwards is identical to the first adapter. */
 
+#define SEC_PIP_TONE_LL		1	// Tone Pip 500Hz -> 500Hz
+#define SEC_PIP_TONE_HH		2	// Tone Pip 1250Hz -> 1250Hz
+#define SEC_PIP_TONE_LH		3	// Tone Pip 500Hz -> 1250Hz
+#define SEC_PIP_TONE_HL		4	// Tone Pip 1250Hz -> 500Hz
+#define SEC_PIP_CTRAIN_LL	5	// Click Train Pip Left -> Left
+#define SEC_PIP_CTRAIN_RR	6	// Click Train Pip Right -> Right
+#define SEC_PIP_CTRAIN_LR	7	// Click Train Pip Left -> Right
+#define SEC_PIP_CTRAIN_RL	8	// Click Train Pip Right -> Left
+#define SEC_PIP_PROBE		9	// Probe instant after any of the adapters
+
 #define RAMP0 ((double)(0.2001))
 #define RAMP1 ((double)(0.8001))
 #define RAMP2 ((double)(1.0001)/(double)(60.0001))
@@ -132,7 +142,7 @@ static void para_itd_pip_rand_init(void) {
 }
 
 static void para_itd_pip_rand_start(void) {
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
  lights_dimm();
  counter0=0; counter1=0; trigger_active=1; audio_active=1;
  rt_printk("octopus-stim-backend.o: Stim started.\n");
@@ -250,7 +260,7 @@ static void para_itd_pip_rand(void) {
    if (counter0==para_itd_pip_rand_stim_instant) {
     para_itd_pip_rand_theta=para_itd_pip_rand_phi=0.0; counter1=0; // Reset sine params
 
-    //dac_0=dac_1=32767; // Edge trigger for oscilloscope view
+    //dac_0=dac_1=DACZERO; // Edge trigger for oscilloscope view
    }
 
    // Reset phi for outro damping
@@ -284,7 +294,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=0;
+   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=DACZERO;
 
    counter1++;
   }
@@ -336,7 +346,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_ad2_hi_dur) dac_0=dac_1=0;
+   if (counter1 >= para_itd_pip_rand_ad2_hi_dur) dac_0=dac_1=DACZERO;
 
    counter1++;
   }
@@ -389,7 +399,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=0;
+   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=DACZERO;
 
    counter1++;
   }
@@ -405,8 +415,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_0=AMP_OPPCHN;
-    else *adac_0=0;
-   } else *adac_0=0;
+    else *adac_0=DACZERO;
+   } else *adac_0=DACZERO;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus && \
@@ -415,8 +425,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_1=AMP_OPPCHN;
-    else *adac_1=0;
-   } else *adac_1=0;
+    else *adac_1=DACZERO;
+   } else *adac_1=DACZERO;
   }
 
   // ADAPTER #2 (RANDOMIZED DURATION) -- LAT.ITD
@@ -440,8 +450,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_ad2_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_0=AMP_OPPCHN;
-    else *adac_0=0;
-   } else *adac_0=0;
+    else *adac_0=DACZERO;
+   } else *adac_0=DACZERO;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus+para_itd_pip_rand_adaprobe_tot_dur && \
@@ -453,8 +463,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_ad2_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_1=AMP_OPPCHN;
-    else *adac_1=0;
-   } else *adac_1=0;
+    else *adac_1=DACZERO;
+   } else *adac_1=DACZERO;
   }
 
 
@@ -482,8 +492,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_2=AMP_OPPCHN;
-    else *adac_2=0;
-   } else *adac_2=0;
+    else *adac_2=DACZERO;
+   } else *adac_2=DACZERO;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus+para_itd_pip_rand_adaprobe_tot_dur \
@@ -500,8 +510,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_3=AMP_OPPCHN;
-    else *adac_3=0;
-   } else *adac_3=0;
+    else *adac_3=DACZERO;
+   } else *adac_3=DACZERO;
   }
 
  }
@@ -511,4 +521,3 @@ static void para_itd_pip_rand(void) {
  counter0++;
  counter0%=para_itd_pip_rand_soa_intertrial;
 }
-

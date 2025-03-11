@@ -21,19 +21,22 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* STEADY SQUARE WAVE TEST
-    Total period is 10 seconds.. identical with the one in calibration signal */
+/* SQUARE WAVE TEST
+    0.5second duration, 1 second repeat rate..
+    ..to individually test averaging and jitter characteristics. */
 
-static int test_steadysquare_duration;
+#define SEC_SQUARE_WAVE		4	// "SquareWave"
 
-static void test_steadysquare_init(void) {
- counter0=0; test_steadysquare_duration=5*AUDIO_RATE; /* 5 seconds hi */
+static int test_square_duration;
+
+static void test_square_init(void) {
+ counter0=0; test_square_duration=12500;
 }
 
-static void test_steadysquare(void) { 
- if (counter0==0) dac_0=0; 
- else if (counter0==test_steadysquare_duration) {
-  dac_0=4096; if (trigger_active) trigger_set(SEC_STEADY_WAVE);
+static void test_square(void) { 
+ if (counter0==0) {
+  dac_0=DACZERO+DACZERO-1; if (trigger_active) trigger_set(SEC_SQUARE_WAVE);
  }
- counter0++; counter0%=10*AUDIO_RATE; /*  Total period is 10 seconds */
+ else if (counter0==test_square_duration) dac_0=DACZERO;
+ counter0++; counter0%=AUDIO_RATE; /* after 1 sec. */
 }

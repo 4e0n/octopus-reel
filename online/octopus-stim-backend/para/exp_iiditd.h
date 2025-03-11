@@ -26,6 +26,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     counter1: base counter
     counter2: t3 counter */
 
+#define SEC_IID_LEFT		41	// "IID Left" 
+#define SEC_ITD_LEFT		42	// "ITD Left" 
+#define SEC_IID_RIGHT		43	// "IID Right" 
+#define SEC_ITD_RIGHT		44	// "ITD Right" 
+
 static int para_iiditd_base_level_l,para_iiditd_base_level_r,
            para_iiditd_current_iid_amp_l,para_iiditd_current_iid_amp_r,
            para_iiditd_t1,para_iiditd_t2,para_iiditd_t3,
@@ -43,9 +48,9 @@ static void para_iiditd_init(void) {
 
 static void para_iiditd(void) {
  if (para_iiditd_base_level_l) /* Set IID Left Amplitude */
-  dac_0=para_iiditd_current_iid_amp_l; else dac_0=0;
+  dac_0=para_iiditd_current_iid_amp_l; else dac_0=DACZERO;
  if (para_iiditd_base_level_r) /* Set IID Right Amplitude */
-  dac_1=para_iiditd_current_iid_amp_r; else dac_1=0;
+  dac_1=para_iiditd_current_iid_amp_r; else dac_1=DACZERO;
  counter0++; counter0%=para_iiditd_t2;
  counter1=counter0-para_iiditd_t2/2; /* Adjust to [-250,+250) */
 
@@ -101,6 +106,6 @@ static void para_iiditd(void) {
  }
 
  counter2++; counter2%=para_iiditd_t3; /* 50ms? */
- if (para_iiditd_mono==1) dac_1=0;     	/* Left Only */
- else if (para_iiditd_mono==2) dac_0=0;	/* Right Only */
+ if (para_iiditd_mono==1) dac_1=DACZERO; /* Left Only */
+ else if (para_iiditd_mono==2) dac_0=DACZERO; /* Right Only */
 }

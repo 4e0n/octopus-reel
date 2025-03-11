@@ -33,6 +33,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     -- longer SOA
     -- squareburst of 400ms stim duration */
 
+#define SEC_S12_L2R		115	// "S12: L -> R"
+#define SEC_S12_R2L		116	// "S12: R -> L"
+#define SEC_S10_L		117	// "S10: -> L"
+#define SEC_S10_R		118	// "S10: -> R"
+#define SEC_S10S_L		119	// "S10: -> SL"
+#define SEC_S10S_R		120	// "S10: -> SR"
+
+/* DAQCard dependent settings */
+#ifdef DACZERO16
+#define AMP_OPPCHN	(16*170)	/* Calibrated Etymotics 100dB */
+#else
+#define AMP_OPPCHN	(16*170)>>4	/* Calibrated Etymotics 100dB */
+#endif
+
 static int experiment_loop=0;
 
 static int para_itdlintest2_trigger,
@@ -147,7 +161,7 @@ static void para_itdlintest2(void) {
  /* ------------------------------------------------------------------- */
 
  dummy_counter=counter0%para_itdlintest2_click_period;
- dac_0=dac_1=0; /* default is zero */
+ dac_0=dac_1=DACZERO; /* default is zero */
 
  /* We'll decide depending on time offset that;
     whether, either left or right channel will turn to high. */

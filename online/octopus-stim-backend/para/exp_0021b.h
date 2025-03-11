@@ -27,6 +27,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
     counter0: Counter for single trial
     -- squareburst of 400ms stim duration */
 
+#define PARA_0021B_L600		1	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L350		2	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L200		3	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_L100		4	// PARA0021 L600 (50ms ITD burst)
+#define PARA_0021B_C		5	// PARA0021 C    (50ms ITD burst)
+#define PARA_0021B_R100		6	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R200		7	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R350		8	// PARA0021 R600 (50ms ITD burst)
+#define PARA_0021B_R600		9	// PARA0021 R600 (50ms ITD burst)
+
 static int para_0021b_experiment_loop=1;
 
 static int para_0021b_trigger,para_0021b_soa,
@@ -218,7 +228,7 @@ static void para_0021b(void) {
 
  /* ------ */
 
- dac_0=dac_1=0;
+ dac_0=dac_1=DACZERO;
 
  switch (para_0021b_lr) {
   case 0: /* Center */
@@ -226,7 +236,7 @@ static void para_0021b(void) {
     para_0021b_stim_local_offset=counter0-para_0021b_stim_instant;
     if (para_0021b_stim_local_offset%para_0021b_click_period < para_0021b_hi_period)
      dac_0=dac_1=AMP_OPPCHN;
-    else dac_0=dac_1=0;
+    else dac_0=dac_1=DACZERO;
    }
    break;
   case 1: /* L600,L350,L200,L100 */
@@ -234,13 +244,13 @@ static void para_0021b(void) {
     para_0021b_stim_local_offset=counter0-para_0021b_stim_instant_minus;
     if (para_0021b_stim_local_offset%para_0021b_click_period < para_0021b_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
    if (para_0021b_stim_region_lag) {
     para_0021b_stim_local_offset=counter0-para_0021b_stim_instant_plus;
     if (para_0021b_stim_local_offset%para_0021b_click_period < para_0021b_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    break;
   case 2: /* R100,R200,R350,R600 */
@@ -248,13 +258,13 @@ static void para_0021b(void) {
     para_0021b_stim_local_offset=counter0-para_0021b_stim_instant_minus;
     if (para_0021b_stim_local_offset%para_0021b_click_period < para_0021b_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=0;
+    else dac_1=DACZERO;
    }
    if (para_0021b_stim_region_lag) {
     para_0021b_stim_local_offset=counter0-para_0021b_stim_instant_plus;
     if (para_0021b_stim_local_offset%para_0021b_click_period < para_0021b_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=0;
+    else dac_0=DACZERO;
    }
   default: break;
  }
