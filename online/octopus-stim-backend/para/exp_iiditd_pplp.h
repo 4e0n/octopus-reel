@@ -81,9 +81,9 @@ static void para_iiditdpplp_init(void) {
 static void para_iiditdpplp(void) {
  if (!audio_paused) {
   if (para_iiditdpplp_base_level_l) /* Set IID Left Amplitude */
-   dac_0=para_iiditdpplp_current_iid_amp_l; else dac_0=DACZERO;
+   dac_0=para_iiditdpplp_current_iid_amp_l; else dac_0=0;
   if (para_iiditdpplp_base_level_r) /* Set IID Right Amplitude */
-   dac_1=para_iiditdpplp_current_iid_amp_r; else dac_1=DACZERO;
+   dac_1=para_iiditdpplp_current_iid_amp_r; else dac_1=0;
   counter1++; counter1%=para_iiditdpplp_t2;
   counter0=counter1-para_iiditdpplp_t2/2; /* Adjust to [-250,+250) */
 
@@ -263,7 +263,7 @@ static void para_iiditdpplp(void) {
    rt_sem_signal(&audio_sem);
    rt_printk("octopus-stim-rtai.o: Stim stopped.\n");
   } else if (counter3%para_iiditdpplp_t5==0) {
-   dac_0=dac_1=DACZERO; audio_paused=1; pause_trigger_hi=0; /* 39let? */
+   dac_0=dac_1=0; audio_paused=1; pause_trigger_hi=0; /* 39let? */
    trigger_set(SEC_PAUSE);
    rt_printk("offset: %d\n",counter3);
   }

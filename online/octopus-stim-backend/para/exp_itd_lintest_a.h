@@ -206,7 +206,7 @@ static void para_itdlintest(void) {
  /* ------------------------------------------------------------------- */
 
  dummy_counter=counter0%para_itdlintest_click_period;
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
 
  switch (current_pattern_data) {
   case 'D':	// Destination is Center

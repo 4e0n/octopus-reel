@@ -353,7 +353,7 @@ static void para_itd_pip_ctrain(void) {
    }
 */
 
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
 
  switch (para_itd_pip_ctrain_laterality) {
   case 0: /* Center (0deg ITD) - 500Hz -> 500Hz  */

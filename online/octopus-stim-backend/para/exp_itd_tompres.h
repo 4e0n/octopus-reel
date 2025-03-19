@@ -379,7 +379,7 @@ static void para_itd_tompres(void) {
 
  /* --------------------------------- */
 
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
 
  switch (para_itd_tompres_laterality) {
   case 0: /* RIGHT IPSILATERAL */
@@ -388,7 +388,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -396,14 +396,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -411,7 +411,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    break;
 
@@ -421,7 +421,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -429,14 +429,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -444,7 +444,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    break;
 
@@ -454,7 +454,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -462,14 +462,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -477,7 +477,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    break;
 
@@ -487,7 +487,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_itd_tompres_probe_region_lead) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_minus \
@@ -495,14 +495,14 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_adapter_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus;
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_itd_tompres_probe_region_lag) {
     para_itd_tompres_stim_local_offset=counter0-para_itd_tompres_stim_instant_plus \
@@ -510,7 +510,7 @@ static void para_itd_tompres(void) {
     if (para_itd_tompres_stim_local_offset%para_itd_tompres_click_period < \
                                                     para_itd_tompres_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
   default: break;
  }

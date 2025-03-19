@@ -235,10 +235,10 @@ static void trigger_thread(int t) {
 /* ========================================================================= */
 
 static void stim_reset(void) {
- dac_0=dac_1=DACZERO; current_pattern_offset=0;
+ dac_0=dac_1=0; current_pattern_offset=0;
 #ifdef OCTOPUS_STIM_COMEDI
- comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,dac_0);
- comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,dac_1);
+ comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,DACZERO+dac_0);
+ comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,DACZERO+dac_1);
  trigger_reset();
 
  lights_on();
@@ -330,10 +330,10 @@ int fbfifohandler(unsigned int fifo,int rw) {
  if (rw=='w') {
   rtf_get(STIM_F2BFIFO,&fb_msg,sizeof(fb_command));
   switch (fb_msg.id) {
-   case STIM_SET_PARADIGM: audio_active=0; dac_0=dac_1=DACZERO;
+   case STIM_SET_PARADIGM: audio_active=0; dac_0=dac_1=0;
 #ifdef OCTOPUS_STIM_COMEDI
-                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,dac_0);
-                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,dac_1);
+                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,DACZERO+dac_0);
+                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,DACZERO+dac_1);
 			   trigger_reset();
 #endif
                            paradigm=fb_msg.iparam[0];
@@ -369,9 +369,9 @@ int fbfifohandler(unsigned int fifo,int rw) {
    case STIM_STOP:         stop_test_para(paradigm);
                            stim_reset();
 #ifdef OCTOPUS_STIM_COMEDI
-			   dac_0=dac_1=DACZERO;
-                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,dac_0);
-                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,dac_1);
+			   dac_0=dac_1=0;
+                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,DACZERO+dac_0);
+                           comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,DACZERO+dac_1);
 			   trigger_reset();
 #endif
                            rt_sem_wait(&audio_sem);
@@ -522,9 +522,9 @@ static void __exit octopus_stim_exit(void) {
  rt_printk("octopus-stim-backend.o: Himem dedicated memory disposed.\n");
 
 #ifdef OCTOPUS_STIM_COMEDI
- dac_0=dac_1=DACZERO;
- comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,dac_0);
- comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,dac_1);
+ dac_0=dac_1=0;
+ comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,DACZERO+dac_0);
+ comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,1,0,AREF_GROUND,DACZERO+dac_1);
  comedi_unlock(daqcard,OCTOPUS_COMEDI_AO_SUBDEV);
  comedi_close(daqcard);
  rt_printk("octopus-stim-backend.o: Comedi DAQcard freed.\n");

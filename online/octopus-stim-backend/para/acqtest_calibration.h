@@ -33,9 +33,9 @@ static void test_calibration_init(void) {
 /* if our amplifier didn't have any hipass flt */
 
 static void test_calibration(void) {
- if (counter0 < test_calibration_phase1) dac_0=DACZERO;
+ if (counter0 < test_calibration_phase1) dac_0=0;
  else if (counter0 >= test_calibration_phase1) {
-  dac_0=DACZERO+(short)(256.*sin(theta*M_PI/180.));
+  dac_0=(short)(256.*sin(theta*M_PI/180.));
   /* Supposed to be 12Hz.. existing at some place of about
      the center of EEG amplifier's bandwidth.. */
   theta+=12.*360./(float)(AUDIO_RATE); if (theta>=360.) theta-=360.;

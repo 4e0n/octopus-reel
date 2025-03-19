@@ -343,7 +343,7 @@ static void para_0021a(void) {
 
  /* ------ */
 
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
 
  switch (para_0021a_adapter_type) {
   case 0: /* Center */
@@ -352,7 +352,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=dac_1=AMP_OPPCHN;
-    else dac_0=dac_1=DACZERO;
+    else dac_0=dac_1=0;
    }
    break;
   case 1: /* Left Lead */
@@ -361,14 +361,14 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_0021a_adapter_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus600;
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    break;
   case 2: /* Right Lead*/
@@ -377,14 +377,14 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_0021a_adapter_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus600;
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    break;
  }
@@ -397,7 +397,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=dac_1=AMP_OPPCHN;
-    else dac_0=dac_1=DACZERO;
+    else dac_0=dac_1=0;
    }
    break;
   case 1: /* Left Lead (L600,L200) */
@@ -407,7 +407,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
    if (para_0021a_probe_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus \
@@ -415,7 +415,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    break;
   case 2: /* Right Lead (R200,R600) */
@@ -425,7 +425,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_1=AMP_OPPCHN;
-    else dac_1=DACZERO;
+    else dac_1=0;
    }
    if (para_0021a_probe_region_lag) {
     para_0021a_stim_local_offset=counter0-para_0021a_stim_instant_plus \
@@ -433,7 +433,7 @@ static void para_0021a(void) {
     if (para_0021a_stim_local_offset%para_0021a_click_period < \
                                                     para_0021a_hi_period)
      dac_0=AMP_OPPCHN;
-    else dac_0=DACZERO;
+    else dac_0=0;
    }
   default: break;
  }

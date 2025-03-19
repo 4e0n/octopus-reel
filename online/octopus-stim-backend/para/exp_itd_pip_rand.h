@@ -142,7 +142,7 @@ static void para_itd_pip_rand_init(void) {
 }
 
 static void para_itd_pip_rand_start(void) {
- dac_0=dac_1=DACZERO;
+ dac_0=dac_1=0;
  lights_dimm();
  counter0=0; counter1=0; trigger_active=1; audio_active=1;
  rt_printk("octopus-stim-backend.o: Stim started.\n");
@@ -260,7 +260,7 @@ static void para_itd_pip_rand(void) {
    if (counter0==para_itd_pip_rand_stim_instant) {
     para_itd_pip_rand_theta=para_itd_pip_rand_phi=0.0; counter1=0; // Reset sine params
 
-    //dac_0=dac_1=DACZERO; // Edge trigger for oscilloscope view
+    //dac_0=dac_1=0; // Edge trigger for oscilloscope view
    }
 
    // Reset phi for outro damping
@@ -294,7 +294,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=DACZERO;
+   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=0;
 
    counter1++;
   }
@@ -346,7 +346,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_ad2_hi_dur) dac_0=dac_1=DACZERO;
+   if (counter1 >= para_itd_pip_rand_ad2_hi_dur) dac_0=dac_1=0;
 
    counter1++;
   }
@@ -399,7 +399,7 @@ static void para_itd_pip_rand(void) {
    }
 
    /* Silent for 200ms */
-   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=DACZERO;
+   if (counter1 >= para_itd_pip_rand_adaprobe_hi_dur) dac_0=dac_1=0;
 
    counter1++;
   }
@@ -415,8 +415,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_0=AMP_OPPCHN;
-    else *adac_0=DACZERO;
-   } else *adac_0=DACZERO;
+    else *adac_0=0;
+   } else *adac_0=0;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus && \
@@ -425,8 +425,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_1=AMP_OPPCHN;
-    else *adac_1=DACZERO;
-   } else *adac_1=DACZERO;
+    else *adac_1=0;
+   } else *adac_1=0;
   }
 
   // ADAPTER #2 (RANDOMIZED DURATION) -- LAT.ITD
@@ -450,8 +450,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_ad2_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_0=AMP_OPPCHN;
-    else *adac_0=DACZERO;
-   } else *adac_0=DACZERO;
+    else *adac_0=0;
+   } else *adac_0=0;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus+para_itd_pip_rand_adaprobe_tot_dur && \
@@ -463,8 +463,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_ad2_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_1=AMP_OPPCHN;
-    else *adac_1=DACZERO;
-   } else *adac_1=DACZERO;
+    else *adac_1=0;
+   } else *adac_1=0;
   }
 
 
@@ -492,8 +492,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_2=AMP_OPPCHN;
-    else *adac_2=DACZERO;
-   } else *adac_2=DACZERO;
+    else *adac_2=0;
+   } else *adac_2=0;
   }
   // LAG
   if (counter0 >= para_itd_pip_rand_stim_instant_plus+para_itd_pip_rand_adaprobe_tot_dur \
@@ -510,8 +510,8 @@ static void para_itd_pip_rand(void) {
    if (para_itd_pip_rand_stim_local_offset < para_itd_pip_rand_adaprobe_hi_dur) {
     if (para_itd_pip_rand_stim_local_offset%para_itd_pip_rand_click_period < para_itd_pip_rand_hi_period)
      *adac_3=AMP_OPPCHN;
-    else *adac_3=DACZERO;
-   } else *adac_3=DACZERO;
+    else *adac_3=0;
+   } else *adac_3=0;
   }
 
  }

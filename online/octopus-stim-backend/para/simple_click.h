@@ -38,6 +38,6 @@ static void para_click(void) {
   dac_0=dac_1=AMP_H20;
   if (trigger_active) trigger_set(SEC_CLICK);
  }
- else if (counter0==para_click_duration) dac_0=dac_1=DACZERO;  
+ else if (counter0==para_click_duration) dac_0=dac_1=0;  
  counter0++; counter0%=AUDIO_RATE; /* 1 second */
 }

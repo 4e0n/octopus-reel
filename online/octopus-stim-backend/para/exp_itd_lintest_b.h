@@ -161,7 +161,7 @@ static void para_itdlintest2(void) {
  /* ------------------------------------------------------------------- */
 
  dummy_counter=counter0%para_itdlintest2_click_period;
- dac_0=dac_1=DACZERO; /* default is zero */
+ dac_0=dac_1=0; /* default is zero */
 
  /* We'll decide depending on time offset that;
     whether, either left or right channel will turn to high. */

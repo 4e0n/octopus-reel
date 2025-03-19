@@ -48,9 +48,9 @@ static void para_iiditd_init(void) {
 
 static void para_iiditd(void) {
  if (para_iiditd_base_level_l) /* Set IID Left Amplitude */
-  dac_0=para_iiditd_current_iid_amp_l; else dac_0=DACZERO;
+  dac_0=para_iiditd_current_iid_amp_l; else dac_0=0;
  if (para_iiditd_base_level_r) /* Set IID Right Amplitude */
-  dac_1=para_iiditd_current_iid_amp_r; else dac_1=DACZERO;
+  dac_1=para_iiditd_current_iid_amp_r; else dac_1=0;
  counter0++; counter0%=para_iiditd_t2;
  counter1=counter0-para_iiditd_t2/2; /* Adjust to [-250,+250) */
 
@@ -106,6 +106,6 @@ static void para_iiditd(void) {
  }
 
  counter2++; counter2%=para_iiditd_t3; /* 50ms? */
- if (para_iiditd_mono==1) dac_1=DACZERO; /* Left Only */
- else if (para_iiditd_mono==2) dac_0=DACZERO; /* Right Only */
+ if (para_iiditd_mono==1) dac_1=0; /* Left Only */
+ else if (para_iiditd_mono==2) dac_0=0; /* Right Only */
 }

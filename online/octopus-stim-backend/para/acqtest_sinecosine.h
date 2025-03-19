@@ -48,9 +48,9 @@ static void test_sinecosine(void) {
  }
 
  if (event0==SEC_GEN_SINE) { /* Sine */
-  if (theta<360.0) dac_0=DACZERO+(short)((double)var0*sin(2.0*M_PI/360.0*theta)); else dac_0=DACZERO;
+  if (theta<360.0) dac_0=(short)((double)var0*sin(2.0*M_PI/360.0*theta)); else dac_0=0;
  } else if (event0==SEC_GEN_COSINE) { /* Cosine */
-  if (theta<360.0) dac_0=DACZERO+(short)((double)var0*cos(2.0*M_PI/360.0*theta)); else dac_0=DACZERO;
+  if (theta<360.0) dac_0=(short)((double)var0*cos(2.0*M_PI/360.0*theta)); else dac_0=0;
  }
  counter1++; counter1%=50000; /* after 1 sec. */
  theta+=2.0*360.0/(double)(AUDIO_RATE); /* f=2Hz */
