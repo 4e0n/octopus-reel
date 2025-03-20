@@ -28,15 +28,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef STIM_GLOBALS_H
 #define STIM_GLOBALS_H
 
-//#define DACZERO16	/* Default is 16-bit DAC samplespace */
+/* Default is 16-bit DAC samplespace */
+//#define DACZERO16
 
-/* FIFOs for frontend<->backend communication of stim. */
-#ifdef OCTOPUS_RTAI
-#define STIM_F2BFIFO	(0)
-#define STIM_B2FFIFO	(1)
-#endif
-
-#define DACZERO16
+/* In Advantech DAQ cards there are separate subdevices for DI and DO */
+#define OCTOPUS_COMEDI_AO_SUBDEV	(1)
+//#define OCTOPUS_COMEDI_DO_SUBDEV	(2) /* National Instruments */
+#define OCTOPUS_COMEDI_DO_SUBDEV	(3) /* Advantech */
 
 /* DAQCard dependent settings */
 #ifdef DACZERO16
@@ -53,11 +51,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define AMP_OPPCHN	(16*170)>>4	/* Calibrated Etymotics 100dB */
 #endif
 
+/* FIFOs for frontend<->backend communication of stim. */
+#define STIM_F2BFIFO	(0)
+#define STIM_B2FFIFO	(1)
+
+/* ITD Phase sample time offsets for Left and Right channels */
 #define PHASE_LL	(50)		/* Left  is leading */
 #define PHASE_RL	(-50)		/* Right is leading */
-
-#define OCTOPUS_COMEDI_AO_SUBDEV	(1)
-#define OCTOPUS_COMEDI_DO_SUBDEV	(2)
 
 /* Highest 128M of 1G RAM is dedicated to stimulus pattern
    "memmap=128M!896M" should exist in kernel cmdline */

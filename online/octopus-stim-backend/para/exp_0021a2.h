@@ -95,7 +95,7 @@ static void para_0021a2_init(void) {
  para_0021a2_adapter_burst_start=(0.200001)*AUDIO_RATE; /* 200ms - Start of burst in CONTINUOUS adapter case */
  para_0021a2_adapter_total_duration=para_0021a2_ap_offset; /* 800ms - DISCRETE (e.g. quadruple) adapter case */
 #ifdef PARA_0021A2_CONT_ADAPT
- para_0021a2_adapter_total_duration=(0.850001)*AUDIO_RATE; /* 850ms - CONTINUOUS adapter case */
+ para_0021a2_adapter_total_duration=(0.750001)*AUDIO_RATE; /* 850ms - CONTINUOUS adapter case */
 #endif
  para_0021a2_probe_period=para_0021a2_click_period*para_0021a2_no_periods_probe; /* 50ms */
  para_0021a2_adapter_period0=para_0021a2_probe_period; /*  50ms - for DISCRETE (e.g. quadruple) adapter setting */

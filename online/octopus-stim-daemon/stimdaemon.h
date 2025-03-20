@@ -30,8 +30,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <rtai_fifos.h>
 #include <rtai_shm.h>
 
-#define OCTOPUS_RTAI
-
 #include "../stimglobals.h"
 #include "../patt_datagram.h"
 #include "../fb_command.h"

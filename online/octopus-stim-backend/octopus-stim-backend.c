@@ -73,8 +73,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <linux/kcomedilib.h>
 #endif
 
-#define OCTOPUS_RTAI
-
 #include "../fb_command.h"
 #include "../stimglobals.h"
 //#include "../stim_event_codes.h"

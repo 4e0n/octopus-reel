@@ -31,10 +31,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 /* FIFOs for frontend<->backend communication of acq. */
 
-#ifdef OCTOPUS_RTAI
 #define ACQ_F2BFIFO	(2)
 #define ACQ_B2FFIFO	(3)
-#endif
 
 //#define EEMAGINE
 
