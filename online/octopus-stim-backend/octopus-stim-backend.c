@@ -172,6 +172,7 @@ static void lights_dimm(void) {
 #include "para/exp_itd_tompres.h"
 #include "para/exp_itd_pip_ctrain.h"
 #include "para/exp_itd_pip_rand.h"
+#include "para/exp_0021a.h"
 #include "para/exp_0021a1.h"
 #include "para/exp_0021a2.h"
 #include "para/exp_0021a3.h"
@@ -201,6 +202,7 @@ static void audio_thread(int t) {
      case PARA_ITD_TOMPRES:   para_itd_tompres();  break;
      case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain(); break;
      case PARA_ITD_PIP_RAND:  para_itd_pip_rand(); break;
+     case PARA_0021A:         para_0021a();        break;
      case PARA_0021A1:        para_0021a1();       break;
      case PARA_0021A2:        para_0021a2();       break;
      case PARA_0021A3:        para_0021a3();       break;
@@ -265,6 +267,7 @@ static void init_test_para(int tp) {
   case PARA_ITD_TOMPRES:   para_itd_tompres_init();  break;
   case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain_init(); break;
   case PARA_ITD_PIP_RAND:  para_itd_pip_rand_init(); break;
+  case PARA_0021A:         para_0021a_init();        break;
   case PARA_0021A1:        para_0021a1_init();       break;
   case PARA_0021A2:        para_0021a2_init();       break;
   case PARA_0021A3:        para_0021a3_init();       break;
@@ -282,6 +285,7 @@ static void start_test_para(int tp) {
   case PARA_ITD_TOMPRES:   para_itd_tompres_start();  break;
   case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain_start(); break;
   case PARA_ITD_PIP_RAND:  para_itd_pip_rand_start(); break;
+  case PARA_0021A:         para_0021a_start();        break;
   case PARA_0021A1:        para_0021a1_start();       break;
   case PARA_0021A2:        para_0021a2_start();       break;
   case PARA_0021A3:        para_0021a3_start();       break;
@@ -299,6 +303,7 @@ static void stop_test_para(int tp) {
   case PARA_ITD_TOMPRES:   para_itd_tompres_stop();  break;
   case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain_stop(); break;
   case PARA_ITD_PIP_RAND:  para_itd_pip_rand_stop(); break;
+  case PARA_0021A:         para_0021a_stop();        break;
   case PARA_0021A1:        para_0021a1_stop();       break;
   case PARA_0021A2:        para_0021a2_stop();       break;
   case PARA_0021A3:        para_0021a3_stop();       break;
@@ -316,7 +321,7 @@ static void pause_test_para(int tp) {
   case PARA_ITD_TOMPRES:   para_itd_tompres_pause();  break;
   case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain_pause(); break;
   case PARA_ITD_PIP_RAND:  para_itd_pip_rand_pause(); break;
-  case PARA_0021A1:        para_0021a1_pause();       break;
+  case PARA_0021A:         para_0021a_pause();        break;
   case PARA_0021A2:        para_0021a2_pause();       break;
   case PARA_0021A3:        para_0021a3_pause();       break;
   case PARA_0021B:         para_0021b_pause();        break;
@@ -333,6 +338,7 @@ static void resume_test_para(int tp) {
   case PARA_ITD_TOMPRES:   para_itd_tompres_resume();  break;
   case PARA_ITD_PIP_CTRAIN: para_itd_pip_ctrain_resume(); break;
   case PARA_ITD_PIP_RAND:  para_itd_pip_rand_resume(); break;
+  case PARA_0021A:         para_0021a_resume();        break;
   case PARA_0021A1:        para_0021a1_resume();       break;
   case PARA_0021A2:        para_0021a2_resume();       break;
   case PARA_0021A3:        para_0021a3_resume();       break;

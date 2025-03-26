@@ -117,7 +117,7 @@ class StimDaemon : public QTcpServer {
    }
 
    // SHM
-   if ((shmBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE))<=0) {
+   if ((shmBuffer=(char *)rtai_malloc('XFER',XFERBUFSIZE))<=(char *)0) {
     qDebug() << "octopus_stimd: Kernel-space backend SHM could not be opened!"; app->quit();
    } //else {
     //qDebug("octopus_stimd: Kernel-space backend SHM addr: 0x%x",shmBuffer);

@@ -144,6 +144,7 @@ class StimClient : public QMainWindow {
    paraITDTompresAction=new QAction("ITD Optimum Adapter-Probe Offset",this);
    paraITDPipCTrainAction=new QAction("ITD Pip vs. CTrain - 500ms Adapter-Probe",this);
    paraITDPipRandAction=new QAction("ITD Pip vs. CTrain - 400-800ms(rnd) Adapter-Probe",this);
+   para0021aAction=new QAction("ITD Para 0021a (150ms-250ms AP-randomized-gap)",this);
    para0021a1Action=new QAction("ITD Para 0021a1 (150ms AP-gap) Adapter-Probe",this);
    para0021a2Action=new QAction("ITD Para 0021a2 (200ms AP-gap) Adapter-Probe",this);
    para0021a3Action=new QAction("ITD Para 0021a3 (250ms AP-gap) Adapter-Probe",this);
@@ -174,6 +175,7 @@ class StimClient : public QMainWindow {
     "Testing of ITD Linearity - Exp.3c");
    paraITDPipRandAction->setStatusTip(
     "Testing of ITD vs. Tone Adaptation - RND");
+   para0021aAction->setStatusTip("ITD Para 0021a (150ms-250ms AP-randomized-gap)");
    para0021a1Action->setStatusTip("ITD Para 0021a1 (150ms AP-gap) Adapter-Probe");
    para0021a2Action->setStatusTip("ITD Para 0021a2 (200ms AP-gap) Adapter-Probe");
    para0021a3Action->setStatusTip("ITD Para 0021a3 (250ms AP-gap) Adapter-Probe");
@@ -205,6 +207,8 @@ class StimClient : public QMainWindow {
            this,SLOT(slotParadigmPipCTrain()));
    connect(paraITDPipRandAction,SIGNAL(triggered()),
            this,SLOT(slotParadigmPipRand()));
+   connect(para0021aAction,SIGNAL(triggered()),
+           this,SLOT(slotParadigm0021a()));
    connect(para0021a1Action,SIGNAL(triggered()),
            this,SLOT(slotParadigm0021a1()));
    connect(para0021a2Action,SIGNAL(triggered()),
@@ -228,6 +232,7 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDTompresAction);
    paraMenu->addAction(paraITDPipCTrainAction);
    paraMenu->addAction(paraITDPipRandAction);
+   paraMenu->addAction(para0021aAction);
    paraMenu->addAction(para0021a1Action);
    paraMenu->addAction(para0021a2Action);
    paraMenu->addAction(para0021a3Action);
@@ -587,6 +592,9 @@ class StimClient : public QMainWindow {
   void slotParadigmPipRand() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_RAND,0,0);
   }
+  void slotParadigm0021a() {
+   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A,0,0);
+  }
   void slotParadigm0021a1() {
    stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A1,0,0);
   }
@@ -633,7 +641,8 @@ class StimClient : public QMainWindow {
 	  *paraITDOppChnAction,*paraITDOppChn2Action,
 	  *paraITDLinTestAction,*paraITDLinTest2Action,
 	  *paraITDTompresAction,*paraITDPipCTrainAction,*paraITDPipRandAction,
-	  *para0021a1Action,*para0021a2Action,*para0021a3Action,*para0021bAction,*para0021cAction;
+	  *para0021aAction,*para0021a1Action,*para0021a2Action,*para0021a3Action,
+	  *para0021bAction,*para0021cAction;
 
   // Calibration
   int calPts; QVector<float> calA,calB;
