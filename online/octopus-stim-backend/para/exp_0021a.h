@@ -116,7 +116,9 @@ static void para_0021a_init(void) {
  para_0021a_stim_instant_minus600=para_0021a_stim_instant-para_0021a_lr_delta600/2;
  para_0021a_stim_instant_plus600=para_0021a_stim_instant+para_0021a_lr_delta600/2;
 
- rt_printk("%d %d %d %d %d %d %d %d %d %d\n",
+ rt_printk("%d %d %d %d %d %d %d %d %d %d %d %d\n",
+                         para_0021a_adapter_total_dur_base,
+                         para_0021a_adapter_total_dur_randmax,
 		 	 para_0021a_hi_period,
 		 	 para_0021a_click_period,
 		 	 para_0021a_lr_delta200,
@@ -160,8 +162,8 @@ static void para_0021a(void) {
  //int dummy_counter=0;
 
  if (counter0==0) {
+refetch:
   current_pattern_data=patt_buf[current_pattern_offset]; /* fetch new.. */
-
   switch (current_pattern_data) {
    case '@': /* Interblock pause */
              para_0021a_pause(); /* legitimate pause */
@@ -229,14 +231,23 @@ static void para_0021a(void) {
    case 'L': /* Click Train C -> C -2 */
 	     para_0021a_trigger=PARA_0021A_C_C;
 	     para_0021a_adapter_type=0; para_0021a_probe_type=0;
+	     break;
+   case '.': /* Randomize AP-ISI */
+             // A random amount (0ms-100ms) will be added here
+             get_random_bytes(&para_0021a_adapter_total_dur_rand,sizeof(int));
+             para_0021a_adapter_total_dur_rand%=para_0021a_adapter_total_dur_randmax;
+             para_0021a_adapter_total_dur_rand=abs(para_0021a_adapter_total_dur_rand);
+             rt_printk("Random x 10ms: %d\n",para_0021a_adapter_total_dur_rand); // log for hist plotting
+             para_0021a_adapter_total_dur_rand*=para_0021a_click_period; /* {0:10:90}ms */
+             current_pattern_offset++;
+             if (current_pattern_offset==pattern_size) { /* roll-back or stop? */
+              if (para_0021a_experiment_loop==0) para_0021a_stop();
+              //else para_0021a_pause();
+              current_pattern_offset=0;
+             }
+	     goto refetch;
    default:  break;
   }
-
-  // A random amount (0ms-100ms) will be added here
-  get_random_bytes(&para_0021a_adapter_total_dur_rand,sizeof(int));
-  para_0021a_adapter_total_dur_rand%=para_0021a_adapter_total_dur_randmax;
-  para_0021a_adapter_total_dur_rand*=para_0021a_click_period; /* {0:10:90}ms */
-  //rt_printk("%d\n",para_0021a_adapter_total_dur_rand); // log for hist plotting
 
   current_pattern_offset++;
   if (current_pattern_offset==pattern_size) { /* roll-back or stop? */
