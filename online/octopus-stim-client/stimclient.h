@@ -45,10 +45,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class StimClient : public QMainWindow {
  Q_OBJECT
  public:
-  StimClient(QApplication *app,QWidget *parent=0) : QMainWindow(parent) {
-	  nChns=64;
+  StimClient(QApplication *app,QString ch,int cp,int dp,QWidget *parent=0) : QMainWindow(parent) {
    application=app;
    guiWidth=400; guiHeight=160; guiX=100; guiY=100;
+   nChns=64;
+
+   confHost=ch; confCommP=cp; confDataP=dp;
 
    stimCommandSocket=new QTcpSocket(this);
    stimDataSocket=new QTcpSocket(this);
@@ -59,20 +61,6 @@ class StimClient : public QMainWindow {
 
    // *** INITIAL VALUES OF RUNTIME VARIABLES ***
    stimulation=trigger=false;
-
-   // *** LOAD CONFIG FILE AND READ ALL LINES ***
-   QString cfgLine; QStringList cfgLines;
-   cfgFile.setFileName("octopus-stim-client.config");
-   if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug("octopus-stim-client: "
-           "Cannot open ./octopus-stim-client.config for reading!..\n"
-           "Loading hardcoded values..");
-    stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
-   } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string
-    while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160);
-     cfgLines.append(cfgLine); } cfgFile.close(); parseConfig(cfgLines);
-   }
-   if (!initSuccess) return;
 
    // *** POST SETUP ***
    //stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
@@ -294,57 +282,11 @@ class StimClient : public QMainWindow {
    connect(stopTriggerButton,SIGNAL(clicked()),
            this,SLOT(slotStopTrigger()));
 
-   setWindowTitle("Octopus STIM Client v0.9.9");
+   setWindowTitle("Octopus STIM Client v1.0.1");
   }
 
   // *** UTILITY ROUTINES ***
  
-  void parseConfig(QStringList cfgLines) {
-   QStringList cfgValidLines,opts,opts2,opts3,netSection;
-
-   for (int i=0;i<cfgLines.size();i++) { // Isolate valid lines
-    if (!(cfgLines[i].at(0)=='#') &&
-        cfgLines[i].contains('|')) cfgValidLines.append(cfgLines[i]); }
-
-   // *** CATEGORIZE SECTIONS ***
-
-   initSuccess=true;
-   for (int i=0;i<cfgValidLines.size();i++) {
-    opts=cfgValidLines[i].split("|");
-    if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
-    else {
-     qDebug("Unknown section in .config file!"); initSuccess=false; break;
-    }
-   } if (!initSuccess) return;
-
-   // NET
-   if (netSection.size()>0) {
-    for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
-     if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
-      if (opts2.size()==3) { stimHost=opts2[0].trimmed();
-       QHostInfo qhiStim=QHostInfo::fromName(stimHost);
-       stimHost=qhiStim.addresses().first().toString();
-       qDebug() << "StimHost:" << stimHost;
-
-       stimCommPort=opts2[1].toInt(); stimDataPort=opts2[2].toInt();
-
-       // Simple port validation..
-       if ((!(stimCommPort >= 1024 && stimCommPort <= 65535)) ||
-           (!(stimDataPort >= 1024 && stimDataPort <= 65535))) {
-        qDebug(".config: Error in STIM IP and/or port settings!");
-        initSuccess=false; break;
-       }
-      } else {
-       qDebug(".config: Parse error in STIM IP (v4) Address!");
-       initSuccess=false; break;
-      }
-     }
-    }
-   } else {
-    stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
-   } if (!initSuccess) return;
-  } 
-
   void stimSendCommand(int command,int ip0,int ip1,int ip2) {
    stimCommandSocket->connectToHost(stimHost,stimCommPort);
    stimCommandSocket->waitForConnected();
@@ -425,7 +367,7 @@ class StimClient : public QMainWindow {
   void slotAbout() {
    QMessageBox::about(this,"About Octopus-ReEL",
                            "STIM Client\n"
-                           "(c) 2020 Barkin Ilhan (barkin@unrlabs.org)\n"
+                           "(c) 2007-2025 Barkin Ilhan (barkin@unrlabs.org)\n"
                            "This is free software coming with\n"
                            "ABSOLUTELY NO WARRANTY; You are welcome\n"
                          "to redistribute it under conditions of GPL v3.\n");
@@ -650,6 +592,8 @@ class StimClient : public QMainWindow {
 
   QString pattern,calibMsg;
   patt_datagram pattDatagram;
+
+  QString confHost; int confCommP,confDataP;
 
   QPushButton *lightsOnButton,*lightsDimmButton,*lightsOffButton,
 	      *startStimulationButton,*stopStimulationButton,
