@@ -43,3 +43,4 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PARA_0021A3		(0x2103)
 #define PARA_0021B		(0x2111)
 #define PARA_0021C		(0x2121)
+#define PARA_0021D		(0x2131)
