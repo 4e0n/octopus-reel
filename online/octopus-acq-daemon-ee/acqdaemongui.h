@@ -46,7 +46,7 @@ class AcqDaemonGUI : public QMainWindow {
    CMLevelFrame *cml; int cmlW;
    cmlW=acqD->cmLevelFrameWH;
    for (unsigned int i=0;i<acqD->confAmpCount;i++) {
-    cml=new CMLevelFrame(this,acqD,i); cml->setGeometry(4+i*(cmlW+4),4,cmlW,cmlW);
+    cml=new CMLevelFrame(this,acqD,i); cml->setGeometry(4+i*(cmlW+20),4,cmlW,cmlW);
     cmLevelFrame.append(cml); cml->show();
    }
 

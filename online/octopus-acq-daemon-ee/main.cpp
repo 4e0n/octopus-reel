@@ -49,10 +49,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    Due to copyright reasons, the respective Eemagine library isn't included in that project.
 */
 
+#include <cstdint>
+#include "../acqglobals.h"
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
 #endif
-
 #include "acqdaemon.h"
 #include "acqdaemongui.h"
 #include "acqthread.h"

@@ -101,9 +101,9 @@ class AcqDaemon : public QTcpServer {
         qDebug() << "octopus_acqd: <.conf> AMP|EEGPROBEMS not within [20,1000] msecs range!";
         app->quit();
        }
-      } else if (opts[0].trimmed()=="IMPEDANCEPROBEMS") { confCMProbeMsecs=opts[1].toInt();
+      } else if (opts[0].trimmed()=="CMPROBEMS") { confCMProbeMsecs=opts[1].toInt();
        if (!(confCMProbeMsecs >= 500 && confCMProbeMsecs <= 2000)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|IMPEDANCEPROBEMS not within [500,2000] msecs range!";
+        qDebug() << "octopus_acqd: <.conf> AMP|CMPROBEMS not within [500,2000] msecs range!";
         app->quit();
        }
       } else {
@@ -173,6 +173,9 @@ class AcqDaemon : public QTcpServer {
     }
    }
 
+   for (int i=0;i<chnTopo.size();i++)
+    qDebug() << chnTopo[i].physChn << chnTopo[i].chnName << chnTopo[i].topoX << chnTopo[i].topoY;
+
    // GUI
    if (guiSection.size()>0) {
     for (int i=0;i<guiSection.size();i++) { opts=guiSection[i].split("=");
@@ -216,7 +219,7 @@ class AcqDaemon : public QTcpServer {
    qDebug() << "Per-amp Total Channel# (with Trig and Offset):" << chnInfo.totalChnCount;
    qDebug() << "Total Channel# from all amps:" << chnInfo.totalCount;
 
-   acqGuiW=(cmLevelFrameWH+4)*confAmpCount+4; acqGuiH=cmLevelFrameWH+80;
+   acqGuiW=(cmLevelFrameWH+10)*confAmpCount+80; acqGuiH=cmLevelFrameWH+60;
 
    tcpBuffer.resize(confTcpBufSize*chnInfo.sampleRate); // in seconds, after which data is lost.
 
