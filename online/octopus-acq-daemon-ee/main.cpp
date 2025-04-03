@@ -49,40 +49,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    Due to copyright reasons, the respective Eemagine library isn't included in that project.
 */
 
-
-#include <QApplication>
-#include <QtCore>
-
-#include "../acqglobals.h"
-
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
 #endif
 
-#include "../chninfo.h"
 #include "acqdaemon.h"
+#include "acqdaemongui.h"
+#include "acqthread.h"
 
 int main(int argc,char *argv[]) {
- QCoreApplication app(argc,argv);
-
- chninfo chnInfo;
- chnInfo.sampleRate=SAMPLE_RATE; // 1000sps
- chnInfo.refChnCount=REF_CHN_COUNT; chnInfo.refChnMaxCount=REF_CHN_MAXCOUNT;
- chnInfo.bipChnCount=BIP_CHN_COUNT; chnInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
- chnInfo.physChnCount=PHYS_CHN_COUNT; chnInfo.totalChnCount=TOTAL_CHN_COUNT;
- chnInfo.totalCount=EE_AMPCOUNT*TOTAL_CHN_COUNT;
- chnInfo.probe_eeg_msecs=EEG_PROBE_MSECS; // 100ms probetime
- chnInfo.probe_impedance_msecs=IMPEDANCE_PROBE_MSECS; // 1000ms probetime
-
- // *** BACKEND VALIDATION ***
-
- qDebug("Datahandling Info:\n");
- qDebug() << "Per-amp Physical Channel#: " << chnInfo.physChnCount << "(" \
-	  << chnInfo.refChnCount << "+" << chnInfo.bipChnCount << ")";
- qDebug() << "Per-amp Total Channel# (with Trig and Offset): " << chnInfo.totalChnCount;
- qDebug() << "Total Channel# from all amps: " << chnInfo.totalCount;
-
- AcqDaemon acqDaemon(0,&app,&chnInfo);
+ QApplication app(argc,argv);
+ AcqDaemon acqDaemon(&app);
+ AcqThread acqThread(&acqDaemon);
+ AcqDaemonGUI acqDaemonGUI(&acqDaemon); acqDaemonGUI.show();
+ acqThread.start(QThread::HighestPriority);
  return app.exec();
 }
-

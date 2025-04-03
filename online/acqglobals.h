@@ -39,11 +39,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 const unsigned int EE_AMPCOUNT=2;
 const unsigned int EE_MAX_AMPCOUNT=8;
 
-const int SAMPLE_RATE=1000;
-
-const int EEG_PROBE_MSECS=100;
-const int IMPEDANCE_PROBE_MSECS=100;
-
 const int REF_CHN_COUNT=64; // 0
 const int REF_CHN_MAXCOUNT=64;
 

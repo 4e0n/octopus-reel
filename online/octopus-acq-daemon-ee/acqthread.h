@@ -56,6 +56,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../tcpsample.h"
 #include "eex.h"
 
+#include "acqdaemon.h"
+
 // Audio settings
 const int AUDIO_SAMPLE_RATE=48000;
 const int AUDIO_NUM_CHANNELS=2;
@@ -152,9 +154,14 @@ class BandPassFilter {
 class AcqThread : public QThread {
  Q_OBJECT
  public:
-  AcqThread(QObject* parent,chninfo *ci,QVector<tcpsample> *tb,quint64 *pidx,
-            bool *r,bool *im,QMutex *m,unsigned int *et) : QThread(parent) {
-   mutex=m; chnInfo=ci; tcpBuffer=tb; tcpBufPivot=pidx; daemonRunning=r; eegImpedanceMode=im; extTrig=et;
+  //AcqThread(QObject* parent,chninfo *ci,QVector<tcpsample> *tb,quint64 *pidx,
+  //          bool *r,bool *im,QMutex *tcpm,QMutex *guim,unsigned int *et) : QThread(parent) {
+  AcqThread(AcqDaemon *acqd,QObject *parent=0) : QThread(parent) {
+   acqD=acqd; chnInfo=&(acqD->chnInfo);
+   tcpBuffer=&(acqD->tcpBuffer); tcpBufPivot=&(acqD->tcpBufPIdx);
+   daemonRunning=&(acqD->daemonRunning); eegImpedanceMode=&(acqD->eegImpedanceMode);
+   tcpMutex=&(acqD->tcpMutex); guiMutex=&(acqD->guiMutex);
+   extTrig=&(acqD->extTrig);
    tcpS.trigger=0;
    convN=chnInfo->sampleRate/50; convN2=convN/2;
    convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
@@ -165,6 +172,9 @@ class AcqThread : public QThread {
 
    //CircularBuffer circBuffer(CIRCULAR_BUFFER_SIZE);
    audioOK=false; audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS);
+
+   counter0=0;
+   acqD->registerSendTriggerHandler(this);
   }
 
   void initAlsa() {
@@ -193,8 +203,9 @@ class AcqThread : public QThread {
    } else if (err<0) {
     qDebug() << "octopus_acqd: <AlsaAudioStream> ERROR READING AUDIO! Err.No:" << snd_strerror(err);
    } else {
+	   ;
     //circBuffer.push(buffer, BUFFER_SIZE);
-    qDebug() << "octopus_acqd: <AlsaAudioStream> Instreamed" << AUDIO_BUFFER_SIZE << "frames (48kHz, Stereo)";
+//    qDebug() << "octopus_acqd: <AlsaAudioStream> Instreamed" << AUDIO_BUFFER_SIZE << "frames (48kHz, Stereo)";
    }
   }
    
@@ -246,38 +257,6 @@ class AcqThread : public QThread {
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception:" << ex.what() << std::endl;
     }
-   }
-  }
-
-  void sendTrigger(unsigned char t) {
-   unsigned char trig=t;
-   serial.devname="/dev/ttyACM0"; serial.baudrate=B115200;
-   serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
-   if ((serial.device=open(serial.devname.toLatin1().data(),O_RDWR|O_NOCTTY))>0) {
-    tcgetattr(serial.device,&oldtio);     // Save current port settings..
-    bzero(&newtio,sizeof(newtio)); // Clear struct for new settings..
-
-    // CLOCAL: Local connection, no modem control
-    // CREAD:  Enable receiving chars
-    newtio.c_cflag=serial.baudrate | serial.databits |
-                   serial.parity   | serial.par_on   |
-                   serial.stopbit  | CLOCAL |CREAD;
-
-    newtio.c_iflag=IGNPAR | ICRNL;  // Ignore bytes with parity errors,
-                                    // map CR to NL, as it will terminate the
-                                    // input for canonical mode..
-
-    newtio.c_oflag=0;               // Raw Output
-
-    newtio.c_lflag=ICANON;          // Enable Canonical Input
-
-    tcflush(serial.device,TCIFLUSH); // Clear line and activate settings..
-    tcsetattr(serial.device,TCSANOW,&newtio); sleep(1);
-
-    write(serial.device,&trig,sizeof(unsigned char));
-
-    tcsetattr(serial.device,TCSANOW,&oldtio); // Restore old serial context..
-    close(serial.device);
    }
   }
 
@@ -445,7 +424,7 @@ class AcqThread : public QThread {
     if (*eegImpedanceMode) {
      fetchImpedanceData();
      for (eex& e:ee) for (unsigned int j=0;j<e.chnList.size();j++) e.imps[j]=e.buf.getSample(j,0);
-     std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_impedance_msecs));
+     std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_cm_msecs));
     } else {
      fetchEegData();
 
@@ -466,12 +445,13 @@ class AcqThread : public QThread {
 
      instreamAudio();
 
-     mutex->lock();
+     tcpMutex->lock();
       quint64 tcpDataSize=cBufPivot-cBufPivotP; // qDebug() << cBufPivotP << " " << cBufPivot;
       for (quint64 i=0;i<tcpDataSize;i++) {
        // Baseline alignment to the latest offset by (+arrivedTrig[i])
        tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2+arrivedTrig[0])%cBufSz];
        tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2+arrivedTrig[1])%cBufSz];
+
 
        // Trigger timing check in between amps
        trig0=tcpS.amp[0].trigger; trig1=tcpS.amp[1].trigger; toff++;
@@ -486,23 +466,65 @@ class AcqThread : public QThread {
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
       (*tcpBufPivot)+=tcpDataSize; // Update producer index
-     mutex->unlock();
+     tcpMutex->unlock();
+
+     // Common Mode Level estimation for both amps; copy to dedicated buffer
+     if ((counter0%(chnInfo->probe_cm_msecs/chnInfo->probe_eeg_msecs)==0)) {
+      guiMutex->lock();
+      acqD->updateCMLevels();
+      guiMutex->unlock();
+     }
 
      cBufPivotP=cBufPivot;
 
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_eeg_msecs));
-    } // eegImpedanceMode
+    } // eegImpedanceMode or not
+    counter0++;
    } // daemonRunning
 
    // Stop EEG Stream
-   //mutex->lock(); mutex->unlock();
+   //tcpMutex->lock(); tcpMutex->unlock();
 
    for (eex& e:ee) { delete e.str; delete e.amp; }
 
    qDebug("octopus_acqd: <acqthread> Exiting thread..");
   }
 
+ public slots:
+  void sendTrigger(unsigned char t) {
+   unsigned char trig=t;
+   serial.devname="/dev/ttyACM0"; serial.baudrate=B115200;
+   serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
+   if ((serial.device=open(serial.devname.toLatin1().data(),O_RDWR|O_NOCTTY))>0) {
+    tcgetattr(serial.device,&oldtio);     // Save current port settings..
+    bzero(&newtio,sizeof(newtio)); // Clear struct for new settings..
+
+    // CLOCAL: Local connection, no modem control
+    // CREAD:  Enable receiving chars
+    newtio.c_cflag=serial.baudrate | serial.databits |
+                   serial.parity   | serial.par_on   |
+                   serial.stopbit  | CLOCAL |CREAD;
+
+    newtio.c_iflag=IGNPAR | ICRNL;  // Ignore bytes with parity errors,
+                                    // map CR to NL, as it will terminate the
+                                    // input for canonical mode..
+
+    newtio.c_oflag=0;               // Raw Output
+
+    newtio.c_lflag=ICANON;          // Enable Canonical Input
+
+    tcflush(serial.device,TCIFLUSH); // Clear line and activate settings..
+    tcsetattr(serial.device,TCSANOW,&newtio); sleep(1);
+
+    write(serial.device,&trig,sizeof(unsigned char));
+
+    tcsetattr(serial.device,TCSANOW,&oldtio); // Restore old serial context..
+    close(serial.device);
+   }
+  }
+
  private:
+  AcqDaemon *acqD;
 #ifdef EEMAGINE
   std::vector<eemagine::sdk::amplifier*> eeAmpsU;
 #else
@@ -514,7 +536,7 @@ class AcqThread : public QThread {
 
   int convN2,convN,convL2,convL; quint64 cBufPivot,cBufPivotP;
 
-  QMutex *mutex; bool *daemonRunning,*eegImpedanceMode; unsigned int *extTrig;
+  QMutex *tcpMutex,*guiMutex; bool *daemonRunning,*eegImpedanceMode; unsigned int *extTrig;
 
   bool filterIIR_1_40;
 
@@ -537,6 +559,8 @@ class AcqThread : public QThread {
   std::vector<int16_t> audioBuffer;
 
   bool audioOK;
+
+  quint64 counter0;
 };
 
 #endif

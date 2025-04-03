@@ -28,15 +28,17 @@ LIBS += -lasound
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 # Input
-HEADERS += acqdaemon.h \
-           acqthread.h \
+HEADERS += acqthread.h \
+           acqdaemon.h \
+           acqdaemongui.h \
+           cmlevelframe.h \
            tcpthread.h \
            eex.h \
            ../serial_device.h \
            ../acqglobals.h \
 	   ../chninfo.h \
+	   chntopo.h \
 	   ../sample.h \
 	   ../tcpsample.h \
            ../cs_command.h
 SOURCES += main.cpp
-

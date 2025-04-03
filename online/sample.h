@@ -36,4 +36,29 @@ typedef struct _sample {
  unsigned int offset;
 } sample;
 
+/*
+typedef struct _sample {
+ size_t size;
+ float marker;
+ float *data,*dataF;
+ float *sum0,*sum1; // avg of 0: peri convN, 1: of prev. convL samples
+ unsigned int trigger,offset;
+
+ _sample(size_t s) : size(s) {
+  data(new float[s]);
+  dataF(new float[s]);
+  sum0(new float[s]);
+  sum1(new float[s]);
+ }
+
+ ~MyStruct() {
+  delete[] data; delete[] dataF; delete[] sum0; delete[] sum1;
+ }
+
+ // Rule of three/five: optional depending on copying needs
+ _sample(const _sample&) = delete;
+ _sample& operator=(const _sample&) = delete;
+} sample;
+*/
+
 #endif
