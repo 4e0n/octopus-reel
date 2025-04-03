@@ -78,7 +78,7 @@ static int para_0021d_trigger,para_0021d_soa,
 	   para_0021d_stim_instant_center,
 	   para_0021d_stim_instant_minus,para_0021d_stim_instant_minus200,
 	   para_0021d_stim_instant_minus400,para_0021d_stim_instant_minus600,
-	   para_0021d_stim_instant_plus,para_0021d_stim_instant_plus200;
+	   para_0021d_stim_instant_plus,para_0021d_stim_instant_plus200,
 	   para_0021d_stim_instant_plus400,para_0021d_stim_instant_plus600;
 
 static void para_0021d_init(void) {

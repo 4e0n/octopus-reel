@@ -29,12 +29,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define STIM_GLOBALS_H
 
 /* Default is 16-bit DAC samplespace */
-//#define DACZERO16
+#define DACZERO16
 
 /* In Advantech DAQ cards there are separate subdevices for DI and DO */
 #define OCTOPUS_COMEDI_AO_SUBDEV	(1)
-//#define OCTOPUS_COMEDI_DO_SUBDEV	(2) /* National Instruments */
-#define OCTOPUS_COMEDI_DO_SUBDEV	(3) /* Advantech */
+#define OCTOPUS_COMEDI_DO_SUBDEV	(2) /* National Instruments */
+//#define OCTOPUS_COMEDI_DO_SUBDEV	(3) /* Advantech */
 
 /* DAQCard dependent settings */
 #ifdef DACZERO16
