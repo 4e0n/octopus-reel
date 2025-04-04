@@ -49,6 +49,8 @@ class AcqDaemon : public QTcpServer {
   AcqDaemon(QApplication *app,QObject *parent=0): QTcpServer(parent) {
    application=app;
 
+   qDebug() << "---------------------------------------------------------------";
+
    // Parse system config file for variables
    QStringList cfgValidLines,opts,opts2,ampSection,netSection,chnTopoSection,guiSection;
    QFile cfgFile; QTextStream cfgStream;
@@ -92,7 +94,7 @@ class AcqDaemon : public QTcpServer {
         app->quit();
        }
       } else if (opts[0].trimmed()=="SAMPLERATE") { confSampleRate=opts[1].toInt();
-       if (!(confSampleRate == 500) || !(confSampleRate == 1000)) {
+       if (!(confSampleRate == 500 || confSampleRate == 1000)) {
         qDebug() << "octopus_acqd: <.conf> AMP|SAMPLERATE not among {500,1000}!";
         app->quit();
        }
@@ -159,6 +161,7 @@ class AcqDaemon : public QTcpServer {
 	 dummyChnTopo.chnName=opts2[1];         // Channel name
 	 dummyChnTopo.topoX=opts2[2].toInt();   // TopoXY - X
 	 dummyChnTopo.topoY=opts2[3].toInt();   // TopoXY - Y
+	 dummyChnTopo.cmLevel=128;		// Reset CM Level
          chnTopo.append(dummyChnTopo); // add channel to info table
         }
        } else {
@@ -173,18 +176,18 @@ class AcqDaemon : public QTcpServer {
     }
    }
 
-   for (int i=0;i<chnTopo.size();i++)
-    qDebug() << chnTopo[i].physChn << chnTopo[i].chnName << chnTopo[i].topoX << chnTopo[i].topoY;
+   //for (int i=0;i<chnTopo.size();i++)
+   // qDebug() << chnTopo[i].physChn << chnTopo[i].chnName << chnTopo[i].topoX << chnTopo[i].topoY;
 
    // GUI
    if (guiSection.size()>0) {
     for (int i=0;i<guiSection.size();i++) { opts=guiSection[i].split("=");
      if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
       if (opts2.size()==3) {
-       acqGuiX=opts2[0].toInt(); acqGuiY=opts2[1].toInt(); cmLevelFrameWH=opts2[2].toInt();
+       acqGuiX=opts2[0].toInt(); acqGuiY=opts2[1].toInt(); confCMCellSize=opts2[2].toInt();
        if ((!(acqGuiX >= -4000 && acqGuiX <= 4000)) ||
            (!(acqGuiY >= -3000 && acqGuiY <= 3000)) ||
-           (!(cmLevelFrameWH >= 600 && cmLevelFrameWH <= 1000))) {
+           (!(confCMCellSize >= 40 && confCMCellSize <= 80))) {
         qDebug() << "octopus_acqd: <.conf> GUI|ACQ size settings not in appropriate range!";
         app->quit();
        }
@@ -199,6 +202,7 @@ class AcqDaemon : public QTcpServer {
     app->quit();
    }
 
+
    confRefChnCount=64;
    confBipChnCount=2;
    chnInfo.sampleRate=confSampleRate; // 1000sps
@@ -210,16 +214,19 @@ class AcqDaemon : public QTcpServer {
    chnInfo.probe_eeg_msecs=confEEGProbeMsecs; // 100ms probetime
    chnInfo.probe_cm_msecs=confCMProbeMsecs; // 1000ms probetime
 
-   qDebug("Datahandling Info:\n");
-   qDebug() << "Sample Rate:" << chnInfo.sampleRate;
-   qDebug() << "EEG probe every (ms):" << chnInfo.probe_eeg_msecs;
-   qDebug() << "CM probe every (ms):" << chnInfo.probe_cm_msecs;
-   qDebug() << "Per-amp Physical Channel#:" << chnInfo.physChnCount << "(" \
+   qDebug() << "---------------------------------------------------------------";
+   qDebug() << "octopus_acqd: ---> Datahandling Info <---";
+   qDebug() << "octopus_acqd: Sample Rate:" << chnInfo.sampleRate;
+   qDebug() << "octopus_acqd: EEG probe every (ms):" << chnInfo.probe_eeg_msecs;
+   qDebug() << "octopus_acqd: CM probe every (ms):" << chnInfo.probe_cm_msecs;
+   qDebug() << "octopus_acqd: Per-amp Physical Channel#:" << chnInfo.physChnCount << "(" \
             << chnInfo.refChnCount << "+" << chnInfo.bipChnCount << ")";
-   qDebug() << "Per-amp Total Channel# (with Trig and Offset):" << chnInfo.totalChnCount;
-   qDebug() << "Total Channel# from all amps:" << chnInfo.totalCount;
+   qDebug() << "octopus_acqd: Per-amp Total Channel# (with Trig and Offset):" << chnInfo.totalChnCount;
+   qDebug() << "octopus_acqd: Total Channel# from all amps:" << chnInfo.totalCount;
+   qDebug() << "---------------------------------------------------------------";
 
-   acqGuiW=(cmLevelFrameWH+10)*confAmpCount+80; acqGuiH=cmLevelFrameWH+60;
+   cmLevelFrameW=confCMCellSize*11; cmLevelFrameH=confCMCellSize*12;
+   acqGuiW=(cmLevelFrameW+10)*confAmpCount+80; acqGuiH=cmLevelFrameH+60;
 
    tcpBuffer.resize(confTcpBufSize*chnInfo.sampleRate); // in seconds, after which data is lost.
 
@@ -249,8 +256,8 @@ class AcqDaemon : public QTcpServer {
    daemonRunning=true; eegImpedanceMode=false; clientConnected=false;
   }
   
-  chninfo chnInfo; int acqGuiX,acqGuiY;
-  unsigned int confAmpCount,extTrig,acqGuiW,acqGuiH,cmLevelFrameWH;
+  chninfo chnInfo; int acqGuiX,acqGuiY,cmLevelFrameW,cmLevelFrameH;
+  unsigned int confAmpCount,extTrig,acqGuiW,acqGuiH,confCMCellSize;
   QMutex tcpMutex,guiMutex; QVector<ChnTopo> chnTopo;
   QVector<tcpsample> tcpBuffer; quint64 tcpBufPIdx;
   bool daemonRunning,eegImpedanceMode,clientConnected;

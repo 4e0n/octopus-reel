@@ -43,13 +43,12 @@ class AcqDaemonGUI : public QMainWindow {
    acqD=acqd; setGeometry(acqD->acqGuiX,acqD->acqGuiY,acqD->acqGuiW,acqD->acqGuiH);
    setFixedSize(acqD->acqGuiW,acqD->acqGuiH);
 
-   CMLevelFrame *cml; int cmlW;
-   cmlW=acqD->cmLevelFrameWH;
+   CMLevelFrame *cml;
    for (unsigned int i=0;i<acqD->confAmpCount;i++) {
-    cml=new CMLevelFrame(this,acqD,i); cml->setGeometry(4+i*(cmlW+20),4,cmlW,cmlW);
+    cml=new CMLevelFrame(this,acqD,i);
+    cml->setGeometry(20+i*(acqD->cmLevelFrameW+20),20,acqD->cmLevelFrameW,acqD->cmLevelFrameH);
     cmLevelFrame.append(cml); cml->show();
    }
-
    guiMutex=&(acqD->guiMutex);
    setWindowTitle("Octopus AcqDaemon GUI Window");
   }

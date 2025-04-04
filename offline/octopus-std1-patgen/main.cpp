@@ -102,6 +102,7 @@ int main(int argc,char *argv[]) {
  }
 
  for (int i=0;i<blockCount;i++) {
+  finalPattern.append('.'); // "randomize ISI" command in between blocks
   finalPattern.append(shuffle(blockDomain));
   // if (i<blockCount-1) finalPattern.append('@');
  }

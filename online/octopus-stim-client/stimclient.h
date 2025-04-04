@@ -45,15 +45,65 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class StimClient : public QMainWindow {
  Q_OBJECT
  public:
-  StimClient(QApplication *app,QString ch,int cp,int dp,QWidget *parent=0) : QMainWindow(parent) {
+  StimClient(QApplication *app,QWidget *parent=0) : QMainWindow(parent) {
    application=app;
-   guiWidth=400; guiHeight=160; guiX=100; guiY=100;
-   nChns=64;
 
-   confHost=ch; confCommP=cp; confDataP=dp;
+   // Parse system config file for variables
+   QStringList cfgValidLines,opts,opts2,netSection; QFile cfgFile; QTextStream cfgStream;
+   QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_stim_client.conf");
+   if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "octopus_stim_client: <.conf> cannot load /etc/octopus_stim_client.conf.";
+    app->quit();
+   } else { cfgStream.setDevice(&cfgFile);
+    while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); // Max Line Size
+     cfgLines.append(cfgLine); } cfgFile.close();
 
-   stimCommandSocket=new QTcpSocket(this);
-   stimDataSocket=new QTcpSocket(this);
+    // Parse config
+    for (int i=0;i<cfgLines.size();i++) { // Isolate valid lines
+     if (!(cfgLines[i].at(0)=='#') &&
+         cfgLines[i].contains('|')) cfgValidLines.append(cfgLines[i]); }
+
+    for (int i=0;i<cfgValidLines.size();i++) {
+     opts=cfgValidLines[i].split("|");
+          if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
+     else { qDebug() << "octopus_stim_client: <.conf> Unknown section in .conf file!";
+      app->quit();
+     }
+    }
+
+    // NET
+    if (netSection.size()>0) {
+     for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
+
+      if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
+       if (opts2.size()==3) { confHost=opts2[0].trimmed();
+        QHostInfo qhiAcq=QHostInfo::fromName(confHost);
+        confHost=qhiAcq.addresses().first().toString();
+        qDebug() << "octopus_stim_client: <.conf> (this) Host IP is" << confHost;
+        confCommP=opts2[1].toInt(); confDataP=opts2[2].toInt();
+        // Simple port validation..
+        if ((!(confCommP >= 1024 && confCommP <= 65535)) ||
+            (!(confDataP >= 1024 && confDataP <= 65535))) {
+         qDebug() << "octopus_stim_client: <.conf> Error in Hostname/IP and/or port settings!";
+         app->quit();
+        } else {
+         qDebug() << "octopus_stim_client: <.conf> CommPort ->" << confCommP << "DataPort ->" << confDataP;
+	}
+       }
+      } else {
+       qDebug() << "octopus_stim_client: <.conf> Parse error in Hostname/IP(v4) Address!";
+       app->quit();
+      }
+     }
+    } else {
+     qDebug() << "octopus_stim_client: <.conf> Parse error in NET section!";
+     app->quit();
+    }
+   }
+
+   guiW=400; guiH=160; guiX=100; guiY=100;
+
+   stimCommandSocket=new QTcpSocket(this); stimDataSocket=new QTcpSocket(this);
    connect(stimCommandSocket,SIGNAL(error(QAbstractSocket::SocketError)),
            this,SLOT(slotStimCommandError(QAbstractSocket::SocketError)));
    connect(stimDataSocket,SIGNAL(error(QAbstractSocket::SocketError)),
@@ -64,8 +114,7 @@ class StimClient : public QMainWindow {
 
    // *** POST SETUP ***
    //stimSendCommand(CS_STIM_STOP,0,0,0); // Failsafe stop ongoing stim task..
-   setGeometry(guiX,guiY,guiWidth,guiHeight);
-   setFixedSize(guiWidth,guiHeight);
+   setGeometry(guiX,guiY,guiW,guiH); setFixedSize(guiW,guiH);
 
    // *** STATUSBAR ***
    guiStatusBar=new QStatusBar(this);
@@ -81,29 +130,22 @@ class StimClient : public QMainWindow {
    menuBar->addMenu(paraMenu); setMenuBar(menuBar);
 
    // System Menu
-   toggleCalAction=new QAction("&Start calibration",this);
    rebootAction=new QAction("&Reboot Server",this);
    shutdownAction=new QAction("&Shutdown Server",this);
    aboutAction=new QAction("&About..",this);
    quitAction=new QAction("&Quit",this);
-   toggleCalAction->setStatusTip(
-  "Start amplifier calibration procedure (Lasts approximately 45 minutes).");
    rebootAction->setStatusTip("Reboot STIM server");
    shutdownAction->setStatusTip("Shutdown STIM server");
    aboutAction->setStatusTip("About Octopus-STIM-Client..");
    quitAction->setStatusTip("Quit Octopus-STIM-Client");
-   connect(toggleCalAction,SIGNAL(triggered()),
-           this,SLOT(slotToggleCalibration()));
-   connect(rebootAction,SIGNAL(triggered()),
-           this,SLOT(slotReboot()));
-   connect(shutdownAction,SIGNAL(triggered()),
-           this,SLOT(slotShutdown()));
+   connect(rebootAction,SIGNAL(triggered()),this,SLOT(slotReboot()));
+   connect(shutdownAction,SIGNAL(triggered()),this,SLOT(slotShutdown()));
    connect(aboutAction,SIGNAL(triggered()),this,SLOT(slotAbout()));
    connect(quitAction,SIGNAL(triggered()),this,SLOT(slotQuit()));
-   sysMenu->addAction(toggleCalAction); sysMenu->addSeparator();
-   sysMenu->addAction(rebootAction);
-   sysMenu->addAction(shutdownAction); sysMenu->addSeparator();
-   sysMenu->addAction(aboutAction); sysMenu->addSeparator();
+   sysMenu->addAction(rebootAction); sysMenu->addAction(shutdownAction);
+   sysMenu->addSeparator();
+   sysMenu->addAction(aboutAction);
+   sysMenu->addSeparator();
    sysMenu->addAction(quitAction);
 
    // Test Menu
@@ -111,12 +153,9 @@ class StimClient : public QMainWindow {
    testSquareAction=new QAction("Square-wave Test",this);
    testSCAction->setStatusTip("Sine-Cosine dual-event Jitter Test");
    testSquareAction->setStatusTip("SquareWave single-Event Jitter Test");
-   connect(testSCAction,SIGNAL(triggered()),
-           this,SLOT(slotTestSineCosine()));
-   connect(testSquareAction,SIGNAL(triggered()),
-           this,SLOT(slotTestSquare()));
-   testMenu->addAction(testSCAction);
-   testMenu->addAction(testSquareAction);
+   connect(testSCAction,SIGNAL(triggered()),this,SLOT(slotTestSineCosine()));
+   connect(testSquareAction,SIGNAL(triggered()),this,SLOT(slotTestSquare()));
+   testMenu->addAction(testSCAction); testMenu->addAction(testSquareAction);
 
    // Paradigm Menu
    paraLoadPatAction=new QAction("&Load STIM Pattern..",this);
@@ -138,75 +177,47 @@ class StimClient : public QMainWindow {
    para0021a3Action=new QAction("ITD Para 0021a3 (250ms AP-gap) Adapter-Probe",this);
    para0021bAction=new QAction("ITD Para 0021b (Single) Adapter-Probe",this);
    para0021cAction=new QAction("ITD Para 0021c (Quadruple) Adapter-Probe",this);
-   paraLoadPatAction->setStatusTip(
-    "Load precalculated STIMulus pattern..");
+   para0021dAction=new QAction("ITD Para 0021d AP-equal-eccentricity (150ms-250ms AP-randomized-gap)",this);
+   paraLoadPatAction->setStatusTip("Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
-   paraSquareBurstAction->setStatusTip(
-    "SquareWave burst of 50ms duration, with 500us period, and SOA=1000ms");
-   paraIIDITDAction->setStatusTip(
-  "Dr. Ungan's specialized paradigm for Interaural Intensity vs.Time Delay");
-   paraIIDITD_ML_Action->setStatusTip(
-    "Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Left)");
-   paraIIDITD_MR_Action->setStatusTip(
-    "Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Right)");
-   paraITDOppChnAction->setStatusTip(
-    "Verification/falsification of ITD Opponent Channels Model");
-   paraITDOppChn2Action->setStatusTip(
-    "Verification/falsification of ITD Opponent Channels Model v2");
-   paraITDLinTestAction->setStatusTip(
-    "Testing of ITD Linearity");
-   paraITDLinTest2Action->setStatusTip(
-    "Testing of ITD Linearity - Exp.2");
-   paraITDTompresAction->setStatusTip(
-    "Testing of ITD Linearity - Exp.3a/b");
-   paraITDPipCTrainAction->setStatusTip(
-    "Testing of ITD Linearity - Exp.3c");
-   paraITDPipRandAction->setStatusTip(
-    "Testing of ITD vs. Tone Adaptation - RND");
+   paraSquareBurstAction->setStatusTip("SquareWave burst of 50ms duration, with 500us period, and SOA=1000ms");
+   paraIIDITDAction->setStatusTip("Dr. Ungan's specialized paradigm for Interaural Intensity vs.Time Delay");
+   paraIIDITD_ML_Action->setStatusTip("Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Left)");
+   paraIIDITD_MR_Action->setStatusTip("Dr. Ungan's specialized paradigm for IID vs. ITD (Monaural-Right)");
+   paraITDOppChnAction->setStatusTip("Verification/falsification of ITD Opponent Channels Model");
+   paraITDOppChn2Action->setStatusTip("Verification/falsification of ITD Opponent Channels Model v2");
+   paraITDLinTestAction->setStatusTip("Testing of ITD Linearity");
+   paraITDLinTest2Action->setStatusTip("Testing of ITD Linearity - Exp.2");
+   paraITDTompresAction->setStatusTip("Testing of ITD Linearity - Exp.3a/b");
+   paraITDPipCTrainAction->setStatusTip("Testing of ITD Linearity - Exp.3c");
+   paraITDPipRandAction->setStatusTip("Testing of ITD vs. Tone Adaptation - RND");
    para0021aAction->setStatusTip("ITD Para 0021a (150ms-250ms AP-randomized-gap)");
    para0021a1Action->setStatusTip("ITD Para 0021a1 (150ms AP-gap) Adapter-Probe");
    para0021a2Action->setStatusTip("ITD Para 0021a2 (200ms AP-gap) Adapter-Probe");
    para0021a3Action->setStatusTip("ITD Para 0021a3 (250ms AP-gap) Adapter-Probe");
    para0021bAction->setStatusTip("ITD Para 0021b Adapter-Probe");
-   para0021cAction->setStatusTip("ITD Para 0021c Adapter-Probe");
-   connect(paraLoadPatAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmLoadPattern()));
-   connect(paraClickAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmClick()));
-   connect(paraSquareBurstAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmSquareBurst()));
-   connect(paraIIDITDAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmIIDITD()));
-   connect(paraIIDITD_ML_Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigmIIDITD_MonoL()));
-   connect(paraIIDITD_MR_Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigmIIDITD_MonoR()));
-   connect(paraITDOppChnAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmITDOppChn()));
-   connect(paraITDOppChn2Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigmITDOppChn2()));
-   connect(paraITDLinTestAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmITDLinTest()));
-   connect(paraITDLinTest2Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigmITDLinTest2()));
-   connect(paraITDTompresAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmTompres()));
-   connect(paraITDPipCTrainAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmPipCTrain()));
-   connect(paraITDPipRandAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigmPipRand()));
-   connect(para0021aAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021a()));
-   connect(para0021a1Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021a1()));
-   connect(para0021a2Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021a2()));
-   connect(para0021a3Action,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021a3()));
-   connect(para0021bAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021b()));
-   connect(para0021cAction,SIGNAL(triggered()),
-           this,SLOT(slotParadigm0021c()));
+   para0021cAction->setStatusTip("ITD Para 0021c (Quadruple) Adapter-Probe");
+   para0021dAction->setStatusTip("ITD Para 0021d AP-equal-eccentricity (150ms-250ms AP-randomized-gap)");
+   connect(paraLoadPatAction,SIGNAL(triggered()),this,SLOT(slotParadigmLoadPattern()));
+   connect(paraClickAction,SIGNAL(triggered()),this,SLOT(slotParadigmClick()));
+   connect(paraSquareBurstAction,SIGNAL(triggered()),this,SLOT(slotParadigmSquareBurst()));
+   connect(paraIIDITDAction,SIGNAL(triggered()),this,SLOT(slotParadigmIIDITD()));
+   connect(paraIIDITD_ML_Action,SIGNAL(triggered()),this,SLOT(slotParadigmIIDITD_MonoL()));
+   connect(paraIIDITD_MR_Action,SIGNAL(triggered()),this,SLOT(slotParadigmIIDITD_MonoR()));
+   connect(paraITDOppChnAction,SIGNAL(triggered()),this,SLOT(slotParadigmITDOppChn()));
+   connect(paraITDOppChn2Action,SIGNAL(triggered()),this,SLOT(slotParadigmITDOppChn2()));
+   connect(paraITDLinTestAction,SIGNAL(triggered()),this,SLOT(slotParadigmITDLinTest()));
+   connect(paraITDLinTest2Action,SIGNAL(triggered()),this,SLOT(slotParadigmITDLinTest2()));
+   connect(paraITDTompresAction,SIGNAL(triggered()),this,SLOT(slotParadigmTompres()));
+   connect(paraITDPipCTrainAction,SIGNAL(triggered()),this,SLOT(slotParadigmPipCTrain()));
+   connect(paraITDPipRandAction,SIGNAL(triggered()),this,SLOT(slotParadigmPipRand()));
+   connect(para0021aAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021a()));
+   connect(para0021a1Action,SIGNAL(triggered()),this,SLOT(slotParadigm0021a1()));
+   connect(para0021a2Action,SIGNAL(triggered()),this,SLOT(slotParadigm0021a2()));
+   connect(para0021a3Action,SIGNAL(triggered()),this,SLOT(slotParadigm0021a3()));
+   connect(para0021bAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021b()));
+   connect(para0021cAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021c()));
+   connect(para0021dAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021d()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
@@ -219,68 +230,60 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(paraITDLinTest2Action);
    paraMenu->addAction(paraITDTompresAction);
    paraMenu->addAction(paraITDPipCTrainAction);
-   paraMenu->addAction(paraITDPipRandAction);
+   paraMenu->addAction(paraITDPipRandAction); paraMenu->addSeparator();
    paraMenu->addAction(para0021aAction);
    paraMenu->addAction(para0021a1Action);
    paraMenu->addAction(para0021a2Action);
    paraMenu->addAction(para0021a3Action);
    paraMenu->addAction(para0021bAction);
-   paraMenu->addAction(para0021cAction);
+   paraMenu->addAction(para0021cAction); paraMenu->addSeparator();
+   paraMenu->addAction(para0021dAction);
 
    // *** BUTTONS AT THE TOP ***
    lightsOnButton=new QPushButton("Lights On",this);
    lightsOnButton->setGeometry(20,height()-124,78,20);
    lightsOnButton->setCheckable(false);
-   connect(lightsOnButton,SIGNAL(clicked()),
-           this,SLOT(slotLightsOn()));
+   connect(lightsOnButton,SIGNAL(clicked()),this,SLOT(slotLightsOn()));
 
    lightsDimmButton=new QPushButton("Lights Dimm",this);
    lightsDimmButton->setGeometry(110,height()-124,78,20);
    lightsDimmButton->setCheckable(false);
-   connect(lightsDimmButton,SIGNAL(clicked()),
-           this,SLOT(slotLightsDimm()));
+   connect(lightsDimmButton,SIGNAL(clicked()),this,SLOT(slotLightsDimm()));
 
    lightsOffButton=new QPushButton("Lights Off",this);
    lightsOffButton->setGeometry(200,height()-124,78,20);
    lightsOffButton->setCheckable(false);
-   connect(lightsOffButton,SIGNAL(clicked()),
-           this,SLOT(slotLightsOff()));
+   connect(lightsOffButton,SIGNAL(clicked()),this,SLOT(slotLightsOff()));
 
    startStimulationButton=new QPushButton("Start Stim",this);
    startStimulationButton->setGeometry(20,height()-84,78,20);
    startStimulationButton->setCheckable(false);
-   connect(startStimulationButton,SIGNAL(clicked()),
-           this,SLOT(slotStartStimulation()));
+   connect(startStimulationButton,SIGNAL(clicked()),this,SLOT(slotStartStimulation()));
 
    stopStimulationButton=new QPushButton("Stop Stim",this);
    stopStimulationButton->setGeometry(100,height()-84,78,20);
    stopStimulationButton->setCheckable(false);
-   connect(stopStimulationButton,SIGNAL(clicked()),
-           this,SLOT(slotStopStimulation()));
+   connect(stopStimulationButton,SIGNAL(clicked()),this,SLOT(slotStopStimulation()));
 
    pauseStimulationButton=new QPushButton("Pause Stim",this);
    pauseStimulationButton->setGeometry(200,height()-84,98,20);
    pauseStimulationButton->setCheckable(false);
-   connect(pauseStimulationButton,SIGNAL(clicked()),
-           this,SLOT(slotPauseStimulation()));
+   connect(pauseStimulationButton,SIGNAL(clicked()),this,SLOT(slotPauseStimulation()));
 
    resumeStimulationButton=new QPushButton("Resume Stim",this);
    resumeStimulationButton->setGeometry(300,height()-84,98,20);
    resumeStimulationButton->setCheckable(false);
-   connect(resumeStimulationButton,SIGNAL(clicked()),
-           this,SLOT(slotResumeStimulation()));
+   connect(resumeStimulationButton,SIGNAL(clicked()),this,SLOT(slotResumeStimulation()));
 
    startTriggerButton=new QPushButton("Start Trig",this);
    startTriggerButton->setGeometry(20,height()-54,78,20);
    startTriggerButton->setCheckable(false);
-   connect(startTriggerButton,SIGNAL(clicked()),
-           this,SLOT(slotStartTrigger()));
+   connect(startTriggerButton,SIGNAL(clicked()),this,SLOT(slotStartTrigger()));
 
    stopTriggerButton=new QPushButton("Stop Trig",this);
    stopTriggerButton->setGeometry(100,height()-54,78,20);
    stopTriggerButton->setCheckable(false);
-   connect(stopTriggerButton,SIGNAL(clicked()),
-           this,SLOT(slotStopTrigger()));
+   connect(stopTriggerButton,SIGNAL(clicked()),this,SLOT(slotStopTrigger()));
 
    setWindowTitle("Octopus STIM Client v1.0.1");
   }
@@ -288,24 +291,12 @@ class StimClient : public QMainWindow {
   // *** UTILITY ROUTINES ***
  
   void stimSendCommand(int command,int ip0,int ip1,int ip2) {
-   stimCommandSocket->connectToHost(stimHost,stimCommPort);
+   stimCommandSocket->connectToHost(confHost,confCommP);
    stimCommandSocket->waitForConnected();
    QDataStream stimCommandStream(stimCommandSocket); csCmd.cmd=command;
    csCmd.iparam[0]=ip0; csCmd.iparam[1]=ip1; csCmd.iparam[2]=ip2;
    stimCommandStream.writeRawData((const char*)(&csCmd),sizeof(cs_command));
    stimCommandSocket->flush(); stimCommandSocket->disconnectFromHost();
-  }
-
-  void startCalibration() { calibration=true; calPts=0;
-   for (int i=0;i<nChns;i++) { calA[i]=calB[i]=0.; }
-   calibMsg="Calibration started.. Collecting DC";
-   stimSendCommand(CS_STIM_SET_PARADIGM,TEST_CALIBRATION,0,0); usleep(250000);
-   stimSendCommand(CS_STIM_START,0,0,0);
-  }
-
-  void stopCalibration() { calibration=false;
-   stimSendCommand(CS_STIM_STOP,0,0,0);
-   guiStatusBar->showMessage("Calibration manually stopped!");
   }
 
  private slots:
@@ -338,14 +329,6 @@ class StimClient : public QMainWindow {
      qDebug("octopus-stim-client: "
             "STIMulus data server unknown error! %d",
             socketError); break;
-   }
-  }
-
-  void slotToggleCalibration() {
-  if (calibration) { stopCalibration();
-    toggleCalAction->setText("&Start calibration");
-   } else { startCalibration();
-    toggleCalAction->setText("&Stop calibration");
    }
   }
 
@@ -382,21 +365,15 @@ class StimClient : public QMainWindow {
   //}
 
   void slotStartStimulation() {
-   if (!stimulation) {
-    stimSendCommand(CS_STIM_START,0,0,0); stimulation=true;
-   }
+   if (!stimulation) { stimSendCommand(CS_STIM_START,0,0,0); stimulation=true; }
   }
 
   void slotStopStimulation() {
-   if (stimulation) {
-    stimSendCommand(CS_STIM_STOP,0,0,0); stimulation=false;
-   }
+   if (stimulation) { stimSendCommand(CS_STIM_STOP,0,0,0); stimulation=false; }
   }
 
   void slotPauseStimulation() {
-   if (stimulation) {
-    stimSendCommand(CS_STIM_PAUSE,0,0,0); stimulation=false;
-   }
+   if (stimulation) { stimSendCommand(CS_STIM_PAUSE,0,0,0); stimulation=false; }
   }
 
   void slotResumeStimulation() {
@@ -406,35 +383,21 @@ class StimClient : public QMainWindow {
   }
 
   void slotStartTrigger() {
-   if (!trigger) {
-    stimSendCommand(CS_TRIG_START,0,0,0); trigger=true;
-   }
+   if (!trigger) { stimSendCommand(CS_TRIG_START,0,0,0); trigger=true; }
   }
 
   void slotStopTrigger() {
-   if (trigger) {
-    stimSendCommand(CS_TRIG_STOP,0,0,0); trigger=false;
-   }
+   if (trigger) { stimSendCommand(CS_TRIG_STOP,0,0,0); trigger=false; }
   }
 
-  void slotLightsOn() {
-   stimSendCommand(CS_STIM_LIGHTS_ON,0,0,0);
-  }
-  void slotLightsDimm() {
-   stimSendCommand(CS_STIM_LIGHTS_DIMM,0,0,0);
-  }
-  void slotLightsOff() {
-   stimSendCommand(CS_STIM_LIGHTS_OFF,0,0,0);
-  }
+  void slotLightsOn() { stimSendCommand(CS_STIM_LIGHTS_ON,0,0,0); }
+  void slotLightsDimm() { stimSendCommand(CS_STIM_LIGHTS_DIMM,0,0,0); }
+  void slotLightsOff() { stimSendCommand(CS_STIM_LIGHTS_OFF,0,0,0); }
 
   // *** RELATIVELY SIMPLE COMMANDS TO SERVERS ***
 
-  void slotTestSineCosine() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,TEST_SINECOSINE,0,0);
-  }
-  void slotTestSquare() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,TEST_SQUARE,0,0);
-  }
+  void slotTestSineCosine() { stimSendCommand(CS_STIM_SET_PARADIGM,TEST_SINECOSINE,0,0); }
+  void slotTestSquare() { stimSendCommand(CS_STIM_SET_PARADIGM,TEST_SQUARE,0,0); }
 
   void slotParadigmLoadPattern() {
    QString patFileName=QFileDialog::getOpenFileName(0,
@@ -443,22 +406,22 @@ class StimClient : public QMainWindow {
     patFile.open(QIODevice::ReadOnly); patStream.setDevice(&patFile);
     pattern=patStream.readAll(); patFile.close(); // Close pattern file.
 
-    stimCommandSocket->connectToHost(stimHost,stimCommPort);
+    stimCommandSocket->connectToHost(confHost,confCommP);
     stimCommandSocket->waitForConnected();
 
     // We want to be ready when the answer comes..
-    connect(stimCommandSocket,SIGNAL(readyRead()),
-            (QObject *)this,SLOT(slotReadAcknowledge()));
+    connect(stimCommandSocket,SIGNAL(readyRead()),(QObject *)this,SLOT(slotReadAcknowledge()));
 
     // Send Command SYN and then Sync.
     QDataStream stimCommandStream(stimCommandSocket);
     csCmd.cmd=CS_STIM_LOAD_PATTERN_SYN;
     csCmd.iparam[0]=patFile.size(); // File size is the only parameter
     csCmd.iparam[1]=csCmd.iparam[2]=0;
-  stimCommandStream.writeRawData((const char*)(&csCmd),(sizeof(cs_command)));
+    stimCommandStream.writeRawData((const char*)(&csCmd),(sizeof(cs_command)));
     stimCommandSocket->flush();
    }
   }
+  
   void slotReadAcknowledge() {
    QDataStream ackStream(stimCommandSocket);
 
@@ -472,7 +435,7 @@ class StimClient : public QMainWindow {
     }
 
     // Now STIM Server is waiting for the file.. Let's send over data port..
-    stimDataSocket->connectToHost(stimHost,stimDataPort);
+    stimDataSocket->connectToHost(confHost,confDataP);
     stimDataSocket->waitForConnected();
     QDataStream stimDataStream(stimDataSocket);
 
@@ -481,126 +444,66 @@ class StimClient : public QMainWindow {
      pattDatagram.data[dataCount]=pattern.at(i).toLatin1(); dataCount++;
      if (dataCount==128) { // We got 128 bytes.. Send packet and Sync.
       pattDatagram.size=dataCount; dataCount=0;
-      stimDataStream.writeRawData((const char*)(&pattDatagram),
-                                  sizeof(patt_datagram));
+      stimDataStream.writeRawData((const char*)(&pattDatagram),sizeof(patt_datagram));
       stimDataSocket->flush();
      }
     }
     if (dataCount!=0) { // Last fragment whose size is !=0 and <128
      pattDatagram.size=dataCount; dataCount=0;
-     stimDataStream.writeRawData((const char*)(&pattDatagram),
-                                 sizeof(patt_datagram));
+     stimDataStream.writeRawData((const char*)(&pattDatagram),sizeof(patt_datagram));
      stimDataSocket->flush();
     }
     stimDataSocket->disconnectFromHost();
-    disconnect(stimCommandSocket,SIGNAL(readyRead()),
-               this,SLOT(slotReadAcknowledge()));
+    disconnect(stimCommandSocket,SIGNAL(readyRead()),this,SLOT(slotReadAcknowledge()));
    }
   }
 
-  void slotParadigmClick() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_CLICK,0,0);
-  }
-  void slotParadigmSquareBurst() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_SQUAREBURST,0,0);
-  }
-  void slotParadigmIIDITD() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,0,0);
-  }
-  void slotParadigmIIDITD_MonoL() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,1,0);
-  }
-  void slotParadigmIIDITD_MonoR() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,2,0);
-  }
-  void slotParadigmITDOppChn() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_OPPCHN,0,0);
-  }
-  void slotParadigmITDOppChn2() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0,0);
-  }
-  void slotParadigmITDLinTest() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_LINTEST,0,0);
-  }
-  void slotParadigmITDLinTest2() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_LINTEST2,0,0);
-  }
-  void slotParadigmTompres() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_TOMPRES,0,0);
-  }
-  void slotParadigmPipCTrain() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_CTRAIN,0,0);
-  }
-  void slotParadigmPipRand() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_RAND,0,0);
-  }
-  void slotParadigm0021a() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A,0,0);
-  }
-  void slotParadigm0021a1() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A1,0,0);
-  }
-  void slotParadigm0021a2() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A2,0,0);
-  }
-  void slotParadigm0021a3() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A3,0,0);
-  }
-  void slotParadigm0021b() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021B,0,0);
-  }
-  void slotParadigm0021c() {
-   stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021C,0,0);
-  }
-
+  void slotParadigmClick() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_CLICK,0,0); }
+  void slotParadigmSquareBurst() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_SQUAREBURST,0,0); }
+  void slotParadigmIIDITD() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,0,0); }
+  void slotParadigmIIDITD_MonoL() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,1,0); }
+  void slotParadigmIIDITD_MonoR() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_IIDITD,2,0); }
+  void slotParadigmITDOppChn() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_OPPCHN,0,0); }
+  void slotParadigmITDOppChn2() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_OPPCHN2,0,0); }
+  void slotParadigmITDLinTest() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_LINTEST,0,0); }
+  void slotParadigmITDLinTest2() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_LINTEST2,0,0); }
+  void slotParadigmTompres() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_TOMPRES,0,0); }
+  void slotParadigmPipCTrain() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_CTRAIN,0,0); }
+  void slotParadigmPipRand() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_ITD_PIP_RAND,0,0); }
+  void slotParadigm0021a() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A,0,0); }
+  void slotParadigm0021a1() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A1,0,0); }
+  void slotParadigm0021a2() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A2,0,0); }
+  void slotParadigm0021a3() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021A3,0,0); }
+  void slotParadigm0021b() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021B,0,0); }
+  void slotParadigm0021c() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021C,0,0); }
+  void slotParadigm0021d() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021D,0,0); }
 
  private:
   QApplication *application;
-  QTcpSocket *stimCommandSocket,*stimDataSocket;
-
-  bool calibration,stimulation,trigger;
-
-  QFile cfgFile,patFile; QTextStream cfgStream,patStream;
+  QTcpSocket *stimCommandSocket,*stimDataSocket; bool stimulation,trigger;
+  QFile patFile; QTextStream patStream; cs_command csCmd,csAck;
 
   // NET
-  QString stimHost,acqHost;
-  int stimCommPort,stimDataPort,acqCommPort,acqDataPort;
-
-  bool initSuccess;
-
-  cs_command csCmd,csAck;
+  QString confHost; int confCommP,confDataP; QString pattern; patt_datagram pattDatagram;
 
   // GUI
-  int guiX,guiY,guiWidth,guiHeight,hwX,hwY,hwWidth,hwHeight;
+  int guiX,guiY,guiW,guiH;
 
-  QStatusBar *guiStatusBar;
-
-  QMenuBar *menuBar;
-  QAction *toggleCalAction,*rebootAction,*shutdownAction,
-          *quitAction,*aboutAction,*testSCAction,*testSquareAction,
+  QStatusBar *guiStatusBar; QMenuBar *menuBar;
+  QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction,
+          *testSCAction,*testSquareAction,
           *paraLoadPatAction,*paraClickAction,*paraSquareBurstAction,
           *paraIIDITDAction,*paraIIDITD_ML_Action,*paraIIDITD_MR_Action,
 	  *paraITDOppChnAction,*paraITDOppChn2Action,
 	  *paraITDLinTestAction,*paraITDLinTest2Action,
 	  *paraITDTompresAction,*paraITDPipCTrainAction,*paraITDPipRandAction,
 	  *para0021aAction,*para0021a1Action,*para0021a2Action,*para0021a3Action,
-	  *para0021bAction,*para0021cAction;
-
-  // Calibration
-  int calPts; QVector<float> calA,calB;
-  QVector<float> calDC,calSin;
-
-  QString pattern,calibMsg;
-  patt_datagram pattDatagram;
-
-  QString confHost; int confCommP,confDataP;
+	  *para0021bAction,*para0021cAction,*para0021dAction;
 
   QPushButton *lightsOnButton,*lightsDimmButton,*lightsOffButton,
 	      *startStimulationButton,*stopStimulationButton,
 	      *pauseStimulationButton,*resumeStimulationButton,
 	      *startTriggerButton,*stopTriggerButton;
-
-  int nChns;
 };
 
 #endif

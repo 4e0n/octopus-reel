@@ -6,6 +6,7 @@ typedef struct ChnTopo {
  QString chnName;
  unsigned int topoX;
  unsigned int topoY;
+ unsigned char cmLevel; // 255 is the most noisy
 } _ChnTopo;
 
 #endif

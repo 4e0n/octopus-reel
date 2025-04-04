@@ -31,20 +31,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "acqdaemon.h"
 
-static int f32Idx[32]={4,5,6,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,68,76,78, \
-                       41,41,41};
-static int s32Idx[32]={10,12,16,18,20,22,24,26,30,32,34,38,40,42,44,48,52,56,58,60,62,65,66,70,71, \
-	               28,36,46,54,64,72,77};
-
 class CMLevelFrame : public QFrame {
  Q_OBJECT
  public:
   CMLevelFrame(QWidget *p,AcqDaemon *acqd,unsigned int a) : QFrame(p) {
    parent=p; acqD=acqd; ampNo=a;
-   cmBuffer=new QPixmap(900,900);
-   for (int i=0;i<32;i++) first32Idx.append(f32Idx[i]-1);
-   for (int i=0;i<32;i++) second32Idx.append(s32Idx[i]-1);
+   cmBuffer=new QPixmap(acqD->cmLevelFrameW,acqD->cmLevelFrameH);
+   chnTopo=&acqD->chnTopo;
+   hdrFont1=QFont("Helvetica",28,QFont::Bold);
+   chnFont1=QFont("Helvetica",11,QFont::Bold);
+   chnFont2=QFont("Helvetica",16,QFont::Bold);
 
+   for (unsigned int i=0;i<128;i++) palette.append(QColor(2*i,255,0));
+   for (unsigned int i=0;i<128;i++) palette.append(QColor(255,255-2*i,0));
+   //for (int i=0;i<palette.size();i++) qDebug() << palette[i];
+ 
 //   chnCount=acqD->cntVisChns[ampNo].size();
 //   colCount=ceil((float)chnCount/(float)(33.));
 //   chnPerCol=ceil((float)(chnCount)/(float)(colCount));
@@ -66,47 +67,66 @@ class CMLevelFrame : public QFrame {
    acqD->registerCMLevelHandler(this);
   }
 
+  QBrush cmBrush(int elec) {
+   //return palette[(4*elec)%256];
+   return palette[(*chnTopo)[elec].cmLevel];
+  }
+
   void resetBuffer() {
-   QPainter cmPainter; QRect cr(0,0,width(),height());
-   cmBuffer->fill(Qt::black);
+   QPainter cmPainter; QRect cr(0,0,acqD->cmLevelFrameW,acqD->cmLevelFrameH);
+   cmBuffer->fill(Qt::white);
    cmPainter.begin(cmBuffer);
-    cmPainter.setBackground(QBrush(Qt::black));
+    cmPainter.setBackground(QBrush(Qt::white));
     cmPainter.setPen(Qt::black);
    // cmPainter.setBrush(Qt::black);
-    cmPainter.fillRect(cr,QBrush(Qt::black));
+    cmPainter.fillRect(cr,QBrush(Qt::white));
     cmPainter.drawRect(cr);
-    int rowSz=9; int cSz=width()/rowSz;
-    for (int i=0;i<first32Idx.length();i++) {
-     int x=first32Idx[i]%9; int y=first32Idx[i]/9;
-     QRect fs32Rect(x*cSz,y*cSz,cSz,cSz);
-     cmPainter.fillRect(fs32Rect,QBrush(Qt::gray));
-    }
-    for (int i=0;i<second32Idx.length();i++) {
-     int x=second32Idx[i]%9; int y=second32Idx[i]/9;
-     QRect fs32Rect(x*cSz,y*cSz,cSz,cSz);
-     cmPainter.fillRect(fs32Rect,QBrush(Qt::lightGray));
-    }
-    for (int i=1;i<rowSz;i++) {
-     cmPainter.drawLine(0,(i)*cSz,width(),(i)*cSz); cmPainter.drawLine((i)*cSz,0,(i)*cSz,height());
-    }
    cmPainter.end();
+   updateBuffer();
   }
   
   void updateBuffer() {
-   QPainter cmPainter; int curCol;
+   QPainter cmPainter; unsigned int chIdx,topoX,topoY,a,y,sz; QString chName;
+   a=acqD->confCMCellSize; sz=5*a/6;
    cmPainter.begin(cmBuffer);
-   
- //  for (c=0;c<colCount;c++) {
- //   if (wX[c]<=wn[c]) {
- //    cmPainter.setPen(Qt::white); //white
- //    cmPainter.drawLine(wX[c],1,wX[c],acqD->acqFrameH-2);
- //    if (wX[c]<(wn[c]-1)) {
- //     cmPainter.setPen(Qt::black);
- //     cmPainter.drawLine(wX[c]+1,1,wX[c]+1,acqD->acqFrameH-2);
- //    }
- //   }
- //  }
 
+   //QRect hr(a+width()/2,height()/2,9*width()/10,9*width()/10);
+   //cmPainter.setPen(Qt::black);
+   //cmPainter.setBrush(Qt::white);
+   //cmPainter.drawEllipse(hr);
+   QPen pen1(Qt::black,4);
+   QPen pen2(Qt::black,2);
+
+   QString hdrString="EEG ";
+   hdrString.append(QString::number(ampNo+1));
+   cmPainter.setFont(hdrFont1);
+   cmPainter.drawText(QRect(0,0,acqD->cmLevelFrameW,a),Qt::AlignVCenter,hdrString);
+
+   for (int i=0;i<(*chnTopo).size();i++) {
+    chIdx=(*chnTopo)[i].physChn; chName=(*chnTopo)[i].chnName;
+    topoX=(*chnTopo)[i].topoX; topoY=(*chnTopo)[i].topoY;
+    cmPainter.setPen(pen1);
+    if (chIdx<=32) cmPainter.setBrush(cmBrush(i));
+    else if (chIdx<=64) cmPainter.setBrush(cmBrush(i));
+    else cmPainter.setBrush(cmBrush(i));
+    y=0;
+    if (topoY>1) y+=a/2;
+    if (topoY>10) y+=a/2;
+    QRect cr(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2,sz,sz);
+    QRect tr1(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2-sz/4,sz,sz);
+    QRect tr2(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2+sz/6,sz,sz);
+    //cmPainter.fillRect(cr,QBrush(Qt::gray));
+    //cmPainter.drawRect(cr);
+    cmPainter.drawEllipse(cr);
+    cmPainter.setFont(chnFont1);
+    cmPainter.drawText(tr1,Qt::AlignHCenter|Qt::AlignVCenter,QString::number(chIdx));
+    cmPainter.setFont(chnFont2);
+    cmPainter.drawText(tr2,Qt::AlignHCenter|Qt::AlignVCenter,chName);
+   }
+   cmPainter.setPen(pen2);
+   cmPainter.drawLine(a/2,a,width()-a/2,a);
+   cmPainter.drawLine(a/2,height()-a,width()-a/2,height()-a);
+   
  //  for (int i=0;i<chnCount;i++) {
  //   c=chnCount/chnPerCol; curCol=i/chnPerCol;
  //   chHeight=100.0; // 100 pixel is the indicated amp..
@@ -191,7 +211,6 @@ class CMLevelFrame : public QFrame {
   virtual void paintEvent(QPaintEvent*) {
    resetBuffer();
    mainPainter.begin(this);
-    int curCol;
     mainPainter.setBackgroundMode(Qt::TransparentMode);
     mainPainter.drawPixmap(0,0,*cmBuffer);
    mainPainter.end();
@@ -214,13 +233,14 @@ class CMLevelFrame : public QFrame {
  private:
   QWidget *parent; AcqDaemon *acqD; QString dummyString;
   QBrush bgBrush; QPainter mainPainter; QVector<int> w0,wn,wX;
-//  QFont evtFont,chnFont; QPixmap *rBuffer;
+  QFont hdrFont1,chnFont1,chnFont2; //QPixmap *rBuffer;
 //  float chHeight,chY,scrPrvDataX,scrCurDataX,scrPrvDataFX,scrCurDataFX; int scrCurY;
 //  bool scroll,tick,event;
 //  int c,chnCount,colCount,chnPerCol;
   QPixmap *cmBuffer;
   unsigned int ampNo;
-  QVector<int> first32Idx,second32Idx;
+
+  QVector<ChnTopo> *chnTopo; QVector<QColor> palette;
 };
 
 #endif
