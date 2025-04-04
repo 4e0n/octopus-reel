@@ -36,15 +36,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define PARA_0021D_R600_R600	3	// PARA0021 R600->R600 (Adapter->Probe)
 #define PARA_0021D_R600_L600	4	// PARA0021 R600->L600 (Adapter->Probe)
 
-#define PARA_0021D_L400_L400	5	// PARA0021 L400->L400 (Adapter->Probe)
-#define PARA_0021D_L400_R400	6	// PARA0021 L400->R400 (Adapter->Probe)
-#define PARA_0021D_R400_R400	7	// PARA0021 R400->R400 (Adapter->Probe)
-#define PARA_0021D_R400_L400	8	// PARA0021 R400->L400 (Adapter->Probe)
+#define PARA_0021D_L360_L360	5	// PARA0021 L360->L360 (Adapter->Probe)
+#define PARA_0021D_L360_R360	6	// PARA0021 L360->R360 (Adapter->Probe)
+#define PARA_0021D_R360_R360	7	// PARA0021 R360->R360 (Adapter->Probe)
+#define PARA_0021D_R360_L360	8	// PARA0021 R360->L360 (Adapter->Probe)
 
-#define PARA_0021D_L200_L200	9	// PARA0021 L200->L200 (Adapter->Probe)
-#define PARA_0021D_L200_R200	10	// PARA0021 L200->R200 (Adapter->Probe)
-#define PARA_0021D_R200_R200	11	// PARA0021 R200->R200 (Adapter->Probe)
-#define PARA_0021D_R200_L200	12	// PARA0021 R200->L200 (Adapter->Probe)
+#define PARA_0021D_L160_L160	9	// PARA0021 L160->L160 (Adapter->Probe)
+#define PARA_0021D_L160_R160	10	// PARA0021 L160->R160 (Adapter->Probe)
+#define PARA_0021D_R160_R160	11	// PARA0021 R160->R160 (Adapter->Probe)
+#define PARA_0021D_R160_L160	12	// PARA0021 R160->L160 (Adapter->Probe)
 
 #define PARA_0021D_C_C		13	// PARA0021 C->C (Adapter->Probe)
 
@@ -64,7 +64,7 @@ static int para_0021d_trigger,para_0021d_soa,
 	   para_0021d_stim_local_offset,
 
 	   //para_0021d_lr_delta,
-	   para_0021d_lr_delta200,para_0021d_lr_delta400,para_0021d_lr_delta600,
+	   para_0021d_lr_delta160,para_0021d_lr_delta360,para_0021d_lr_delta600,
 
 	   para_0021d_adapter_region_center,
 	   para_0021d_adapter_region_lag,para_0021d_adapter_region_lead,
@@ -76,10 +76,10 @@ static int para_0021d_trigger,para_0021d_soa,
 	   para_0021d_ap_offset,
 
 	   para_0021d_stim_instant_center,
-	   para_0021d_stim_instant_minus,para_0021d_stim_instant_minus200,
-	   para_0021d_stim_instant_minus400,para_0021d_stim_instant_minus600,
-	   para_0021d_stim_instant_plus,para_0021d_stim_instant_plus200,
-	   para_0021d_stim_instant_plus400,para_0021d_stim_instant_plus600;
+	   para_0021d_stim_instant_minus,para_0021d_stim_instant_minus160,
+	   para_0021d_stim_instant_minus360,para_0021d_stim_instant_minus600,
+	   para_0021d_stim_instant_plus,para_0021d_stim_instant_plus160,
+	   para_0021d_stim_instant_plus360,para_0021d_stim_instant_plus600;
 
 static void para_0021d_init(void) {
  current_pattern_offset=0;
@@ -111,16 +111,16 @@ static void para_0021d_init(void) {
  para_0021d_iai=(0.200001)*AUDIO_RATE; /* Inter-adapter Interval: 1s -- never to happen for long single adapter case */;
  /* --------- */
 
- para_0021d_lr_delta200=(0.00021)*AUDIO_RATE; /*  L-R delta: 200us - 10 steps */
- para_0021d_lr_delta400=(0.00041)*AUDIO_RATE; /*  L-R delta: 400us - 20 steps */
- para_0021d_lr_delta600=(0.00061)*AUDIO_RATE; /*  L-R delta: 600us - 30 steps */
+ para_0021d_lr_delta160=(0.000161)*AUDIO_RATE; /*  L-R delta: 160us -  8 steps */
+ para_0021d_lr_delta360=(0.000361)*AUDIO_RATE; /*  L-R delta: 360us - 18 steps */
+ para_0021d_lr_delta600=(0.000601)*AUDIO_RATE; /*  L-R delta: 600us - 30 steps */
 
  para_0021d_stim_instant=(0.200001)*AUDIO_RATE; /* 200ms (arbitrary at beginning) */;
  para_0021d_stim_instant_center=para_0021d_stim_instant;
- para_0021d_stim_instant_minus200=para_0021d_stim_instant-para_0021d_lr_delta200/2;
- para_0021d_stim_instant_plus200=para_0021d_stim_instant+para_0021d_lr_delta200/2;
- para_0021d_stim_instant_minus400=para_0021d_stim_instant-para_0021d_lr_delta400/2;
- para_0021d_stim_instant_plus400=para_0021d_stim_instant+para_0021d_lr_delta400/2;
+ para_0021d_stim_instant_minus160=para_0021d_stim_instant-para_0021d_lr_delta160/2;
+ para_0021d_stim_instant_plus160=para_0021d_stim_instant+para_0021d_lr_delta160/2;
+ para_0021d_stim_instant_minus360=para_0021d_stim_instant-para_0021d_lr_delta360/2;
+ para_0021d_stim_instant_plus360=para_0021d_stim_instant+para_0021d_lr_delta360/2;
  para_0021d_stim_instant_minus600=para_0021d_stim_instant-para_0021d_lr_delta600/2;
  para_0021d_stim_instant_plus600=para_0021d_stim_instant+para_0021d_lr_delta600/2;
 
@@ -129,16 +129,16 @@ static void para_0021d_init(void) {
                          para_0021d_adapter_total_dur_randmax,
 		 	 para_0021d_hi_period,
 		 	 para_0021d_click_period,
-		 	 para_0021d_lr_delta200,
-		 	 para_0021d_lr_delta400,
+		 	 para_0021d_lr_delta160,
+		 	 para_0021d_lr_delta360,
 		 	 para_0021d_lr_delta600,
 		 	 para_0021d_stim_instant,
 		 	 para_0021d_stim_instant_center,
-		 	 para_0021d_stim_instant_minus200,
-		 	 para_0021d_stim_instant_minus400,
+		 	 para_0021d_stim_instant_minus160,
+		 	 para_0021d_stim_instant_minus360,
 		 	 para_0021d_stim_instant_minus600,
-		 	 para_0021d_stim_instant_plus200,
-		 	 para_0021d_stim_instant_plus400,
+		 	 para_0021d_stim_instant_plus160,
+		 	 para_0021d_stim_instant_plus360,
 		 	 para_0021d_stim_instant_plus600);
 
  lights_on();
@@ -203,53 +203,53 @@ refetch:
 	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus600;
 	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus600;
              break;
-   case 'E': /* Click Train L400 -> L400 */
-	     para_0021d_trigger=PARA_0021D_L400_L400;
+   case 'E': /* Click Train L360 -> L360 */
+	     para_0021d_trigger=PARA_0021D_L360_L360;
 	     para_0021d_adapter_type=1; para_0021d_probe_type=1;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus400;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus400;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus360;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus360;
              break;
-   case 'F': /* Click Train L400 -> R400 */
-	     para_0021d_trigger=PARA_0021D_L400_R400;
+   case 'F': /* Click Train L360 -> R360 */
+	     para_0021d_trigger=PARA_0021D_L360_R360;
 	     para_0021d_adapter_type=1; para_0021d_probe_type=2;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus400;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus400;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus360;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus360;
              break;
-   case 'G': /* Click Train R400 -> R400 */
-	     para_0021d_trigger=PARA_0021D_R400_R400;
+   case 'G': /* Click Train R360 -> R360 */
+	     para_0021d_trigger=PARA_0021D_R360_R360;
 	     para_0021d_adapter_type=2; para_0021d_probe_type=2;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus400;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus400;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus360;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus360;
              break;
-   case 'H': /* Click Train R400 -> L400 */
-	     para_0021d_trigger=PARA_0021D_R400_L400;
+   case 'H': /* Click Train R360 -> L360 */
+	     para_0021d_trigger=PARA_0021D_R360_L360;
 	     para_0021d_adapter_type=2; para_0021d_probe_type=1;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus400;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus400;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus360;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus360;
              break;
-   case 'I': /* Click Train L200 -> L200 */
-	     para_0021d_trigger=PARA_0021D_L200_L200;
+   case 'I': /* Click Train L160 -> L160 */
+	     para_0021d_trigger=PARA_0021D_L160_L160;
 	     para_0021d_adapter_type=1; para_0021d_probe_type=1;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus200;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus200;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus160;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus160;
              break;
-   case 'J': /* Click Train L200 -> R200 */
-	     para_0021d_trigger=PARA_0021D_L200_R200;
+   case 'J': /* Click Train L160 -> R160 */
+	     para_0021d_trigger=PARA_0021D_L160_R160;
 	     para_0021d_adapter_type=1; para_0021d_probe_type=2;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus200;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus200;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus160;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus160;
              break;
-   case 'K': /* Click Train R200 -> R200 */
-	     para_0021d_trigger=PARA_0021D_R200_R200;
+   case 'K': /* Click Train R160 -> R160 */
+	     para_0021d_trigger=PARA_0021D_R160_R160;
 	     para_0021d_adapter_type=2; para_0021d_probe_type=2;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus200;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus200;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus160;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus160;
              break;
-   case 'L': /* Click Train R200 -> L200 */
-	     para_0021d_trigger=PARA_0021D_R200_L200;
+   case 'L': /* Click Train R160 -> L160 */
+	     para_0021d_trigger=PARA_0021D_R160_L160;
 	     para_0021d_adapter_type=2; para_0021d_probe_type=1;
-	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus200;
-	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus200;
+	     para_0021d_stim_instant_minus=para_0021d_stim_instant_minus160;
+	     para_0021d_stim_instant_plus=para_0021d_stim_instant_plus160;
              break;
    case 'M': /* Click Train C -> C -1 */
 	     para_0021d_trigger=PARA_0021D_C_C;
@@ -446,7 +446,7 @@ refetch:
     else dac_0=dac_1=0;
    }
    break;
-  case 1: /* Left Lead (L600,L400,L200) */
+  case 1: /* Left Lead (L600,L360,L160) */
    if (para_0021d_probe_region_lead) {
     para_0021d_stim_local_offset=counter0-para_0021d_stim_instant_minus \
                                                -para_0021d_ap_offset;
@@ -464,7 +464,7 @@ refetch:
     else dac_1=0;
    }
    break;
-  case 2: /* Right Lead (R600,R400,R200) */
+  case 2: /* Right Lead (R600,R360,R160) */
    if (para_0021d_probe_region_lead) {
     para_0021d_stim_local_offset=counter0-para_0021d_stim_instant_minus \
                                                -para_0021d_ap_offset;

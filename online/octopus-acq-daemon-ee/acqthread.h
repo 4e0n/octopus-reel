@@ -173,7 +173,7 @@ class AcqThread : public QThread {
    //CircularBuffer circBuffer(CIRCULAR_BUFFER_SIZE);
    audioOK=false; audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS);
 
-   counter0=0;
+   counter0=counter1=0;
    acqD->registerSendTriggerHandler(this);
   }
 
@@ -293,6 +293,10 @@ class AcqThread : public QThread {
       sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
       ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum1[j]=sum1;
 
+      // Current CM value
+      float dummy=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].data[j]-sum0/convN;
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=dummy*dummy;
+
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
      }
     }
@@ -344,6 +348,11 @@ class AcqThread : public QThread {
       sum1-=ee[i].cBuf[(ee[i].cBufIdx+k-convL-1)%cBufSz].data[j];
       sum1+=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum1[j]=sum1;
+
+      // Current CM value
+      float dummy=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].data[j]-sum0/convN;
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=dummy*dummy;
+
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
      }
     }
@@ -452,7 +461,6 @@ class AcqThread : public QThread {
        tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2+arrivedTrig[0])%cBufSz];
        tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2+arrivedTrig[1])%cBufSz];
 
-
        // Trigger timing check in between amps
        trig0=tcpS.amp[0].trigger; trig1=tcpS.amp[1].trigger; toff++;
        if (trig0!=0 && trig1!=0) qDebug() << "octopus_acqd: <AmpSync> Yay! Syncronized triggers received!";
@@ -462,24 +470,32 @@ class AcqThread : public QThread {
 
        // Copy Audio L and Audio R in tcpS from Audio Circular Buffer
 
+       // Update cmLevels
+       if ((counter0%(chnInfo->probe_cm_msecs/chnInfo->probe_eeg_msecs)==0)) {
+        for (int i=0;i<acqD->chnTopo.size();i++) {
+         (acqD->chnTopo)[i].cmLevel[0]=tcpS.amp[0].curCM[i];
+         (acqD->chnTopo)[i].cmLevel[1]=tcpS.amp[1].curCM[i];
+        }
+       }
+       counter0++;
+
        if (*extTrig) { tcpS.trigger=*extTrig; *extTrig=0; }
        (*tcpBuffer)[(*tcpBufPivot+i)%tcpBufSize]=tcpS;
       }
+
       (*tcpBufPivot)+=tcpDataSize; // Update producer index
      tcpMutex->unlock();
 
      // Common Mode Level estimation for both amps; copy to dedicated buffer
-     if ((counter0%(chnInfo->probe_cm_msecs/chnInfo->probe_eeg_msecs)==0)) {
-      guiMutex->lock();
-      acqD->updateCMLevels();
-      guiMutex->unlock();
+     if ((counter1%(chnInfo->probe_cm_msecs/chnInfo->probe_eeg_msecs)==0)) {
+      guiMutex->lock(); acqD->updateCMLevels(); guiMutex->unlock();
      }
 
      cBufPivotP=cBufPivot;
 
      std::this_thread::sleep_for(std::chrono::milliseconds(chnInfo->probe_eeg_msecs));
     } // eegImpedanceMode or not
-    counter0++;
+    counter1++;
    } // daemonRunning
 
    // Stop EEG Stream
@@ -560,7 +576,8 @@ class AcqThread : public QThread {
 
   bool audioOK;
 
-  quint64 counter0;
+  quint64 counter0,counter1;
+  //unsigned char cmVal;
 };
 
 #endif

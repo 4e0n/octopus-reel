@@ -30,6 +30,7 @@ typedef struct _sample {
  float marker;
  float data[PHYS_CHN_COUNT];
  float dataF[PHYS_CHN_COUNT];
+ float curCM[PHYS_CHN_COUNT];
  float sum0[PHYS_CHN_COUNT]; // avg of peri convN samples
  float sum1[PHYS_CHN_COUNT]; // avg of previous convL samples
  unsigned int trigger;

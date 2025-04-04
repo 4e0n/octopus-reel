@@ -161,7 +161,8 @@ class AcqDaemon : public QTcpServer {
 	 dummyChnTopo.chnName=opts2[1];         // Channel name
 	 dummyChnTopo.topoX=opts2[2].toInt();   // TopoXY - X
 	 dummyChnTopo.topoY=opts2[3].toInt();   // TopoXY - Y
-	 dummyChnTopo.cmLevel=128;		// Reset CM Level
+	 dummyChnTopo.cmLevel[0]=128;		// Reset CM Level
+	 dummyChnTopo.cmLevel[1]=128;		// Reset CM Level
          chnTopo.append(dummyChnTopo); // add channel to info table
         }
        } else {
