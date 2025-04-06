@@ -179,6 +179,7 @@ static void lights_dimm(void) {
 #include "para/exp_0021b.h"
 #include "para/exp_0021c.h"
 #include "para/exp_0021d.h"
+#include "para/exp_0021e.h"
 
 /* ========================================================================= */
 
@@ -210,6 +211,7 @@ static void audio_thread(int t) {
      case PARA_0021B:         para_0021b();        break;
      case PARA_0021C:         para_0021c();        break;
      case PARA_0021D:         para_0021d();        break;
+     case PARA_0021E:         para_0021e();        break;
     }
 #ifdef OCTOPUS_STIM_COMEDI
     comedi_data_write(daqcard,OCTOPUS_COMEDI_AO_SUBDEV,0,0,AREF_GROUND,DACZERO+dac_0); /* L */
@@ -276,6 +278,7 @@ static void init_test_para(int tp) {
   case PARA_0021B:         para_0021b_init();        break;
   case PARA_0021C:         para_0021c_init();        break;
   case PARA_0021D:         para_0021d_init();        break;
+  case PARA_0021E:         para_0021e_init();        break;
  }
 }
 
@@ -295,6 +298,7 @@ static void start_test_para(int tp) {
   case PARA_0021B:         para_0021b_start();        break;
   case PARA_0021C:         para_0021c_start();        break;
   case PARA_0021D:         para_0021d_start();        break;
+  case PARA_0021E:         para_0021e_start();        break;
  }
 }
 
@@ -314,6 +318,7 @@ static void stop_test_para(int tp) {
   case PARA_0021B:         para_0021b_stop();        break;
   case PARA_0021C:         para_0021c_stop();        break;
   case PARA_0021D:         para_0021d_stop();        break;
+  case PARA_0021E:         para_0021e_stop();        break;
  }
 }
 
@@ -332,6 +337,7 @@ static void pause_test_para(int tp) {
   case PARA_0021B:         para_0021b_pause();        break;
   case PARA_0021C:         para_0021c_pause();        break;
   case PARA_0021D:         para_0021d_pause();        break;
+  case PARA_0021E:         para_0021e_pause();        break;
  }
 }
 
@@ -351,6 +357,7 @@ static void resume_test_para(int tp) {
   case PARA_0021B:         para_0021b_resume();        break;
   case PARA_0021C:         para_0021c_resume();        break;
   case PARA_0021D:         para_0021d_resume();        break;
+  case PARA_0021E:         para_0021e_resume();        break;
  }
 }
 

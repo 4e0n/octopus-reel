@@ -74,7 +74,7 @@ static int para_0021e_trigger,para_0021e_soa,
 	   para_0021e_adapter_region_lag,para_0021e_adapter_region_lead,
 	   para_0021e_probe_region_center,
 	   para_0021e_probe_region_lag,para_0021e_probe_region_lead,
-	   para_0021e_stim_instant,
+	   para_0021e_stim_instant,para_0021e_double_adapter,
 
 	   para_0021e_adapter_type,para_0021e_probe_type,
 	   para_0021e_ap_offset,para_0021e_ap_offset_da,
@@ -89,7 +89,7 @@ static void para_0021e_init(void) {
  current_pattern_offset=0;
 
  para_0021e_soa=(4.00001)*AUDIO_RATE; /* 4.0 seconds */
- para_0021e_ap_offset=(0.200001)*AUDIO_RATE; /* DISCRETE 0.2 */
+ para_0021e_ap_offset=(0.400001)*AUDIO_RATE; /* DISCRETE 0.2 */
  para_0021e_ap_offset_da=(0.400001)*AUDIO_RATE; /* DISCRETE 0.4 */
 #ifdef PARA_0021E_CONT_ADAPT
  para_0021e_ap_offset=(1.000001)*AUDIO_RATE; /* CONTINUOUS */
