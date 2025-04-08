@@ -178,6 +178,7 @@ class StimClient : public QMainWindow {
    para0021bAction=new QAction("ITD Para 0021b (Single) Adapter-Probe",this);
    para0021cAction=new QAction("ITD Para 0021c (Quadruple) Adapter-Probe",this);
    para0021dAction=new QAction("ITD Para 0021d AP-equal-eccentricity (150ms-250ms AP-randomized-gap)",this);
+   para0021eAction=new QAction("ITD Para 0021e",this);
    paraLoadPatAction->setStatusTip("Load precalculated STIMulus pattern..");
    paraClickAction->setStatusTip("Click of 1ms duration. SOA=1000ms");
    paraSquareBurstAction->setStatusTip("SquareWave burst of 50ms duration, with 500us period, and SOA=1000ms");
@@ -198,6 +199,7 @@ class StimClient : public QMainWindow {
    para0021bAction->setStatusTip("ITD Para 0021b Adapter-Probe");
    para0021cAction->setStatusTip("ITD Para 0021c (Quadruple) Adapter-Probe");
    para0021dAction->setStatusTip("ITD Para 0021d AP-equal-eccentricity (150ms-250ms AP-randomized-gap)");
+   para0021eAction->setStatusTip("ITD Para 0021e");
    connect(paraLoadPatAction,SIGNAL(triggered()),this,SLOT(slotParadigmLoadPattern()));
    connect(paraClickAction,SIGNAL(triggered()),this,SLOT(slotParadigmClick()));
    connect(paraSquareBurstAction,SIGNAL(triggered()),this,SLOT(slotParadigmSquareBurst()));
@@ -218,6 +220,7 @@ class StimClient : public QMainWindow {
    connect(para0021bAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021b()));
    connect(para0021cAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021c()));
    connect(para0021dAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021d()));
+   connect(para0021eAction,SIGNAL(triggered()),this,SLOT(slotParadigm0021e()));
    paraMenu->addAction(paraLoadPatAction); paraMenu->addSeparator();
    paraMenu->addAction(paraClickAction);
    paraMenu->addAction(paraSquareBurstAction); paraMenu->addSeparator();
@@ -236,8 +239,9 @@ class StimClient : public QMainWindow {
    paraMenu->addAction(para0021a2Action);
    paraMenu->addAction(para0021a3Action);
    paraMenu->addAction(para0021bAction);
-   paraMenu->addAction(para0021cAction); paraMenu->addSeparator();
-   paraMenu->addAction(para0021dAction);
+   paraMenu->addAction(para0021cAction);
+   paraMenu->addAction(para0021dAction); paraMenu->addSeparator();
+   paraMenu->addAction(para0021eAction);
 
    // *** BUTTONS AT THE TOP ***
    lightsOnButton=new QPushButton("Lights On",this);
@@ -477,6 +481,7 @@ class StimClient : public QMainWindow {
   void slotParadigm0021b() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021B,0,0); }
   void slotParadigm0021c() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021C,0,0); }
   void slotParadigm0021d() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021D,0,0); }
+  void slotParadigm0021e() { stimSendCommand(CS_STIM_SET_PARADIGM,PARA_0021E,0,0); }
 
  private:
   QApplication *application;
@@ -498,7 +503,7 @@ class StimClient : public QMainWindow {
 	  *paraITDLinTestAction,*paraITDLinTest2Action,
 	  *paraITDTompresAction,*paraITDPipCTrainAction,*paraITDPipRandAction,
 	  *para0021aAction,*para0021a1Action,*para0021a2Action,*para0021a3Action,
-	  *para0021bAction,*para0021cAction,*para0021dAction;
+	  *para0021bAction,*para0021cAction,*para0021dAction,*para0021eAction;
 
   QPushButton *lightsOnButton,*lightsDimmButton,*lightsOffButton,
 	      *startStimulationButton,*stopStimulationButton,
