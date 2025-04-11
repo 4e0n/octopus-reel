@@ -51,7 +51,10 @@ class CMLevelFrame : public QFrame {
 
   QBrush cmBrush(int elec) {
    //return palette[(4*elec)%256];
-   return palette[(*chnTopo)[elec].cmLevel[ampNo]];
+   unsigned char col;
+   float lev=(*chnTopo)[elec].cmLevel[ampNo];
+   if (lev>255.0) col=255; else col=(unsigned char)(lev);
+   return palette[col];
   }
 
   void updateBuffer() {
@@ -106,7 +109,12 @@ class CMLevelFrame : public QFrame {
   }
 
  public slots:
-  void slotCMLevelsReady() { repaint(); }
+  void slotCMLevelsReady() { repaint();
+   float cMin,cMax; std::vector<float> cm;
+   for (int i=0;i<chnTopo->size();i++) cm.push_back((*chnTopo)[i].cmLevel[ampNo]);
+   cMin=*std::min_element(cm.begin(),cm.end()); cMax=*std::max_element(cm.begin(),cm.end());
+   qDebug() << "Amp" << ampNo << "Chn (min,max):" << cMin << "," << cMax;
+  }
 
  protected:
   virtual void paintEvent(QPaintEvent*) {

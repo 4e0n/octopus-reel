@@ -31,8 +31,9 @@ typedef struct _sample {
  float data[PHYS_CHN_COUNT];
  float dataF[PHYS_CHN_COUNT];
  float curCM[PHYS_CHN_COUNT];
- float sum0[PHYS_CHN_COUNT]; // avg of peri convN samples
- float sum1[PHYS_CHN_COUNT]; // avg of previous convL samples
+ float sum0[PHYS_CHN_COUNT]; // peri convN samples
+ float com0[PHYS_CHN_COUNT]; // peri convN 50Hz common mode noise square
+ float sum1[PHYS_CHN_COUNT]; // previous convL samples
  unsigned int trigger;
  unsigned int offset;
 } sample;

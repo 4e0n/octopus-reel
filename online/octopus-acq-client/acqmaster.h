@@ -627,15 +627,14 @@ class AcqMaster : QObject {
     for (int dOffset=0;dOffset<chnInfo.probe_eeg_msecs;dOffset++) {
      // Check Sample Offset Delta for all amps
      for (int i=0;i<ampCount;i++) {
-      offsetC=(unsigned int)(acqCurData[dOffset].amp[i].offset); offsetP=ampChkP[i];
+      offsetC=(unsigned int)(acqCurData[dOffset].amp[i].offset); offsetP=ampChkP[i]; ampChkP[i]=offsetC;
       if ((offsetC-offsetP)!=1)
        qDebug() << "Offset leak!!! Amp " << i << " OffsetC=" << offsetC << " OffsetP=" << offsetP;
-      ampChkP[i]=(unsigned int)(acqCurData[dOffset].amp[i].offset);
      }
 
      if (!(globalCounter%10000)) {
       //sort ampChkP and print
-      qDebug() << "Interamp sample count Delta= " << ampChkP[1]-ampChkP[0];
+      qDebug() << "Interamp actual sample count Delta span= " << abs((int)ampChkP[1]-(int)ampChkP[0]);
      }
      globalCounter++;
 

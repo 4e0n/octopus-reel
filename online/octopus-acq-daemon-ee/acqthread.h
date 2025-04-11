@@ -164,7 +164,8 @@ class AcqThread : public QThread {
    extTrig=&(acqD->extTrig);
    tcpS.trigger=0;
    convN=chnInfo->sampleRate/50; convN2=convN/2;
-   convL=4*chnInfo->sampleRate; convL2=convN/2; // 4 seconds MA for high pass
+   convL=4*chnInfo->sampleRate; // 4 seconds MA for high pass
+   cmL=chnInfo->sampleRate/2; // 0.5s
 
    filterIIR_1_40=false;
 
@@ -260,7 +261,7 @@ class AcqThread : public QThread {
    }
   }
 
-  void fetchEegData0() { float sum0,sum1;
+  void fetchEegData0() { float sum0,sum1,data0;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
 #else
@@ -289,15 +290,20 @@ class AcqThread : public QThread {
      for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
       sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
       ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum0[j]=sum0;
+      data0=fabs(ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].data[j]-sum0/convN);
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].com0[j]=data0*data0;
 
-      sum1=0.; for (int m=k-convL;m<k;m++)      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      // Hi-pass
+      sum1=0.; for (int m=k-convL;m<k;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
       ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum1[j]=sum1;
 
-      // Current CM value
-      float dummy=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].data[j]-sum0/convN;
-      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=dummy*dummy;
-
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
+     }
+     for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+      // Current CM value
+      sum1=0.; for (int m=k-cmL;m<k;m++) sum1+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].com0[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].curCM[j]=sum1;
+      //if (i==0 && j==0) qDebug() << sum1/cmL;
      }
     }
     ee[i].cBufIdx+=ee[i].smpCount;
@@ -308,7 +314,7 @@ class AcqThread : public QThread {
    qDebug() << "octopus_acqd: <AmpSync> SYNC sent..";
   }
 
-  void fetchEegData() { float sum0,sum1;
+  void fetchEegData() { float sum0,sum1,data0;
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
 #else
@@ -344,16 +350,35 @@ class AcqThread : public QThread {
     for (unsigned int j=0;j<chnCount-2;j++) {
      for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
       sum0=0.; for (int m=-convN2;m<convN2;m++) sum0+=ee[i].cBuf[(ee[i].cBufIdx+k+m)%cBufSz].data[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum0[j]=sum0;
+      data0=fabs(ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].data[j]-sum0/convN);
+      ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].com0[j]=data0*data0;
+
+      // Current CM value
+      //sum0b=ee[i].cBuf[(ee[i].cBufIdx+k)%cBufSz].sum0b[j];
+      //data0=ee[i].cBuf[(ee[i].cBufIdx+k-cmL-1)%cBufSz].data[j]-ee[i].cBuf[(ee[i].cBufIdx+k-cmL-1)%cBufSz].sum0[j]/convN;
+      //sum0b-=data0*data0;
+      //data0=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j]-sum0/convN;
+      //sum0b+=data0*data0;
+      //ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum0b[j]=sum0b;
+      //if (i==0 && j==0) qDebug() << sum0b;
+      //ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=sqrt(sum0b)/cmL;
+
+      // Hi-pass
       sum1=ee[i].cBuf[(ee[i].cBufIdx+k+convN2-1)%cBufSz].sum1[j];
       sum1-=ee[i].cBuf[(ee[i].cBufIdx+k-convL-1)%cBufSz].data[j];
       sum1+=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].data[j];
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].sum1[j]=sum1;
 
-      // Current CM value
-      float dummy=ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].data[j]-sum0/convN;
-      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=dummy*dummy;
-
       ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].dataF[j]=sum0/convN-sum1/convL;
+     }
+     for (int k=-convN2;k<(int)(ee[i].smpCount)-convN2;k++) {
+      // Current CM value
+      sum1=ee[i].cBuf[(ee[i].cBufIdx+k+convN2-1)%cBufSz].curCM[j];
+      sum1-=ee[i].cBuf[(ee[i].cBufIdx+k-cmL-1)%cBufSz].com0[j];
+      sum1+=ee[i].cBuf[(ee[i].cBufIdx+k-1)%cBufSz].com0[j];
+      ee[i].cBuf[(ee[i].cBufIdx+k+convN2)%cBufSz].curCM[j]=sum1;
+      //if (i==0 && j==0) qDebug() << sum1/cmL;
      }
     }
     if (filterIIR_1_40) { // Cascade to MA50Hz
@@ -473,8 +498,8 @@ class AcqThread : public QThread {
        // Update cmLevels
        if ((counter0%(chnInfo->probe_cm_msecs/chnInfo->probe_eeg_msecs)==0)) {
         for (int i=0;i<acqD->chnTopo.size();i++) {
-         (acqD->chnTopo)[i].cmLevel[0]=tcpS.amp[0].curCM[i];
-         (acqD->chnTopo)[i].cmLevel[1]=tcpS.amp[1].curCM[i];
+         (acqD->chnTopo)[i].cmLevel[0]=1.0*1e5*(tcpS.amp[0].curCM[i])/cmL;
+         (acqD->chnTopo)[i].cmLevel[1]=1.0*1e5*(tcpS.amp[1].curCM[i])/cmL;
         }
        }
        counter0++;
@@ -550,7 +575,7 @@ class AcqThread : public QThread {
   std::vector<eex> ee; chninfo *chnInfo; unsigned int cBufSz,smpCount,chnCount;
   std::vector<unsigned int> cBufIdxList;
 
-  int convN2,convN,convL2,convL; quint64 cBufPivot,cBufPivotP;
+  int convN,convN2,convL,cmL; quint64 cBufPivot,cBufPivotP;
 
   QMutex *tcpMutex,*guiMutex; bool *daemonRunning,*eegImpedanceMode; unsigned int *extTrig;
 
