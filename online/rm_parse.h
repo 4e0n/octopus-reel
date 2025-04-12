@@ -62,25 +62,25 @@ void parseConfig(QStringList cfgLines) {
  // NET
  if (netSection.size()>0) {
   for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
-   if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
-    if (opts2.size()==3) { stimHost=opts2[0].trimmed();
-     QHostInfo qhiStim=QHostInfo::fromName(stimHost);
-     stimHost=qhiStim.addresses().first().toString();
-     qDebug() << "StimHost:" << stimHost;
+   //if (opts[0].trimmed()=="STIM") { opts2=opts[1].split(",");
+   // if (opts2.size()==3) { stimHost=opts2[0].trimmed();
+   //  QHostInfo qhiStim=QHostInfo::fromName(stimHost);
+   //  stimHost=qhiStim.addresses().first().toString();
+   //  qDebug() << "StimHost:" << stimHost;
 
-     stimCommPort=opts2[1].toInt(); stimDataPort=opts2[2].toInt();
+   //  stimCommPort=opts2[1].toInt(); stimDataPort=opts2[2].toInt();
 
      // Simple port validation..
-     if ((!(stimCommPort >= 1024 && stimCommPort <= 65535)) ||
-         (!(stimDataPort >= 1024 && stimDataPort <= 65535))) {
-      qDebug(".cfg: Error in STIM IP and/or port settings!");
-      initSuccess=false; break;
-     }
-    } else {
-     qDebug(".cfg: Parse error in STIM IP (v4) Address!");
-     initSuccess=false; break;
-    }
-   } else if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
+   //  if ((!(stimCommPort >= 1024 && stimCommPort <= 65535)) ||
+   //      (!(stimDataPort >= 1024 && stimDataPort <= 65535))) {
+   //   qDebug(".cfg: Error in STIM IP and/or port settings!");
+   //   initSuccess=false; break;
+   //  }
+   // } else {
+   //  qDebug(".cfg: Parse error in STIM IP (v4) Address!");
+   //  initSuccess=false; break;
+   // }
+   if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
     if (opts2.size()==3) { acqHost=opts2[0].trimmed();
      QHostInfo qhiAcq=QHostInfo::fromName(acqHost);
      acqHost=qhiAcq.addresses().first().toString();
@@ -101,7 +101,7 @@ void parseConfig(QStringList cfgLines) {
    }
   }
  } else {
-  stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
+  //stimHost="127.0.0.1"; stimCommPort=65000; stimDataPort=65001;
   acqHost="127.0.0.1";  acqCommPort=65002;  acqDataPort=65003;
  } if (!initSuccess) return;
 
@@ -245,11 +245,11 @@ void parseConfig(QStringList cfgLines) {
      opts2[7]=opts2[7].trimmed(); opts2[8]=opts2[8].trimmed();
      opts2[9]=opts2[9].trimmed(); opts2[10]=opts2[10].trimmed();
      if ((!(opts2[0].toInt()>0 && opts2[0].toInt()<=8)) || // Amp#
-	 (!(opts2[1].toInt()>0 && opts2[1].toInt()<=chnInfo.physChnCount)) || // Channel#
+	 (!(opts2[1].toInt()>0 && opts2[1].toInt()<=(int)chnInfo.physChnCount)) || // Channel#
          (!(opts2[2].size()>0)) || // Channel name must be at least 1 char..
 
          (!(opts2[3].toInt()>=0 && opts2[3].toInt()<1000))   || // Rej
-         (!(opts2[4].toInt()>=0 && opts2[4].toInt()<=chnInfo.physChnCount)) || // RejRef
+         (!(opts2[4].toInt()>=0 && opts2[4].toInt()<=(int)chnInfo.physChnCount)) || // RejRef
 
          (!(opts2[5]=="T" || opts2[5]=="t" ||
           opts2[5]=="F" || opts2[5]=="f")) ||
@@ -282,19 +282,13 @@ void parseConfig(QStringList cfgLines) {
      qDebug(".cfg: Parse error in CHN|APPEND parameters!");
      initSuccess=false; break;
     }
-   } else if (opts[0].trimmed()=="CALIB") { opts2=opts[1].split(",");
-    if (opts2.size()==1) loadCalib_OacFile(opts2[0].trimmed());
-    else {
-     qDebug(".cfg: Parse error or file not found in CHN|CALIB parameters!");
-     qDebug(" Correction disabled/recalibration suggested!..");
-    }
    }
   }
  } else {
   // Default channel settings
   QString chnString,noString;
   for (int i=0;i<2;i++) {
-   for (int j=0;j<chnInfo.physChnCount;j++) {
+   for (unsigned int j=0;j<chnInfo.physChnCount;j++) {
     chnString="Chn#"+noString.setNum(j);
     dummyChn=new Channel(j+1,chnString,0,0,"t","t","t","t",0.,0.);
     dummyChn->pastData.resize(cp.cntPastSize);

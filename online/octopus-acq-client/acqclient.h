@@ -103,8 +103,7 @@ class AcqClient : public QMainWindow {
 
 //   acqM->regRepaintHeadWindow(this);
 
-   paramRLabel=new QLabel("Param.Radius ("+
-                          dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):",cntWidget);
+   paramRLabel=new QLabel("Param.Radius ("+dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):",cntWidget);
    paramRLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+34,190,20);
 
    QSlider *paramRSlider=new QSlider(Qt::Horizontal,cntWidget);
@@ -114,8 +113,7 @@ class AcqClient : public QMainWindow {
    paramRSlider->setPageStep(10); // step in cms..
    paramRSlider->setSliderPosition(acqM->scalpParamR[ampNo]*10);
    paramRSlider->setEnabled(true);
-   connect(paramRSlider,SIGNAL(valueChanged(int)),
-           this,SLOT(slotSetScalpParamR(int)));
+   connect(paramRSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetScalpParamR(int)));
 
    gizmoRealCB=new QCheckBox("Gizmos",cntWidget); gizmoRealCB->setChecked(true);
    gizmoRealCB->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+70,100,20);
@@ -129,8 +127,7 @@ class AcqClient : public QMainWindow {
    electrodeList=new QListWidget(cntWidget);
    electrodeList->setGeometry(acqM->acqFrameW+acqM->glFrameW/2+15,acqM->glFrameH+100,acqM->glFrameW/2-10,100);
 
-   notchLabel=new QLabel("Notch Level (RMS) ("+
-                    dummyString.setNum(acqM->notchThreshold)+" uV):",cntWidget);
+   notchLabel=new QLabel("Notch Level (RMS) ("+dummyString.setNum(acqM->notchThreshold)+" uV):",cntWidget);
    notchLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+210,190,20);
    QSlider *notchSlider=new QSlider(Qt::Horizontal,cntWidget);
    notchSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+212,acqM->glFrameW-210,20);
@@ -139,15 +136,11 @@ class AcqClient : public QMainWindow {
    notchSlider->setPageStep(10); // step in uVs..
    notchSlider->setSliderPosition((int)(acqM->notchThreshold*1.));
    notchSlider->setEnabled(true);
-   connect(notchSlider,SIGNAL(valueChanged(int)),
-           this,SLOT(slotSetNotchThr(int)));
+   connect(notchSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetNotchThr(int)));
 
-   connect(gizmoList,SIGNAL(currentRowChanged(int)),
-           this,SLOT(slotSelectGizmo(int)));
-   connect(electrodeList,SIGNAL(currentRowChanged(int)),
-           this,SLOT(slotSelectElectrode(int)));
-   connect(electrodeList,SIGNAL(itemDoubleClicked(QListWidgetItem *)),
-           this,SLOT(slotViewElectrode(QListWidgetItem *)));
+   connect(gizmoList,SIGNAL(currentRowChanged(int)),this,SLOT(slotSelectGizmo(int)));
+   connect(electrodeList,SIGNAL(currentRowChanged(int)),this,SLOT(slotSelectElectrode(int)));
+   connect(electrodeList,SIGNAL(itemDoubleClicked(QListWidgetItem *)),this,SLOT(slotViewElectrode(QListWidgetItem *)));
 
    for (int i=0;i<acqM->gizmo.size();i++) gizmoList->addItem(acqM->gizmo[i]->name);
 
@@ -155,27 +148,24 @@ class AcqClient : public QMainWindow {
    legendLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+240,200,20);
    legendFrame=new LegendFrame(cntWidget,acqM);
    legendFrame->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+266,acqM->glFrameW-4,80);
-   timePtLabel=new QLabel("Src. Time Point ("+dummyString.setNum(
-                          acqM->cp.avgBwd+acqM->slTimePt*1000/acqM->sampleRate
-                           )+" ms):",cntWidget);
-   timePtLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+354,200,20);
-   QSlider *timePtSlider=new QSlider(Qt::Horizontal,cntWidget);
-   timePtSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+356,acqM->glFrameW-210,20);
-   timePtSlider->setRange(0,acqM->cp.avgCount-1);
-   timePtSlider->setSingleStep(1);
-   timePtSlider->setPageStep(1);
-   timePtSlider->setValue(acqM->slTimePt);
-   timePtSlider->setEnabled(true);
-   connect(timePtSlider,SIGNAL(valueChanged(int)),
-           this,SLOT(slotSetTimePt(int)));
+   //timePtLabel=new QLabel("Src. Time Point ("+
+   //                       dummyString.setNum(acqM->cp.avgBwd+acqM->slTimePt*1000/acqM->sampleRate)+
+   //                       " ms):",cntWidget);
+   //timePtLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+354,200,20);
+   //QSlider *timePtSlider=new QSlider(Qt::Horizontal,cntWidget);
+   //timePtSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+356,acqM->glFrameW-210,20);
+   //timePtSlider->setRange(0,acqM->cp.avgCount-1);
+   //timePtSlider->setSingleStep(1);
+   //timePtSlider->setPageStep(1);
+   //timePtSlider->setValue(acqM->slTimePt);
+   //timePtSlider->setEnabled(true);
+   //connect(timePtSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetTimePt(int)));
 
    clrAvgsButton=new QPushButton("CLR",cntWidget);
    clrAvgsButton->setGeometry(acqM->acqFrameW+acqM->glFrameW-50,acqM->glFrameH+240,40,20);
    connect(clrAvgsButton,SIGNAL(clicked()),(QObject *)acqM,SLOT(slotClrAvgs()));
 
-   //if (gizmoList->count()>0) {
-   // gizmoList->setCurrentRow(0); slotSelectGizmo(0);
-   //}
+   //if (gizmoList->count()>0) { gizmoList->setCurrentRow(0); slotSelectGizmo(0); }
  
    // *** MENUBAR ***
 
@@ -191,17 +181,13 @@ class AcqClient : public QMainWindow {
    saveRealAction=new QAction("&Save Real...",this);
    saveAvgsAction=new QAction("&Save All Averages",this);
 
-   loadRealAction->setStatusTip(
-    "Load previously saved electrode coordinates..");
-   saveRealAction->setStatusTip(
-    "Save measured/real electrode coordinates..");
-   saveAvgsAction->setStatusTip(
-    "Save current averages to separate files per event..");
+   loadRealAction->setStatusTip("Load previously saved electrode coordinates..");
+   saveRealAction->setStatusTip("Save measured/real electrode coordinates..");
+   saveAvgsAction->setStatusTip("Save current averages to separate files per event..");
 
    connect(loadRealAction,SIGNAL(triggered()),this,SLOT(slotLoadReal()));
    connect(saveRealAction,SIGNAL(triggered()),this,SLOT(slotSaveReal()));
-   connect(saveAvgsAction,SIGNAL(triggered()),
-           (QObject *)acqM,SLOT(slotExportAvgs()));
+   connect(saveAvgsAction,SIGNAL(triggered()),(QObject *)acqM,SLOT(slotExportAvgs()));
 
    modelMenu->addAction(loadRealAction);
    modelMenu->addAction(saveRealAction);
@@ -219,27 +205,18 @@ class AcqClient : public QMainWindow {
    toggleScalpAction=new QAction("MRI/Real Scalp Model",this);
    toggleSkullAction=new QAction("MRI/Real Skull Model",this);
    toggleBrainAction=new QAction("MRI/Real Brain Model",this);
-   toggleSourceAction=new QAction("Source Model",this);
+   //toggleSourceAction=new QAction("Source Model",this);
 
    toggleFrameAction->setStatusTip("Show/hide cartesian XYZ frame.");
    toggleGridAction->setStatusTip("Show/hide cartesian grid/rulers.");
    toggleDigAction->setStatusTip("Show/hide digitizer output.");
-   toggleParamAction->setStatusTip(
-    "Show/hide parametric/spherical coords/template.");
-   toggleRealAction->setStatusTip(
-    "Show/hide measured/real coords.");
-   toggleGizmoAction->setStatusTip(
-    "Show/hide loaded gizmo/hint list.");
-   toggleAvgsAction->setStatusTip(
-    "Show/hide Event Related Potentials on electrodes.");
-   toggleScalpAction->setStatusTip(
-    "Show/hide realistic scalp segmented from MRI data.");
-   toggleSkullAction->setStatusTip(
-    "Show/hide realistic skull segmented from MRI data.");
-   toggleBrainAction->setStatusTip(
-    "Show/hide realistic brain segmented from MRI data.");
-   toggleBrainAction->setStatusTip(
-    "Show/hide source model.");
+   toggleParamAction->setStatusTip("Show/hide parametric/spherical coords/template.");
+   toggleRealAction->setStatusTip("Show/hide measured/real coords.");
+   toggleGizmoAction->setStatusTip("Show/hide loaded gizmo/hint list.");
+   toggleAvgsAction->setStatusTip("Show/hide Event Related Potentials on electrodes.");
+   toggleScalpAction->setStatusTip("Show/hide realistic scalp segmented from MRI data.");
+   toggleSkullAction->setStatusTip("Show/hide realistic skull segmented from MRI data.");
+   toggleBrainAction->setStatusTip("Show/hide realistic brain segmented from MRI data.");
 
    connect(toggleFrameAction,SIGNAL(triggered()),this,SLOT(slotToggleFrame()));
    connect(toggleGridAction,SIGNAL(triggered()),this,SLOT(slotToggleGrid()));
@@ -251,24 +228,19 @@ class AcqClient : public QMainWindow {
    connect(toggleScalpAction,SIGNAL(triggered()),this,SLOT(slotToggleScalp()));
    connect(toggleSkullAction,SIGNAL(triggered()),this,SLOT(slotToggleSkull()));
    connect(toggleBrainAction,SIGNAL(triggered()),this,SLOT(slotToggleBrain()));
-   connect(toggleSourceAction,SIGNAL(triggered()),
-           this,SLOT(slotToggleSource()));
+   //connect(toggleSourceAction,SIGNAL(triggered()),this,SLOT(slotToggleSource()));
 
    viewMenu->addAction(toggleFrameAction);
    viewMenu->addAction(toggleGridAction);
-   viewMenu->addAction(toggleDigAction);
-   viewMenu->addSeparator();
+   viewMenu->addAction(toggleDigAction); viewMenu->addSeparator();
    viewMenu->addAction(toggleParamAction);
-   viewMenu->addAction(toggleRealAction);
-   viewMenu->addSeparator();
+   viewMenu->addAction(toggleRealAction); viewMenu->addSeparator();
    viewMenu->addAction(toggleGizmoAction);
-   viewMenu->addAction(toggleAvgsAction);
-   viewMenu->addSeparator();
+   viewMenu->addAction(toggleAvgsAction); viewMenu->addSeparator();
    viewMenu->addAction(toggleScalpAction);
    viewMenu->addAction(toggleSkullAction);
-   viewMenu->addAction(toggleBrainAction);
-   viewMenu->addSeparator();
-   viewMenu->addAction(toggleSourceAction);
+   viewMenu->addAction(toggleBrainAction); viewMenu->addSeparator();
+   //viewMenu->addAction(toggleSourceAction);
 
    setWindowTitle("Octopus Hyper EEG/ERP Amp #"+QString::number(ampNo+1));
   }
@@ -290,22 +262,18 @@ class AcqClient : public QMainWindow {
    }
   }
 
-  void slotRepaint() {
-   electrodeList->setCurrentRow(acqM->curElecInSeq[ampNo]); legendFrame->repaint();
-  }
+  void slotRepaint() { electrodeList->setCurrentRow(acqM->curElecInSeq[ampNo]); legendFrame->repaint(); }
 
   void slotLoadReal() {
-   QString fileName=QFileDialog::getOpenFileName(this,"Load Real Coordset File",
-                                 ".","Object Files (*.orc)");
+   QString fileName=QFileDialog::getOpenFileName(this,"Load Real Coordset File",".","Object Files (*.orc)");
    if (!fileName.isEmpty()) { acqM->loadReal(fileName); }
-   else { qDebug("An error has been occured while loading measured coords!"); }
+   else { qDebug() << "octopus_acq_client: <LoadReal> An error has been occured while loading measured coords!"; }
   }
 
   void slotSaveReal() {
-   QString fileName=QFileDialog::getSaveFileName(this,"Save Real Coordset File",
-                                 ".","Object Files (*.orc)");
+   QString fileName=QFileDialog::getSaveFileName(this,"Save Real Coordset File",".","Object Files (*.orc)");
    if (!fileName.isEmpty()) { acqM->saveReal(fileName+".orc"); }
-   else { qDebug("An error has been occured while saving measured coords!"); }
+   else { qDebug() << "octopus_acq_client: <SaveReal> An error has been occured while saving measured coords!"; }
   }
 
   void slotToggleFrame()  { acqM->hwFrameV[ampNo]  = (acqM->hwFrameV[ampNo])  ? false:true; }
@@ -318,29 +286,27 @@ class AcqClient : public QMainWindow {
   void slotToggleScalp()  { acqM->hwScalpV[ampNo]  = (acqM->hwScalpV)[ampNo]  ? false:true; }
   void slotToggleSkull()  { acqM->hwSkullV[ampNo]  = (acqM->hwSkullV)[ampNo]  ? false:true; }
   void slotToggleBrain()  { acqM->hwBrainV[ampNo]  = (acqM->hwBrainV)[ampNo]  ? false:true; }
-  void slotToggleSource() { acqM->hwSourceV[ampNo] = (acqM->hwSourceV)[ampNo] ? false:true; }
+  //void slotToggleSource() { acqM->hwSourceV[ampNo] = (acqM->hwSourceV)[ampNo] ? false:true; }
 
   void slotSetScalpParamR(int x) {
    acqM->scalpParamR[ampNo]=(float)(x)/10.;
-   paramRLabel->setText("Parametric Radius ("+
-                        dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):");
+   paramRLabel->setText("Parametric Radius ("+dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):");
    headGLWidget->slotRepaintGL(2+8+16); // update real+gizmo+avgs
   }
 
   void slotSetNotchThr(int x) {
    acqM->notchThreshold=(float)(x)/10.; // .1 uV Resolution
-   notchLabel->setText("Notch Level (RMS) ("+
-                        dummyString.setNum(acqM->notchThreshold)+" uV):");
+   notchLabel->setText("Notch Level (RMS) ("+dummyString.setNum(acqM->notchThreshold)+" uV):");
   }
 
-  void slotSetTimePt(int x) { acqM->slTimePt=(float)(x);
-   timePtLabel->setText("Localization Time Point ("+dummyString.setNum(
-                          acqM->cp.avgBwd+x*1000/acqM->sampleRate
-                           )+" ms):");
-   headGLWidget->slotRepaintGL(16); // update avgs
-  }
+  //void slotSetTimePt(int x) { acqM->slTimePt=(float)(x);
+  // timePtLabel->setText("Localization Time Point ("+
+  //                      dummyString.setNum(acqM->cp.avgBwd+x*1000/acqM->sampleRate)+
+  //                      " ms):");
+  // headGLWidget->slotRepaintGL(16); // update avgs
+  //}
 
-  void slotSelectGizmo(int k) { int idx; Gizmo *g=acqM->gizmo[k];
+  void slotSelectGizmo(int k) { int idx=0; Gizmo *g=acqM->gizmo[k];
    acqM->currentGizmo[ampNo]=k; electrodeList->clear();
    for (int i=0;i<g->seq.size();i++) {
     for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
@@ -363,7 +329,7 @@ class AcqClient : public QMainWindow {
    headGLWidget->slotRepaintGL(2+16); // update real+avgs
   }
 
-  void slotViewElectrode(QListWidgetItem *item) { int idx,pChn;
+  void slotViewElectrode(QListWidgetItem *item) { int idx=0; int pChn;
    QString s=item->text(); QStringList l=s.split(" "); pChn=l[0].toInt()-1;
    for (int i=0;i<acqM->acqChannels[ampNo].size();i++)
     if (acqM->acqChannels[ampNo][i]->physChn==pChn) { idx=i; break; }
@@ -416,14 +382,13 @@ class AcqClient : public QMainWindow {
 
  private:
   AcqMaster *acqM; CntFrame *cntFrame; HeadGLWidget *headGLWidget; unsigned int ampNo;
-  //QWidget *parent;
   QMenuBar *menuBar;
   QAction *loadRealAction,*saveRealAction,*saveAvgsAction,
           *toggleFrameAction,*toggleGridAction,*toggleDigAction,
           *toggleParamAction,*toggleRealAction,
           *toggleGizmoAction,*toggleAvgsAction,
-          *toggleScalpAction,*toggleSkullAction,*toggleBrainAction,
-          *toggleSourceAction;
+          *toggleScalpAction,*toggleSkullAction,*toggleBrainAction;
+          //*toggleSourceAction;
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QButtonGroup *cntAmpBG;
   QVector<QPushButton*> cntAmpButtons;
@@ -434,7 +399,6 @@ class AcqClient : public QMainWindow {
 
   QButtonGroup *avgAmpBG; QVector<QPushButton*> avgAmpButtons;
   QPushButton *clrAvgsButton;
-
 };
 
 #endif

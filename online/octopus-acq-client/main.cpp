@@ -49,14 +49,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "acqcontrol.h"
 #include "acqclient.h"
 
-int main(int argc,char** argv) {
- AcqMaster *acqM; AcqControl *acqControl; AcqClient *acqClient;
- QApplication app(argc,argv); acqM=new AcqMaster(&app);
- if (!acqM->initSuccess) {
-  qDebug("Octopus-Recorder: Initialization failed.. exiting.."); return -1;
- } else {
-  acqControl=new AcqControl(acqM); acqControl->show();
-  for (unsigned int i=0;i<acqM->getAmpCount();i++) { acqClient=new AcqClient(acqM,i); acqClient->show(); }
-  return app.exec();
- }
+int main(int argc,char** argv) { AcqClient *acqClient;
+ QApplication app(argc,argv); AcqMaster *acqM=new AcqMaster(&app);
+ AcqControl *acqControl=new AcqControl(acqM); acqControl->show();
+ for (unsigned int i=0;i<acqM->getAmpCount();i++) { acqClient=new AcqClient(acqM,i); acqClient->show(); }
+ return app.exec();
 }

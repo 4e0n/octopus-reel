@@ -48,7 +48,7 @@ typedef struct _eex {
  std::vector<float> imps;
  quint64 cBufIdx; //,cBufIdxP;
  std::vector<sample> cBuf;
- std::vector<sample> cBufF;
+ //std::vector<sample> cBufF;
  std::vector<std::array<double,IIR_HIST_SIZE> > fX,fY; // IIR filter History
 } eex;
 

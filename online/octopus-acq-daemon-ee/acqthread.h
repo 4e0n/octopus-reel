@@ -438,7 +438,8 @@ class AcqThread : public QThread {
     //e.chnList=e.amp->getChannelList(0xffffffffffffffff,0x0000000000000003);
     //e.chnList=e.amp->getChannelList(0x0000000000000000,0x0000000000000001);
     cBufSz=chnInfo->sampleRate*CBUF_SIZE_IN_SECS; e.cBufIdx=cBufSz/2; //+convN;
-    e.cBuf.resize(cBufSz); e.cBufF.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
+    //e.cBufF.resize(cBufSz);
+    e.cBuf.resize(cBufSz); e.imps.resize(chnInfo->physChnCount);
     e.fX.resize(chnInfo->physChnCount); for (unsigned int i=0;i<e.fX.size();i++) for (unsigned int j=0;j<e.fX[i].size();j++) e.fX[i][j]=0.;
     e.fY.resize(chnInfo->physChnCount); for (unsigned int i=0;i<e.fY.size();i++) for (unsigned int j=0;j<e.fY[i].size();j++) e.fY[i][j]=0.;
     ee.push_back(e);

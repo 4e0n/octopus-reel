@@ -24,6 +24,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef DIGITIZER_H
 #define DIGITIZER_H
 
+#include <QtDebug>
 #include <QThread>
 #include <QMutex>
 #include <QStringList>
@@ -78,9 +79,9 @@ class Digitizer : public QThread {
     // Init Digitizer
 //    digitizerSend(QString(25)); sleep(7); // Reset (Ctrl-Y) & Get Status..
     digitizerSend("S"); msleep(100); result=digitizerGetLine();
-    QStringList k=result.split(" ",QString::SkipEmptyParts);
+    QStringList k=result.split(" ",Qt::SkipEmptyParts);
     if (k.size()>=3) {
-     qDebug("Digitizer status:\n%s",result.toLatin1().data());
+     qDebug() << "octopus_acq_client: <Digitizer> Digitizer status:" << result; //.toLatin1().data();
      digitizerSend("u"); msleep(100);   // Metric system..
      digitizerSend("c"); msleep(100);      // Single coord mode..
      digitizerSend("e1,0\n"); msleep(100); // Mouse Mode..
@@ -103,7 +104,7 @@ class Digitizer : public QThread {
 
      start(QThread::LowestPriority); connected=true; msleep(200);
      digitizerSend("C"); // Metric system, single mode..
-    } else { qDebug("Error in digitizer status format!"); return; }
+    } else { qDebug() << "octopus_acq_client: <Digitizer> Error in digitizer status format!"; return; }
    }
   }
 
@@ -125,7 +126,7 @@ class Digitizer : public QThread {
 
   void digitizerReceive() { // Synchronous (canonical) receive
    QStringList c; QString receivedLine=digitizerGetLine();
-   c=receivedLine.split(" ",QString::SkipEmptyParts);
+   c=receivedLine.split(" ",Qt::SkipEmptyParts);
    if (c.size()==17) {
     r0[0]=c[ 2].toFloat(); r0[1]=c[ 3].toFloat(); r0[2]=c[ 4].toFloat();
     r1[0]=c[ 6].toFloat(); r1[1]=c[ 7].toFloat(); r1[2]=c[ 8].toFloat();
@@ -155,7 +156,7 @@ class Digitizer : public QThread {
     if (!averaging) {
      if (c[1].toInt()==1) {
       emit beep(1); averaging=true; avgN=0; stylus.zero(); stylusS.zero();
-      qDebug("Taking average of %d coords.. please do not move stylus.",AVG_N);
+      qDebug() << "octopus_acq_client: <Digitizer> Taking average of" << AVG_N << "coords.. please do not move stylus.";
      }
     } else { // Currently averaging..
      avgN++; stylus=stylus+sty;
@@ -170,10 +171,7 @@ class Digitizer : public QThread {
       emit digResult(); emit beep(0);
      }
     }
-   } else {
-    qDebug("Error in received coord line.. It is:\n %d %s\n",c.size(),
-           receivedLine.toLatin1().data());
-   }
+   } else { qDebug() << "octopus_acq_client: <Digitizer> Error in received coord line.. It is:" << c.size() << receivedLine; /*.toLatin1().data());*/ }
   }
 
   virtual void run() { while (true) { digitizerReceive(); } }

@@ -60,7 +60,7 @@ class HeadGLWidget : public QGLWidget {
 
   ~HeadGLWidget() {
    makeCurrent();
-   glDeleteLists(source,11);
+   //glDeleteLists(source,11);
    if (acqM->brainExists[ampNo]) glDeleteLists(brain,10);
    if (acqM->skullExists[ampNo]) glDeleteLists(skull,9);
    if (acqM->scalpExists[ampNo]) glDeleteLists(scalp,8);
@@ -88,7 +88,7 @@ class HeadGLWidget : public QGLWidget {
    if (code &  32) { glDeleteLists(scalp,8); scalp=makeScalp(); }
    if (code &  64) { glDeleteLists(skull,9); skull=makeSkull(); }
    if (code & 128) { glDeleteLists(brain,10); brain=makeBrain(); }
-   if (code & 256) { glDeleteLists(source,11); source=makeSource(); }
+   //if (code & 256) { glDeleteLists(source,11); source=makeSource(); }
    updateGL();
   }
 
@@ -104,7 +104,7 @@ class HeadGLWidget : public QGLWidget {
    if (acqM->scalpExists[ampNo]) scalp=makeScalp();
    if (acqM->skullExists[ampNo]) skull=makeSkull();
    if (acqM->brainExists[ampNo]) brain=makeBrain();
-   source=makeSource();
+   //source=makeSource();
 
    static GLfloat ambientLight[4]={0.45,0.45,0.45,1.};
    glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
@@ -171,7 +171,7 @@ class HeadGLWidget : public QGLWidget {
 
      if (acqM->hwFrameV[ampNo]) glCallList(frame);
      if (acqM->hwGridV[ampNo])  glCallList(grid);
-     if (acqM->hwSourceV[ampNo]) glCallList(source);
+     //if (acqM->hwSourceV[ampNo]) glCallList(source);
      if (acqM->brainExists[ampNo] && acqM->hwBrainV[ampNo]) glCallList(brain);
      if (acqM->skullExists[ampNo] && acqM->hwSkullV[ampNo]) glCallList(skull);
      if (acqM->scalpExists[ampNo] && acqM->hwScalpV[ampNo]) glCallList(scalp);
@@ -215,7 +215,7 @@ class HeadGLWidget : public QGLWidget {
     setYRotation(yRot+8*dy); setZRotation(zRot+8*dx);
    } else if (event->buttons() & Qt::RightButton) {
     setCameraLocation(zTrans-(float)(dy)/8.0);
-   } else if (event->buttons() & Qt::MidButton) { ;
+   } else if (event->buttons() & Qt::MiddleButton) { ;
 //    setYRotation(xRot+8*dx);
    } eventPos=event->pos();
   }
@@ -348,10 +348,10 @@ class HeadGLWidget : public QGLWidget {
         glVertex3f( elecR/4.,zPt-m*(float)(i),0.002);
        }
 
-       qglColor(QColor(128,128,0,255)); // SL Cursor
-       zPt=-elecR+2.*elecR*(float)acqM->slTimePt/(float)acqM->cp.avgCount;
-       glVertex3f(-elecR/3,zPt,0.002);
-       glVertex3f( elecR/3,zPt,0.002);
+       //qglColor(QColor(128,128,0,255)); // SL Cursor
+       //zPt=-elecR+2.*elecR*(float)acqM->slTimePt/(float)acqM->cp.avgCount;
+       //glVertex3f(-elecR/3,zPt,0.002);
+       //glVertex3f( elecR/3,zPt,0.002);
 
        qglColor(evtColor);
        for (int t=0;t<sz-1;t++) {
@@ -635,13 +635,13 @@ class HeadGLWidget : public QGLWidget {
    glPopMatrix();
   }
 
-  GLuint makeSource() { // Source list defined in main class
-   GLuint list=glGenLists(11); glNewList(list,GL_COMPILE); glEnable(GL_BLEND);
-   qglColor(QColor(255,0,255,240));
-   for (int i=0;i<acqM->source.size();i++)
-    dipole(acqM->source[i]->pos,acqM->source[i]->theta,acqM->source[i]->phi);
-   glDisable(GL_BLEND); glEndList(); return list;
-  }
+  //GLuint makeSource() { // Source list defined in main class
+  // GLuint list=glGenLists(11); glNewList(list,GL_COMPILE); glEnable(GL_BLEND);
+  // qglColor(QColor(255,0,255,240));
+  // for (int i=0;i<acqM->source.size();i++)
+  //  dipole(acqM->source[i]->pos,acqM->source[i]->theta,acqM->source[i]->phi);
+  // glDisable(GL_BLEND); glEndList(); return list;
+  //}
 
   void normalizeAngle(int *angle) {
    while (*angle < 0) *angle += 360*16;
@@ -655,7 +655,7 @@ class HeadGLWidget : public QGLWidget {
   QWidget *parent; AcqMaster *acqM; QPainter painter;
 
   GLuint frame,grid,dig,parametric,realistic,gizmo,avgs,
-         scalp,skull,brain,source;
+         scalp,skull,brain; //,source;
 };
 
 #endif

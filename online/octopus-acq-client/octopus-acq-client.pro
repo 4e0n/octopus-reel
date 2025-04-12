@@ -37,9 +37,6 @@ HEADERS += acqmaster.h \
            coord3d.h \
            digitizer.h \
            headglwidget.h \
-#           headwindow.h \
            legendframe.h \
-           rm_parse.h \
-           ../serial_device.h \
-           source.h
+           ../serial_device.h
 SOURCES += main.cpp

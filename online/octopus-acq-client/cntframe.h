@@ -49,7 +49,8 @@ class CntFrame : public QFrame {
    chnPerCol=ceil((float)(chnCount)/(float)(colCount));
    int ww=(int)((float)(acqM->acqFrameW)/(float)colCount);
    for (int i=0;i<colCount;i++) { w0.append(i*ww+1); wX.append(i*ww+1); }
-   for (int i=0;i<colCount-1;i++) wn.append((i+1)*ww-1); wn.append(acqM->acqFrameW-1);
+   for (int i=0;i<colCount-1;i++) wn.append((i+1)*ww-1);
+   wn.append(acqM->acqFrameW-1);
 
    if (chnCount<16)
     chnFont=QFont("Helvetica",12,QFont::Bold);
@@ -58,7 +59,8 @@ class CntFrame : public QFrame {
    else if (chnCount>96)
     chnFont=QFont("Helvetica",10);
    evtFont=QFont("Helvetica",8,QFont::Bold);
-   rMatrix.rotate(-90);
+   rTransform.rotate(-90);
+   //rMatrix.rotate(-90);
 
    scrollBuffer=QPixmap(acqM->acqFrameW,acqM->acqFrameH); resetScrollBuffer();
 
@@ -141,7 +143,7 @@ class CntFrame : public QFrame {
      else if (acqM->curEventType==2) rotPainter.setPen(Qt::red);
      rotPainter.drawText(2,9,acqM->curEventName);
     rotPainter.end();
-    *rBuffer=rBuffer->transformed(rMatrix,Qt::SmoothTransformation);
+    *rBuffer=rBuffer->transformed(rTransform,Qt::SmoothTransformation);
 
     for (c=0;c<colCount;c++) {
      scrollPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
@@ -200,7 +202,7 @@ class CntFrame : public QFrame {
  protected:
   virtual void paintEvent(QPaintEvent*) {
    mainPainter.begin(this);
-    int curCol;
+    //int curCol;
     mainPainter.setBackgroundMode(Qt::TransparentMode);
     mainPainter.drawPixmap(0,0,scrollBuffer);
 /*
@@ -335,8 +337,7 @@ class CntFrame : public QFrame {
   }
 
  protected:
-  void resizeEvent(QResizeEvent *event) {
-	  ;
+  //void resizeEvent(QResizeEvent *event) {
    //resizeEvent(event); // Call base class event handler
    //setGeometry(x(),y(),parent->width()-9,parent->width()-60);
 
@@ -346,12 +347,12 @@ class CntFrame : public QFrame {
    // Resize child widgets proportionally
    //label1->setGeometry(width / 4, height / 4, width / 2, 30);
    //label2->setGeometry(width / 4, height / 2, width / 2, 30);
-  }
+  //}
 
  private:
   QWidget *parent; AcqMaster *acqM; QString dummyString;
   QBrush bgBrush; QPainter mainPainter,rotPainter; QVector<int> w0,wn,wX;
-  QFont evtFont,chnFont; QPixmap *rBuffer; QMatrix rMatrix;
+  QFont evtFont,chnFont; QPixmap *rBuffer; QTransform rTransform; //QMatrix rMatrix;
   float chHeight,chY,scrPrvDataX,scrCurDataX,scrPrvDataFX,scrCurDataFX; int scrCurY;
   bool scroll,tick,event; int c,chnCount,colCount,chnPerCol;
   QPixmap scrollBuffer;
