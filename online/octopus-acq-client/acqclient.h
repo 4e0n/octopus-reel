@@ -56,8 +56,7 @@ class AcqClient : public QMainWindow {
    mainTabWidget->setGeometry(1,32,this->width()-2,this->height());
 
    cntWidget=new QWidget(mainTabWidget);
-   cntFrame=new CntFrame(cntWidget,acqM,ampNo);
-   cntFrame->setGeometry(2,2,acqM->acqFrameW,acqM->acqFrameH); cntWidget->show();
+   cntFrame=new CntFrame(cntWidget,acqM,ampNo); cntFrame->setGeometry(2,2,acqM->acqFrameW,acqM->acqFrameH); cntWidget->show();
    headGLWidget=new HeadGLWidget(cntWidget,acqM,ampNo);
    headGLWidget->setGeometry(2+acqM->acqFrameW+5,2,acqM->glFrameW,acqM->glFrameH); headGLWidget->show();
 
@@ -72,14 +71,9 @@ class AcqClient : public QMainWindow {
     dummyButton->setGeometry(100+i*60,cntWidget->height(),60,20);
     cntAmpBG->addButton(dummyButton,i);
    }
-   cntAmpBG->button(0)->setText("1mV");
-   cntAmpBG->button(1)->setText("500uV");
-   cntAmpBG->button(2)->setText("200uV");
-   cntAmpBG->button(3)->setText("100uV");
-   cntAmpBG->button(4)->setText("50uV");
-   cntAmpBG->button(5)->setText("20uV");
-   cntAmpBG->button(3)->setDown(true);
-   acqM->cntAmpX[ampNo]=(1000000.0/100.0);
+   cntAmpBG->button(0)->setText("1mV"); cntAmpBG->button(1)->setText("500uV"); cntAmpBG->button(2)->setText("200uV");
+   cntAmpBG->button(3)->setText("100uV"); cntAmpBG->button(4)->setText("50uV"); cntAmpBG->button(5)->setText("20uV");
+   cntAmpBG->button(3)->setDown(true); acqM->cntAmpX[ampNo]=(1000000.0/100.0);
    connect(cntAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntAmp(int)));
 
    // *** HEAD & CONFIG WINDOW ***
@@ -90,14 +84,9 @@ class AcqClient : public QMainWindow {
     dummyButton->setGeometry(acqM->acqFrameW+(acqM->glFrameW-360)/2+i*60,acqM->glFrameH+4,60,20);
     avgAmpBG->addButton(dummyButton,i);
    }
-   avgAmpBG->button(0)->setText("2uV");
-   avgAmpBG->button(1)->setText("5uV");
-   avgAmpBG->button(2)->setText("10uV");
-   avgAmpBG->button(3)->setText("20uV");
-   avgAmpBG->button(4)->setText("50uV");
-   avgAmpBG->button(5)->setText("100uV");
-   avgAmpBG->button(5)->setDown(true);
-   acqM->avgAmpX[ampNo]=100;
+   avgAmpBG->button(0)->setText("2uV"); avgAmpBG->button(1)->setText("5uV"); avgAmpBG->button(2)->setText("10uV");
+   avgAmpBG->button(3)->setText("20uV"); avgAmpBG->button(4)->setText("50uV"); avgAmpBG->button(5)->setText("100uV");
+   avgAmpBG->button(5)->setDown(true); acqM->avgAmpX[ampNo]=100;
 
    connect(avgAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotAvgAmp(int)));
 
@@ -109,8 +98,7 @@ class AcqClient : public QMainWindow {
    QSlider *paramRSlider=new QSlider(Qt::Horizontal,cntWidget);
    paramRSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+36,acqM->glFrameW-210,20);
    paramRSlider->setRange(70,300); // in mm because of int - divide by ten
-   paramRSlider->setSingleStep(1);
-   paramRSlider->setPageStep(10); // step in cms..
+   paramRSlider->setSingleStep(1); paramRSlider->setPageStep(10); // step in cms..
    paramRSlider->setSliderPosition(acqM->scalpParamR[ampNo]*10);
    paramRSlider->setEnabled(true);
    connect(paramRSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetScalpParamR(int)));
@@ -132,10 +120,8 @@ class AcqClient : public QMainWindow {
    QSlider *notchSlider=new QSlider(Qt::Horizontal,cntWidget);
    notchSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+212,acqM->glFrameW-210,20);
    notchSlider->setRange(1,100); // in mm because of int - divide by ten
-   notchSlider->setSingleStep(1);
-   notchSlider->setPageStep(10); // step in uVs..
-   notchSlider->setSliderPosition((int)(acqM->notchThreshold*1.));
-   notchSlider->setEnabled(true);
+   notchSlider->setSingleStep(1); notchSlider->setPageStep(10); // step in uVs..
+   notchSlider->setSliderPosition((int)(acqM->notchThreshold*1.)); notchSlider->setEnabled(true);
    connect(notchSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetNotchThr(int)));
 
    connect(gizmoList,SIGNAL(currentRowChanged(int)),this,SLOT(slotSelectGizmo(int)));
@@ -148,18 +134,6 @@ class AcqClient : public QMainWindow {
    legendLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+240,200,20);
    legendFrame=new LegendFrame(cntWidget,acqM);
    legendFrame->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+266,acqM->glFrameW-4,80);
-   //timePtLabel=new QLabel("Src. Time Point ("+
-   //                       dummyString.setNum(acqM->cp.avgBwd+acqM->slTimePt*1000/acqM->sampleRate)+
-   //                       " ms):",cntWidget);
-   //timePtLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+354,200,20);
-   //QSlider *timePtSlider=new QSlider(Qt::Horizontal,cntWidget);
-   //timePtSlider->setGeometry(acqM->acqFrameW+200,acqM->glFrameH+356,acqM->glFrameW-210,20);
-   //timePtSlider->setRange(0,acqM->cp.avgCount-1);
-   //timePtSlider->setSingleStep(1);
-   //timePtSlider->setPageStep(1);
-   //timePtSlider->setValue(acqM->slTimePt);
-   //timePtSlider->setEnabled(true);
-   //connect(timePtSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetTimePt(int)));
 
    clrAvgsButton=new QPushButton("CLR",cntWidget);
    clrAvgsButton->setGeometry(acqM->acqFrameW+acqM->glFrameW-50,acqM->glFrameH+240,40,20);
@@ -170,10 +144,8 @@ class AcqClient : public QMainWindow {
    // *** MENUBAR ***
 
    menuBar=new QMenuBar(this); menuBar->setFixedWidth(width());
-   QMenu *modelMenu=new QMenu("&Model",menuBar);
-   QMenu *viewMenu=new QMenu("&View",menuBar);
-   menuBar->addMenu(modelMenu);
-   menuBar->addMenu(viewMenu);
+   QMenu *modelMenu=new QMenu("&Model",menuBar); QMenu *viewMenu=new QMenu("&View",menuBar);
+   menuBar->addMenu(modelMenu); menuBar->addMenu(viewMenu);
    setMenuBar(menuBar);
 
    // Model Menu
@@ -205,7 +177,6 @@ class AcqClient : public QMainWindow {
    toggleScalpAction=new QAction("MRI/Real Scalp Model",this);
    toggleSkullAction=new QAction("MRI/Real Skull Model",this);
    toggleBrainAction=new QAction("MRI/Real Brain Model",this);
-   //toggleSourceAction=new QAction("Source Model",this);
 
    toggleFrameAction->setStatusTip("Show/hide cartesian XYZ frame.");
    toggleGridAction->setStatusTip("Show/hide cartesian grid/rulers.");
@@ -228,7 +199,6 @@ class AcqClient : public QMainWindow {
    connect(toggleScalpAction,SIGNAL(triggered()),this,SLOT(slotToggleScalp()));
    connect(toggleSkullAction,SIGNAL(triggered()),this,SLOT(slotToggleSkull()));
    connect(toggleBrainAction,SIGNAL(triggered()),this,SLOT(slotToggleBrain()));
-   //connect(toggleSourceAction,SIGNAL(triggered()),this,SLOT(slotToggleSource()));
 
    viewMenu->addAction(toggleFrameAction);
    viewMenu->addAction(toggleGridAction);
@@ -240,7 +210,6 @@ class AcqClient : public QMainWindow {
    viewMenu->addAction(toggleScalpAction);
    viewMenu->addAction(toggleSkullAction);
    viewMenu->addAction(toggleBrainAction); viewMenu->addSeparator();
-   //viewMenu->addAction(toggleSourceAction);
 
    setWindowTitle("Octopus Hyper EEG/ERP Amp #"+QString::number(ampNo+1));
   }
@@ -286,7 +255,6 @@ class AcqClient : public QMainWindow {
   void slotToggleScalp()  { acqM->hwScalpV[ampNo]  = (acqM->hwScalpV)[ampNo]  ? false:true; }
   void slotToggleSkull()  { acqM->hwSkullV[ampNo]  = (acqM->hwSkullV)[ampNo]  ? false:true; }
   void slotToggleBrain()  { acqM->hwBrainV[ampNo]  = (acqM->hwBrainV)[ampNo]  ? false:true; }
-  //void slotToggleSource() { acqM->hwSourceV[ampNo] = (acqM->hwSourceV)[ampNo] ? false:true; }
 
   void slotSetScalpParamR(int x) {
    acqM->scalpParamR[ampNo]=(float)(x)/10.;
@@ -298,13 +266,6 @@ class AcqClient : public QMainWindow {
    acqM->notchThreshold=(float)(x)/10.; // .1 uV Resolution
    notchLabel->setText("Notch Level (RMS) ("+dummyString.setNum(acqM->notchThreshold)+" uV):");
   }
-
-  //void slotSetTimePt(int x) { acqM->slTimePt=(float)(x);
-  // timePtLabel->setText("Localization Time Point ("+
-  //                      dummyString.setNum(acqM->cp.avgBwd+x*1000/acqM->sampleRate)+
-  //                      " ms):");
-  // headGLWidget->slotRepaintGL(16); // update avgs
-  //}
 
   void slotSelectGizmo(int k) { int idx=0; Gizmo *g=acqM->gizmo[k];
    acqM->currentGizmo[ampNo]=k; electrodeList->clear();
@@ -339,13 +300,11 @@ class AcqClient : public QMainWindow {
   }
 
   void slotGizmoRealCB() {
-   acqM->gizmoOnReal[ampNo]=gizmoRealCB->isChecked();
-   headGLWidget->slotRepaintGL(8); // update gizmo
+   acqM->gizmoOnReal[ampNo]=gizmoRealCB->isChecked(); headGLWidget->slotRepaintGL(8); // update gizmo
   }
 
   void slotElecRealCB() {
-   acqM->elecOnReal[ampNo]=elecRealCB->isChecked();
-   headGLWidget->slotRepaintGL(16); // update averages
+   acqM->elecOnReal[ampNo]=elecRealCB->isChecked(); headGLWidget->slotRepaintGL(16); // update averages
   }
 
   void slotAvgAmp(int x) {
@@ -385,10 +344,8 @@ class AcqClient : public QMainWindow {
   QMenuBar *menuBar;
   QAction *loadRealAction,*saveRealAction,*saveAvgsAction,
           *toggleFrameAction,*toggleGridAction,*toggleDigAction,
-          *toggleParamAction,*toggleRealAction,
-          *toggleGizmoAction,*toggleAvgsAction,
+          *toggleParamAction,*toggleRealAction,*toggleGizmoAction,*toggleAvgsAction,
           *toggleScalpAction,*toggleSkullAction,*toggleBrainAction;
-          //*toggleSourceAction;
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QButtonGroup *cntAmpBG;
   QVector<QPushButton*> cntAmpButtons;

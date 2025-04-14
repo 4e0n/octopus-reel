@@ -82,11 +82,6 @@ class AcqMaster : QObject {
    QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_acq_client.conf");
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "octopus_acq_client: <AcqMaster> Cannot open ./octopus_acq_client.conf for reading!.."; application->quit();
-    //serial.devname="/dev/ttyS0"; serial.baudrate=B115200;
-    //serial.databits=CS8; serial.parity=serial.par_on=0; serial.stopbit=1;
-    //ctrlGuiX=ctrlGuiY=0; ctrlGuiW=800; ctrlGuiH=600;
-    //contGuiX=gl3DGuiX=contGuiY=gl3DGuiY=0; contGuiW=2800; contGuiH=1400;
-    //gl3DGuiW=640; gl3DGuiH=400;
    } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string
     gizmoExists.resize(ampCount); digExists.resize(ampCount);
     scalpExists.resize(ampCount); skullExists.resize(ampCount); brainExists.resize(ampCount);
@@ -334,25 +329,21 @@ class AcqMaster : QObject {
       } else if (opts[0].trimmed()=="BRAIN") { opts2=opts[1].split(",");
        if (opts2.size()==1) loadBrain_ObjFile(opts2[0].trimmed());
        else { qDebug() << "octopus_acq_client: <AcqMaster> <.conf> Parse error in MOD|BRAIN parameters!"; application->quit(); }
-      }
+      } else { qDebug() << "octopus_acq_client: <AcqMaster> <.conf> Parse error in MOD sections!"; application->quit(); }
      }
     }
    }
 
-   cntVisChns.resize(ampCount); cntRecChns.resize(ampCount);
-   avgVisChns.resize(ampCount); avgRecChns.resize(ampCount);
-   scrPrvData.resize(ampCount); scrCurData.resize(ampCount);
-   scrPrvDataF.resize(ampCount); scrCurDataF.resize(ampCount);
+   cntVisChns.resize(ampCount); cntRecChns.resize(ampCount); avgVisChns.resize(ampCount); avgRecChns.resize(ampCount);
+   scrPrvData.resize(ampCount); scrCurData.resize(ampCount); scrPrvDataF.resize(ampCount); scrCurDataF.resize(ampCount);
 
    ampChkP.resize(ampCount);
 
    // *** POST SETUP ***
 
-   acqFrameW=(int)(.66*(float)(contGuiW)); if (acqFrameW%2==1) acqFrameW--;
-   acqFrameH=contGuiH-90;
-   glFrameW=(int)(.33*(float)(contGuiW)); if (glFrameW%2==1) glFrameW--;
-   glFrameH=glFrameW;
-
+   acqFrameH=contGuiH-90; acqFrameW=(int)(.66*(float)(contGuiW)); if (acqFrameW%2==1) acqFrameW--;
+   glFrameH=glFrameW; glFrameW=(int)(.33*(float)(contGuiW)); if (glFrameW%2==1) glFrameW--;
+   
    cntAmpX.resize(ampCount); avgAmpX.resize(ampCount);
    gizmoOnReal.resize(ampCount); elecOnReal.resize(ampCount);
    hwFrameV.resize(ampCount); hwGridV.resize(ampCount); hwDigV.resize(ampCount);
@@ -361,13 +352,11 @@ class AcqMaster : QObject {
    hwBrainV.resize(ampCount);
    currentGizmo.resize(ampCount); currentElectrode.resize(ampCount); curElecInSeq.resize(ampCount);
    scalpParamR.resize(ampCount); scalpNasion.resize(ampCount); scalpCzAngle.resize(ampCount);
-   for (unsigned int i=0;i<ampCount;i++) {
-    gizmoOnReal[i]=elecOnReal[i]=false;
+   
+   for (unsigned int i=0;i<ampCount;i++) { gizmoOnReal[i]=elecOnReal[i]=false;
     // Initial Visualization of Head Window
-    hwFrameV[i]=hwGridV[i]=hwDigV[i]=hwParamV[i]=hwRealV[i]=true;
-    hwGizmoV[i]=hwAvgsV[i]=hwScalpV[i]=hwSkullV[i]=hwBrainV[i]=true;
-    currentGizmo[i]=currentElectrode[i]=curElecInSeq[i]=0;
-    scalpParamR[i]=15.; scalpNasion[i]=9.; scalpCzAngle[i]=11.;
+    hwFrameV[i]=hwGridV[i]=hwDigV[i]=hwParamV[i]=hwRealV[i]=hwGizmoV[i]=hwAvgsV[i]=hwScalpV[i]=hwSkullV[i]=hwBrainV[i]=true;
+    currentGizmo[i]=currentElectrode[i]=curElecInSeq[i]=0; scalpParamR[i]=15.; scalpNasion[i]=9.; scalpCzAngle[i]=11.;
    }
 
    for (int i=0;i<acqChannels.size();i++) {
@@ -380,17 +369,14 @@ class AcqMaster : QObject {
    }
 
    for (int i=0;i<acqChannels.size();i++) {
-    scrPrvData[i].resize(cntVisChns[i].size());
-    scrCurData[i].resize(cntVisChns[i].size());
-    scrPrvDataF[i].resize(cntVisChns[i].size());
-    scrCurDataF[i].resize(cntVisChns[i].size());
+    scrPrvData[i].resize(cntVisChns[i].size()); scrCurData[i].resize(cntVisChns[i].size());
+    scrPrvDataF[i].resize(cntVisChns[i].size()); scrCurDataF[i].resize(cntVisChns[i].size());
    }
    
    digitizer=new Digitizer(this,&serial); digitizer->serialOpen();
    if (!digitizer->connected) qDebug() << "octopus_acq_client: <AcqMaster> Cannot connect to Polhemus digitizer!.. Continuing without it..";
    else { for (unsigned int i=0;i<ampCount;i++) digExists[i]=true;
-    connect(digitizer,SIGNAL(digMonitor()),this,SLOT(slotDigMonitor()));
-    connect(digitizer,SIGNAL(digResult()),this,SLOT(slotDigResult()));
+    connect(digitizer,SIGNAL(digMonitor()),this,SLOT(slotDigMonitor())); connect(digitizer,SIGNAL(digResult()),this,SLOT(slotDigResult()));
    }
 
    // Begin retrieving continuous data
@@ -411,46 +397,36 @@ class AcqMaster : QObject {
   // *** UTILITY ROUTINES ***
 
   void acqSendCommand(int command,int ip0,int ip1,int ip2) {
-   acqCommandSocket->connectToHost(acqHost,acqCommPort);
-   acqCommandSocket->waitForConnected();
-   QDataStream acqCommandStream(acqCommandSocket); csCmd.cmd=command;
-   csCmd.iparam[0]=ip0; csCmd.iparam[1]=ip1; csCmd.iparam[2]=ip2;
-   acqCommandStream.writeRawData((const char*)(&csCmd),sizeof(cs_command));
-   acqCommandSocket->flush(); acqCommandSocket->disconnectFromHost();
+   acqCommandSocket->connectToHost(acqHost,acqCommPort); acqCommandSocket->waitForConnected();
+   QDataStream acqCommandStream(acqCommandSocket); csCmd.cmd=command; csCmd.iparam[0]=ip0; csCmd.iparam[1]=ip1; csCmd.iparam[2]=ip2;
+   acqCommandStream.writeRawData((const char*)(&csCmd),sizeof(cs_command)); acqCommandSocket->flush(); acqCommandSocket->disconnectFromHost();
   }
 
   int gizFindIndex(QString s) { int idx=-1;
-   for (int i=0;i<gizmo.size();i++) {
-    if (gizmo[i]->name==s) { idx=i; break; }
-   } return idx;
+   for (int i=0;i<gizmo.size();i++) if (gizmo[i]->name==s) { idx=i; break; }
+   return idx;
   }
 
   void loadGizmo_OgzFile(QString fn) {
-   QFile ogzFile; QTextStream ogzStream; bool gError=false;
-   Gizmo *dummyGizmo; QVector<int> t(3); QVector<int> ll(2);
+   QFile ogzFile; QTextStream ogzStream; bool gError=false; Gizmo *dummyGizmo; QVector<int> t(3); QVector<int> ll(2);
    QString ogzLine; QStringList ogzLines,ogzValidLines,opts,opts2;
 
    // Delete previous
    for (int i=0;i<gizmo.size();i++) delete gizmo[i];
    gizmo.resize(0);
  
-   ogzFile.setFileName(fn);
-   ogzFile.open(QIODevice::ReadOnly|QIODevice::Text);
-   ogzStream.setDevice(&ogzFile);
+   ogzFile.setFileName(fn); ogzFile.open(QIODevice::ReadOnly|QIODevice::Text); ogzStream.setDevice(&ogzFile);
 
    // Read all
    while (!ogzStream.atEnd()) { ogzLine=ogzStream.readLine(160); ogzLines.append(ogzLine); } ogzFile.close();
 
    // Get valid lines
-   for (int i=0;i<ogzLines.size();i++)
-    if (!(ogzLines[i].at(0)=='#') && ogzLines[i].contains('|')) ogzValidLines.append(ogzLines[i]);
+   for (int i=0;i<ogzLines.size();i++) if (!(ogzLines[i].at(0)=='#') && ogzLines[i].contains('|')) ogzValidLines.append(ogzLines[i]);
 
    // Find the essential line defining gizmo names
    for (int i=0;i<ogzValidLines.size();i++) {
-    opts2=ogzValidLines[i].split(" "); opts=opts2[0].split("|");
-    opts2.removeFirst(); opts2=opts2[0].split(",");
+    opts2=ogzValidLines[i].split(" "); opts=opts2[0].split("|"); opts2.removeFirst(); opts2=opts2[0].split(",");
     if (opts.size()==2 && opts2.size()>0) {
-
      // GIZMO|LIST must be prior to others or segfault will occur..
      if (opts[0].trimmed()=="GIZMO") {
       if (opts[1].trimmed()=="NAME") {
@@ -461,55 +437,39 @@ class AcqMaster : QObject {
      } else if (opts[0].trimmed()=="SHAPE") {
       ;
      } else if (opts[1].trimmed()=="SEQ") {
-      int k=gizFindIndex(opts[0].trimmed());
-      for (int j=0;j<opts2.size();j++) gizmo[k]->seq.append(opts2[j].toInt());
-     } else if (opts[1].trimmed()=="TRI") {
-      int k=gizFindIndex(opts[0].trimmed());
+      int k=gizFindIndex(opts[0].trimmed()); for (int j=0;j<opts2.size();j++) gizmo[k]->seq.append(opts2[j].toInt());
+     } else if (opts[1].trimmed()=="TRI") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%3==0) {
        for (int j=0;j<opts2.size()/3;j++) {
-        t[0]=opts2[j*3+0].toInt();
-        t[1]=opts2[j*3+1].toInt();
-        t[2]=opts2[j*3+2].toInt(); gizmo[k]->tri.append(t);
+        t[0]=opts2[j*3+0].toInt(); t[1]=opts2[j*3+1].toInt(); t[2]=opts2[j*3+2].toInt(); gizmo[k]->tri.append(t);
        }
       } else { gError=true;
        qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo.. triangles not multiple of 3 vertices..";
       }
-     } else if (opts[1].trimmed()=="LIN") {
-      int k=gizFindIndex(opts[0].trimmed());
+     } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%2==0) {
-       for (int j=0;j<opts2.size()/2;j++) {
-        ll[0]=opts2[j*2+0].toInt();
-        ll[1]=opts2[j*2+1].toInt(); gizmo[k]->lin.append(ll);
-       }
+       for (int j=0;j<opts2.size()/2;j++) { ll[0]=opts2[j*2+0].toInt(); ll[1]=opts2[j*2+1].toInt(); gizmo[k]->lin.append(ll); }
       } else { gError=true;
        qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo.. lines not multiple of 2 vertices..";
       }
      }
-    } else { gError=true;
-     qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo file!";
-    }
+    } else { gError=true; qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo file!"; }
    } if (!gError) for (unsigned int i=0;i<ampCount;i++) gizmoExists[i]=true;
   }
 
   void loadScalp_ObjFile(QString fn) {
    for (unsigned int i=0;i<ampCount;i++) scalpExists[i]=false;
-   QFile scalpFile; QTextStream scalpStream; QString dummyStr; QStringList dummySL,dummySL2;
-   Coord3D c; QVector<int> idx;
+   QFile scalpFile; QTextStream scalpStream; QString dummyStr; QStringList dummySL,dummySL2; Coord3D c; QVector<int> idx;
 
    // Reset previous
    for (int i=0;i<scalpIndex.size();i++) scalpIndex[i].resize(0);
    scalpIndex.resize(0); scalpCoord.resize(0);
  
-   scalpFile.setFileName(fn);
-   scalpFile.open(QIODevice::ReadOnly|QIODevice::Text);
-   scalpStream.setDevice(&scalpFile);
+   scalpFile.setFileName(fn); scalpFile.open(QIODevice::ReadOnly|QIODevice::Text); scalpStream.setDevice(&scalpFile);
    while (!scalpStream.atEnd()) {
-    dummyStr=scalpStream.readLine();
-    dummySL=dummyStr.split(" ");
-    if (dummySL[0]=="v") {
-     c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat();
-     c.z=dummySL[3].toFloat(); scalpCoord.append(c);
-    } else if (dummySL[0]=="f") { idx.resize(0);
+    dummyStr=scalpStream.readLine(); dummySL=dummyStr.split(" ");
+    if (dummySL[0]=="v") { c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat(); c.z=dummySL[3].toFloat(); scalpCoord.append(c); }
+    else if (dummySL[0]=="f") { idx.resize(0);
      dummySL2=dummySL[1].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[2].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
@@ -520,24 +480,17 @@ class AcqMaster : QObject {
 
   void loadSkull_ObjFile(QString fn) {
    for (unsigned int i=0;i<ampCount;i++) skullExists[i]=false;
-   QFile skullFile; QTextStream skullStream;
-   QString dummyStr; QStringList dummySL,dummySL2;
-   Coord3D c; QVector<int> idx;
+   QFile skullFile; QTextStream skullStream; QString dummyStr; QStringList dummySL,dummySL2; Coord3D c; QVector<int> idx;
 
    // Reset previous
    for (int i=0;i<skullIndex.size();i++) skullIndex[i].resize(0);
    skullIndex.resize(0); skullCoord.resize(0);
  
-   skullFile.setFileName(fn);
-   skullFile.open(QIODevice::ReadOnly|QIODevice::Text);
-   skullStream.setDevice(&skullFile);
+   skullFile.setFileName(fn); skullFile.open(QIODevice::ReadOnly|QIODevice::Text); skullStream.setDevice(&skullFile);
    while (!skullStream.atEnd()) {
-    dummyStr=skullStream.readLine();
-    dummySL=dummyStr.split(" ");
-    if (dummySL[0]=="v") {
-     c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat();
-     c.z=dummySL[3].toFloat(); skullCoord.append(c);
-    } else if (dummySL[0]=="f") { idx.resize(0);
+    dummyStr=skullStream.readLine(); dummySL=dummyStr.split(" ");
+    if (dummySL[0]=="v") { c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat(); c.z=dummySL[3].toFloat(); skullCoord.append(c); }
+    else if (dummySL[0]=="f") { idx.resize(0);
      dummySL2=dummySL[1].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[2].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
@@ -548,24 +501,17 @@ class AcqMaster : QObject {
 
   void loadBrain_ObjFile(QString fn) {
    for (unsigned int i=0;i<ampCount;i++) brainExists[i]=false;
-   QFile brainFile; QTextStream brainStream;
-   QString dummyStr; QStringList dummySL,dummySL2;
-   Coord3D c; QVector<int> idx;
+   QFile brainFile; QTextStream brainStream; QString dummyStr; QStringList dummySL,dummySL2; Coord3D c; QVector<int> idx;
 
    // Reset previous
    for (int i=0;i<brainIndex.size();i++) brainIndex[i].resize(0);
    brainIndex.resize(0); brainCoord.resize(0);
  
-   brainFile.setFileName(fn);
-   brainFile.open(QIODevice::ReadOnly|QIODevice::Text);
-   brainStream.setDevice(&brainFile);
+   brainFile.setFileName(fn); brainFile.open(QIODevice::ReadOnly|QIODevice::Text); brainStream.setDevice(&brainFile);
    while (!brainStream.atEnd()) {
-    dummyStr=brainStream.readLine();
-    dummySL=dummyStr.split(" ");
-    if (dummySL[0]=="v") {
-     c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat();
-     c.z=dummySL[3].toFloat(); brainCoord.append(c);
-    } else if (dummySL[0]=="f") { idx.resize(0);
+    dummyStr=brainStream.readLine(); dummySL=dummyStr.split(" ");
+    if (dummySL[0]=="v") { c.x=dummySL[1].toFloat(); c.y=dummySL[2].toFloat(); c.z=dummySL[3].toFloat(); brainCoord.append(c); }
+    else if (dummySL[0]=="f") { idx.resize(0);
      dummySL2=dummySL[1].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[2].split("/"); idx.append(dummySL2[0].toInt());
      dummySL2=dummySL[3].split("/"); idx.append(dummySL2[0].toInt());
@@ -575,72 +521,57 @@ class AcqMaster : QObject {
   }
 
   void loadReal(QString fileName) {
-   QString realLine; QStringList realLines,realValidLines,opts;
-   QFile realFile(fileName); int p,c;
+   QString realLine; QStringList realLines,realValidLines,opts; QFile realFile(fileName); int p,c;
    realFile.open(QIODevice::ReadOnly); QTextStream realStream(&realFile);
    // Read all
    while (!realStream.atEnd()) { realLine=realStream.readLine(160); realLines.append(realLine); } realFile.close();
 
    // Get valid lines
    for (int i=0;i<realLines.size();i++)
-    if (!(realLines[i].at(0)=='#') && realLines[i].split(" ",Qt::SkipEmptyParts).size()>4)
-     realValidLines.append(realLines[i]);
+    if (!(realLines[i].at(0)=='#') && realLines[i].split(" ",Qt::SkipEmptyParts).size()>4) realValidLines.append(realLines[i]);
 
    // Find the essential line defining gizmo names
    for (int ll=0;ll<realValidLines.size();ll++) {
     opts=realValidLines[ll].split(" ",Qt::SkipEmptyParts);
     if (opts.size()==8 && opts[0]=="v") {
      opts.removeFirst(); p=opts[0].toInt()-1; c=-1;
-     for (int i=0;i<acqChannels.size();i++) {
-      for (int j=0;j<acqChannels[i].size();j++) {
-       if (p==acqChannels[i][j]->physChn) { c=i; break; }
-//     if (c!=-1)
-//      printf("%d - %d\n",p,c);
-//     else qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Channel does not exist!";
-       acqChannels[i][c]->real[0]=opts[1].toFloat();
-       acqChannels[i][c]->real[1]=opts[2].toFloat();
-       acqChannels[i][c]->real[2]=opts[3].toFloat();
-       acqChannels[i][c]->realS[0]=opts[4].toFloat();
-       acqChannels[i][c]->realS[1]=opts[5].toFloat();
-       acqChannels[i][c]->realS[2]=opts[6].toFloat();
-      }
+     for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
+      if (p==acqChannels[i][j]->physChn) { c=i; break; }
+//    if (c!=-1) printf("%d - %d\n",p,c); else qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Channel does not exist!";
+      acqChannels[i][c]->real[0]=opts[1].toFloat();
+      acqChannels[i][c]->real[1]=opts[2].toFloat();
+      acqChannels[i][c]->real[2]=opts[3].toFloat();
+      acqChannels[i][c]->realS[0]=opts[4].toFloat();
+      acqChannels[i][c]->realS[1]=opts[5].toFloat();
+      acqChannels[i][c]->realS[2]=opts[6].toFloat();
      }
-    } else {
-     qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Erroneous real coord file.." << opts.size(); break;
-    }
+    } else { qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Erroneous real coord file.." << opts.size(); break; }
    } emit repaintGL(4); // Repaint Real coords
   }
 
   void saveReal(QString fileName) {
-   QFile realFile(fileName);
-   realFile.open(QIODevice::WriteOnly); QTextStream realStream(&realFile);
+   QFile realFile(fileName); realFile.open(QIODevice::WriteOnly); QTextStream realStream(&realFile);
    realStream << "# Octopus real head coordset in headframe xyz's..\n";
    realStream << "# Generated by Octopus-recorder 0.9.5\n\n";
    realStream << "# Coord count = " << acqChannels.size() << "\n";
-   for (int i=0;i<acqChannels.size();i++) {
-    for (int j=0;j<acqChannels[i].size();j++) {
-     realStream << "v " << acqChannels[i][j]->physChn << " "
-                        << acqChannels[i][j]->real[0] << " "
-                        << acqChannels[i][j]->real[1] << " "
-                        << acqChannels[i][j]->real[2] << " "
-                        << acqChannels[i][j]->realS[0] << " "
-                        << acqChannels[i][j]->realS[1] << " "
-                        << acqChannels[i][j]->realS[2] << "\n";
-    }
-   }
-   realFile.close();
+   for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
+    realStream << "v " << acqChannels[i][j]->physChn << " "
+                       << acqChannels[i][j]->real[0] << " "
+                       << acqChannels[i][j]->real[1] << " "
+                       << acqChannels[i][j]->real[2] << " "
+                       << acqChannels[i][j]->realS[0] << " "
+                       << acqChannels[i][j]->realS[1] << " "
+                       << acqChannels[i][j]->realS[2] << "\n";
+   } realFile.close();
   }
 
-  int eventIndex(int no,int type) {
-   int idx=-1;
+  int eventIndex(int no,int type) { int idx=-1;
    for (int i=0;i<acqEvents.size();i++) {
     if (no==acqEvents[i]->no && type==acqEvents[i]->type) { idx=i; break; }
    } return idx;
   }
 
-  bool clientRunning,recording,averaging,eventOccured;
-
-  chninfo chnInfo;
+  bool clientRunning,recording,averaging,eventOccured; chninfo chnInfo;
 
   // Non-volatile (read from and saved to octopus.cfg)
 
@@ -652,42 +583,31 @@ class AcqMaster : QObject {
   QVector<QVector<int> > cntVisChns,cntRecChns,avgVisChns,avgRecChns;
 
   // GUI
-  int ctrlGuiX,ctrlGuiY,ctrlGuiW,ctrlGuiH;
-  int contGuiX,contGuiY,contGuiW,contGuiH;
-  int gl3DGuiX,gl3DGuiY,gl3DGuiW,gl3DGuiH;
+  int ctrlGuiX,ctrlGuiY,ctrlGuiW,ctrlGuiH, contGuiX,contGuiY,contGuiW,contGuiH, gl3DGuiX,gl3DGuiY,gl3DGuiW,gl3DGuiH,
+      acqFrameW,acqFrameH,glFrameW,glFrameH;
 
   // Gizmo
-  QVector<Gizmo* > gizmo; QVector<bool> gizmoOnReal,elecOnReal;
-  QVector<int> currentGizmo,currentElectrode,curElecInSeq;
+  QVector<Gizmo* > gizmo; QVector<bool> gizmoOnReal,elecOnReal; QVector<int> currentGizmo,currentElectrode,curElecInSeq;
 
   // Digitizer
   Vec3 sty,xp,yp,zp;
 
   // Volatile-Runtime
-  QApplication *application; cs_command csCmd,csAck;
-  QTcpSocket *acqCommandSocket,*acqDataSocket;
+  QApplication *application; cs_command csCmd,csAck; QTcpSocket *acqCommandSocket,*acqDataSocket;
   QStatusBar *guiStatusBar; QLabel *timeLabel;
 
   bool notch; int notchN; float notchThreshold;
 
-  QVector<tcpsample> acqCurData;
-  int eIndex;
-  channel_params cp; int tChns,sampleRate,cntSpeedX;
+  QVector<tcpsample> acqCurData; int eIndex; channel_params cp; int tChns,sampleRate,cntSpeedX;
   QVector<QVector<float> > scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; QVector<float> cntAmpX,avgAmpX;
   QString curEventName; int curEventType;
 
-  QVector<bool> hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,
-                hwScalpV,hwSkullV,hwBrainV,
+  QVector<bool> hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,hwScalpV,hwSkullV,hwBrainV,
                 digExists,gizmoExists,scalpExists,skullExists,brainExists;
 
 //  QVector<Coord3D> paramCoord,realCoord; QVector<QVector<int> > paramIndex;
-  QVector<Coord3D> scalpCoord; QVector<QVector<int> > scalpIndex;
-  QVector<Coord3D> skullCoord; QVector<QVector<int> > skullIndex;
-  QVector<Coord3D> brainCoord; QVector<QVector<int> > brainIndex;
+  QVector<Coord3D> scalpCoord,skullCoord,brainCoord; QVector<QVector<int> > scalpIndex,skullIndex,brainIndex;
   QVector<float> scalpParamR,scalpNasion,scalpCzAngle;
-
-
-  int acqFrameW,acqFrameH,glFrameW,glFrameH;
 
  signals:
   void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow();
@@ -715,10 +635,8 @@ class AcqMaster : QObject {
      avgStream << acqEvents[i]->rejected; // Rejected count
 
      for (int j=0;j<cp.avgCount;j++) {
-      for (int k=0;k<avgRecChns.size();k++)
-       avgStream << acqChannels[0][avgRecChns[0][k]]->avgData[j];
-      for (int k=0;k<avgRecChns.size();k++)
-       avgStream << acqChannels[0][avgRecChns[0][k]]->stdData[j];
+      for (int k=0;k<avgRecChns.size();k++) avgStream << acqChannels[0][avgRecChns[0][k]]->avgData[j];
+      for (int k=0;k<avgRecChns.size();k++) avgStream << acqChannels[0][avgRecChns[0][k]]->stdData[j];
      } avgFile.close();
     }
    }
@@ -731,8 +649,7 @@ class AcqMaster : QObject {
   }
 
   void slotAcqReadData() {
-   int acqCurEvent,avgDataCount,avgStartOffset;
-   QVector<float> *avgInChn; //,*stdInChn;
+   int acqCurEvent,avgDataCount,avgStartOffset; QVector<float> *avgInChn; //,*stdInChn;
    float n1,k1,k2; unsigned int offsetC,offsetP;
    QDataStream acqDataStream(acqDataSocket);
 
@@ -747,13 +664,12 @@ class AcqMaster : QObject {
        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> Offset leak!!! Amp " << i << " OffsetC->" << offsetC << " OffsetP->" << offsetP;
      }
 
-     if (!(globalCounter%10000)) {
-      //sort ampChkP and print
+     if (!(globalCounter%10000)) { // Sort ampChkP and print
       qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> Interamp actual sample count Delta span ->" << abs((int)ampChkP[1]-(int)ampChkP[0]);
      } globalCounter++;
 
      // STREAMING/RECORDING, 50Hz COMPUTATION and ONLINE AVG is enabled..
-      
+
      acqCurEvent=(int)(acqCurData[dOffset].trigger); // Event
 
      if (recording) { // .. to disk ..
@@ -768,32 +684,23 @@ class AcqMaster : QObject {
 
      // Handle backward data..
      //  Put data into suitable offset for backward online averaging..
-     float dummyAvg;
-     int notchCount=notchN*(chnInfo.sampleRate/50);
-     int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
+     float dummyAvg; int notchCount=notchN*(chnInfo.sampleRate/50); int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
      for (int j=0;j<acqChannels.size();j++) {
       curChn=acqChannels[0][j];
       //curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].data[curChn->physChn] : acqCurData[dOffset].amp[1].data[curChn->physChn];
       //curChn->pastFilt[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].dataF[curChn->physChn] : acqCurData[dOffset].amp[1].dataF[curChn->physChn];
 
       // Compute Absolute "50Hz+Harmonics" Level of that channel..
-      dummyAvg=0.;
-      for (int k=0;k<notchCount;k++)
-       dummyAvg+=abs(curChn->pastFilt[(notchStart+k)%cp.cntPastSize]);
+      dummyAvg=0.; for (int k=0;k<notchCount;k++) dummyAvg+=abs(curChn->pastFilt[(notchStart+k)%cp.cntPastSize]);
       dummyAvg/=(float)notchCount; //dummyAvg/=0.6; // Level of avg of sine..
       curChn->notchLevel=dummyAvg; // /10.; // Normalization
-      if (curChn->notchLevel < notchThreshold)
-       curChn->notchColor=QColor(0,255,0,144);     // Green
-      else curChn->notchColor=QColor(255,0,0,144); // Red
+      if (curChn->notchLevel < notchThreshold) curChn->notchColor=QColor(0,255,0,144); else curChn->notchColor=QColor(255,0,0,144); // Green vs. Red
      }
 
      // Handle Incoming Event..
-     if (acqCurEvent) {
-      event=true; curEventName="Unknown STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
+     if (acqCurEvent) { event=true; curEventName="Unknown STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
       int idx=eventIndex(acqCurEvent,1);
-      if (idx>=0) {
-       eIndex=idx;
-       curEventName=acqEvents[eIndex]->name;
+      if (idx>=0) { eIndex=idx; curEventName=acqEvents[eIndex]->name;
        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Avg! (Index,Name)->" << eIndex << curEventName; //.toLatin1().data();
        if (averaging) {
         qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Event collision!.. (was already averaging).." << avgCounter << cp.rejCount;
@@ -810,9 +717,7 @@ class AcqMaster : QObject {
        for (int i=0;i<acqChannels.size();i++) {
         if (acqChannels[0][i]->rejLev>0) {
          for (int j=0;j<cp.rejCount;j++) {
-          if (abs(
-               acqChannels[0][i]->pastData[(cp.cntPastSize+cp.cntPastIndex-cp.rejCount+j)%cp.cntPastSize]
-              ) > acqChannels[0][i]->rejLev) { rejFlag=true; rejChn=i; break; }
+          if (abs(acqChannels[0][i]->pastData[(cp.cntPastSize+cp.cntPastIndex-cp.rejCount+j)%cp.cntPastSize]) > acqChannels[0][i]->rejLev) { rejFlag=true; rejChn=i; break; }
          }
         } if (rejFlag==true) break;
        }
@@ -831,11 +736,7 @@ class AcqMaster : QObject {
          n1=(float)(acqEvents[eIndex]->accepted); // n2=1
          avgDataCount=avgInChn->size();
 
-         for (int j=0;j<avgDataCount;j++) {
-          k1=(*avgInChn)[j];
-          k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize];
-          (*avgInChn)[j]=(k1*n1+k2)/(n1+1.);
-         }
+         for (int j=0;j<avgDataCount;j++) { k1=(*avgInChn)[j]; k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize]; (*avgInChn)[j]=(k1*n1+k2)/(n1+1.); }
         } emit repaintGL(16); emit repaintHeadWindow();
        }
       }
@@ -846,14 +747,9 @@ class AcqMaster : QObject {
      cp.cntPastIndex++; cp.cntPastIndex%=cp.cntPastSize;
 
      if (!scrCounter) {
-      for (unsigned int i=0;i<ampCount;i++) {
-       for (int j=0;j<scrCurData[i].size();j++) {
-        curChn=acqChannels[i][j];
-        scrPrvData[i][j] =scrCurData[i][j];
-        scrCurData[i][j] =acqCurData[dOffset].amp[i].data[curChn->physChn];
-        scrPrvDataF[i][j]=scrCurDataF[i][j];
-        scrCurDataF[i][j]=acqCurData[dOffset].amp[i].dataF[curChn->physChn];
-       }
+      for (unsigned int i=0;i<ampCount;i++) for (int j=0;j<scrCurData[i].size();j++) { curChn=acqChannels[i][j];
+       scrPrvData[i][j]=scrCurData[i][j]; scrCurData[i][j]=acqCurData[dOffset].amp[i].data[curChn->physChn];
+       scrPrvDataF[i][j]=scrCurDataF[i][j]; scrCurDataF[i][j]=acqCurData[dOffset].amp[i].dataF[curChn->physChn];
       } emit scrData(tick,event); tick=event=false; // Update CntFrame
      } scrCounter++; scrCounter%=cntSpeedX;
      if (!seconds) emit repaintGL(2+4); // Update 50Hz visualization..
@@ -862,14 +758,9 @@ class AcqMaster : QObject {
    } // bytesAvailable
   } // acqReadData
 
-  void slotReboot() {
-   acqSendCommand(CS_REBOOT,0,0,0);
-   guiStatusBar->showMessage("ACQ server is rebooting..",5000);
-  }
-  void slotShutdown() {
-   acqSendCommand(CS_SHUTDOWN,0,0,0);
-   guiStatusBar->showMessage("ACQ server is shutting down..",5000);
-  }
+  void slotReboot() { acqSendCommand(CS_REBOOT,0,0,0); guiStatusBar->showMessage("ACQ server is rebooting..",5000); }
+  void slotShutdown() { acqSendCommand(CS_SHUTDOWN,0,0,0); guiStatusBar->showMessage("ACQ server is shutting down..",5000); }
+  
   void slotQuit() {
    if (digitizer->connected) digitizer->serialClose();
    acqDataSocket->disconnectFromHost();
@@ -879,10 +770,7 @@ class AcqMaster : QObject {
   // *** POLHEMUS HANDLER ***
 
   void slotDigMonitor() {
-   digitizer->mutex.lock();
-    sty=digitizer->styF; xp=digitizer->xpF;
-    yp=digitizer->ypF; zp=digitizer->zpF;
-   digitizer->mutex.unlock(); emit repaintGL(1);
+   digitizer->mutex.lock(); sty=digitizer->styF; xp=digitizer->xpF; yp=digitizer->ypF; zp=digitizer->zpF; digitizer->mutex.unlock(); emit repaintGL(1);
   }
 
   void slotDigResult() {
@@ -891,35 +779,31 @@ class AcqMaster : QObject {
      acqChannels[0][currentElectrode[i]]->real=digitizer->stylusF;
      acqChannels[0][currentElectrode[i]]->realS=digitizer->stylusSF;
     }
-   digitizer->mutex.unlock(); for (unsigned int i=0;i<ampCount;i++) curElecInSeq[i]++;
+   digitizer->mutex.unlock();
+   for (unsigned int i=0;i<ampCount;i++) curElecInSeq[i]++;
    for (unsigned int i=0;i<ampCount;i++) {
     if (curElecInSeq[i]==gizmo[currentGizmo[i]]->seq.size()) curElecInSeq[i]=0;
-    for (int j=0;j<acqChannels.size();j++)
-     if (acqChannels[i][j]->physChn==gizmo[currentGizmo[i]]->seq[curElecInSeq[i]]-1) { currentElectrode[i]=j; break; }
+    for (int j=0;j<acqChannels.size();j++) if (acqChannels[i][j]->physChn==gizmo[currentGizmo[i]]->seq[curElecInSeq[i]]-1) { currentElectrode[i]=j; break; }
    }
    emit repaintHeadWindow(); emit repaintGL(1);
   }
 
   //  GUI TOP LEFT BUTTONS RELATED TO RECORDING/EVENTS/TRIGGERS
 
-  void slotToggleRecording() {
-   QDateTime currentDT(QDateTime::currentDateTime());
+  void slotToggleRecording() { QDateTime currentDT(QDateTime::currentDateTime());
    if (!recording) {
-    // Generate filename using current date and time
-    // add current data and time to base: trial-20071228-123012-332.oeg
-    QString cntFN="trial-"+currentDT.toString("yyyyMMdd-hhmmss-zzz");
-    cntFile.setFileName(cntFN+".oeg");
+    // Generate filename using current date and time, add current data and time to base: trial-20071228-123012-332.oeg
+    QString cntFN="trial-"+currentDT.toString("yyyyMMdd-hhmmss-zzz"); cntFile.setFileName(cntFN+".oeg");
     if (!cntFile.open(QIODevice::WriteOnly)) {
      qDebug() << "octopus_acq_client: <AcqMaster> <ToggleRec> Error: Cannot open .occ file for writing."; return;
     } cntStream.setDevice(&cntFile);
 
     cntStream << (int)(OCTOPUS_ACQ_CLIENT_VER);	// Version
-    cntStream << sampleRate;		// Sample rate
-    cntStream << cntRecChns.size();	// Channel count
+    cntStream << sampleRate;		        // Sample rate
+    cntStream << cntRecChns.size();	        // Channel count
 
-    for (int i=0;i<cntRecChns.size();i++) // Channel names - Cstyle
-     cntStream << acqChannels[0][cntRecChns[0][i]]->name.toLatin1().data();
-
+    for (int i=0;i<cntRecChns.size();i++) cntStream << acqChannels[0][cntRecChns[0][i]]->name.toLatin1().data(); // Channel names - Cstyle
+     
     for (int i=0;i<cntRecChns.size();i++) { // Param coords
      cntStream << acqChannels[0][cntRecChns[0][i]]->param.y;
      cntStream << acqChannels[0][cntRecChns[0][i]]->param.z;
@@ -933,23 +817,19 @@ class AcqMaster : QObject {
      cntStream << acqChannels[0][cntRecChns[0][i]]->realS[2];
     }
 
-    cntStream << acqEvents.size();	// Event count
-    for (int i=0;i<acqEvents.size();i++) { // Event Info of the session
-     cntStream << acqEvents[i]->no;	// Event #
+    cntStream << acqEvents.size();	       // Event count
+    for (int i=0;i<acqEvents.size();i++) {     // Event Info of the session
+     cntStream << acqEvents[i]->no;	       // Event #
      cntStream << acqEvents[i]->name.toLatin1().data(); // Name - Cstyle
-     cntStream << acqEvents[i]->type;	// STIM or RESP
-     cntStream << acqEvents[i]->color.red(); // Color
+     cntStream << acqEvents[i]->type;	       // STIM or RESP
+     cntStream << acqEvents[i]->color.red();   // Color
      cntStream << acqEvents[i]->color.green();
      cntStream << acqEvents[i]->color.blue();
     }
     
     // Here continuous data begins..
-
-    timeLabel->setText("Rec.Time: 00:00:00");
-    recCounter=0; recording=true;
-   } else { recording=false;
-    cntStream.setDevice(0); cntFile.close();
-   }
+    timeLabel->setText("Rec.Time: 00:00:00"); recCounter=0; recording=true;
+   } else { recording=false; cntStream.setDevice(0); cntFile.close(); }
   }
 
   void slotToggleNotch() { if (!notch) notch=true; else notch=false; }
@@ -960,55 +840,32 @@ class AcqMaster : QObject {
 
   void slotAcqCommandError(QAbstractSocket::SocketError socketError) {
    switch (socketError) {
-    case QAbstractSocket::HostNotFoundError:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server does not exist!"; break;
-    case QAbstractSocket::ConnectionRefusedError:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server refused connection!"; break;
-    default:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server unknown error!"; break;
+    case QAbstractSocket::HostNotFoundError: qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server does not exist!"; break;
+    case QAbstractSocket::ConnectionRefusedError: qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server refused connection!"; break;
+    default: qDebug() << "octopus_acq_client: <AcqMaster> <AcqCmdErr> ACQuisition command server unknown error!"; break;
    }
   }
 
   void slotAcqDataError(QAbstractSocket::SocketError socketError) {
    switch (socketError) {
-    case QAbstractSocket::HostNotFoundError:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server does not exist!"; break;
-    case QAbstractSocket::ConnectionRefusedError:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server refused connection!"; break;
-    default:
-     qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server unknown error!"; break;
+    case QAbstractSocket::HostNotFoundError: qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server does not exist!"; break;
+    case QAbstractSocket::ConnectionRefusedError: qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server refused connection!"; break;
+    default: qDebug() << "octopus_acq_client: <AcqMaster> <AcqDataErr> ACQuisition data server unknown error!"; break;
    }
   }
 
  private: // Used Just-In-Time..
-  void updateRecTime() { int s,m,h;
-   s=recCounter/sampleRate; m=s/60; h=m/60;
+  void updateRecTime() { int s,m,h; s=recCounter/sampleRate; m=s/60; h=m/60;
    if (h<10) rHour="0"; else rHour=""; rHour+=dummyString.setNum(h);
    if (m<10) rMin="0"; else rMin=""; rMin+=dummyString.setNum(m);
    if (s<10) rSec="0"; else rSec=""; rSec+=dummyString.setNum(s);
    timeLabel->setText("Rec.Time: "+rHour+":"+rMin+":"+rSec);
   }
 
-  bool tick,event;
+  bool tick,event; int seconds,cntBufIndex,scrCounter,recCounter,avgCounter; QObject *recorder; unsigned int ampCount; QString rHour,rMin,rSec,dummyString;
 
-  int seconds,cntBufIndex,scrCounter;
-
-  QFile cfgFile,cntFile,avgFile;
-  QTextStream cfgStream;
-  QDataStream cntStream,avgStream;
-  serial_device serial; Digitizer *digitizer;
-  QString dummyString;
-  Event *dummyEvt; Channel *dummyChn;
-
-  QObject *recorder;
-
-  unsigned int ampCount;
-  int recCounter,avgCounter; QString rHour,rMin,rSec;
-
-  Channel *curChn;
-  QVector<unsigned int> ampChkP;
-
-  quint64 globalCounter;
+  QFile cfgFile,cntFile,avgFile; QTextStream cfgStream; QDataStream cntStream,avgStream;
+  serial_device serial; Digitizer *digitizer; Event *dummyEvt; Channel *dummyChn,*curChn; QVector<unsigned int> ampChkP; quint64 globalCounter;
 };
 
 #endif

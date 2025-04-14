@@ -34,8 +34,6 @@ class LegendFrame : public QFrame {
  public:
   LegendFrame(QWidget *p,AcqMaster *acqm) : QFrame(p) { parent=p; acqM=acqm; }
 
- public slots:
-
  protected:
   virtual void paintEvent(QPaintEvent*) {
    mainPainter.begin(this);
@@ -43,8 +41,7 @@ class LegendFrame : public QFrame {
    mainPainter.setBackgroundMode(Qt::OpaqueMode);
    mainPainter.setPen(Qt::black);
    mainPainter.eraseRect(frameRect()); mainPainter.drawRect(frameRect());
-   mainPainter.drawText(16,16,"#   Event           Color"
-                              "    Accepted  Rejected");
+   mainPainter.drawText(16,16,"#   Event           Color    Accepted  Rejected");
    mainPainter.drawLine(4,22,width()-4,22);
    for (int i=0;i<acqM->acqEvents.size();i++) {
     if (acqM->acqEvents[i]->accepted || acqM->acqEvents[i]->rejected) {

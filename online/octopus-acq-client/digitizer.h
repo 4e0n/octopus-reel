@@ -61,31 +61,25 @@ class Digitizer : public QThread {
 
     // CLOCAL: Local connection, no modem control
     // CREAD:  Enable receiving chars
-    newtio.c_cflag=serial->baudrate | serial->databits |
-                   serial->parity   | serial->par_on   |
-                   serial->stopbit  | CLOCAL |CREAD;
-
-    newtio.c_iflag=IGNPAR | ICRNL;  // Ignore bytes with parity errors,
-                                    // map CR to NL, as it will terminate the
-                                    // input for canonical mode..
-
-    newtio.c_oflag=0;               // Raw Output
-
-    newtio.c_lflag=ICANON;          // Enable Canonical Input
-
-    tcflush(device,TCIFLUSH); // Clear line and activate settings..
+    newtio.c_cflag=serial->baudrate|serial->databits|serial->parity|serial->par_on|serial->stopbit|CLOCAL|CREAD;
+    newtio.c_iflag=IGNPAR|ICRNL; // Ignore bytes with parity errors,
+                                 // map CR to NL, as it will terminate the
+                                 // input for canonical mode..
+    newtio.c_oflag=0;            // Raw Output
+    newtio.c_lflag=ICANON;       // Enable Canonical Input
+    tcflush(device,TCIFLUSH);    // Clear line and activate settings..
     tcsetattr(device,TCSANOW,&newtio); sleep(1);
 
     // Init Digitizer
-//    digitizerSend(QString(25)); sleep(7); // Reset (Ctrl-Y) & Get Status..
+//  digitizerSend(QString(25)); sleep(7); // Reset (Ctrl-Y) & Get Status..
     digitizerSend("S"); msleep(100); result=digitizerGetLine();
     QStringList k=result.split(" ",Qt::SkipEmptyParts);
     if (k.size()>=3) {
      qDebug() << "octopus_acq_client: <Digitizer> Digitizer status:" << result; //.toLatin1().data();
-     digitizerSend("u"); msleep(100);   // Metric system..
+     digitizerSend("u"); msleep(100);      // Metric system..
      digitizerSend("c"); msleep(100);      // Single coord mode..
      digitizerSend("e1,0\n"); msleep(100); // Mouse Mode..
-     //  - Receive X,Y,Z's of all 4 receivers on a single line..
+     // Receive X,Y,Z's of all 4 receivers on a single line..
      digitizerSend("O1,16,2,0\n"); msleep(100);
      digitizerSend("O2,2,0\n"); msleep(100);
      digitizerSend("O3,2,0\n"); msleep(100);
@@ -94,13 +88,12 @@ class Digitizer : public QThread {
      digitizerSend("N2,0.301,0,0.313\n"); msleep(200);
      digitizerSend("N3,0.301,0,0.313\n"); msleep(200);
      digitizerSend("N4,0.301,0,0.313\n"); msleep(200);
-
      // Turn transmitter frame 180deg upside down for all receivers about X..
      digitizerSend("r1,0,0,180\n"); msleep(200);
      digitizerSend("r2,0,0,180\n"); msleep(200);
      digitizerSend("r3,0,0,180\n"); msleep(200);
      digitizerSend("r4,0,0,180\n"); msleep(200);
-//     msleep(100); tcflush(device,TCIFLUSH); msleep(100);
+//   msleep(100); tcflush(device,TCIFLUSH); msleep(100);
 
      start(QThread::LowestPriority); connected=true; msleep(200);
      digitizerSend("C"); // Metric system, single mode..
@@ -149,8 +142,7 @@ class Digitizer : public QThread {
     Vec3 trans(1.,1.,1.); yp=yp+trans; xp=xp+trans; zp=zp+trans;
 
     if (!scrUpdate) {
-     mutex.lock(); styF=sty; xpF=xp; ypF=yp; zpF=zp; mutex.unlock();
-     emit digMonitor();
+     mutex.lock(); styF=sty; xpF=xp; ypF=yp; zpF=zp; mutex.unlock(); emit digMonitor();
     } scrUpdate++; scrUpdate%=SCR_REFRESH;
 
     if (!averaging) {
@@ -174,7 +166,7 @@ class Digitizer : public QThread {
    } else { qDebug() << "octopus_acq_client: <Digitizer> Error in received coord line.. It is:" << c.size() << receivedLine; /*.toLatin1().data());*/ }
   }
 
-  virtual void run() { while (true) { digitizerReceive(); } }
+  virtual void run() { while (true) digitizerReceive(); }
 
   bool connected; QMutex mutex,mutex2; Vec3 styF,xpF,ypF,zpF,stylusF,stylusSF;
 
@@ -183,8 +175,7 @@ class Digitizer : public QThread {
 
  private slots:
   void slotBeep(int x) {
-   if (x==1) QSound::play("../../octopus-data/SOUND/start.wav");
-   else if (x==0) QSound::play("../../octopus-data/SOUND/stop.wav");
+   if (x==1) QSound::play("../../octopus-data/SOUND/start.wav"); else if (x==0) QSound::play("../../octopus-data/SOUND/stop.wav");
   }
 
  private:

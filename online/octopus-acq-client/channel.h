@@ -32,13 +32,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 class Channel : QObject {
  public:
-  Channel(int pc,QString n,int chRejLev,int chRejRef,QString cv,QString cr,
-          QString av,QString ar,float th,float ph) : QObject() {
+  Channel(int pc,QString n,int chRejLev,int chRejRef,QString cv,QString cr,QString av,QString ar,float th,float ph) : QObject() {
    physChn=pc-1; name=n; rejLev=(float)chRejLev; rejRef=chRejRef;
-   cntVis = (cv=="T" || cv=="t") ? true : false;
-   cntRec = (cr=="T" || cr=="t") ? true : false;
-   avgVis = (av=="T" || av=="t") ? true : false;
-   avgRec = (ar=="T" || ar=="t") ? true : false;
+   cntVis = (cv=="T" || cv=="t") ? true : false; cntRec = (cr=="T" || cr=="t") ? true : false;
+   avgVis = (av=="T" || av=="t") ? true : false; avgRec = (ar=="T" || ar=="t") ? true : false;
    param.y=th; param.z=ph; real=Vec3(1000.,0.,0.); realS.zero();
   }
   ~Channel() {}
@@ -53,20 +50,17 @@ class Channel : QObject {
   }
 
   void resetEvents() {
-   for (int i=0;i<avgData.size();i++) {
-    for (int j=0;j<avgData[i]->size();j++)
-     (*(avgData[i]))[j]=(*(stdData[i]))[j]=0.;
-   }
+   for (int i=0;i<avgData.size();i++) for (int j=0;j<avgData[i]->size();j++) (*(avgData[i]))[j]=(*(stdData[i]))[j]=0.;
   }
 
   // Continuous and Average visibility and recording flags exist as strings
   // in the constructor, which is how they are read from the config file..
-  int physChn,rejRef; QString name; bool cntVis,cntRec,avgVis,avgRec;
+  bool cntVis,cntRec,avgVis,avgRec; int physChn,rejRef; QString name;
 
   Coord3D param; Vec3 real,realS; // Parametric and realistic coords..
 
-  QVector<float> pastData,pastFilt; float rejLev;
-  QVector<QVector<float>* > avgData,stdData;
+  QVector<QVector<float>* > avgData,stdData; QVector<float> pastData,pastFilt; float rejLev;
+
   float notchLevel; QColor notchColor; // Instantly computed line noise level..
 };
 
