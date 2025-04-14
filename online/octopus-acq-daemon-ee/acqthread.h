@@ -174,8 +174,9 @@ class AcqThread : public QThread {
    //CircularBuffer circBuffer(CIRCULAR_BUFFER_SIZE);
    audioOK=false; audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS);
 
-   counter0=counter1=0;
+   counter0=counter1=synthTrigger=0;
    acqD->registerSendTriggerHandler(this);
+   acqD->registerSendSynthTriggerHandler(this);
   }
 
   void initAlsa() {
@@ -483,9 +484,13 @@ class AcqThread : public QThread {
      tcpMutex->lock();
       quint64 tcpDataSize=cBufPivot-cBufPivotP; // qDebug() << cBufPivotP << " " << cBufPivot;
       for (quint64 i=0;i<tcpDataSize;i++) {
-       // Baseline alignment to the latest offset by (+arrivedTrig[i])
+       // Baseline alignment to the latest offset by (+arrivedTrig[i]
        tcpS.amp[0]=ee[0].cBuf[(cBufPivotP+i-convN2+arrivedTrig[0])%cBufSz];
        tcpS.amp[1]=ee[1].cBuf[(cBufPivotP+i-convN2+arrivedTrig[1])%cBufSz];
+       tcpS.trigger=0;
+       if (synthTrigger) {
+        tcpS.trigger=synthTrigger; synthTrigger=0;
+       }
 
        // Trigger timing check in between amps
        trig0=tcpS.amp[0].trigger; trig1=tcpS.amp[1].trigger; toff++;
@@ -565,6 +570,8 @@ class AcqThread : public QThread {
    }
   }
 
+  void sendSynthTrigger(unsigned int t) { synthTrigger=t; }
+
  private:
   AcqDaemon *acqD;
 #ifdef EEMAGINE
@@ -603,6 +610,7 @@ class AcqThread : public QThread {
   bool audioOK;
 
   quint64 counter0,counter1;
+  unsigned int synthTrigger;
   //unsigned char cmVal;
 };
 

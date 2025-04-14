@@ -342,7 +342,7 @@ class AcqMaster : QObject {
    // *** POST SETUP ***
 
    acqFrameH=contGuiH-90; acqFrameW=(int)(.66*(float)(contGuiW)); if (acqFrameW%2==1) acqFrameW--;
-   glFrameH=glFrameW; glFrameW=(int)(.33*(float)(contGuiW)); if (glFrameW%2==1) glFrameW--;
+   glFrameW=(int)(.33*(float)(contGuiW)); if (glFrameW%2==1) { glFrameW--; } glFrameH=glFrameW;
    
    cntAmpX.resize(ampCount); avgAmpX.resize(ampCount);
    gizmoOnReal.resize(ampCount); elecOnReal.resize(ampCount);
@@ -649,7 +649,7 @@ class AcqMaster : QObject {
   }
 
   void slotAcqReadData() {
-   int acqCurEvent,avgDataCount,avgStartOffset; QVector<float> *avgInChn; //,*stdInChn;
+   unsigned int acqCurEvent,avgDataCount,avgStartOffset; QVector<float> *avgInChn; //,*stdInChn;
    float n1,k1,k2; unsigned int offsetC,offsetP;
    QDataStream acqDataStream(acqDataSocket);
 
@@ -698,15 +698,16 @@ class AcqMaster : QObject {
      }
 
      // Handle Incoming Event..
-     if (acqCurEvent) { event=true; curEventName="Unknown STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
-      int idx=eventIndex(acqCurEvent,1);
-      if (idx>=0) { eIndex=idx; curEventName=acqEvents[eIndex]->name;
-       qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Avg! (Index,Name)->" << eIndex << curEventName; //.toLatin1().data();
-       if (averaging) {
-        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Event collision!.. (was already averaging).." << avgCounter << cp.rejCount;
-       } else { averaging=true; avgCounter=0; }
-      }
-     }
+     if (acqCurEvent) qDebug() << "EVENT ARRIVED!";
+     //if (acqCurEvent) { event=true; curEventName="STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
+     // int idx=eventIndex(acqCurEvent,1);
+     // if (idx>=0) { eIndex=idx; curEventName=acqEvents[eIndex]->name;
+     //  qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Avg! (Index,Name)->" << eIndex << curEventName; //.toLatin1().data();
+     //  if (averaging) {
+     //   qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Event collision!.. (was already averaging).." << avgCounter << cp.rejCount;
+     //  } else { averaging=true; avgCounter=0; }
+     // }
+     //}
 
      if (averaging) {
       if (avgCounter==cp.bwCount) { averaging=false;
@@ -833,7 +834,7 @@ class AcqMaster : QObject {
   }
 
   void slotToggleNotch() { if (!notch) notch=true; else notch=false; }
-  void slotManualTrig() { acqSendCommand(CS_ACQ_MANUAL_TRIG,0xff,0,0); }
+  void slotManualTrig() { acqSendCommand(CS_ACQ_MANUAL_TRIG,AMP_SIMU_TRIG,0,0); }
   void slotManualSync() { acqSendCommand(CS_ACQ_MANUAL_SYNC,AMP_SYNC_TRIG,0,0); }
 
   // *** TCP HANDLERS

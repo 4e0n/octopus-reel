@@ -119,10 +119,14 @@ class CntFrame : public QFrame {
     rotPainter.end();
     *rBuffer=rBuffer->transformed(rTransform,Qt::SmoothTransformation);
 
-    for (c=0;c<colCount;c++) {
-     scrollPainter.drawLine(wX[c],1,wX[c],acqM->acqFrameH-2);
-     if (wX[c]<(w0[c]+15)) scrollPainter.drawPixmap(wn[c]-15,acqM->acqFrameH-104,*rBuffer); else scrollPainter.drawPixmap(wX[c]-14,acqM->acqFrameH-104,*rBuffer);
-    } delete rBuffer;
+    scrollPainter.setPen(Qt::blue);
+    //for (c=0;c<chnCount/chnPerCol;c++) {
+     //scrollPainter.drawLine(wX[c]-1,1,wX[c]-1,acqM->acqFrameH-1);
+     //if (wX[c]<(w0[c]+15))
+     scrollPainter.drawPixmap(wX[c]-15,acqM->acqFrameH-104,*rBuffer); // else scrollPainter.drawPixmap(wX[c]-14,acqM->acqFrameH-104,*rBuffer);
+    //}
+    
+    delete rBuffer;
    } 
 
 //   if (chnCount>32 && wX[0]==70) { // Overhead and the Chn names together..

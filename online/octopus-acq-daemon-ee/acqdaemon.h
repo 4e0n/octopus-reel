@@ -271,12 +271,17 @@ class AcqDaemon : public QTcpServer {
    connect(this,SIGNAL(sendTrigger(unsigned char)),sh,SLOT(sendTrigger(unsigned char)));
   }
 
+  void registerSendSynthTriggerHandler(QObject *sh) {
+   connect(this,SIGNAL(sendSynthTrigger(unsigned char)),sh,SLOT(sendSynthTrigger(unsigned char)));
+  }
+
   void updateCMLevels() { emit cmLevelsReady(); }
 
  signals:
   void repaintGUI(int ampNo);
   void cmLevelsReady(void);
   void sendTrigger(unsigned char trigger);
+  void sendSynthTrigger(unsigned int trigger);
 
  public slots:
   void slotIncomingCommand() {
@@ -313,7 +318,7 @@ class AcqDaemon : public QTcpServer {
 		       else eegImpedanceMode=false;
 		       break;
      case CS_ACQ_MANUAL_TRIG:
-		       extTrig=csCmd.iparam[0]; emit sendTrigger(extTrig);
+		       extTrig=csCmd.iparam[0]; emit sendSynthTrigger(extTrig);
                        qDebug() << "octopus_acqd: <TCPcmd> External Trigger acknownledged. TCode: "
                                 << extTrig;
 		       break;

@@ -53,6 +53,7 @@ const float EE_BIP_GAIN=4.;
 
 const unsigned int CBUF_SIZE_IN_SECS=10;
 
-const unsigned int AMP_SYNC_TRIG=0x80;
+const unsigned int AMP_SIMU_TRIG=0xFE;
+const unsigned int AMP_SYNC_TRIG=0xFF;
 
 #endif

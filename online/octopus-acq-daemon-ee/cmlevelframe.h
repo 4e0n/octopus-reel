@@ -110,10 +110,10 @@ class CMLevelFrame : public QFrame {
 
  public slots:
   void slotCMLevelsReady() { repaint();
-   float cMin,cMax; std::vector<float> cm;
+   std::vector<float> cm; // float cMin,cMax;
    for (int i=0;i<chnTopo->size();i++) cm.push_back((*chnTopo)[i].cmLevel[ampNo]);
-   cMin=*std::min_element(cm.begin(),cm.end()); cMax=*std::max_element(cm.begin(),cm.end());
-   qDebug() << "Amp" << ampNo << "Chn (min,max):" << cMin << "," << cMax;
+   //cMin=*std::min_element(cm.begin(),cm.end()); cMax=*std::max_element(cm.begin(),cm.end());
+   //qDebug() << "Amp" << ampNo << "Chn (min,max):" << cMin << "," << cMax;
   }
 
  protected:
