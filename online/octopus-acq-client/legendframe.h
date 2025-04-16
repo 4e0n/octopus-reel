@@ -32,7 +32,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class LegendFrame : public QFrame {
  Q_OBJECT
  public:
-  LegendFrame(QWidget *p,AcqMaster *acqm) : QFrame(p) { parent=p; acqM=acqm; }
+  LegendFrame(QWidget *p,AcqMaster *acqm) : QFrame(p) { parent=p; acqM=acqm; acqM->regRepaintLegendHandler(this); }
+
+ public slots: void slotRepaintLegend() { repaint(); }
 
  protected:
   virtual void paintEvent(QPaintEvent*) {

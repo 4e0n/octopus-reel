@@ -392,6 +392,7 @@ class AcqMaster : QObject {
   void registerScrollHandler(QObject *sh) { connect(this,SIGNAL(scrData(bool,bool)),sh,SLOT(slotScrData(bool,bool))); }
   void regRepaintGL(QObject *sh) { connect(this,SIGNAL(repaintGL(int)),sh,SLOT(slotRepaintGL(int))); }
   void regRepaintHeadWindow(QObject *sh) { connect(this,SIGNAL(repaintHeadWindow()),sh,SLOT(slotRepaint())); }
+  void regRepaintLegendHandler(QObject *sh) { connect(this,SIGNAL(repaintLegend()),sh,SLOT(slotRepaintLegend())); }
 
   // *** UTILITY ROUTINES ***
 
@@ -610,7 +611,7 @@ class AcqMaster : QObject {
   QVector<float> scalpParamR,scalpNasion,scalpCzAngle;
 
  signals:
-  void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow();
+  void scrData(bool,bool); void repaintGL(int); void repaintHeadWindow(); void repaintLegend();
 
  private slots:
 
@@ -635,8 +636,8 @@ class AcqMaster : QObject {
      avgStream << acqEvents[i]->rejected; // Rejected count
 
      for (int j=0;j<cp.avgCount;j++) {
-      for (int k=0;k<avgRecChns.size();k++) avgStream << acqChannels[0][avgRecChns[0][k]]->avgData[j];
-      for (int k=0;k<avgRecChns.size();k++) avgStream << acqChannels[0][avgRecChns[0][k]]->stdData[j];
+      for (int k=0;k<avgRecChns.size();k++) avgStream << &(acqChannels[0][avgRecChns[0][k]]->avgData)[j];
+      for (int k=0;k<avgRecChns.size();k++) avgStream << &(acqChannels[0][avgRecChns[0][k]]->stdData)[j];
      } avgFile.close();
     }
    }
@@ -731,14 +732,13 @@ class AcqMaster : QObject {
         acqEvents[eIndex]->accepted++; eventOccured=true;
         qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <Reject> Computing average for eventIndex and updating GUI..";
  
-        for (int i=0;i<acqChannels.size();i++) {
+        for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
          avgStartOffset=(cp.cntPastSize+cp.cntPastIndex-cp.avgCount-cp.postRejCount)%cp.cntPastSize;
-         avgInChn=(acqChannels[0][i]->avgData)[eIndex];
-         //stdInChn=(acqChannels[0][i]->stdData)[eIndex];
-         n1=(float)(acqEvents[eIndex]->accepted); // n2=1
+         avgInChn=&(acqChannels[i][j]->avgData)[eIndex];
+	 //stdInChn=&(acqChannels[i][j]->stdData)[eIndex];
+         n1=(float)(acqEvents[eIndex]->accepted); //n2=1
          avgDataCount=avgInChn->size();
-
-         for (unsigned int j=0;j<avgDataCount;j++) { k1=(*avgInChn)[j]; k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize]; (*avgInChn)[j]=(k1*n1+k2)/(n1+1.); }
+         for (unsigned int k=0;k<avgDataCount;k++) { k1=(*avgInChn)[k]; k2=acqChannels[i][j]->pastData[(avgStartOffset+j)%cp.cntPastSize]; (*avgInChn)[k]=(k1*n1+k2)/(n1+1.); }
         } emit repaintGL(16); emit repaintHeadWindow();
        }
       }

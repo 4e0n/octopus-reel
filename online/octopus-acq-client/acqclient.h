@@ -90,8 +90,6 @@ class AcqClient : public QMainWindow {
 
    connect(avgAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotAvgAmp(int)));
 
-//   acqM->regRepaintHeadWindow(this);
-
    paramRLabel=new QLabel("Param.Radius ("+dummyString.setNum(acqM->scalpParamR[ampNo])+" cm):",cntWidget);
    paramRLabel->setGeometry(acqM->acqFrameW+10,acqM->glFrameH+34,190,20);
 

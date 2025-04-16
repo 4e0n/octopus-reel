@@ -53,5 +53,6 @@ int main(int argc,char** argv) { AcqClient *acqClient;
  QApplication app(argc,argv); AcqMaster *acqM=new AcqMaster(&app);
  AcqControl *acqControl=new AcqControl(acqM); acqControl->show();
  for (unsigned int i=0;i<acqM->getAmpCount();i++) { acqClient=new AcqClient(acqM,i); acqClient->show(); }
+ acqM->acqSendCommand(CS_ACQ_MANUAL_TRIG,AMP_SIMU_TRIG,0,0);
  return app.exec();
 }

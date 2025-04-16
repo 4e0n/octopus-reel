@@ -249,8 +249,11 @@ class HeadGLWidget : public QGLWidget {
   }
 
   void electrodeAvg(int chn,int idx,float r,float th,float ph,float eR) { float elecR,zPt,c,m;
-   QVector<float> *data=acqM->acqChannels[ampNo][chn]->avgData[idx]; int sz=data->size();
+   QVector<float> *data=&acqM->acqChannels[ampNo][chn]->avgData[idx]; int sz=data->size();
    QColor evtColor=acqM->acqEvents[idx]->color;
+   //qDebug() << chn << idx << r << th << ph << eR << sz;
+   //    for (int t=0;t<sz;t++)
+   //     qDebug() << (*data)[t];
    if (chn==acqM->currentElectrode[ampNo]) elecR=eR*3; else elecR=eR;
    glPushMatrix();
     glRotatef(ph,0,0,1); glRotatef(th,0,1,0);
@@ -391,9 +394,12 @@ class HeadGLWidget : public QGLWidget {
   GLuint makeAverages() { int evtIndex,chn; GLuint list=glGenLists(7);
    glNewList(list,GL_COMPILE);
     glEnable(GL_BLEND);
-    for (int i=0;i<acqM->acqChannels.size();i++) { chn=-1;
+    for (int i=0;i<acqM->acqChannels[ampNo].size();i++) { chn=-1;
+
      for (int j=0;j<acqM->avgVisChns.size();j++) if (acqM->avgVisChns[ampNo][j]==i) { chn=i; break; }
+
      if (acqM->elecOnReal[ampNo]) { Vec3 dummyVec,vs;
+
       if (chn>=0) {
        dummyVec=acqM->acqChannels[ampNo][chn]->real;
        vs[0]=dummyVec.sphR(); vs[1]=dummyVec.sphTheta()*180./M_PI; vs[2]=dummyVec.sphPhi()*180./M_PI;
@@ -405,7 +411,9 @@ class HeadGLWidget : public QGLWidget {
         }
        }
       } else electrodeBorder(false,i,vs[0],vs[1],vs[2],ELECTRODE_RADIUS*5./6.);
+
      } else {
+
       if (chn>=0) {
        electrodeBorder(true,chn,acqM->scalpParamR[ampNo],acqM->acqChannels[ampNo][chn]->param.y,acqM->acqChannels[ampNo][chn]->param.z,ELECTRODE_RADIUS*5./6.); // theta,phi
        for (int j=0;j<acqM->acqEvents.size();j++) {
@@ -415,7 +423,9 @@ class HeadGLWidget : public QGLWidget {
         }
        }
       } else electrodeBorder(false,i,acqM->scalpParamR[ampNo],acqM->acqChannels[ampNo][i]->param.y,acqM->acqChannels[ampNo][i]->param.z,ELECTRODE_RADIUS*5./6.);
+
      }
+
     } glDisable(GL_BLEND);
    glEndList(); return list;
   }

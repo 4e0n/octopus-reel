@@ -41,16 +41,20 @@ class Channel : QObject {
   ~Channel() {}
 
   void setEventProfile(int eventCount,int dataCount) {
-   QVector<float> *dummyAS;
-   for (int i=0;i<avgData.size();i++) { delete avgData[i]; delete stdData[i]; }
-   for (int i=0;i<eventCount;i++) {
-    dummyAS=new QVector<float>(dataCount); avgData.append(dummyAS);
-    dummyAS=new QVector<float>(dataCount); stdData.append(dummyAS);
-   }
+   avgData.resize(eventCount); for (int i=0;i<avgData.size();i++) avgData[i].resize(dataCount);
+   stdData.resize(eventCount); for (int i=0;i<stdData.size();i++) stdData[i].resize(dataCount);
+   //QVector<float> *dummyAS;
+   //for (int i=0;i<avgData.size();i++) { delete avgData[i]; delete stdData[i]; }
+   //for (int i=0;i<eventCount;i++) {
+   // dummyAS=new QVector<float>(dataCount); avgData.append(dummyAS);
+   // dummyAS=new QVector<float>(dataCount); stdData.append(dummyAS);
+   //}
   }
 
   void resetEvents() {
-   for (int i=0;i<avgData.size();i++) for (int j=0;j<avgData[i]->size();j++) (*(avgData[i]))[j]=(*(stdData[i]))[j]=0.;
+   //for (int i=0;i<avgData.size();i++) for (int j=0;j<avgData[i]->size();j++) (*(avgData[i]))[j]=(*(stdData[i]))[j]=0.;
+   for (int i=0;i<avgData.size();i++) for (int j=0;j<avgData[i].size();j++) avgData[i][j]=0.;
+   for (int i=0;i<stdData.size();i++) for (int j=0;j<stdData[i].size();j++) stdData[i][j]=0.;
   }
 
   // Continuous and Average visibility and recording flags exist as strings
@@ -59,7 +63,8 @@ class Channel : QObject {
 
   Coord3D param; Vec3 real,realS; // Parametric and realistic coords..
 
-  QVector<QVector<float>* > avgData,stdData; QVector<float> pastData,pastFilt; float rejLev;
+  //QVector<QVector<float>* > avgData,stdData;
+  QVector<QVector<float> > avgData,stdData; QVector<float> pastData,pastFilt; float rejLev;
 
   float notchLevel; QColor notchColor; // Instantly computed line noise level..
 };
