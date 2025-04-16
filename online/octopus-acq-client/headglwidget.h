@@ -61,7 +61,7 @@ class HeadGLWidget : public QGLWidget {
    if (acqM->skullExists[ampNo]) glDeleteLists(skull,9);
    if (acqM->scalpExists[ampNo]) glDeleteLists(scalp,8);
    glDeleteLists(avgs,7);
-   if (acqM->gizmoExists[ampNo]) glDeleteLists(gizmo,6);
+   if (acqM->gizmoExists) glDeleteLists(gizmo,6);
    glDeleteLists(realistic,5);
    glDeleteLists(parametric,4);
    if (acqM->digExists[ampNo]) glDeleteLists(dig,3);
@@ -89,7 +89,7 @@ class HeadGLWidget : public QGLWidget {
    frame=makeFrame(); grid=makeGrid();
    if (acqM->digExists[ampNo]) dig=makeDigitizer();
    parametric=makeParametric(); realistic=makeRealistic();
-   if (acqM->gizmoExists[ampNo]) gizmo=makeGizmo();
+   if (acqM->gizmoExists) gizmo=makeGizmo();
    avgs=makeAverages();
    if (acqM->scalpExists[ampNo]) scalp=makeScalp();
    if (acqM->skullExists[ampNo]) skull=makeSkull();
@@ -146,7 +146,7 @@ class HeadGLWidget : public QGLWidget {
     if (acqM->hwParamV[ampNo]) glCallList(parametric);
 
     glDisable(GL_CULL_FACE);
-     if (acqM->gizmoExists[ampNo] && acqM->hwGizmoV[ampNo]) glCallList(gizmo);
+     if (acqM->gizmoExists && acqM->hwGizmoV[ampNo]) glCallList(gizmo);
      if (acqM->hwAvgsV[ampNo]) glCallList(avgs);
     glEnable(GL_CULL_FACE);
 

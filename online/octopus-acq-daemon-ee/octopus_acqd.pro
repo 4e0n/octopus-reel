@@ -33,6 +33,7 @@ HEADERS += acqthread.h \
            acqdaemongui.h \
            cmlevelframe.h \
            tcpthread.h \
+	   clienthandler.h \
            eex.h \
            ../serial_device.h \
            ../acqglobals.h \

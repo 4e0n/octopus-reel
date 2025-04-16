@@ -70,7 +70,7 @@ class AcqMaster : QObject {
 
    // *** INITIAL VALUES OF RUNTIME VARIABLES ***
 
-   clientRunning=recording=averaging=eventOccured=false;
+   clientRunning=recording=withinAvgEpoch=eventOccured=false;
    seconds=cp.cntPastIndex=avgCounter=0; cntSpeedX=4; globalCounter=scrCounter=0;
    
    notch=true; notchN=20; notchThreshold=20.;
@@ -83,10 +83,9 @@ class AcqMaster : QObject {
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "octopus_acq_client: <AcqMaster> Cannot open ./octopus_acq_client.conf for reading!.."; application->quit();
    } else { cfgStream.setDevice(&cfgFile); // Load all of the file to string
-    gizmoExists.resize(ampCount); digExists.resize(ampCount);
-    scalpExists.resize(ampCount); skullExists.resize(ampCount); brainExists.resize(ampCount);
+    digExists.resize(ampCount); scalpExists.resize(ampCount); skullExists.resize(ampCount); brainExists.resize(ampCount);
     for (unsigned int i=0;i<ampCount;i++)
-     gizmoExists[i]=digExists[i]=scalpExists[i]=skullExists[i]=brainExists[i]=false;
+     gizmoExists=digExists[i]=scalpExists[i]=skullExists[i]=brainExists[i]=false;
     while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); cfgLines.append(cfgLine); }
     cfgFile.close();
 
@@ -199,34 +198,34 @@ class AcqMaster : QObject {
     if (chnSection.size()>0) { // CHN
      for (int i=0;i<chnSection.size();i++) { opts=chnSection[i].split("=");
       if (opts[0].trimmed()=="APPEND") { opts2=opts[1].split(",");
-       if (opts2.size()==11) {
-        opts2[2]=opts2[2].trimmed(); opts2[5]=opts2[5].trimmed(); opts2[6]=opts2[6].trimmed(); // Trim wspcs
-        opts2[7]=opts2[7].trimmed(); opts2[8]=opts2[8].trimmed(); opts2[9]=opts2[9].trimmed(); opts2[10]=opts2[10].trimmed();
-        if ((!(opts2[0].toInt()>0 && opts2[0].toInt()<=8)) || // Amp#
-	    (!(opts2[1].toInt()>0 && opts2[1].toInt()<=(int)chnInfo.physChnCount)) || // Channel#
-            (!(opts2[2].size()>0)) || // Channel name must be at least 1 char..
-            (!(opts2[3].toInt()>=0 && opts2[3].toInt()<1000))   || // Rej
-            (!(opts2[4].toInt()>=0 && opts2[4].toInt()<=(int)chnInfo.physChnCount)) || // RejRef
+       if (opts2.size()==10) {
+        opts2[0]=opts2[0].trimmed(); opts2[1]=opts2[1].trimmed(); opts2[4]=opts2[4].trimmed(); opts2[5]=opts2[5].trimmed(); // Trim wspcs
+        opts2[6]=opts2[6].trimmed(); opts2[7]=opts2[7].trimmed(); opts2[8]=opts2[8].trimmed(); opts2[9]=opts2[9].trimmed();
+	if ((!(opts2[0].toInt()>0 && opts2[1].toInt()<=(int)chnInfo.physChnCount)) || // Channel#
+            (!(opts2[1].size()>0)) || // Channel name must be at least 1 char..
+            (!(opts2[2].toInt()>=0 && opts2[2].toInt()<1000))   || // Rej
+            (!(opts2[3].toInt()>=0 && opts2[3].toInt()<=(int)chnInfo.physChnCount)) || // RejRef
+            (!(opts2[4]=="T" || opts2[4]=="t" || opts2[4]=="F" || opts2[4]=="f")) ||
             (!(opts2[5]=="T" || opts2[5]=="t" || opts2[5]=="F" || opts2[5]=="f")) ||
             (!(opts2[6]=="T" || opts2[6]=="t" || opts2[6]=="F" || opts2[6]=="f")) ||
             (!(opts2[7]=="T" || opts2[7]=="t" || opts2[7]=="F" || opts2[7]=="f")) ||
-            (!(opts2[8]=="T" || opts2[8]=="t" || opts2[8]=="F" || opts2[8]=="f")) ||
-            (!(opts2[9].toFloat()>=0. && opts2[9].toFloat()<=360.)) ||  // Theta 
-            (!(opts2[10].toFloat()>=0. && opts2[10].toFloat()<=360.))){ // Phi
+            (!(opts2[8].toFloat()>=0. && opts2[8].toFloat()<=360.)) || // Theta 
+            (!(opts2[9].toFloat()>=0. && opts2[9].toFloat()<=360.))){  // Phi
          qDebug() << "octopus_acq_client: <AcqMaster> <.conf> Syntax/logic Error in CHN|APPEND parameters!"; application->quit();
+
         } else { // Add to the list of channels
-         dummyChn=new Channel(opts2[1].toInt(),	    // Physical channel
-                              opts2[2].trimmed(),   // Channel Name
-                              opts2[3].toInt(),	    // Rejection Level
-                              opts2[4].toInt(),	    // Rejection Reference
-                              opts2[5],opts2[6],    // Cnt Vis/Rec Flags
-                              opts2[7],opts2[8],    // Avg Vis/Rec Flags
-                              opts2[9].toFloat(),   // Electrode Cart. Coords
-                              opts2[10].toFloat()); // (Theta,Phi)
+         dummyChn=new Channel(opts2[0].toInt()-1,  // Physical channel (0-indexed)
+                              opts2[1].trimmed(),  // Channel Name
+                              opts2[2].toInt(),	   // Rejection Level
+                              opts2[3].toInt()-1,  // Rejection Reference Channel for that channel (0-indexed)
+                              opts2[4],opts2[5],   // Cnt Vis/Rec Flags
+                              opts2[6],opts2[7],   // Avg Vis/Rec Flags
+                              opts2[8].toFloat(),  // Electrode Cart. Coords
+                              opts2[9].toFloat()); // (Theta,Phi)
          dummyChn->pastData.resize(cp.cntPastSize);
          dummyChn->pastFilt.resize(cp.cntPastSize); // Line-noise component
          dummyChn->setEventProfile(acqEvents.size(),cp.avgCount);
-         acqChannels[opts2[0].toInt()-1].append(dummyChn); // add channel to the respective amplifier
+         for (int amp=0;amp<acqChannels.size();amp++) acqChannels[amp].append(dummyChn); // add channel for all respective amplifiers
         }
        } else { qDebug() << "octopus_acq_client: <AcqMaster> <.conf> Parse error in CHN|APPEND parameters!"; application->quit(); }
       } else { qDebug() << "octopus_acq_client: <AcqMaster> <.conf> Parse error in CHN sections!"; application->quit(); }
@@ -437,24 +436,24 @@ class AcqMaster : QObject {
      } else if (opts[0].trimmed()=="SHAPE") {
       ;
      } else if (opts[1].trimmed()=="SEQ") {
-      int k=gizFindIndex(opts[0].trimmed()); for (int j=0;j<opts2.size();j++) gizmo[k]->seq.append(opts2[j].toInt());
+      int k=gizFindIndex(opts[0].trimmed()); for (int j=0;j<opts2.size();j++) gizmo[k]->seq.append(opts2[j].toInt()-1);
      } else if (opts[1].trimmed()=="TRI") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%3==0) {
        for (int j=0;j<opts2.size()/3;j++) {
-        t[0]=opts2[j*3+0].toInt(); t[1]=opts2[j*3+1].toInt(); t[2]=opts2[j*3+2].toInt(); gizmo[k]->tri.append(t);
+        t[0]=opts2[j*3+0].toInt()-1; t[1]=opts2[j*3+1].toInt()-1; t[2]=opts2[j*3+2].toInt()-1; gizmo[k]->tri.append(t);
        }
       } else { gError=true;
        qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo.. triangles not multiple of 3 vertices..";
       }
      } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%2==0) {
-       for (int j=0;j<opts2.size()/2;j++) { ll[0]=opts2[j*2+0].toInt(); ll[1]=opts2[j*2+1].toInt(); gizmo[k]->lin.append(ll); }
+       for (int j=0;j<opts2.size()/2;j++) { ll[0]=opts2[j*2+0].toInt()-1; ll[1]=opts2[j*2+1].toInt()-1; gizmo[k]->lin.append(ll); }
       } else { gError=true;
        qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo.. lines not multiple of 2 vertices..";
       }
      }
     } else { gError=true; qDebug() << "octopus_acq_client: <AcqMaster> <LoadGizmo> <OGZ> Error in gizmo file!"; }
-   } if (!gError) for (unsigned int i=0;i<ampCount;i++) gizmoExists[i]=true;
+   } if (!gError) gizmoExists=true;
   }
 
   void loadScalp_ObjFile(QString fn) {
@@ -534,7 +533,7 @@ class AcqMaster : QObject {
    for (int ll=0;ll<realValidLines.size();ll++) {
     opts=realValidLines[ll].split(" ",Qt::SkipEmptyParts);
     if (opts.size()==8 && opts[0]=="v") {
-     opts.removeFirst(); p=opts[0].toInt()-1; c=-1;
+     opts.removeFirst(); p=opts[0].toInt(); c=-1;
      for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
       if (p==acqChannels[i][j]->physChn) { c=i; break; }
 //    if (c!=-1) printf("%d - %d\n",p,c); else qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Channel does not exist!";
@@ -555,7 +554,7 @@ class AcqMaster : QObject {
    realStream << "# Generated by Octopus-recorder 0.9.5\n\n";
    realStream << "# Coord count = " << acqChannels.size() << "\n";
    for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
-    realStream << "v " << acqChannels[i][j]->physChn << " "
+    realStream << "v " << acqChannels[i][j]->physChn+1 << " "
                        << acqChannels[i][j]->real[0] << " "
                        << acqChannels[i][j]->real[1] << " "
                        << acqChannels[i][j]->real[2] << " "
@@ -571,7 +570,7 @@ class AcqMaster : QObject {
    } return idx;
   }
 
-  bool clientRunning,recording,averaging,eventOccured; chninfo chnInfo;
+  bool clientRunning,recording,withinAvgEpoch,eventOccured; chninfo chnInfo;
 
   // Non-volatile (read from and saved to octopus.cfg)
 
@@ -602,8 +601,9 @@ class AcqMaster : QObject {
   QVector<QVector<float> > scrPrvData,scrCurData,scrPrvDataF,scrCurDataF; QVector<float> cntAmpX,avgAmpX;
   QString curEventName; int curEventType;
 
+  bool gizmoExists;
   QVector<bool> hwFrameV,hwGridV,hwDigV,hwParamV,hwRealV,hwGizmoV,hwAvgsV,hwScalpV,hwSkullV,hwBrainV,
-                digExists,gizmoExists,scalpExists,skullExists,brainExists;
+                digExists,scalpExists,skullExists,brainExists;
 
 //  QVector<Coord3D> paramCoord,realCoord; QVector<QVector<int> > paramIndex;
   QVector<Coord3D> scalpCoord,skullCoord,brainCoord; QVector<QVector<int> > scalpIndex,skullIndex,brainIndex;
@@ -628,7 +628,7 @@ class AcqMaster : QObject {
      avgStream << (int)(OCTOPUS_ACQ_CLIENT_VER); // Version
      avgStream << sampleRate;		// Sample rate
      avgStream << avgRecChns.size();	// Channel count
-     avgStream << acqEvents[i]->name.toLatin1().data(); // Name of Evt - Cstyle
+     avgStream << acqEvents[i]->name;   // Name of Evt - Cstyle
      avgStream << cp.avgBwd;		// Averaging Window
      avgStream << cp.avgFwd;
      avgStream << acqEvents[i]->accepted; // Accepted count
@@ -698,34 +698,35 @@ class AcqMaster : QObject {
      }
 
      // Handle Incoming Event..
-     if (acqCurEvent) qDebug() << "EVENT ARRIVED!";
-     //if (acqCurEvent) { event=true; curEventName="STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
-     // int idx=eventIndex(acqCurEvent,1);
-     // if (idx>=0) { eIndex=idx; curEventName=acqEvents[eIndex]->name;
-     //  qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Avg! (Index,Name)->" << eIndex << curEventName; //.toLatin1().data();
-     //  if (averaging) {
-     //   qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Event collision!.. (was already averaging).." << avgCounter << cp.rejCount;
-     //  } else { averaging=true; avgCounter=0; }
-     // }
-     //}
+     if (acqCurEvent) { event=true; curEventName="STIM event #"; curEventName+=dummyString.setNum(acqCurEvent);
+      int idx=eventIndex(acqCurEvent,1);
+      if (idx>=0) { eIndex=idx; curEventName=acqEvents[eIndex]->name;
+       qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Avg! (Index,Name)->" << eIndex << curEventName;
+       if (withinAvgEpoch) {
+        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <IncomingEvent> Event collision!.. (already within process of averaging).." << avgCounter << cp.rejCount;
+       } else { withinAvgEpoch=true; avgCounter=0; }
+      }
+     }
 
-     if (averaging) {
-      if (avgCounter==cp.bwCount) { averaging=false;
-       qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <Averaging> Computing for Event! (iIndex,Name)->" << eIndex << acqEvents[eIndex]->name; //.toLatin1().data();
+     if (withinAvgEpoch) {
+      if (avgCounter==cp.bwCount) { withinAvgEpoch=false;
+       qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <WithinEpoch> Computing for Event! (iIndex,Name)->" << eIndex << acqEvents[eIndex]->name;
  
        // Check rejection backwards on pastdata
-       bool rejFlag=false; int rejChn;
-       for (int i=0;i<acqChannels.size();i++) {
-        if (acqChannels[0][i]->rejLev>0) {
-         for (int j=0;j<cp.rejCount;j++) {
-          if (abs(acqChannels[0][i]->pastData[(cp.cntPastSize+cp.cntPastIndex-cp.rejCount+j)%cp.cntPastSize]) > acqChannels[0][i]->rejLev) { rejFlag=true; rejChn=i; break; }
+       bool rejFlag=false; int rejChn=0;
+       for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
+        if (acqChannels[i][j]->rejLev>0) {
+         for (int j=0;j<cp.rejCount;j++) { unsigned int idx=(cp.cntPastSize+cp.cntPastIndex-cp.rejCount+j)%cp.cntPastSize;
+          unsigned int ref=acqChannels[i][j]->rejRef;
+          float chRejLev=abs(acqChannels[i][j]->pastData[idx]-acqChannels[i][ref]->pastData[idx]);
+          if (chRejLev > acqChannels[i][j]->rejLev) { rejFlag=true; rejChn=i; break; }
          }
         } if (rejFlag==true) break;
        }
 
        if (rejFlag) { // Rejected, increment rejected count
         acqEvents[eIndex]->rejected++;
-        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <Reject> Rejected because of" << acqChannels[0][rejChn]->name << ".."; //.toLatin1().data();
+        qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <Reject> Rejected because of" << acqChannels[0][rejChn]->name << "..";
        } else { // Not rejected: compute average and increment accepted for the event
         acqEvents[eIndex]->accepted++; eventOccured=true;
         qDebug() << "octopus_acq_client: <AcqMaster> <AcqReadData> <Reject> Computing average for eventIndex and updating GUI..";
@@ -737,7 +738,7 @@ class AcqMaster : QObject {
          n1=(float)(acqEvents[eIndex]->accepted); // n2=1
          avgDataCount=avgInChn->size();
 
-         for (int j=0;j<avgDataCount;j++) { k1=(*avgInChn)[j]; k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize]; (*avgInChn)[j]=(k1*n1+k2)/(n1+1.); }
+         for (unsigned int j=0;j<avgDataCount;j++) { k1=(*avgInChn)[j]; k2=acqChannels[0][i]->pastData[(avgStartOffset+j)%cp.cntPastSize]; (*avgInChn)[j]=(k1*n1+k2)/(n1+1.); }
         } emit repaintGL(16); emit repaintHeadWindow();
        }
       }
@@ -784,7 +785,7 @@ class AcqMaster : QObject {
    for (unsigned int i=0;i<ampCount;i++) curElecInSeq[i]++;
    for (unsigned int i=0;i<ampCount;i++) {
     if (curElecInSeq[i]==gizmo[currentGizmo[i]]->seq.size()) curElecInSeq[i]=0;
-    for (int j=0;j<acqChannels.size();j++) if (acqChannels[i][j]->physChn==gizmo[currentGizmo[i]]->seq[curElecInSeq[i]]-1) { currentElectrode[i]=j; break; }
+    for (int j=0;j<acqChannels.size();j++) if (acqChannels[i][j]->physChn==gizmo[currentGizmo[i]]->seq[curElecInSeq[i]]) { currentElectrode[i]=j; break; }
    }
    emit repaintHeadWindow(); emit repaintGL(1);
   }
@@ -803,7 +804,7 @@ class AcqMaster : QObject {
     cntStream << sampleRate;		        // Sample rate
     cntStream << cntRecChns.size();	        // Channel count
 
-    for (int i=0;i<cntRecChns.size();i++) cntStream << acqChannels[0][cntRecChns[0][i]]->name.toLatin1().data(); // Channel names - Cstyle
+    for (int i=0;i<cntRecChns.size();i++) cntStream << acqChannels[0][cntRecChns[0][i]]->name; // Channel names - Cstyle
      
     for (int i=0;i<cntRecChns.size();i++) { // Param coords
      cntStream << acqChannels[0][cntRecChns[0][i]]->param.y;
@@ -821,7 +822,7 @@ class AcqMaster : QObject {
     cntStream << acqEvents.size();	       // Event count
     for (int i=0;i<acqEvents.size();i++) {     // Event Info of the session
      cntStream << acqEvents[i]->no;	       // Event #
-     cntStream << acqEvents[i]->name.toLatin1().data(); // Name - Cstyle
+     cntStream << acqEvents[i]->name;          // Name - Cstyle
      cntStream << acqEvents[i]->type;	       // STIM or RESP
      cntStream << acqEvents[i]->color.red();   // Color
      cntStream << acqEvents[i]->color.green();

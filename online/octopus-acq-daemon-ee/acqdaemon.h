@@ -42,6 +42,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../chninfo.h"
 #include "chntopo.h"
 #include "tcpthread.h"
+#include "clienthandler.h"
 
 class AcqDaemon : public QTcpServer {
  Q_OBJECT
@@ -338,7 +339,13 @@ class AcqDaemon : public QTcpServer {
 
  protected:
   // Data port "connection handler"..
-  void incomingConnection(qintptr socketDescriptor) {
+  void incomingConnection(qintptr socketDescriptor) override {
+
+   //auto handler = std::make_shared<ClientHandler>(socketDescriptor, &buffer);
+   //clients.append(handler);
+   //handler->start();  // Runs in its own thread or event loop
+
+
    if (!clientConnected) {
     qDebug("octopus_acqd: <TCP incoming> New client connection..");
     if (!dataSocket.setSocketDescriptor(socketDescriptor)) {
@@ -363,6 +370,7 @@ class AcqDaemon : public QTcpServer {
      }
     }
    } else qDebug("octopus_acqd: <TCP incoming> Already connected, connection NOT accepted.");
+
   }
 
  private slots:
@@ -400,6 +408,9 @@ class AcqDaemon : public QTcpServer {
   unsigned int confTcpBufSize,confCommP,confDataP;
 
   unsigned int confSampleRate,confRefChnCount,confBipChnCount,confEEGProbeMsecs,confCMProbeMsecs;
+
+  // Multiple clients
+  QVector<std::shared_ptr<ClientHandler> > clients;
 };
 
 #endif

@@ -271,13 +271,13 @@ class AcqClient : public QMainWindow {
    acqM->currentGizmo[ampNo]=k; electrodeList->clear();
    for (int i=0;i<g->seq.size();i++) {
     for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
-     if (acqM->acqChannels[ampNo][j]->physChn==g->seq[i]-1) { idx=j; break; }
+     if (acqM->acqChannels[ampNo][j]->physChn==g->seq[i]) { idx=j; break; }
     dummyString.setNum(acqM->acqChannels[ampNo][idx]->physChn+1);
     electrodeList->addItem(dummyString+" "+acqM->acqChannels[ampNo][idx]->name);
    }
    acqM->curElecInSeq[ampNo]=0;
    for (int j=0;j<acqM->acqChannels[ampNo].size();j++)
-    if (acqM->acqChannels[ampNo][j]->physChn==g->seq[0]-1) { idx=j; break; }
+    if (acqM->acqChannels[ampNo][j]->physChn==g->seq[0]) { idx=j; break; }
    acqM->currentElectrode[ampNo]=idx;
    electrodeList->setCurrentRow(acqM->curElecInSeq[ampNo]);
    headGLWidget->slotRepaintGL(8);
@@ -285,7 +285,7 @@ class AcqClient : public QMainWindow {
 
   void slotSelectElectrode(int k) { acqM->curElecInSeq[ampNo]=k;
    for (int i=0;i<acqM->acqChannels[ampNo].size();i++)
-    if (acqM->acqChannels[ampNo][i]->physChn==acqM->gizmo[acqM->currentGizmo[ampNo]]->seq[k]-1)
+    if (acqM->acqChannels[ampNo][i]->physChn==acqM->gizmo[acqM->currentGizmo[ampNo]]->seq[k])
      { acqM->currentElectrode[ampNo]=i; break; }
    headGLWidget->slotRepaintGL(2+16); // update real+avgs
   }
