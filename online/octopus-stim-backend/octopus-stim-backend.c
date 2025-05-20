@@ -83,6 +83,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #ifdef OCTOPUS_STIM_COMEDI
 static comedi_t *daqcard; static sampl_t dac_0,dac_1;
+#define TRIGGER_TRIG_PIN (0)
+#define TRIGGER_CODE_PIN (1)
+#define LIGHT_PIN0       (2)
+#define LIGHT_PIN1       (3)
+#define LIGHT_PIN2       (4)
+#define LIGHT_PIN3       (5)
 #else
 static unsigned short dac_0,dac_1;
 #endif
@@ -120,8 +126,8 @@ static void trigger_set(int t_code) {
 
 static void trigger_reset(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,1,1); /* Code - failsafe zeroing */
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,0,1); /* Trigger */
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_CODE_PIN,1); /* Code - failsafe zeroing */
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_TRIG_PIN,1); /* Trigger */
 #else
  outb(0x00,0x378);
 #endif
@@ -131,26 +137,26 @@ static void trigger_reset(void) {
 /* Experimental code */
 static void lights_on(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,4,1);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,5,1);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,6,1);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,7,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN0,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN1,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN2,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN3,1);
 #endif
 }
 static void lights_off(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,4,0);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,5,0);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,6,0);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,7,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN0,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN1,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN2,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN3,0);
 #endif
 }
 static void lights_dimm(void) {
 #ifdef OCTOPUS_STIM_TRIG_COMEDI
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,4,1);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,5,0);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,6,1);
- comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,7,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN0,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN1,0);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN2,1);
+ comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,LIGHT_PIN3,0);
 #endif
 }
 
@@ -228,12 +234,13 @@ static void trigger_thread(int t) {
   if (trigger_bit_shift) {
 //   rt_sem_wait(&trigger_sem);
 
-   if (trigger_bit_shift==10) comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,0,0); /* Trigger to low */
+   if (trigger_bit_shift==10) comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_TRIG_PIN,0); /* Trigger to low */
 
-   comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,1,trigger_code&0x01);
+   comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_CODE_PIN,trigger_code&0x01);
    trigger_code>>=1; trigger_bit_shift--;
    if (!trigger_bit_shift) {
-    comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,1,1); comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,0,1); /* Trigger to high */
+    comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_CODE_PIN,1);
+    comedi_dio_write(daqcard,OCTOPUS_COMEDI_DO_SUBDEV,TRIGGER_TRIG_PIN,1); /* Trigger to high */
    }
 //   rt_sem_signal(&trigger_sem);
   }
