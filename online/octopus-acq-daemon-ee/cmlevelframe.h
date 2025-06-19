@@ -37,7 +37,7 @@ class CMLevelFrame : public QFrame {
   CMLevelFrame(QWidget *p,AcqDaemon *acqd,unsigned int a) : QFrame(p) {
    parent=p; acqD=acqd; ampNo=a;
    cmBuffer=new QPixmap(acqD->cmLevelFrameW,acqD->cmLevelFrameH);
-   chnTopo=&acqD->chnTopo;
+   chnInfo=&acqD->chnInfo;
    hdrFont1=QFont("Helvetica",28,QFont::Bold);
    chnFont1=QFont("Helvetica",11,QFont::Bold);
    chnFont2=QFont("Helvetica",16,QFont::Bold);
@@ -52,7 +52,7 @@ class CMLevelFrame : public QFrame {
   QBrush cmBrush(int elec) {
    //return palette[(4*elec)%256];
    unsigned char col;
-   float lev=(*chnTopo)[elec].cmLevel[ampNo];
+   float lev=(*chnInfo)[elec].cmLevel[ampNo];
    if (lev>255.0) col=255; else col=(unsigned char)(lev);
    return palette[col];
   }
@@ -63,7 +63,7 @@ class CMLevelFrame : public QFrame {
    QPen pen1(Qt::black,4);
    QPen pen2(Qt::black,2);
 
-   a=acqD->confCMCellSize; sz=5*a/6;
+   a=(acqD->conf).cmCellSize; sz=5*a/6;
 
    //cmBuffer->fill(Qt::white);
 
@@ -80,9 +80,9 @@ class CMLevelFrame : public QFrame {
    cmPainter.setFont(hdrFont1);
    cmPainter.drawText(QRect(0,0,acqD->cmLevelFrameW,a),Qt::AlignVCenter,hdrString);
 
-   for (int i=0;i<(*chnTopo).size();i++) {
-    chIdx=(*chnTopo)[i].physChn; chName=(*chnTopo)[i].chnName;
-    topoX=(*chnTopo)[i].topoX; topoY=(*chnTopo)[i].topoY;
+   for (int i=0;i<(*chnInfo).size();i++) {
+    chIdx=(*chnInfo)[i].physChn; chName=(*chnInfo)[i].chnName;
+    topoX=(*chnInfo)[i].topoX; topoY=(*chnInfo)[i].topoY;
     cmPainter.setPen(pen1);
     if (chIdx<=32) cmPainter.setBrush(cmBrush(i));
     else if (chIdx<=64) cmPainter.setBrush(cmBrush(i));
@@ -111,7 +111,7 @@ class CMLevelFrame : public QFrame {
  public slots:
   void slotCMLevelsReady() { repaint();
    std::vector<float> cm; // float cMin,cMax;
-   for (int i=0;i<chnTopo->size();i++) cm.push_back((*chnTopo)[i].cmLevel[ampNo]);
+   for (int i=0;i<chnInfo->size();i++) cm.push_back((*chnInfo)[i].cmLevel[ampNo]);
    //cMin=*std::min_element(cm.begin(),cm.end()); cMax=*std::max_element(cm.begin(),cm.end());
    //qDebug() << "Amp" << ampNo << "Chn (min,max):" << cMin << "," << cMax;
   }
@@ -130,7 +130,7 @@ class CMLevelFrame : public QFrame {
   QBrush bgBrush; QPainter mainPainter; QVector<int> w0,wn,wX;
   QFont hdrFont1,chnFont1,chnFont2; //QPixmap *rBuffer;
   unsigned int ampNo; QPixmap *cmBuffer;
-  QVector<ChnTopo> *chnTopo; QVector<QColor> palette;
+  QVector<ChnInfo> *chnInfo; QVector<QColor> palette;
 };
 
 #endif

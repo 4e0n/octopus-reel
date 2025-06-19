@@ -25,7 +25,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define _TCPSAMPLE_H
 
 #include "../acqglobals.h"
-
 #include "sample.h"
 
 typedef struct _tcpsample {

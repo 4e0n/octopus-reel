@@ -125,11 +125,13 @@ class stream {
      for (unsigned int cc=0;cc<chnCount-2;cc++) {
       b.setSample(cc,sc,dc+(a0*1.0)*cos(2.0*M_PI*frqA*t)+(a0*1.0)*sin(2.0*M_PI*frqB*t));
      }
-     b.setSample(chnCount-2,sc,trigger); b.setSample(chnCount-1,sc,counter);
+     b.setSample(chnCount-2,sc,trigger); trigger=0.; b.setSample(chnCount-1,sc,counter);
     }
    }
    return b;
   }
+
+  void sendSynthTrigger(unsigned int t) { trigger=(double)t; };
 
   bool impMode; double trigger,counter;
   unsigned int chnCount,smpCount; double dc,a0,frqA,frqB,t,dt;
@@ -137,8 +139,9 @@ class stream {
 
 class amplifier {
  public:
-  amplifier(std::string s) {
-   serialNumber=s;
+  amplifier(std::string s,unsigned int sto) {
+   serialNumber=s; syncTrigOffset=sto; // following a sync event via parallel port, trigger sent after this many iterations.
+   synthTrigger=0; eegStreamOpen=false;
   }
   ~amplifier() {}
 
@@ -158,21 +161,26 @@ class amplifier {
 
   stream* OpenEegStream(int sampling_rate,double reference_range,double bipolar_range,const std::vector<channel>& channel_list) {
    impedanceMode=false; smpRate=sampling_rate; refRange=reference_range; bipRange=bipolar_range; chnList=channel_list;
-   str=new stream(chnList.size(),smpRate);
+   str=new stream(chnList.size(),smpRate); eegStreamOpen=true;
    return str;
   }
 
   stream* OpenImpedanceStream(const std::vector<channel>& channel_list) {
-   impedanceMode=true; chnList=channel_list;
+   impedanceMode=true; chnList=channel_list; eegStreamOpen=false;
    str=new stream(chnList.size(),0);
    return str;
   }
 
+  void sendSynthTrigger(unsigned int t) { if (eegStreamOpen) str->sendSynthTrigger(t); };
+
  private:
-  std::string serialNumber; bool impedanceMode;
+  std::string serialNumber; bool impedanceMode,eegStreamOpen; unsigned int syncTrigOffset;
   unsigned int smpRate; float refRange,bipRange; std::vector<channel> chnList;
   stream *str;
+  unsigned int synthTrigger;
 };
+
+const unsigned int trig_offset[8]={1057,1163,1217,1349,1427,1503,1687,1734};
 
 class factory { // Creates any number of virtual amplifiers identical to EE.
  public:
@@ -186,7 +194,7 @@ class factory { // Creates any number of virtual amplifiers identical to EE.
    for (std::string s:sNos) std::cout << s;
    
    // Create desired number of amplifier
-   for (i=0;i<EE_AMPCOUNT;i++) { a=new amplifier(sNos[i]); amps.push_back(a); }
+   for (i=0;i<EE_AMPCOUNT;i++) { a=new amplifier(sNos[i],trig_offset[i]); amps.push_back(a); }
   }
   std::vector<amplifier*> getAmplifiers() {
    return amps;

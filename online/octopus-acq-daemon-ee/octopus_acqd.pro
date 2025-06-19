@@ -34,11 +34,13 @@ HEADERS += acqthread.h \
            cmlevelframe.h \
            tcpthread.h \
 	   clienthandler.h \
+	   configparser.h \
            eex.h \
            ../serial_device.h \
            ../acqglobals.h \
-	   ../chninfo.h \
-	   chntopo.h \
+	   ../ampinfo.h \
+	   chninfo.h \
+	   confparam.h \
 	   ../sample.h \
 	   ../tcpsample.h \
            ../cs_command.h

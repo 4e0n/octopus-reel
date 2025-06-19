@@ -21,10 +21,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _CHNINFO_H
-#define _CHNINFO_H
+#ifndef _AMPINFO_H
+#define _AMPINFO_H
 
-typedef struct _chninfo {
+typedef struct _AmpInfo {
+ unsigned int ampCount;
  unsigned int sampleRate;
  unsigned int refChnCount;
  unsigned int bipChnCount;
@@ -36,6 +37,6 @@ typedef struct _chninfo {
  unsigned int totalCount; // Chncount among all connected amplifiers
  unsigned int probe_eeg_msecs;
  unsigned int probe_cm_msecs;
-} chninfo;
+} AmpInfo;
 
 #endif

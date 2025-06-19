@@ -24,18 +24,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CLIENTHANDLER_H
 #define CLIENTHANDLER_H
 
-//#include <QObject>
-//#include <QApplication>
-//#include <QWidget>
-//#include <QStatusBar>
-//#include <QLabel>
-//#include <QtNetwork>
 #include <QThread>
-//#include <QVector>
-//#include <QMutex>
-//#include <unistd.h>
-
-//#include "../acqglobals.h"
 
 class ClientHandler : public QThread {
  public:

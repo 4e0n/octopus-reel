@@ -26,9 +26,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QObject>
 #include <QApplication>
-#include <QWidget>
-#include <QStatusBar>
-#include <QLabel>
 #include <QtNetwork>
 #include <QThread>
 #include <QVector>
@@ -39,10 +36,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "../cs_command.h"
 #include "../tcpsample.h"
-#include "../chninfo.h"
-#include "chntopo.h"
+#include "../ampinfo.h"
+#include "chninfo.h"
+#include "confparam.h"
 #include "tcpthread.h"
 #include "clienthandler.h"
+#include "configparser.h"
 
 class AcqDaemon : public QTcpServer {
  Q_OBJECT
@@ -52,191 +51,61 @@ class AcqDaemon : public QTcpServer {
 
    qDebug() << "---------------------------------------------------------------";
 
-   // Parse system config file for variables
-   QStringList cfgValidLines,opts,opts2,ampSection,netSection,chnTopoSection,guiSection;
-   QFile cfgFile; QTextStream cfgStream;
-   QString cfgLine; QStringList cfgLines; cfgFile.setFileName("/etc/octopus_acqd.conf");
-   if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "octopus_acqd: <.conf> cannot load /etc/octopus_acqd.conf.";
-    qDebug() << "octopus_acqd: <.conf> Falling back to hardcoded defaults.";
-    confTcpBufSize=10; confHost="127.0.0.1";  confCommP=65002;  confDataP=65003;
-   } else { cfgStream.setDevice(&cfgFile);
-    while (!cfgStream.atEnd()) { cfgLine=cfgStream.readLine(160); // Max Line Size
-     cfgLines.append(cfgLine); } cfgFile.close();
-
-    // Parse config
-    for (int i=0;i<cfgLines.size();i++) { // Isolate valid lines
-     if (!(cfgLines[i].at(0)=='#') &&
-         cfgLines[i].contains('|')) cfgValidLines.append(cfgLines[i]); }
-
-    for (int i=0;i<cfgValidLines.size();i++) {
-     opts=cfgValidLines[i].split("|");
-          if (opts[0].trimmed()=="AMP") ampSection.append(opts[1]);
-     else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
-     else if (opts[0].trimmed()=="CHNTOPO") chnTopoSection.append(opts[1]);
-     else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
-     else { qDebug() << "octopus_acqd: <.conf> Unknown section in .conf file!";
-      app->quit();
-     }
-     extTrig=0;
-    }
-
-    // AMP
-    if (ampSection.size()>0) {
-     for (int i=0;i<ampSection.size();i++) { opts=ampSection[i].split("=");
-      if (opts[0].trimmed()=="COUNT") { confAmpCount=opts[1].toInt();
-       if (!(confAmpCount >= 2 && confAmpCount <= 8)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|COUNT; Currently 2 to 8 simultaneously connected amplifiers are supported!";
-        app->quit();
-       }
-      } else if (opts[0].trimmed()=="BUFPAST") { confTcpBufSize=opts[1].toInt();
-       if (!(confTcpBufSize >= 2 && confTcpBufSize <= 50)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|BUFPAST not within [2,50] seconds range!";
-        app->quit();
-       }
-      } else if (opts[0].trimmed()=="SAMPLERATE") { confSampleRate=opts[1].toInt();
-       if (!(confSampleRate == 500 || confSampleRate == 1000)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|SAMPLERATE not among {500,1000}!";
-        app->quit();
-       }
-      } else if (opts[0].trimmed()=="EEGPROBEMS") { confEEGProbeMsecs=opts[1].toInt();
-       if (!(confEEGProbeMsecs >= 20 && confEEGProbeMsecs <= 1000)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|EEGPROBEMS not within [20,1000] msecs range!";
-        app->quit();
-       }
-      } else if (opts[0].trimmed()=="CMPROBEMS") { confCMProbeMsecs=opts[1].toInt();
-       if (!(confCMProbeMsecs >= 500 && confCMProbeMsecs <= 2000)) {
-        qDebug() << "octopus_acqd: <.conf> AMP|CMPROBEMS not within [500,2000] msecs range!";
-        app->quit();
-       }
-      } else {
-       qDebug() << "octopus_acqd: <.conf> Unknown subsection in AMP section!";
-       app->quit();
-      }
-     }
-    }
-
-    // NET
-    if (netSection.size()>0) {
-     for (int i=0;i<netSection.size();i++) { opts=netSection[i].split("=");
-
-      if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
-       if (opts2.size()==3) { confHost=opts2[0].trimmed();
-        QHostInfo qhiAcq=QHostInfo::fromName(confHost);
-        confHost=qhiAcq.addresses().first().toString();
-        qDebug() << "octopus_acqd: <.conf> (this) Host IP is" << confHost;
-        confCommP=opts2[1].toInt(); confDataP=opts2[2].toInt();
-        // Simple port validation..
-        if ((!(confCommP >= 1024 && confCommP <= 65535)) ||
-            (!(confDataP >= 1024 && confDataP <= 65535))) {
-         qDebug() << "octopus_acqd: <.conf> Error in Hostname/IP and/or port settings!";
-         app->quit();
-        } else {
-         qDebug() << "octopus_acqd: <.conf> CommPort ->" << confCommP << "DataPort ->" << confDataP;
-	}
-       }
-      } else {
-       qDebug() << "octopus_acqd: <.conf> Parse error in Hostname/IP(v4) Address!";
-       app->quit();
-      }
-     }
-    } else {
-     confHost="127.0.0.1";  confCommP=65002;  confDataP=65003;
-    }
-
-    // CHNTOPO
-    ChnTopo dummyChnTopo;
-    if (chnTopoSection.size()>0) {
-     for (int i=0;i<chnTopoSection.size();i++) { opts=chnTopoSection[i].split("=");
-      if (opts[0].trimmed()=="APPEND") { opts2=opts[1].split(",");
-       if (opts2.size()==4) {
-        opts2[1]=opts2[1].trimmed(); // Chn name - Trim wspcs
-        if ((!((unsigned)opts2[0].toInt()>0  && (unsigned)opts2[0].toInt()<=512)) || // Channel#
-            (!(opts2[1].size()>0   && opts2[1].size()<=3)) || // Channel name must be 1 to 3 chars..
-            (!((unsigned)opts2[2].toInt()>=1 && (unsigned)opts2[2].toInt()<=11)) || // TopoXY - X
-            (!((unsigned)opts2[3].toInt()>=1 && (unsigned)opts2[3].toInt()<=11))) { // TopoXY - Y
-         qDebug() << "octopus_acqd: <.conf> Syntax/logic Error in CHNTOPO|APPEND parameters!";
-	 app->quit();
-        } else { // Set and append new channel..
-	 dummyChnTopo.physChn=opts2[0].toInt(); // Physical channel
-	 dummyChnTopo.chnName=opts2[1];         // Channel name
-	 dummyChnTopo.topoX=opts2[2].toInt();   // TopoXY - X
-	 dummyChnTopo.topoY=opts2[3].toInt();   // TopoXY - Y
-	 dummyChnTopo.cmLevel[0]=128.0;		// Reset CM Level
-	 dummyChnTopo.cmLevel[1]=128.0;		// Reset CM Level
-         chnTopo.append(dummyChnTopo); // add channel to info table
-        }
-       } else {
-        qDebug() << "octopus_acqd: <.conf> Syntax/logic Error in CHNTOPO|APPEND parameters!";
-	app->quit();
-       }
-      }
-     }
-    } else {
-     qDebug() << "octopus_acqd: <.conf> CHNTOPO|APPEND parameter(s) do not exist!";
-     app->quit();
-    }
+   ConfigParser cfp(application,"/etc/octopus_acqd.conf");
+   cfp.parse(&conf,&chnInfo);
+/*
+   qDebug() << conf.ampCount << conf.tcpBufSize << conf.sampleRate << conf.eegProbeMsecs << conf.cmProbeMsecs \
+	    << conf.hostIP << conf.commPort << conf.dataPort << conf.acqGuiX << conf.acqGuiY << conf.cmCellSize;
+   for (int i=0;i<chnInfo.size();i++) {
+    qDebug() << chnInfo[i].physChn << chnInfo[i].chnName << chnInfo[i].topoTheta << chnInfo[i].topoPhi \
+	     << chnInfo[i].topoX << chnInfo[i].topoY;
+    for (unsigned int ii=0;ii<EE_AMPCOUNT;ii++) qDebug("%2.2f",chnInfo[i].cmLevel[ii]);
    }
+*/
+   extTrig=0;
 
-   //for (int i=0;i<chnTopo.size();i++)
-   // qDebug() << chnTopo[i].physChn << chnTopo[i].chnName << chnTopo[i].topoX << chnTopo[i].topoY;
+   // TODO: C/C++ conventions doesn't allow determining the structure sizes in runtime without sacrificing efficiency.
+   // So, we're preserving this check to assert that we're not happy with this.. In the future I hope that
+   // only the ampCount within the config file will determine the amp count.
 
-   // GUI
-   if (guiSection.size()>0) {
-    for (int i=0;i<guiSection.size();i++) { opts=guiSection[i].split("=");
-     if (opts[0].trimmed()=="ACQ") { opts2=opts[1].split(",");
-      if (opts2.size()==3) {
-       acqGuiX=opts2[0].toInt(); acqGuiY=opts2[1].toInt(); confCMCellSize=opts2[2].toInt();
-       if ((!(acqGuiX >= -4000 && acqGuiX <= 4000)) ||
-           (!(acqGuiY >= -3000 && acqGuiY <= 3000)) ||
-           (!(confCMCellSize >= 40 && confCMCellSize <= 80))) {
-        qDebug() << "octopus_acqd: <.conf> GUI|ACQ size settings not in appropriate range!";
-        app->quit();
-       }
-      } else {
-       qDebug() << "octopus_acqd: <.conf> Parse error in GUI settings!";
-       app->quit();
-      }
-     }
-    }
-   } else {
-    qDebug() << "octopus_acqd: <.conf> GUI settings should exist in config file!";
-    app->quit();
+
+   // Convey global information to ampInfo
+   ampInfo.ampCount=conf.ampCount;
+   ampInfo.sampleRate=conf.sampleRate;
+   ampInfo.refChnCount=REF_CHN_COUNT; ampInfo.refChnMaxCount=REF_CHN_MAXCOUNT;
+   ampInfo.bipChnCount=BIP_CHN_COUNT; ampInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
+   ampInfo.physChnCount=REF_CHN_COUNT+BIP_CHN_COUNT;
+   ampInfo.totalChnCount=ampInfo.physChnCount+2;
+   ampInfo.totalCount=conf.ampCount*ampInfo.totalChnCount;
+   ampInfo.probe_eeg_msecs=conf.eegProbeMsecs;
+   ampInfo.probe_cm_msecs=conf.cmProbeMsecs;
+
+   if (conf.ampCount != EE_AMPCOUNT) {
+    //qDebug() << "octopus_acqd: <FUTURE_ASSERTION|TODO> AmpCounts from config file and static compilation differ. Exiting..";
+    application->quit();
    }
-
-
-   confRefChnCount=64;
-   confBipChnCount=2;
-   chnInfo.sampleRate=confSampleRate; // 1000sps
-   chnInfo.refChnCount=confRefChnCount; chnInfo.refChnMaxCount=REF_CHN_MAXCOUNT;
-   chnInfo.bipChnCount=confBipChnCount; chnInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
-   chnInfo.physChnCount=confRefChnCount+confBipChnCount;
-   chnInfo.totalChnCount=chnInfo.physChnCount+2;
-   chnInfo.totalCount=confAmpCount*chnInfo.totalChnCount;
-   chnInfo.probe_eeg_msecs=confEEGProbeMsecs; // 100ms probetime
-   chnInfo.probe_cm_msecs=confCMProbeMsecs; // 1000ms probetime
 
    qDebug() << "---------------------------------------------------------------";
    qDebug() << "octopus_acqd: ---> Datahandling Info <---";
-   qDebug() << "octopus_acqd: Sample Rate:" << chnInfo.sampleRate;
-   qDebug() << "octopus_acqd: EEG probe every (ms):" << chnInfo.probe_eeg_msecs;
-   qDebug() << "octopus_acqd: CM probe every (ms):" << chnInfo.probe_cm_msecs;
-   qDebug() << "octopus_acqd: Per-amp Physical Channel#:" << chnInfo.physChnCount << "(" \
-            << chnInfo.refChnCount << "+" << chnInfo.bipChnCount << ")";
-   qDebug() << "octopus_acqd: Per-amp Total Channel# (with Trig and Offset):" << chnInfo.totalChnCount;
-   qDebug() << "octopus_acqd: Total Channel# from all amps:" << chnInfo.totalCount;
+   qDebug() << "octopus_acqd: Sample Rate:" << ampInfo.sampleRate;
+   qDebug() << "octopus_acqd: EEG probe every (ms):" << ampInfo.probe_eeg_msecs;
+   qDebug() << "octopus_acqd: CM probe every (ms):" << ampInfo.probe_cm_msecs;
+   qDebug() << "octopus_acqd: Per-amp Physical Channel#:" << ampInfo.physChnCount << "(" \
+            << ampInfo.refChnCount << "+" << ampInfo.bipChnCount << ")";
+   qDebug() << "octopus_acqd: Per-amp Total Channel# (with Trig and Offset):" << ampInfo.totalChnCount;
+   qDebug() << "octopus_acqd: Total Channel# from all amps:" << ampInfo.totalCount;
    qDebug() << "---------------------------------------------------------------";
 
-   cmLevelFrameW=confCMCellSize*11; cmLevelFrameH=confCMCellSize*12;
-   acqGuiW=(cmLevelFrameW+10)*confAmpCount+80; acqGuiH=cmLevelFrameH+60;
+   cmLevelFrameW=conf.cmCellSize*11; cmLevelFrameH=conf.cmCellSize*12;
+   acqGuiW=(cmLevelFrameW+10)*conf.ampCount; acqGuiH=cmLevelFrameH;
+   if (EE_AMPCOUNT>GUI_MAX_AMP_PER_LINE) { acqGuiW/=2; acqGuiH*=2; }
+   acqGuiW+=60; acqGuiH+=60;
 
-   tcpBuffer.resize(confTcpBufSize*chnInfo.sampleRate); // in seconds, after which data is lost.
+   tcpBuffer.resize(conf.tcpBufSize*ampInfo.sampleRate); // in seconds, after which data is lost.
 
-   QHostAddress hostAddress(confHost);
-
+   QHostAddress hostAddress(conf.hostIP);
 
 // --------
-
 
    // Initialize Tcp Command Server
    commandServer=new QTcpServer(this);
@@ -245,23 +114,22 @@ class AcqDaemon : public QTcpServer {
 
    setMaxPendingConnections(1);
 
-   if (!commandServer->listen(hostAddress,confCommP) || !listen(hostAddress,confDataP)) {
-    qDebug() << "octopus_acqd: Error starting command and/or data server(s)!";
+   if (!commandServer->listen(hostAddress,conf.commPort) || !listen(hostAddress,conf.dataPort)) {
+    qDebug() << "octopus_acqd: <Daemon> ERROR: Cannot start command and/or data server!";
     application->quit();
    } else {
-    qDebug() << "octopus_acqd: Daemon started successfully..";
-    qDebug() << "octopus_acqd: Waiting for client connection..";
+    qDebug() << "octopus_acqd: <Daemon> Started successfully..";
+    qDebug() << "octopus_acqd: <Daemon> Waiting for client connection..";
    }
 
-   tcpBuffer.resize(confTcpBufSize*chnInfo.sampleRate); tcpBufPIdx=tcpBufCIdx=0;
+   tcpBuffer.resize(conf.tcpBufSize*ampInfo.sampleRate); tcpBufPIdx=tcpBufCIdx=0;
 
    daemonRunning=true; eegImpedanceMode=false; clientConnected=false;
   }
   
-  chninfo chnInfo; int acqGuiX,acqGuiY,cmLevelFrameW,cmLevelFrameH;
-  unsigned int confAmpCount,extTrig,acqGuiW,acqGuiH,confCMCellSize;
-  QMutex tcpMutex,guiMutex; QVector<ChnTopo> chnTopo;
-  QVector<tcpsample> tcpBuffer; quint64 tcpBufPIdx;
+  ConfParam conf; AmpInfo ampInfo; QVector<ChnInfo> chnInfo; unsigned int extTrig;
+  int acqGuiX,acqGuiY,acqGuiW,acqGuiH,cmLevelFrameW,cmLevelFrameH;
+  QMutex tcpMutex,guiMutex; QVector<tcpsample> tcpBuffer; quint64 tcpBufPIdx;
   bool daemonRunning,eegImpedanceMode,clientConnected;
 
   void registerCMLevelHandler(QObject *sh) {
@@ -273,7 +141,7 @@ class AcqDaemon : public QTcpServer {
   }
 
   void registerSendSynthTriggerHandler(QObject *sh) {
-   connect(this,SIGNAL(sendSynthTrigger(unsigned char)),sh,SLOT(sendSynthTrigger(unsigned char)));
+   connect(this,SIGNAL(sendSynthTrigger(unsigned int)),sh,SLOT(sendSynthTrigger(unsigned int)));
   }
 
   void updateCMLevels() { emit cmLevelsReady(); }
@@ -285,6 +153,10 @@ class AcqDaemon : public QTcpServer {
   void sendSynthTrigger(unsigned int trigger);
 
  public slots:
+  void slotQuit() {
+   application->quit();
+  }
+
   void slotIncomingCommand() {
    if ((commandSocket=commandServer->nextPendingConnection()))
     connect(commandSocket,SIGNAL(readyRead()),this,SLOT(slotHandleCommand()));
@@ -299,17 +171,17 @@ class AcqDaemon : public QTcpServer {
      case CS_ACQ_INFO: qDebug(
                         "octopus_acqd: <TCPcmd> Sending Chn.Info..");
                        csCmd.cmd=CS_ACQ_INFO_RESULT;
-		       csCmd.iparam[0]=chnInfo.sampleRate;
-                       csCmd.iparam[1]=chnInfo.refChnCount;
-                       csCmd.iparam[2]=chnInfo.bipChnCount;
-                       csCmd.iparam[3]=chnInfo.physChnCount;
-                       csCmd.iparam[4]=chnInfo.refChnMaxCount;
-                       csCmd.iparam[5]=chnInfo.bipChnMaxCount;
-                       csCmd.iparam[6]=chnInfo.physChnMaxCount;
-                       csCmd.iparam[7]=chnInfo.totalChnCount;
-                       csCmd.iparam[8]=chnInfo.totalCount;
-                       csCmd.iparam[9]=chnInfo.probe_eeg_msecs;
-                       csCmd.iparam[10]=chnInfo.probe_cm_msecs;
+		       csCmd.iparam[0]=ampInfo.sampleRate;
+                       csCmd.iparam[1]=ampInfo.refChnCount;
+                       csCmd.iparam[2]=ampInfo.bipChnCount;
+                       csCmd.iparam[3]=ampInfo.physChnCount;
+                       csCmd.iparam[4]=ampInfo.refChnMaxCount;
+                       csCmd.iparam[5]=ampInfo.bipChnMaxCount;
+                       csCmd.iparam[6]=ampInfo.physChnMaxCount;
+                       csCmd.iparam[7]=ampInfo.totalChnCount;
+                       csCmd.iparam[8]=ampInfo.totalCount;
+                       csCmd.iparam[9]=ampInfo.probe_eeg_msecs;
+                       csCmd.iparam[10]=ampInfo.probe_cm_msecs;
                        commandStream.writeRawData((const char*)(&csCmd),
                                                   sizeof(cs_command));
                        //dataSocket.flush();
@@ -397,7 +269,7 @@ class AcqDaemon : public QTcpServer {
   }
 
  private:
-  QCoreApplication *application; QTcpServer *commandServer;
+  QApplication *application; QTcpServer *commandServer;
   QTcpSocket *commandSocket; QTcpSocket dataSocket;
   quint64 tcpBufCIdx; QVector<tcpsample> outBuffer;
 
@@ -405,9 +277,8 @@ class AcqDaemon : public QTcpServer {
   TcpThread *tcpThread; cs_command csCmd;
 
   QString confHost;
-  unsigned int confTcpBufSize,confCommP,confDataP;
-
-  unsigned int confSampleRate,confRefChnCount,confBipChnCount,confEEGProbeMsecs,confCMProbeMsecs;
+  //unsigned int confTcpBufSize,confCommP,confDataP;
+  //unsigned int confSampleRate,confEEGProbeMsecs,confCMProbeMsecs;
 
   // Multiple clients
   QVector<std::shared_ptr<ClientHandler> > clients;

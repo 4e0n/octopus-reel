@@ -37,9 +37,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 //#define EEMAGINE
 
 const unsigned int EE_AMPCOUNT=2;
+
 const unsigned int EE_MAX_AMPCOUNT=8;
 
-const int REF_CHN_COUNT=64; // 0
+const unsigned int GUI_MAX_AMP_PER_LINE=4;
+
+const int REF_CHN_COUNT=64; // 64 0
 const int REF_CHN_MAXCOUNT=64;
 
 const int BIP_CHN_COUNT=2; // 2

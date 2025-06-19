@@ -31,6 +31,8 @@ QT += widgets network multimedia opengl
 HEADERS += acqmaster.h \
            acqcontrol.h \
            acqclient.h \
+	   confparam.h \
+	   configparser.h \
            channel.h \
            channel_params.h \
            cntframe.h \
@@ -38,5 +40,6 @@ HEADERS += acqmaster.h \
            digitizer.h \
            headglwidget.h \
            legendframe.h \
+	   ../ampinfo.h \
            ../serial_device.h
 SOURCES += main.cpp

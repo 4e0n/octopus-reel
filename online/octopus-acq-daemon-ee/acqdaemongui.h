@@ -43,10 +43,31 @@ class AcqDaemonGUI : public QMainWindow {
    acqD=acqd; setGeometry(acqD->acqGuiX,acqD->acqGuiY,acqD->acqGuiW,acqD->acqGuiH);
    setFixedSize(acqD->acqGuiW,acqD->acqGuiH);
 
+   statusBar=new QStatusBar(this); statusBar->setGeometry(0,height()-20,width(),20);
+   statusBar->show(); setStatusBar(statusBar);
+
+   menuBar=new QMenuBar(this); menuBar->setFixedWidth(acqD->acqGuiW);
+   QMenu *sysMenu=new QMenu("&System",menuBar);
+   menuBar->addMenu(sysMenu);
+   quitAction=new QAction("&Quit",this);
+   quitAction->setStatusTip("Quit Octopus Acquisition Daemon FrontEnd");
+   sysMenu->addAction(quitAction);
+   connect(quitAction,SIGNAL(triggered()),acqD,SLOT(slotQuit()));
+
    CMLevelFrame *cml;
-   for (unsigned int i=0;i<acqD->confAmpCount;i++) {
+   for (unsigned int i=0;i<(acqD->conf).ampCount;i++) {
     cml=new CMLevelFrame(this,acqD,i);
-    cml->setGeometry(20+i*(acqD->cmLevelFrameW+20),20,acqD->cmLevelFrameW,acqD->cmLevelFrameH);
+    if ((acqD->conf).ampCount>GUI_MAX_AMP_PER_LINE) {
+     cml->setGeometry(//20+(i%GUI_MAX_AMP_PER_LINE)*(acqD->cmLevelFrameW+20),
+                      20+(i%((acqD->conf).ampCount/2))*(acqD->cmLevelFrameW+20),
+                      //20+(i/GUI_MAX_AMP_PER_LINE)*(acqD->cmLevelFrameH+20),
+                      20+(i/((acqD->conf).ampCount/2))*(acqD->cmLevelFrameH+20),
+                      acqD->cmLevelFrameW,acqD->cmLevelFrameH);
+    } else {
+     cml->setGeometry(20+i*(acqD->cmLevelFrameW+20),20,
+                      //20+(i/GUI_MAX_AMP_PER_LINE)*(acqD->cmLevelFrameH+20),
+                      acqD->cmLevelFrameW,acqD->cmLevelFrameH);
+    }
     cmLevelFrame.append(cml); cml->show();
    }
    guiMutex=&(acqD->guiMutex);
@@ -55,6 +76,7 @@ class AcqDaemonGUI : public QMainWindow {
 
  private:
   AcqDaemon *acqD; QMutex *guiMutex;
+  QStatusBar *statusBar; QMenuBar *menuBar; QMenu *sysMenu; QAction *quitAction;
   QVector<CMLevelFrame*> cmLevelFrame;
 };
 

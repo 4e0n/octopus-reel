@@ -56,7 +56,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../cs_command.h"
 #include "../sample.h"
 #include "../tcpsample.h"
-#include "../chninfo.h"
+#include "../ampinfo.h"
 #include "../patt_datagram.h"
 #include "../stim_event_names.h"
 #include "../resp_event_names.h"
@@ -144,16 +144,16 @@ class AcqMaster : QObject {
     acqCommandStream.readRawData((char*)(&csCmd),sizeof(cs_command)); acqCommandSocket->disconnectFromHost();
     if (csCmd.cmd!=CS_ACQ_INFO_RESULT) { qDebug() << "octopus_acq_client: <AcqMaster> <.conf> ACQ server returned nonsense crucial info!"; application->quit(); }
 
-    sampleRate=chnInfo.sampleRate=csCmd.iparam[0];
-    chnInfo.refChnCount=csCmd.iparam[1]; chnInfo.bipChnCount=csCmd.iparam[2];
-    chnInfo.physChnCount=csCmd.iparam[3]; chnInfo.refChnMaxCount=csCmd.iparam[4];
-    chnInfo.bipChnMaxCount=csCmd.iparam[5]; chnInfo.physChnMaxCount=csCmd.iparam[6];
-    tChns=chnInfo.totalChnCount=csCmd.iparam[7]; chnInfo.totalCount=csCmd.iparam[8];
-    chnInfo.probe_eeg_msecs=csCmd.iparam[9];
+    sampleRate=ampInfo.sampleRate=csCmd.iparam[0];
+    ampInfo.refChnCount=csCmd.iparam[1]; ampInfo.bipChnCount=csCmd.iparam[2];
+    ampInfo.physChnCount=csCmd.iparam[3]; ampInfo.refChnMaxCount=csCmd.iparam[4];
+    ampInfo.bipChnMaxCount=csCmd.iparam[5]; ampInfo.physChnMaxCount=csCmd.iparam[6];
+    tChns=ampInfo.totalChnCount=csCmd.iparam[7]; ampInfo.totalCount=csCmd.iparam[8];
+    ampInfo.probe_eeg_msecs=csCmd.iparam[9];
     
-    acqCurData.resize(chnInfo.probe_eeg_msecs);
+    acqCurData.resize(ampInfo.probe_eeg_msecs);
 
-    qDebug() << "octopus_acq_client: <AcqMaster> <.conf> ACQ server returned: Total Phys Chn#=" << 2*chnInfo.physChnCount;
+    qDebug() << "octopus_acq_client: <AcqMaster> <.conf> ACQ server returned: Total Phys Chn#=" << 2*ampInfo.physChnCount;
     qDebug() << "octopus_acq_client: <AcqMaster> <.conf> ACQ server returned: Samplerate=" << sampleRate;
 
     if (avgSection.size()>0) { // AVG
@@ -201,10 +201,10 @@ class AcqMaster : QObject {
        if (opts2.size()==10) {
         opts2[0]=opts2[0].trimmed(); opts2[1]=opts2[1].trimmed(); opts2[4]=opts2[4].trimmed(); opts2[5]=opts2[5].trimmed(); // Trim wspcs
         opts2[6]=opts2[6].trimmed(); opts2[7]=opts2[7].trimmed(); opts2[8]=opts2[8].trimmed(); opts2[9]=opts2[9].trimmed();
-	if ((!(opts2[0].toInt()>0 && opts2[1].toInt()<=(int)chnInfo.physChnCount)) || // Channel#
+	if ((!(opts2[0].toInt()>0 && opts2[1].toInt()<=(int)ampInfo.physChnCount)) || // Channel#
             (!(opts2[1].size()>0)) || // Channel name must be at least 1 char..
             (!(opts2[2].toInt()>=0 && opts2[2].toInt()<1000))   || // Rej
-            (!(opts2[3].toInt()>=0 && opts2[3].toInt()<=(int)chnInfo.physChnCount)) || // RejRef
+            (!(opts2[3].toInt()>=0 && opts2[3].toInt()<=(int)ampInfo.physChnCount)) || // RejRef
             (!(opts2[4]=="T" || opts2[4]=="t" || opts2[4]=="F" || opts2[4]=="f")) ||
             (!(opts2[5]=="T" || opts2[5]=="t" || opts2[5]=="F" || opts2[5]=="f")) ||
             (!(opts2[6]=="T" || opts2[6]=="t" || opts2[6]=="F" || opts2[6]=="f")) ||
@@ -571,7 +571,7 @@ class AcqMaster : QObject {
    } return idx;
   }
 
-  bool clientRunning,recording,withinAvgEpoch,eventOccured; chninfo chnInfo;
+  bool clientRunning,recording,withinAvgEpoch,eventOccured; AmpInfo ampInfo;
 
   // Non-volatile (read from and saved to octopus.cfg)
 
@@ -654,10 +654,10 @@ class AcqMaster : QObject {
    float n1,k1,k2; unsigned int offsetC,offsetP;
    QDataStream acqDataStream(acqDataSocket);
 
-   while (acqDataSocket->bytesAvailable() >= chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample))) {
-    acqDataStream.readRawData((char*)(acqCurData.data()),chnInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample)));
+   while (acqDataSocket->bytesAvailable() >= ampInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample))) {
+    acqDataStream.readRawData((char*)(acqCurData.data()),ampInfo.probe_eeg_msecs*(unsigned int)(sizeof(tcpsample)));
 
-    for (unsigned int dOffset=0;dOffset<chnInfo.probe_eeg_msecs;dOffset++) {
+    for (unsigned int dOffset=0;dOffset<ampInfo.probe_eeg_msecs;dOffset++) {
      // Check Sample Offset Delta for all amps
      for (unsigned int i=0;i<ampCount;i++) {
       offsetC=(unsigned int)(acqCurData[dOffset].amp[i].offset); offsetP=ampChkP[i]; ampChkP[i]=offsetC;
@@ -685,7 +685,7 @@ class AcqMaster : QObject {
 
      // Handle backward data..
      //  Put data into suitable offset for backward online averaging..
-     float dummyAvg; int notchCount=notchN*(chnInfo.sampleRate/50); int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
+     float dummyAvg; int notchCount=notchN*(ampInfo.sampleRate/50); int notchStart=(cp.cntPastSize+cp.cntPastIndex-notchCount)%cp.cntPastSize; // -1 ?
      for (int j=0;j<acqChannels.size();j++) {
       curChn=acqChannels[0][j];
       //curChn->pastData[cp.cntPastIndex] = (curChn->ampNo==1) ? acqCurData[dOffset].amp[0].data[curChn->physChn] : acqCurData[dOffset].amp[1].data[curChn->physChn];
