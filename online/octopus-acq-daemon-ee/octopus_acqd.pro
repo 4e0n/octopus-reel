@@ -35,6 +35,7 @@ HEADERS += acqthread.h \
            tcpthread.h \
 	   clienthandler.h \
 	   configparser.h \
+	   iirf.h \
            eex.h \
            ../serial_device.h \
            ../acqglobals.h \

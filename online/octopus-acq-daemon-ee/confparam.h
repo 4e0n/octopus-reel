@@ -6,9 +6,9 @@ typedef struct _ConfParam {
  unsigned int tcpBufSize;
  unsigned int sampleRate;
  unsigned int eegProbeMsecs,cmProbeMsecs;
- QString hostIP;
+ QString ipAddr;
  unsigned int commPort,dataPort;
- int acqGuiX,acqGuiY;
+ int guiX,guiY;
  unsigned int cmCellSize;
 } ConfParam;
 

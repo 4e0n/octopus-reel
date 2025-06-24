@@ -233,13 +233,13 @@ class AcqClient : public QMainWindow {
 
   void slotLoadReal() {
    QString fileName=QFileDialog::getOpenFileName(this,"Load Real Coordset File",".","Object Files (*.orc)");
-   if (!fileName.isEmpty()) { acqM->loadReal(fileName); }
+   if (!fileName.isEmpty()) { /*acqM->loadReal(fileName);*/ ; }
    else { qDebug() << "octopus_acq_client: <LoadReal> An error has been occured while loading measured coords!"; }
   }
 
   void slotSaveReal() {
    QString fileName=QFileDialog::getSaveFileName(this,"Save Real Coordset File",".","Object Files (*.orc)");
-   if (!fileName.isEmpty()) { acqM->saveReal(fileName+".orc"); }
+   if (!fileName.isEmpty()) { /*acqM->saveReal(fileName+".orc");*/ ; }
    else { qDebug() << "octopus_acq_client: <SaveReal> An error has been occured while saving measured coords!"; }
   }
 

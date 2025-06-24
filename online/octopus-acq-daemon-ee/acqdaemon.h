@@ -55,7 +55,7 @@ class AcqDaemon : public QTcpServer {
    cfp.parse(&conf,&chnInfo);
 /*
    qDebug() << conf.ampCount << conf.tcpBufSize << conf.sampleRate << conf.eegProbeMsecs << conf.cmProbeMsecs \
-	    << conf.hostIP << conf.commPort << conf.dataPort << conf.acqGuiX << conf.acqGuiY << conf.cmCellSize;
+	    << conf.ipAddr << conf.commPort << conf.dataPort << conf.guiX << conf.guiY << conf.cmCellSize;
    for (int i=0;i<chnInfo.size();i++) {
     qDebug() << chnInfo[i].physChn << chnInfo[i].chnName << chnInfo[i].topoTheta << chnInfo[i].topoPhi \
 	     << chnInfo[i].topoX << chnInfo[i].topoY;
@@ -67,7 +67,6 @@ class AcqDaemon : public QTcpServer {
    // TODO: C/C++ conventions doesn't allow determining the structure sizes in runtime without sacrificing efficiency.
    // So, we're preserving this check to assert that we're not happy with this.. In the future I hope that
    // only the ampCount within the config file will determine the amp count.
-
 
    // Convey global information to ampInfo
    ampInfo.ampCount=conf.ampCount;
@@ -103,7 +102,7 @@ class AcqDaemon : public QTcpServer {
 
    tcpBuffer.resize(conf.tcpBufSize*ampInfo.sampleRate); // in seconds, after which data is lost.
 
-   QHostAddress hostAddress(conf.hostIP);
+   QHostAddress hostAddress(conf.ipAddr);
 
 // --------
 
@@ -217,7 +216,6 @@ class AcqDaemon : public QTcpServer {
    //clients.append(handler);
    //handler->start();  // Runs in its own thread or event loop
 
-
    if (!clientConnected) {
     qDebug("octopus_acqd: <TCP incoming> New client connection..");
     if (!dataSocket.setSocketDescriptor(socketDescriptor)) {
@@ -273,12 +271,9 @@ class AcqDaemon : public QTcpServer {
   QTcpSocket *commandSocket; QTcpSocket dataSocket;
   quint64 tcpBufCIdx; QVector<tcpsample> outBuffer;
 
-  //AcqThread *acqThread;
   TcpThread *tcpThread; cs_command csCmd;
 
   QString confHost;
-  //unsigned int confTcpBufSize,confCommP,confDataP;
-  //unsigned int confSampleRate,confEEGProbeMsecs,confCMProbeMsecs;
 
   // Multiple clients
   QVector<std::shared_ptr<ClientHandler> > clients;

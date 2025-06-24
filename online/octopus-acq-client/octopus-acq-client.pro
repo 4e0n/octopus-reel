@@ -29,17 +29,19 @@ QT += widgets network multimedia opengl
 
 # Input
 HEADERS += acqmaster.h \
-           acqcontrol.h \
-           acqclient.h \
 	   confparam.h \
 	   configparser.h \
-           channel.h \
-           channel_params.h \
-           cntframe.h \
-           coord3d.h \
+	   headmodel.h \
            digitizer.h \
-           headglwidget.h \
-           legendframe.h \
+           chninfo.h \
+           coord3d.h \
+#           acqcontrol.h \
+#           acqclient.h \
+#           channel.h \
+#           channel_params.h \
+#           cntframe.h \
+#           headglwidget.h \
+#           legendframe.h \
 	   ../ampinfo.h \
            ../serial_device.h
 SOURCES += main.cpp

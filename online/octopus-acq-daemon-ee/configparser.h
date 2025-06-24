@@ -132,8 +132,8 @@ class ConfigParser {
        opts2=opts[1].split(","); // IP, ConfigPort and DataPort are separated by ","
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->hostIP=acqHostInfo.addresses().first().toString();
-        qDebug() << "octopus_acqd: <ConfigParser> <NET> Host IP is" << conf->hostIP;
+        conf->ipAddr=acqHostInfo.addresses().first().toString();
+        qDebug() << "octopus_acqd: <ConfigParser> <NET> Host IP is" << conf->ipAddr;
         conf->commPort=opts2[1].toInt();
 	conf->dataPort=opts2[2].toInt();
         if ((!(conf->commPort >= 1024 && conf->commPort <= 65535)) || // Simple port validation
@@ -203,11 +203,11 @@ class ConfigParser {
       if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(",");
        if (opts2.size()==3) {
-        conf->acqGuiX=opts2[0].toInt();
-	conf->acqGuiY=opts2[1].toInt();
+        conf->guiX=opts2[0].toInt();
+	conf->guiY=opts2[1].toInt();
 	conf->cmCellSize=opts2[2].toInt();
-        if ((!(conf->acqGuiX >= -4000 && conf->acqGuiX <= 4000)) ||
-            (!(conf->acqGuiY >= -3000 && conf->acqGuiY <= 3000)) ||
+        if ((!(conf->guiX >= -4000 && conf->guiX <= 4000)) ||
+            (!(conf->guiY >= -3000 && conf->guiY <= 3000)) ||
             (!(conf->cmCellSize >= 40 && conf->cmCellSize <= 80))) {
          qDebug() << "octopus_acqd: <ConfigParser> <GUI> ERROR: Window size settings not in appropriate range!";
          application->quit();
