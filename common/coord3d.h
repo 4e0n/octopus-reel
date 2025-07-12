@@ -21,15 +21,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _TCPSAMPLE_H
-#define _TCPSAMPLE_H
+/* Simple coord structure when the possible overhead of Vec3 class is
+   considered anyway. */
 
-#include "../acqglobals.h"
-#include "sample.h"
+#ifndef COORD3D_H
+#define COORD3D_H
 
-typedef struct _tcpsample {
- sample amp[EE_AMPCOUNT];
- unsigned int trigger;
-} tcpsample;
+typedef struct _Coord3D { float x,y,z; } Coord3D;
 
 #endif

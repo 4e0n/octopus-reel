@@ -21,42 +21,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef ACQ_GLOBALS_H
-#define ACQ_GLOBALS_H
-
-/* The constants used in common between the acquisition backend (if any), daemon,
- * and any client/gui-frontend.
- * Since this file is included both from kernel space backend C, and the
- * frontend C++ routines, common conventions are to be preferred for the definitions.*/
-
-/* FIFOs for frontend<->backend communication of acq. */
-
-#define ACQ_F2BFIFO	(2)
-#define ACQ_B2FFIFO	(3)
+#ifndef HACQ_GLOBALS_H
+#define HACQ_GLOBALS_H
 
 //#define EEMAGINE
 
-const unsigned int EE_AMPCOUNT=2;
+#define HACQ_VERBOSE
 
 const unsigned int EE_MAX_AMPCOUNT=8;
-
-const unsigned int GUI_MAX_AMP_PER_LINE=4;
-
-const int REF_CHN_COUNT=64; // 64 0
-const int REF_CHN_MAXCOUNT=64;
-
-const int BIP_CHN_COUNT=2; // 2
-const int BIP_CHN_MAXCOUNT=24;
-
-const int PHYS_CHN_COUNT=REF_CHN_COUNT+BIP_CHN_COUNT;
-const int TOTAL_CHN_COUNT=PHYS_CHN_COUNT+2;
-
-const float EE_REF_GAIN=1.;
-const float EE_BIP_GAIN=4.;
-
-const unsigned int CBUF_SIZE_IN_SECS=10;
-
-const unsigned int AMP_SIMU_TRIG=0xFE;
-const unsigned int AMP_SYNC_TRIG=0xFF;
+const unsigned int REF_CHN_MAXCOUNT=64;
+const unsigned int BIP_CHN_MAXCOUNT=24;
+const unsigned int TRIG_AMPSYNC=0xFF;
 
 #endif

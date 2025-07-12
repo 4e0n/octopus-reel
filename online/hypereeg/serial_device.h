@@ -21,22 +21,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _AMPINFO_H
-#define _AMPINFO_H
+// Simple serial port definition for use in our Polhemus digitizer class.
 
-typedef struct _AmpInfo {
- unsigned int ampCount;
- unsigned int sampleRate;
- unsigned int refChnCount;
- unsigned int bipChnCount;
- unsigned int physChnCount;
- unsigned int refChnMaxCount;
- unsigned int bipChnMaxCount;
- unsigned int physChnMaxCount;
- unsigned int totalChnCount;
- unsigned int totalCount; // Chncount among all connected amplifiers
- unsigned int probe_eeg_msecs;
- unsigned int probe_cm_msecs;
-} AmpInfo;
+#ifndef SERIAL_DEVICE_H
+#define SERIAL_DEVICE_H
+
+typedef struct _serial_device { QString devname;
+ int device,baudrate,databits,parity,par_on,stopbit; } serial_device;
 
 #endif

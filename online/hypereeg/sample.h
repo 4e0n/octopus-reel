@@ -21,22 +21,32 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-// Simple serial port definition for use in our Polhemus digitizer class.
+#ifndef _SAMPLE_H
+#define _SAMPLE_H
 
-#ifndef SERIAL_DEVICE_H
-#define SERIAL_DEVICE_H
+typedef struct _Sample {
+ float marker=0.;
+ std::vector<float> data;
+ std::vector<float> dataF;
+// std::vector<float> curCM;
+// std::vector<float> sum0; // peri-convN samples
+// std::vector<float> com0; // peri-convN 50Hz common mode noise square
+// std::vector<float> sum1; // previous convL samples
+ unsigned int trigger=0;
+ unsigned int offset;
 
-#include <QString>
+ void init(size_t chnCount) {
+  marker=0.; trigger=0;
+  data.assign(chnCount, 0.0f);
+  dataF.assign(chnCount, 0.0f);
+  //dataZ.assign(chnCount, 0.0f);
+  //dataCAR.assign(chnCount, 0.0f);
+  //dataCM.assign(chnCount, 0.0f);
+ }
 
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/signal.h>
-#include <sys/types.h>
-#include <cmath>
-
-typedef struct _serial_device { QString devname;
- int device,baudrate,databits,parity,par_on,stopbit; } serial_device;
+ //_Sample(size_t chnCount=0) : data(chnCount,0),dataF(chnCount,0) {}
+ _Sample(size_t chnCount=0) { init(chnCount); }
+ 
+} Sample;
 
 #endif
