@@ -46,15 +46,30 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "../hacqglobals.h"
 
+// Synthetic waveform of the amps - same on all channels
+const double SYNTH_DC= 0.001000f;  // DC level -> 1mV
+const double SYNTH_A1= 0.000050f;  // Wave 1 Amplitude -> 50uVp
+const double SYNTH_F1= 1.000000f;  // Wave 1 Frequency -> 1Hz
+const double SYNTH_P1= 2.*M_PI/7.; // Wave 1 Phase -> (1/7)/2pi radian
+const double SYNTH_A2= 0.000025f;  // Wave 2 Amplitude -> 25uVp
+const double SYNTH_F2=48.000000f;  // Wave 2 Frequency -> 48Hz
+const double SYNTH_P2= 2.*M_PI/9.; // Wave 2 Phase -> (1/9)/2pi radian
+
+// These arbitrary offsets mimic the randomly arriving physical SYNC triggers on a real amp.
+const unsigned int trig_offset[8]={1057,1163,1217,1349,1427,1503,1687,1734};
+
 namespace eesynth {
  namespace exceptions {
-  class internalError : public std::runtime_error { public: explicit internalError(const std::string &msg) : std::runtime_error(msg) {} };
+  class internalError : public std::runtime_error {
+   public: explicit internalError(const std::string &msg) : std::runtime_error(msg) {}
+  };
   class unknown : public std::runtime_error { public: explicit unknown(const std::string &msg) : std::runtime_error(msg) {} };
  }
 
 class buffer {
  public:
-  buffer(unsigned int channel_count=0,unsigned int sample_count=0):_data(channel_count*sample_count),_channel_count(channel_count),_sample_count(sample_count) {}
+  buffer(unsigned int channel_count=0,unsigned int sample_count=0) :
+	    _data(channel_count*sample_count),_channel_count(channel_count),_sample_count(sample_count) {}
   void setCounts(unsigned int channel_count,unsigned int sample_count) {
    _data.resize(channel_count*sample_count); _channel_count=channel_count; _sample_count=sample_count;
   }
@@ -62,7 +77,7 @@ class buffer {
   const unsigned int& getSampleCount() const { return _sample_count; }
   const double& getSample(unsigned int channel,unsigned int sample) const { 
   //if (channel==0)
-  //qDebug() << "eesynth: smpIdx=" << sample << " chnIdx=" << channel << " value=" << _data[channel+sample*_channel_count];
+  // qDebug() << "eesynth: smpIdx=" << sample << " chnIdx=" << channel << " value=" << _data[channel+sample*_channel_count];
 
   return _data[channel+sample*_channel_count]; }
   void setSample(unsigned int channel,unsigned int sample,double value) { _data[channel+sample*_channel_count]=value; }
@@ -88,9 +103,7 @@ class channel {
 };
 
 inline std::ostream& operator<<(std::ostream &out,const channel &c) {
- out << "channel(";
- out << c.getIndex();
- out << ", ";
+ out << "channel("; out << c.getIndex(); out << ", ";
  switch (c.getType()) {
   case channel::reference:out << "reference"; break;
   case channel::bipolar:out << "bipolar"; break;
@@ -110,10 +123,7 @@ class stream {
    chnCount=c;
    if (smpRate==0) { impMode=true; smpCount=1; }
    else { impMode=false; smpCount=100;
-    t=0.; // chnList=cl;
-    dc=0.001000; // to simulate High-Pass - e.g. DC=1mV
-    a0=0.000050; // 50uVp (100uVpp) mimicks EEG
-    dt=1./(double)(smpRate); frqA=1.; frqB=48.; // 1Hz
+    t=0.0f; dt=1./(double)(smpRate);
     trigger=counter=0.;
    }
   }
@@ -128,7 +138,8 @@ class stream {
     b.setCounts(chnCount,smpCount);
     for (unsigned int sc=0;sc<smpCount;sc++,t+=dt,counter+=1.) {
      for (unsigned int cc=0;cc<chnCount-2;cc++) {
-      b.setSample(cc,sc,dc+a0*cos(2.0*M_PI*frqA*t) /*+(a0*1.0)*sin(2.0*M_PI*frqB*t)*/ );
+      b.setSample(cc,sc,SYNTH_DC + SYNTH_A1*cos(2.0*M_PI*SYNTH_F1*t+SYNTH_P1)
+                                 + SYNTH_A2*cos(2.0*M_PI*SYNTH_F2*t+SYNTH_P2));
      }
      b.setSample(chnCount-2,sc,trigger); trigger=0.; b.setSample(chnCount-1,sc,counter);
     }
@@ -139,7 +150,7 @@ class stream {
   void setTrigger(unsigned int t) { trigger=(double)t; };
 
   bool impMode; double trigger,counter;
-  unsigned int chnCount,smpCount; double dc,a0,frqA,frqB,t,dt;
+  unsigned int chnCount,smpCount; double t,dt; //dc,a0,frqA,frqB,t,dt;
 };
 
 class amplifier {
@@ -160,6 +171,8 @@ class amplifier {
   }
 
   std::string getSerialNumber() { return serialNumber; }
+
+  // -- These may be implemented in the future if needed.
   //std::vector<int> getSamplingRatesAvailable() const=0;
   //std::vector<double> getReferenceRangesAvailable() const=0;
   //std::vector<double> getBipolarRangesAvailable() const=0;
@@ -181,11 +194,8 @@ class amplifier {
  private:
   std::string serialNumber; bool impedanceMode,eegStreamOpen; unsigned int syncTrigOffset;
   unsigned int smpRate; float refRange,bipRange; std::vector<channel> chnList;
-  stream *str;
-  unsigned int synthTrigger;
+  stream *str; unsigned int synthTrigger;
 };
-
-const unsigned int trig_offset[8]={1057,1163,1217,1349,1427,1503,1687,1734};
 
 class factory { // Creates any number of virtual amplifiers identical to EE.
  public:

@@ -34,11 +34,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QCoreApplication>
 #include "../hacqglobals.h"
-
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
 #endif
-
 #include "hacqdaemon.h"
 
 int main(int argc,char *argv[]) {
@@ -46,7 +44,7 @@ int main(int argc,char *argv[]) {
  HAcqDaemon hAcqDaemon;
 
  if (hAcqDaemon.initialize()) {
-  qCritical("Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon.");
+  qCritical("octopus_hacqd: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon.");
   return 1;
  }
 

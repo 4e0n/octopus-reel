@@ -34,8 +34,8 @@ HEADERS += hacqdaemon.h \
 	   confparam.h \
 	   chninfo.h \
 	   eesynth.h \
-           eex.h \
+           eeamp.h \
            ../hacqglobals.h \
-	   ../ampinfo.h \
+	   ../serialdevice.h \
            ../tcpcommand.h
 SOURCES += main.cpp

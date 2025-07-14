@@ -31,9 +31,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QString>
 #include <QIntValidator>
-
 #include "../hacqglobals.h"
-#include "../ampinfo.h"
 #include "../sample.h"
 #include "../tcpsample.h"
 #include "../tcpcommand.h"
@@ -58,34 +56,27 @@ class HAcqDaemon : public QObject {
 #ifdef HACQ_VERBOSE
      qInfo() << "octopus_hacqd: Detailed channels info:";
      qInfo() << "--------------------------------------";
-     for (int i=0;i<chnInfo.size();i++)
-      qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] Bipolar=%d",chnInfo[i].physChn,qUtf8Printable(chnInfo[i].chnName), \
-            chnInfo[i].topoTheta,chnInfo[i].topoPhi,chnInfo[i].topoX,chnInfo[i].topoY,chnInfo[i].isBipolar);
+     for (const auto& ch:chnInfo)
+      qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] Bipolar=%d",ch.physChn,qUtf8Printable(ch.chnName),
+                                                            ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.isBipolar);
 #endif
-     ampInfo.ampCount=conf.ampCount;
-     ampInfo.sampleRate=conf.sampleRate;
-     ampInfo.tcpBufSize=conf.tcpBufSize; // in seconds
-     ampInfo.refChnCount=conf.refChnCount; ampInfo.refChnMaxCount=REF_CHN_MAXCOUNT;
-     ampInfo.bipChnCount=conf.bipChnCount; ampInfo.bipChnMaxCount=BIP_CHN_MAXCOUNT;
-     ampInfo.physChnCount=conf.refChnCount+conf.bipChnCount;
-     ampInfo.totalChnCount=ampInfo.physChnCount+2;
-     ampInfo.totalCount=conf.ampCount*ampInfo.totalChnCount;
-     ampInfo.refGain=conf.refGain;
-     ampInfo.bipGain=conf.bipGain;
-     ampInfo.eegProbeMsecs=conf.eegProbeMsecs;
+     conf.refChnMaxCount=REF_CHN_MAXCOUNT;
+     conf.bipChnMaxCount=BIP_CHN_MAXCOUNT;
+     conf.physChnCount=conf.refChnCount+conf.bipChnCount;
+     conf.totalChnCount=conf.physChnCount+2;
+     conf.totalCount=conf.ampCount*conf.totalChnCount;
 
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "octopus_hacqd: ---> Datahandling Info <---";
-     qInfo() << "octopus_hacqd: Connected # of amplifier(s):" << ampInfo.ampCount;
-     qInfo() << "octopus_hacqd: Sample Rate:" << ampInfo.sampleRate;
-     qInfo() << "octopus_hacqd: TCP Ringbuffer allocated for" << ampInfo.tcpBufSize << "seconds.";
-     qInfo() << "octopus_hacqd: EEG data fetched every" << ampInfo.eegProbeMsecs << "ms.";
-     qInfo("octopus_hacqd: Per-amp Physical Channel#: %d (%d+%d)",ampInfo.physChnCount, \
-           ampInfo.refChnCount,ampInfo.bipChnCount);
-     qInfo() << "octopus_hacqd: Per-amp Total Channel# (with Trig and Offset):" << ampInfo.totalChnCount;
-     qInfo() << "octopus_hacqd: Total Channel# from all amps:" << ampInfo.totalCount;
-     qInfo() << "octopus_hacqd: Referential channels gain:" << ampInfo.refGain;
-     qInfo() << "octopus_hacqd: Bipolar channels gain:" << ampInfo.bipGain;
+     qInfo() << "octopus_hacqd: Connected # of amplifier(s):" << conf.ampCount;
+     qInfo() << "octopus_hacqd: Sample Rate:" << conf.sampleRate;
+     qInfo() << "octopus_hacqd: TCP Ringbuffer allocated for" << conf.tcpBufSize << "seconds.";
+     qInfo() << "octopus_hacqd: EEG data fetched every" << conf.eegProbeMsecs << "ms.";
+     qInfo("octopus_hacqd: Per-amp Physical Channel#: %d (%d+%d)",conf.physChnCount,conf.refChnCount,conf.bipChnCount);
+     qInfo() << "octopus_hacqd: Per-amp Total Channel# (with Trig and Offset):" << conf.totalChnCount;
+     qInfo() << "octopus_hacqd: Total Channel# from all amps:" << conf.totalCount;
+     qInfo() << "octopus_hacqd: Referential channels gain:" << conf.refGain;
+     qInfo() << "octopus_hacqd: Bipolar channels gain:" << conf.bipGain;
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "octopus_hacqd: <ServerIP> is" << conf.ipAddr;
  
@@ -101,9 +92,9 @@ class HAcqDaemon : public QObject {
      }
      qInfo() << "octopus_hacqd: <Data> listening on port" << conf.dataPort;
 
-     hAcqThread=new HAcqThread(&ampInfo,ampInfo.tcpBufSize*ampInfo.sampleRate,&tcpMutex,this);
+     hAcqThread=new HAcqThread(&conf,this);
      connect(hAcqThread,&HAcqThread::sendData,this,&HAcqDaemon::drainAndBroadcast);
-     hAcqThread->start();
+     hAcqThread->start(QThread::HighestPriority);
 
      return false;
     }
@@ -114,8 +105,7 @@ class HAcqDaemon : public QObject {
    return true;
   }
 
-  AmpInfo ampInfo;
-  QMutex tcpMutex;
+  ConfParam conf;
 
  signals:
   void sendData();
@@ -156,13 +146,13 @@ class HAcqDaemon : public QObject {
    }
    switch (iCmd) {
     case CMD_ACQINFO: qDebug("octopus_hacqd: <Comm> Sending Amplifier(s) Info..");
-     client->write("-> Samplerate: "+QString::number(ampInfo.sampleRate).toUtf8()+"sps\n");
-     client->write("-> Referential channel(s)#: "+QString::number(ampInfo.refChnCount).toUtf8()+"\n");
-     client->write("-> Bipolar channel(s)#: "+QString::number(ampInfo.bipChnCount).toUtf8()+"\n");
-     client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(ampInfo.physChnCount).toUtf8()+"\n");
-     client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(ampInfo.totalChnCount).toUtf8()+"\n");
-     client->write("-> Grand total channels# from all amps: "+QString::number(ampInfo.totalCount).toUtf8()+"\n");
-     client->write("-> EEG Probe interval (ms): "+QString::number(ampInfo.eegProbeMsecs).toUtf8()+"\n");
+     client->write("-> Samplerate: "+QString::number(conf.sampleRate).toUtf8()+"sps\n");
+     client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
+     client->write("-> Bipolar channel(s)#: "+QString::number(conf.bipChnCount).toUtf8()+"\n");
+     client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf.physChnCount).toUtf8()+"\n");
+     client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(conf.totalChnCount).toUtf8()+"\n");
+     client->write("-> Grand total channels# from all amps: "+QString::number(conf.totalCount).toUtf8()+"\n");
+     client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
      break;
     case CMD_TRIGGER:
      if (iParam<0xffff) {
@@ -186,21 +176,21 @@ class HAcqDaemon : public QObject {
      client->disconnectFromHost();
      break;
     case CMD_GETCONF: qDebug("octopus_hacqd: <Comm> Sending Config Parameters..");
-     client->write(QString::number(ampInfo.ampCount).toUtf8()+","+ \
-                   QString::number(ampInfo.sampleRate).toUtf8()+","+ \
-                   QString::number(ampInfo.refChnCount).toUtf8()+","+ \
-                   QString::number(ampInfo.bipChnCount).toUtf8()+","+ \
-                   QString::number(ampInfo.refGain).toUtf8()+","+ \
-                   QString::number(ampInfo.bipGain).toUtf8()+","+ \
-                   QString::number(ampInfo.eegProbeMsecs).toUtf8()+"\n");
+     client->write(QString::number(conf.ampCount).toUtf8()+","+ \
+                   QString::number(conf.sampleRate).toUtf8()+","+ \
+                   QString::number(conf.refChnCount).toUtf8()+","+ \
+                   QString::number(conf.bipChnCount).toUtf8()+","+ \
+                   QString::number(conf.refGain).toUtf8()+","+ \
+                   QString::number(conf.bipGain).toUtf8()+","+ \
+                   QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
      break;
     case CMD_GETCHAN: qDebug("octopus_hacqd: <Comm> Sending Channels' Parameters..");
-     for (int i=0;i<chnInfo.size();i++)
-      client->write(QString::number(chnInfo[i].physChn).toUtf8()+","+ \
-                    QString(chnInfo[i].chnName).toUtf8()+","+ \
-                    QString::number(chnInfo[i].topoTheta).toUtf8()+","+ \
-                    QString::number(chnInfo[i].topoPhi).toUtf8()+","+ \
-                    QString::number(chnInfo[i].isBipolar).toUtf8()+"\n");
+     for (const auto& ch:chnInfo)
+      client->write(QString::number(ch.physChn).toUtf8()+","+ \
+                    QString(ch.chnName).toUtf8()+","+ \
+                    QString::number(ch.topoTheta).toUtf8()+","+ \
+                    QString::number(ch.topoPhi).toUtf8()+","+ \
+                    QString::number(ch.isBipolar).toUtf8()+"\n");
      break;
     case CMD_REBOOT: qDebug("octopus_hacqd: <Comm> Rebooting server (if privileges are enough)..");
      client->write("Rebooting system (if privileges are enough)...\n");
@@ -221,12 +211,8 @@ class HAcqDaemon : public QObject {
     QTcpSocket *client=dataServer.nextPendingConnection();
     dataClients.append(client);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     //for (int i=dataClients.size()-1;i>=0;--i) {
-     // QTcpSocket *client=dataClients.at(i);
-     // if (client->state()!=QAbstractSocket::ConnectedState) {
-     //  dataClients.removeAt(i);
-     //  client->deleteLater();
-     // }
+     //for (int i=dataClients.size()-1;i>=0;--i) { QTcpSocket *client=dataClients.at(i);
+     // if (client->state()!=QAbstractSocket::ConnectedState) { dataClients.removeAt(i); x client->deleteLater(); }
      //}
      qDebug() << "octopus_hacqd: <Data> client from" << client->peerAddress().toString() << "disconnected.";
      dataClients.removeAll(client);
@@ -237,15 +223,13 @@ class HAcqDaemon : public QObject {
   }
 
   void drainAndBroadcast() {
-   TcpSample tcpSample(ampInfo.ampCount,ampInfo.physChnCount);
+   TcpSample tcpSample(conf.ampCount,conf.physChnCount);
    while (hAcqThread->popSample(&tcpSample)) {
     QByteArray payLoad=tcpSample.serialize();
-    
     //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() 
     //     << " ChCount:" << tcpSample.amp[0].dataF.size() 
     //     << " FirstVal:" << tcpSample.amp[0].dataF[0];
-         
-    for (QTcpSocket *client : dataClients) {
+    for (QTcpSocket *client:dataClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
       quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
@@ -259,47 +243,40 @@ class HAcqDaemon : public QObject {
 
 /* loopback deserialization test
   void drainAndBroadcast() {
-   TcpSample tcpSample(ampInfo.ampCount,ampInfo.physChnCount);
+   TcpSample tcpSample(conf.ampCount,conf.physChnCount);
    while (hAcqThread->popSample(&tcpSample)) {
-    QByteArray payLoad = tcpSample.serialize();
+    QByteArray payLoad=tcpSample.serialize();
     // Loopback Test — Deserialize immediately to verify what we are about to send
-    QDataStream in(&payLoad, QIODevice::ReadOnly);
+    QDataStream in(&payLoad,QIODevice::ReadOnly);
     in.setByteOrder(QDataStream::LittleEndian);
 
-    quint32 trigger = 0, ampCount = 0;
-    in >> trigger >> ampCount;
+    quint32 trigger=0,ampCount=0; in>>trigger>>ampCount;
 
+    for (quint32 i=0;i<ampCount;++i) {
+     if (i==0) qDebug() << "[Loopback] trigger=" << trigger << "ampCount=" << ampCount;
+     float marker=0;
+     in>>marker;
+     if (i==0) qDebug() << "[Loopback] amp=" << i << "marker=" << marker;
 
-    for (quint32 i = 0; i < ampCount; ++i) {
-     if (i==0) qDebug() << "[Loopback] trigger =" << trigger << "ampCount =" << ampCount;
-     float marker = 0;
-     in >> marker;
-     if (i==0) qDebug() << "[Loopback] amp =" << i << "marker =" << marker;
-
-     auto readFloatVector = [&](int size, const char* label) {
-        QString line;
-        for (int k = 0; k < size; ++k) {
-            float val;
-            in >> val;
-            if (k < 3)  // Only print first few for sanity check
-                line += QString("%1 %2: %3  ").arg(label).arg(k).arg(val, 0, 'g', 6);
-        }
-        qDebug() << line;
+     auto readFloatVector=[&](int size,const char *label) {
+      QString line;
+      for (int k=0;k<size;++k) { float val; in>>val;
+       if (k<3) // Only print first few for sanity check
+       line+=QString("%1 %2: %3 ").arg(label).arg(k).arg(val,0,'g',6);
+      }
+      qDebug() << line;
      };
-     readFloatVector(tcpSample.amp[i].data.size(), "raw");
-     readFloatVector(tcpSample.amp[i].dataF.size(), "flt");
+     readFloatVector(tcpSample.amp[i].data.size(),"raw");
+     readFloatVector(tcpSample.amp[i].dataF.size(),"flt");
     }
-    qDebug() << "[Loopback] payload size =" << payLoad.size() << " bytes read =" << in.device()->pos();
+    qDebug() << "[Loopback] payload size=" << payLoad.size() << " bytes read=" << in.device()->pos();
    }
   }
 */
 
  private:
-  ConfParam conf;
-  QVector<ChnInfo> chnInfo;
-  QTcpServer commServer,dataServer;
-  QVector<QTcpSocket*> dataClients;
-  HAcqThread *hAcqThread;
+  HAcqThread *hAcqThread; QVector<QTcpSocket*> dataClients;
+  QVector<ChnInfo> chnInfo; QTcpServer commServer,dataServer;
 };
 
 #endif

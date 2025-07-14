@@ -32,9 +32,7 @@ const int MAX_LINE_SIZE=160; // chars
 
 class ConfigParser {
  public:
-  ConfigParser(QString cp) {
-   cfgPath=cp; cfgFile.setFileName(cfgPath);
-  }
+  ConfigParser(QString cp) { cfgPath=cp; cfgFile.setFileName(cfgPath); }
 
   bool parse(ConfParam *conf,QVector<ChnInfo> *chnTopo) {
    QTextStream cfgStream;
@@ -53,8 +51,9 @@ class ConfigParser {
     cfgFile.close();
 
     // Separate AMP, NET, CHN, GUI parameter lines
-    for (int i=0;i<cfgLines.size();i++) {
-     opts=cfgLines[i].split("|");
+    //for (int i=0;i<cfgLines.size();i++) {
+    for (const auto& cl:cfgLines) {
+     opts=cl.split("|");
           if (opts[0].trimmed()=="AMP") ampSection.append(opts[1]);
      else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]);
@@ -68,8 +67,9 @@ class ConfigParser {
 
     // AMP section
     if (ampSection.size()>0) {
-     for (int i=0;i<ampSection.size();i++) {
-      opts=ampSection[i].split("=");
+     //for (int i=0;i<ampSection.size();i++) {
+     for (const auto& sect:ampSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="COUNT") {
        conf->ampCount=opts[1].toInt();
        if (conf->ampCount > EE_MAX_AMPCOUNT) {
@@ -120,8 +120,8 @@ class ConfigParser {
 
     // NET section
     if (netSection.size()>0) {
-     for (int i=0;i<netSection.size();i++) {
-      opts=netSection[i].split("=");
+     for (const auto& sect:netSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(","); // IP, ConfigPort and DataPort are separated by ","
        if (opts2.size()==3) {
@@ -149,8 +149,8 @@ class ConfigParser {
     // CHN section
     bool bipChn; conf->refChnCount=conf->bipChnCount=0;
     if (chnSection.size()>0) {
-     for (int i=0;i<chnSection.size();i++) {
-      opts=chnSection[i].split("=");
+     for (const auto& sect:chnSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="APPEND") {
        opts2=opts[1].split(",");
        if (opts2.size()==7) {
@@ -188,8 +188,7 @@ class ConfigParser {
      return true;
     }
 
-    //for (int i=0;i<chnTopo.size();i++)
-    // qDebug() << chnTopo[i].physChn << chnTopo[i].chnName << chnTopo[i].topoX << chnTopo[i].topoY;
+    //for (const auto& ct:chnTopo) qDebug() << ct.physChn << ct.chnName << ct.topoX << ct.topoY;
 
    } // File open
    return false;

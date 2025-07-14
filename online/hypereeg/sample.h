@@ -26,25 +26,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 typedef struct _Sample {
  float marker=0.;
- std::vector<float> data;
- std::vector<float> dataF;
-// std::vector<float> curCM;
-// std::vector<float> sum0; // peri-convN samples
-// std::vector<float> com0; // peri-convN 50Hz common mode noise square
-// std::vector<float> sum1; // previous convL samples
- unsigned int trigger=0;
- unsigned int offset;
+ std::vector<float> data;  // [0.1-100]Hz IIR filtered amplifier data.
+ std::vector<float> dataF; // 30Q @ 50Hz IIR notch filtered version of data
+ unsigned int trigger=0,offset=0;
 
  void init(size_t chnCount) {
   marker=0.; trigger=0;
   data.assign(chnCount, 0.0f);
   dataF.assign(chnCount, 0.0f);
-  //dataZ.assign(chnCount, 0.0f);
-  //dataCAR.assign(chnCount, 0.0f);
-  //dataCM.assign(chnCount, 0.0f);
  }
 
- //_Sample(size_t chnCount=0) : data(chnCount,0),dataF(chnCount,0) {}
  _Sample(size_t chnCount=0) { init(chnCount); }
  
 } Sample;

@@ -54,9 +54,6 @@ typedef struct _TcpSample {
    out << s.marker;
    writeFloatVec(s.data);
    writeFloatVec(s.dataF);
-//   writeFloatVec(s.dataZ);
-//   writeFloatVec(s.dataCAR);
-//   writeFloatVec(s.dataCM);
   }
   return ba;
  }

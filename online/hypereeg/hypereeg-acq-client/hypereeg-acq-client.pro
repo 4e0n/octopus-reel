@@ -32,11 +32,12 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 HEADERS += acqmaster.h \
            acqcontrolwindow.h \
            acqstreamwindow.h \
+           eegframe.h \
+           eegthread.h \
            configparser.h \
            confparam.h \
            chninfo.h \
-           headmodel.h \
-           eegframe.h \
+#           headmodel.h \
 #           legendframe.h \
 #           headglwidget.h \
            ../../../common/event.h \

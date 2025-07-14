@@ -41,7 +41,7 @@ class AcqControlWindow : public QMainWindow {
  Q_OBJECT
  public:
   explicit AcqControlWindow(ConfParam *c=nullptr,QWidget *parent=nullptr) : QMainWindow(parent) {
-   conf=c; setGeometry(conf->guiCtrlY,conf->guiCtrlY,conf->guiCtrlW,conf->guiCtrlY);
+   conf=c; setGeometry(conf->guiCtrlX,conf->guiCtrlY,conf->guiCtrlW,conf->guiCtrlH);
    setFixedSize(conf->guiCtrlW,conf->guiCtrlH);
 
    // *** TABS & TABWIDGETS ***
@@ -109,8 +109,6 @@ class AcqControlWindow : public QMainWindow {
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
-   cntSpeedX=4;
-
    QPushButton *dummyButton;
    cntSpdBG=new QButtonGroup();
    cntSpdBG->setExclusive(true);
@@ -169,11 +167,11 @@ class AcqControlWindow : public QMainWindow {
 
   void slotCntSpeed(int x) {
    switch (x) {
-    case 0: cntSpeedX=10; cntSpdBG->button(2)->setDown(false); break;
-    case 1: cntSpeedX= 8; cntSpdBG->button(2)->setDown(false); break;
-    case 2: cntSpeedX= 4; break;
-    case 3: cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
-    case 4: cntSpeedX= 1; cntSpdBG->button(2)->setDown(false); break;
+    case 0: conf->cntSpeedX=50; cntSpdBG->button(2)->setDown(false); break;
+    case 1: conf->cntSpeedX=20; cntSpdBG->button(2)->setDown(false); break;
+    case 2: conf->cntSpeedX=10; break;
+    case 3: conf->cntSpeedX= 5; cntSpdBG->button(2)->setDown(false); break;
+    case 4: conf->cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
    }
   }
  private:

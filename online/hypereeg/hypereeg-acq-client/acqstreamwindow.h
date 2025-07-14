@@ -45,7 +45,7 @@ class AcqStreamWindow : public QMainWindow {
  public:
   explicit AcqStreamWindow(unsigned int a=0,ConfParam *c=nullptr,QWidget *parent=nullptr) : QMainWindow(parent) {
    ampNo=a; conf=c;
-   setGeometry(conf->guiStrmX,conf->guiStrmY,conf->guiStrmW,conf->guiStrmH);
+   setGeometry(ampNo*conf->guiStrmW+conf->guiStrmX,conf->guiStrmY,conf->guiStrmW,conf->guiStrmH);
    setFixedSize(conf->guiStrmW,conf->guiStrmH);
 
    conf->eegFrameH=conf->guiStrmH-90; conf->eegFrameW=(int)(.66*(float)(conf->guiStrmW));
@@ -59,7 +59,7 @@ class AcqStreamWindow : public QMainWindow {
    mainTabWidget->setGeometry(1,32,this->width()-2,this->height());
 
    eegWidget=new QWidget(mainTabWidget);
-   eegFrame=new EEGFrame(conf,ampNo,eegWidget); //,conf,ampNo);
+   eegFrame=new EEGFrame(conf,ampNo,eegWidget);
    eegFrame->setGeometry(2,2,conf->eegFrameW,conf->eegFrameH); eegWidget->show(); 
  
    mainTabWidget->addTab(eegWidget,"EEG/ERP"); mainTabWidget->show();
@@ -86,13 +86,11 @@ class AcqStreamWindow : public QMainWindow {
    menuBar->addMenu(modelMenu); menuBar->addMenu(viewMenu);
    setMenuBar(menuBar);
 
-   rollingWindowSize=100;
-
    setWindowTitle("Octopus Hyper EEG/ERP Amp #"+QString::number(ampNo+1));
   }
 
   ~AcqStreamWindow() override {}
-
+/*
   //void scroll(std::vector<float> *data,std::vector<float> *dataF) {//QVector<float> *m,QVector<float> *s) {
   void scroll(QVector<float> *mean,QVector<float> *std) {
    //QVector<float> means,stdevs;
@@ -101,7 +99,7 @@ class AcqStreamWindow : public QMainWindow {
    //qDebug() << "Means[0]:" << means[0] << "Stdev[0]:" << stdevs[0];
    eegFrame->scroll(false,false,mean,std);
   }
-
+*/
 //  void updateEEG(const TcpSample &smp) {
 //   qDebug("here");
    //for (int amp = 0; amp < smp.amp.size(); ++amp) {
@@ -153,9 +151,9 @@ void updateEEG(const TcpSample &smp) {
   ConfParam *conf;
   
   QVector<QVector<float>> rollingWindow; // [channel][time]
-  int rollingWindowSize; // e.g., 100 samples for 100 ms window
+  //int rollingWindowSize; // e.g., 100 samples for 100 ms window
   unsigned int ampNo;
-
+ 
  public slots:
   void slotEEGAmp(int x) {
    switch (x) {
