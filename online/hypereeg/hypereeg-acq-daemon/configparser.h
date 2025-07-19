@@ -53,7 +53,7 @@ class ConfigParser {
     // Separate AMP, NET, CHN, GUI parameter lines
     //for (int i=0;i<cfgLines.size();i++) {
     for (const auto& cl:cfgLines) {
-     opts=cl.split("|");
+     opts=cl.split("#"); opts=opts[0].split("|");
           if (opts[0].trimmed()=="AMP") ampSection.append(opts[1]);
      else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]);
@@ -84,10 +84,16 @@ class ConfigParser {
         qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: BUFPAST not within [2,50] seconds range!";
         return true;
        }
-      } else if (opts[0].trimmed()=="SAMPLERATE") {
-       conf->sampleRate=opts[1].toInt();
-       if (!(conf->sampleRate == 500 || conf->sampleRate == 1000)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: SAMPLERATE not among {500,1000}!";
+      } else if (opts[0].trimmed()=="EEGRATE") {
+       conf->eegRate=opts[1].toInt();
+       if (!(conf->eegRate == 500 || conf->eegRate == 1000)) {
+        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: EEG Samplerate not among {500,1000}!";
+        return true;
+       }
+      } else if (opts[0].trimmed()=="CMRATE") {
+       conf->cmRate=opts[1].toInt();
+       if (!(conf->cmRate == 1 || conf->cmRate == 2)) {
+        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: CommonMode Samplerate not among {1,10}!";
         return true;
        }
       } else if (opts[0].trimmed()=="EEGPROBEMS") {
@@ -123,18 +129,23 @@ class ConfigParser {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="ACQ") {
-       opts2=opts[1].split(","); // IP, ConfigPort and DataPort are separated by ","
-       if (opts2.size()==3) {
+       opts2=opts[1].split(","); // IP, ConfigPort,eegDataPort and cmDataPort are separated by ","
+       if (opts2.size()==4) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->ipAddr=acqHostInfo.addresses().first().toString();
         //qDebug() << "octopus_hacqd: <ConfigParser> <NET> Host IP is" << conf->ipAddr;
         conf->commPort=opts2[1].toInt();
-	conf->dataPort=opts2[2].toInt();
-        if ((!(conf->commPort >= 1024 && conf->commPort <= 65535)) || // Simple port validation
-            (!(conf->dataPort >= 1024 && conf->dataPort <= 65535))) {
+	conf->eegDataPort=opts2[2].toInt();
+	conf->cmDataPort=opts2[3].toInt();
+        if ((!(conf->commPort    >= 1024 && conf->commPort    <= 65535)) || // Simple port validation
+            (!(conf->eegDataPort >= 1024 && conf->eegDataPort <= 65535)) ||
+            (!(conf->cmDataPort  >= 1024 && conf->cmDataPort  <= 65535))) {
          qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
+       } else {
+        qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Wrong number of parameters in line!";
+        return true;
        }
       } else {
        qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";

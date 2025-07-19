@@ -21,15 +21,25 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef CHNINFO_H
-#define CHNINFO_H
+/*
+ * This is the HyperEEG "Common Mode" GUI Client, which is may be one of the
+ * simplest client types in a Octopus-ReEL network.
+ * It connects to the Hyper-acq daemon over TCP via a pair of sockets
+ * (IP:commandPort:cmStreamPort) to visualize CM-noise levels.
+ *
+ * Even though it can live anywhere on the network, it most likely runs
+ * on the same computer together with the daemon, for its GUI window being
+ * visible to the EEG technician-experimenter to adjust any problematic
+ * electrode connections during a session of real-time observation for
+ * EEG-derived sophisticated variables computed and visualized
+ * under determined conditions such as speech, or music.
+ */
 
-struct ChnInfo {
- unsigned int physChn;
- QString chnName;
- float topoTheta,topoPhi;
- unsigned int topoX,topoY;
- bool isBipolar;
-};
+#include <QApplication>
+#include "acqmaster.h"
 
-#endif
+int main(int argc,char* argv[]) {
+ QApplication app(argc,argv);
+ AcqMaster master(&app);
+ return app.exec();
+}

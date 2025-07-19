@@ -167,11 +167,11 @@ class AcqControlWindow : public QMainWindow {
 
   void slotCntSpeed(int x) {
    switch (x) {
-    case 0: conf->cntSpeedX=50; cntSpdBG->button(2)->setDown(false); break;
-    case 1: conf->cntSpeedX=20; cntSpdBG->button(2)->setDown(false); break;
-    case 2: conf->cntSpeedX=10; break;
-    case 3: conf->cntSpeedX= 5; cntSpdBG->button(2)->setDown(false); break;
-    case 4: conf->cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
+    case 0: conf->cntSpeedX=10; cntSpdBG->button(2)->setDown(false); break;
+    case 1: conf->cntSpeedX= 8; cntSpdBG->button(2)->setDown(false); break;
+    case 2: conf->cntSpeedX= 4; cntSpdBG->button(2)->setDown(false); break;
+    case 3: conf->cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
+    case 4: conf->cntSpeedX= 1; break;
    }
   }
  private:

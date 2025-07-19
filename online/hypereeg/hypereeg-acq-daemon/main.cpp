@@ -22,14 +22,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* This is the HyperEEG-Acq-Daemon.. this code was before together with
- * the GUI window showing on-the-fly, the common mode noise levels.
- * Now it is separated into two parts. The first one is this, the acquisition
- * daemon acquiring from multiple commercial USB EEG amps in a syncronized fashion.
- * The other part, HyperEEG-Acq-GUI (and multiple other types of clients) can now connect to this over TCP
- * via the given IP:port to visualize CM-noise levels, which normally is expected to
- * run on the same computer, and is very useful for maintenance of subjects in
- * a real-time observation for EEG-derived sophisticated variables under known
- * conditions, such as speech, or music.
+ * the GUI window, showing on-the-fly the common mode noise levels.
+ * Now it is separated into two parts. The acquisition daemon acquiring
+ * from multiple (USB) EEG amps, and stereo audio@48Ksps from the the
+ * alsa2-default audio input device, in a syncronized fashion.
+ *
+ * The second separated part, HyperEEG-CM-GUI (multiple other types of clients
+ * connect the same way) can now connect to this daemon over TCP via and an
+ * established socket set (IP:commandPort:eegStreamPort:cmStreamPort) to
+ * visualize CM-noise levels, which normally/practically is assumed to run
+ * on the same computer, for being visible to the EEG technician-experimenter
+ * to adjust any problematic electrode connections during a session of real-time
+ * observation for EEG-derived sophisticated variables computed and visualized
+ * under determined conditions such as speech, or music.
  */
 
 #include <QCoreApplication>

@@ -32,15 +32,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QVector>
 #include "chninfo.h"
 #include "../../../common/event.h"
-#include "../tcpsample.h"
+#include "../tcpcmarray.h"
+
+const unsigned int GUI_MAX_AMP_PER_LINE=4;
 
 class ConfParam : public QObject {
  Q_OBJECT
  public:
   ConfParam() {};
-  void init(int ampC=0) { ampCount=ampC; tcpBufHead=tcpBufTail=0; updateInstant=false; cntSmpCount=10; eegAmpX.resize(ampCount); };
+  void init(int ampC=0) {
+   ampCount=ampC; tcpBufHead=tcpBufTail=0; updateInstant=false;
+   updated.resize(ampCount); cmCurData.resize(ampCount);
+   guiMaxAmpPerLine=GUI_MAX_AMP_PER_LINE;
+  };
 
-  QString commandToDaemon(const QString &command, int timeoutMs=1000) {
+  QString commandToDaemon(const QString &command,int timeoutMs=1000) {
    if (!commSocket || commSocket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
    commSocket->write(command.toUtf8()+"\n");
    if (!commSocket->waitForBytesWritten(timeoutMs)) return QString(); // timeout or write error
@@ -48,38 +54,27 @@ class ConfParam : public QObject {
    return QString::fromUtf8(commSocket->readAll()).trimmed();
   }
 
-  QTcpSocket *commSocket,*eegDataSocket,*cmDataSocket;
-  QVector<TcpSample> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize;
+  QTcpSocket *commSocket,*dataSocket;
+  QVector<TcpCMArray> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize;
 
-  unsigned int ampCount,sampleRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs; float refGain,bipGain;
-  QString ipAddr; quint32 commPort,eegDataPort,cmDataPort;
-  int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH,guiStrmX,guiStrmY,guiStrmW,guiStrmH,guiHeadX,guiHeadY,guiHeadW,guiHeadH;
-  int eegFrameW,eegFrameH,glFrameW,glFrameH;
+  unsigned int ampCount,cmRate,refChnCount,bipChnCount,chnCount;
+  unsigned int guiMaxAmpPerLine;
+  QString ipAddr; quint32 commPort,dataPort; // dataPort is cmDataPort
+  int guiX,guiY,guiW,guiH,frameW,frameH,guiCellSize;
 
-  QVector<QVector<float> > scrPrvData,scrPrvDataF,scrCurData,scrCurDataF; QVector<float> cntAmpX;
-  quint32 scrCounter,cntSpeedX,cntSmpCount; bool tick,event;
+  QVector<QVector<unsigned char> > cmCurData;
 
-  QVector<Event*> acqEvents;
-  QVector<float> eegAmpX;
   QVector<ChnInfo> chns;
-  QString curEventName;
-  quint32 curEventType;
-  float rejBwd,avgBwd,avgFwd,rejFwd; // In terms of milliseconds
-  int cntPastSize,cntPastIndex; //,avgCount,rejCount,postRejCount,bwCount;
   QVector<QColor> rgbPalette;
-  QVector<Event> events;
 
   QApplication *application;
 
   std::atomic<bool> updateInstant; QVector<bool> updated;
   mutable QMutex mutex;
 
-// signals:
-//  void scrData(bool tick,bool event);
-
  public slots:
-  void onEEGDataReady() {
-   static QByteArray buffer; buffer.append(eegDataSocket->readAll());
+  void onDataReady() {
+   static QByteArray buffer; buffer.append(dataSocket->readAll());
    //qDebug() << "[Client] Incoming data size:" << buffer.size();
    while (buffer.size()>=4) {
     QDataStream sizeStream(buffer); sizeStream.setByteOrder(QDataStream::LittleEndian);
@@ -88,26 +83,24 @@ class ConfParam : public QObject {
     if ((quint32)buffer.size()<4+blockSize) break; // Wait for more data
     QByteArray block=buffer.mid(4,blockSize);
     // Deserialize into TcpSample
-    TcpSample tcpS;
-    if (tcpS.deserialize(block,chnCount)) {
+    TcpCMArray tcpCM;
+    if (tcpCM.deserialize(block,chnCount)) {
      // Push the deserialized tcpSample to circular buffer
-     tcpBuffer[tcpBufHead%tcpBufSize]=tcpS; tcpBufHead++;
+     tcpBuffer[tcpBufHead%tcpBufSize]=tcpCM; tcpBufHead++;
+     //qDebug() << "CM Received!";
     } else {
      qWarning() << "Failed to deserialize TcpSample block.";
     }
-    if (!scrCounter) {
-     for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-      updated[ampIdx]=false;
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-       scrPrvData[ampIdx][chnIdx]=scrCurData[ampIdx][chnIdx];
-       scrPrvDataF[ampIdx][chnIdx]=scrCurDataF[ampIdx][chnIdx];
-       scrCurData[ampIdx][chnIdx] =tcpS.amp[ampIdx].data[chnIdx];
-       scrCurDataF[ampIdx][chnIdx]=tcpS.amp[ampIdx].dataF[chnIdx];
-      }
-     }
-     updateInstant=true; tick=event=false;
+
+    // Update
+    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
+     updated[ampIdx]=false;
+     for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++)
+      cmCurData[ampIdx][chnIdx]=tcpCM.cmLevel[ampIdx][chnIdx];
     }
-    tcpBufTail++; scrCounter=(scrCounter+1)%cntSpeedX;
+    tcpBufTail++;
+    updateInstant=true;
+
     buffer.remove(0,4+blockSize); // Remove processed block
    }
   }

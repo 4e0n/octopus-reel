@@ -38,7 +38,7 @@ const std::vector<double> a={1.        , -3.14315078, 3.69970174,-1.96971135,0.4
 const std::vector<double> nb={0.99479124,-1.89220538,0.99479124};
 const std::vector<double> na={1.        ,-1.89220538,0.98958248};
 
-typedef struct _EEAmp {
+struct EEAmp {
  unsigned int idx=0;
  amplifier *amp=nullptr;
  std::vector<channel> chnList;
@@ -50,9 +50,9 @@ typedef struct _EEAmp {
  std::vector<Sample> cBuf; quint64 cBufIdx; // Abstract (our) buffer
 
  //_EEAmp(unsigned int id=0,size_t sample_count=0,size_t chn_count=0) : idx(id),cBuf(sample_count,Sample(chn_count)) {}
- _EEAmp(unsigned int id=0,amplifier *ampx=nullptr,
-      quint64 rMask=0,quint64 bMask=0,
-      size_t cbs=0,size_t ci=0,size_t chnCount=0) { init(id,ampx,rMask,bMask,cbs,ci,chnCount); }
+ EEAmp(unsigned int id=0,amplifier *ampx=nullptr,
+       quint64 rMask=0,quint64 bMask=0,
+       size_t cbs=0,size_t ci=0,size_t chnCount=0) { init(id,ampx,rMask,bMask,cbs,ci,chnCount); }
 
  void init(unsigned int id,amplifier *ampx,
            quint64 rMask,quint64 bMask,
@@ -69,8 +69,8 @@ typedef struct _EEAmp {
 
   // Initialize filters
   bpFilterList.reserve(chnCount); nFilterList.reserve(chnCount);
-  for (size_t j=0;j<chnCount;++j) { bpFilterList.emplace_back(b,a); nFilterList.emplace_back(nb,na); }
+  for (size_t chnIdx=0;chnIdx<chnCount;chnIdx++) { bpFilterList.emplace_back(b,a); nFilterList.emplace_back(nb,na); }
  }
-} EEAmp;
+};
 
 #endif

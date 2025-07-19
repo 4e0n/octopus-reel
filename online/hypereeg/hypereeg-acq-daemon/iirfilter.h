@@ -5,7 +5,7 @@
 class IIRFilter {
 public:
  IIRFilter(const std::vector<double>& bCoeffs,const std::vector<double>& aCoeffs)
-                            : b(bCoeffs),a(aCoeffs),order(aCoeffs.size()-1),w(order,0.0f) {}
+           : b(bCoeffs),a(aCoeffs),order(aCoeffs.size()-1),w(order,0.0f) {}
  double filterSample(double x) {
   double wn=x;
   for (size_t i=0;i<order;++i) wn-=a[i+1]*w[i];
@@ -25,15 +25,3 @@ private:
  size_t order;
  std::vector<double> w;
 };
-
-// Usage Example inside your AcqThread
-// Create per-channel filter objects at initialization:
-// std::vector<IIRFilter> channelFilters;
-// for (size_t ch=0;ch<totalChannels;++ch) channelFilters.emplace_back(b,a);
-
-// Then for each sample:
-// double rawValue=tcpS.amp[ampIdx].data[chIdx];
-// double filteredValue=channelFilters[chGlobalIdx].filterSample(rawValue);
-// tcpS.amp[ampIdx].data[chIdx] = filteredValue;
-
-// Proceed to push tcpS into your circular buffer as before.

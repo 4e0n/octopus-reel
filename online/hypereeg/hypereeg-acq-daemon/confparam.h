@@ -24,15 +24,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CONFPARAM_H
 #define CONFPARAM_H
 
-typedef struct _ConfParam {
- unsigned int ampCount,sampleRate,tcpBufSize,eegProbeMsecs;
+struct ConfParam {
+ unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
  QString ipAddr;
- unsigned int commPort,dataPort;
+ unsigned int commPort,eegDataPort,cmDataPort;
  unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
  unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
  unsigned int totalChnCount; // refChnCount+bipChnCount+2
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
-} ConfParam;
+};
 
 #endif

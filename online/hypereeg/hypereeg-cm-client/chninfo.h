@@ -24,12 +24,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CHNINFO_H
 #define CHNINFO_H
 
+#include "../../../common/vec3.h"
+
 struct ChnInfo {
- unsigned int physChn;
- QString chnName;
- float topoTheta,topoPhi;
- unsigned int topoX,topoY;
- bool isBipolar;
+//  ChnInfo() {}
+  unsigned int physChn,topoX,topoY;
+  QString chnName;
+  bool isBipolar;
+  unsigned char cmLevel; // Common Mode noise level
 };
 
 #endif

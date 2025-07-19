@@ -51,8 +51,9 @@ class AcqMaster: public QObject {
   explicit AcqMaster(QApplication *app=nullptr,QObject *parent=nullptr) : QObject(parent) {
    //conf=ConfParam();
    QString commResponse; QStringList sList,sList2;
-   conf.application=app; conf.commSocket=new QTcpSocket(this); conf.dataSocket=new QTcpSocket(this);
-   conf.scrCounter=0; conf.cntSpeedX=100;
+   conf.application=app; conf.commSocket=new QTcpSocket(this);
+   conf.eegDataSocket=new QTcpSocket(this); conf.cmDataSocket=new QTcpSocket(this);
+   conf.scrCounter=0; conf.cntSpeedX=1;
 
    // Initialize
    if (QFile::exists(cfgPath)) {
@@ -60,7 +61,7 @@ class AcqMaster: public QObject {
     if (!cfp.parse(&conf)) {
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "octopus_hacq_client: <ServerIP> is" << conf.ipAddr;
-     qInfo() << "octopus_hacq_client: <Comm> listening on ports (comm,data):" << conf.commPort << conf.dataPort;
+     qInfo() << "octopus_hacq_client: <Comm> listening on ports (comm,eegData,cmData):" << conf.commPort << conf.eegDataPort << conf.cmDataPort;
      qInfo() << "octopus_hacq_client: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
      qInfo() << "octopus_hacq_client: <GUI> Strm (X,Y,W,H):" << conf.guiStrmX << conf.guiStrmY << conf.guiStrmW << conf.guiStrmH;
      qInfo() << "octopus_hacq_client: <GUI> Heam (X,Y,W,H):" << conf.guiHeadX << conf.guiHeadY << conf.guiHeadW << conf.guiHeadH;
@@ -126,11 +127,12 @@ class AcqMaster: public QObject {
 //     connect(scrollTimer,&QTimer::timeout,this,&AcqMaster::scrollSlot);
 //     scrollTimer->start(EEGFRAME_REFRESH_RATE);  // Timebase is: 100 ms → 10 fps
 
-     connect(conf.dataSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onDataReady);
+     connect(conf.eegDataSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onEEGDataReady);
 
      // At this point the scrolling widgets, and everything should be initialized and ready.
      // Setup data socket -- only safe after handshake and receiving crucial info about streaming
-     conf.dataSocket->connectToHost(conf.ipAddr,conf.dataPort); conf.dataSocket->waitForConnected();
+     conf.eegDataSocket->connectToHost(conf.ipAddr,conf.eegDataPort); conf.eegDataSocket->waitForConnected();
+     conf.cmDataSocket->connectToHost(conf.ipAddr,conf.cmDataPort); conf.cmDataSocket->waitForConnected();
     } else {
      qWarning() << "octopus_hacq_client: The config file" << cfgPath << "is corrupt!";
      return;

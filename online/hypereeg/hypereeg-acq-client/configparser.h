@@ -77,13 +77,15 @@ class ConfigParser {
       opts=netSection[i].split("=");
       if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(","); // IP, ConfigPort and DataPort are separated by ","
-       if (opts2.size()==3) {
+       if (opts2.size()==4) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->ipAddr=acqHostInfo.addresses().first().toString();
         conf->commPort=opts2[1].toInt();
-        conf->dataPort=opts2[2].toInt();
-        if ((!(conf->commPort >= 1024 && conf->commPort <= 65535)) || // Simple port validation
-            (!(conf->dataPort >= 1024 && conf->dataPort <= 65535))) {
+        conf->eegDataPort=opts2[2].toInt();
+        conf->cmDataPort=opts2[3].toInt();
+        if ((!(conf->commPort    >= 1024 && conf->commPort    <= 65535)) || // Simple port validation
+            (!(conf->eegDataPort >= 1024 && conf->eegDataPort <= 65535)) ||
+            (!(conf->cmDataPort  >= 1024 && conf->cmDataPort  <= 65535))) {
          qDebug() << "octopus_hacq_client: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
@@ -91,7 +93,7 @@ class ConfigParser {
         qDebug() << "octopus_hacq_client: <ConfigParser> <NET> ERROR: Invalid count of ACQ params!";
         return true;
        }
-       qDebug() << "octopus_hacq_client:" << conf->ipAddr << conf->commPort << conf->dataPort;
+       qDebug() << "octopus_hacq_client:" << conf->ipAddr << conf->commPort << conf->eegDataPort << conf->cmDataPort;
       } else {
        qDebug() << "octopus_hacq_client: <ConfigParser> <NET> ERROR: Invalid section command!";
        return true;

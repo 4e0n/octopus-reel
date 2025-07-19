@@ -21,55 +21,39 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _TCPSAMPLE_H
-#define _TCPSAMPLE_H
+#ifndef _TCPCMARRAY_H
+#define _TCPCMARRAY_H
 
 #include <vector>
 #include <QByteArray>
 #include <QDataStream>
-#include "sample.h"
 
-struct TcpSample {
- std::vector<Sample> amp;
- unsigned int trigger=0;
+struct TcpCMArray {
+ std::vector<std::vector<uint8_t>> cmLevel;  // 0..255 -> red..yellow..green
 
- static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
+ static constexpr quint32 MAGIC=0x434D4152;  // 'CMAR'
 
- TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
-
- void init(size_t ampCount, size_t chnCount) {
-  amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); trigger=0;
+ void init(size_t ampCount,size_t chnCount) {
+  cmLevel.resize(ampCount); for (auto &v:cmLevel) v.assign(chnCount,0);
  }
+
+ TcpCMArray(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  QByteArray serialize() const {
   QByteArray ba; QDataStream out(&ba, QIODevice::WriteOnly);
   out.setByteOrder(QDataStream::LittleEndian);
-  out << MAGIC;
-  out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
-  for (const Sample& s:amp) {
-   s.serialize(out);
-   //auto writeFloatVec=[&](const std::vector<float>& v) { for (float f:v) out<<f; };
-   //writeFloatVec(s.data); writeFloatVec(s.dataF);
-  }
+  out << MAGIC << static_cast<quint32>(cmLevel.size());
+  for (const auto& v:cmLevel) for (uint8_t c:v) out<<c;
   return ba;
  }
 
  bool deserialize(const QByteArray &ba,size_t chnCount) {
-  QDataStream in(ba); //QDataStream in(&ba,QIODevice::ReadOnly);
+  QDataStream in(ba);
   in.setByteOrder(QDataStream::LittleEndian);
   quint32 magic,ampCount; in>>magic; if (magic!=MAGIC) return false;
-  in >> trigger >> ampCount; amp.resize(ampCount);
-  for (Sample &s:amp) {
-   s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
-   //for (quint32 ampIdx=0;ampIdx<ampCount;++ampIdx) {
-   // Sample s;
-   // auto readFloatVector=[&](std::vector<float>& vec,int size) { vec.resize(size);
-   //  for (int k=0;k<size;++k) { float value; in>>value; vec[k]=value; }
-   // };
-   // readFloatVector(s.data,chnCount); readFloatVector(s.dataF,chnCount);
-   // amp[ampIdx]=s;
-   //}
-  }
+  in >> ampCount; cmLevel.resize(ampCount);
+  for (auto& amp:cmLevel) amp.resize(chnCount); 
+  for (auto& amp:cmLevel) for (auto& chnCM:amp) in>>chnCM;
   return true;
  }
 };

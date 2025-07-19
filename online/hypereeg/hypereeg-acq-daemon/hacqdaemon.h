@@ -34,6 +34,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../hacqglobals.h"
 #include "../sample.h"
 #include "../tcpsample.h"
+#include "../tcpcmarray.h"
 #include "../tcpcommand.h"
 #include "confparam.h"
 #include "configparser.h"
@@ -46,7 +47,8 @@ class HAcqDaemon : public QObject {
  public:
   explicit HAcqDaemon(QObject *parent=nullptr) : QObject(parent) {
    connect(&commServer,&QTcpServer::newConnection,this,&HAcqDaemon::onNewCommClient);
-   connect(&dataServer,&QTcpServer::newConnection,this,&HAcqDaemon::onNewDataClient);
+   connect(&eegServer, &QTcpServer::newConnection,this,&HAcqDaemon::onNewEEGDataClient);
+   connect(&cmServer, &QTcpServer::newConnection,this,&HAcqDaemon::onNewCMDataClient);
   }
 
   bool initialize() {
@@ -69,7 +71,7 @@ class HAcqDaemon : public QObject {
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "octopus_hacqd: ---> Datahandling Info <---";
      qInfo() << "octopus_hacqd: Connected # of amplifier(s):" << conf.ampCount;
-     qInfo() << "octopus_hacqd: Sample Rate:" << conf.sampleRate;
+     qInfo() << "octopus_hacqd: Sample Rate->" << conf.eegRate << "sps, CM Rate->" << conf.cmRate << "sps";
      qInfo() << "octopus_hacqd: TCP Ringbuffer allocated for" << conf.tcpBufSize << "seconds.";
      qInfo() << "octopus_hacqd: EEG data fetched every" << conf.eegProbeMsecs << "ms.";
      qInfo("octopus_hacqd: Per-amp Physical Channel#: %d (%d+%d)",conf.physChnCount,conf.refChnCount,conf.bipChnCount);
@@ -86,11 +88,17 @@ class HAcqDaemon : public QObject {
      }
      qInfo() << "octopus_hacqd: <Comm> listening on port" << conf.commPort;
 
-     if (!dataServer.listen(QHostAddress::Any,conf.dataPort)) {
-      qCritical() << "octopus_hacqd: Cannot start TCP server on <Data> port:" << conf.dataPort;
+     if (!eegServer.listen(QHostAddress::Any,conf.eegDataPort)) {
+      qCritical() << "octopus_hacqd: Cannot start TCP server on <EEGData> port:" << conf.eegDataPort;
       return true;
      }
-     qInfo() << "octopus_hacqd: <Data> listening on port" << conf.dataPort;
+     qInfo() << "octopus_hacqd: <EEGData> listening on port" << conf.eegDataPort;
+
+     if (!cmServer.listen(QHostAddress::Any,conf.cmDataPort)) {
+      qCritical() << "octopus_hacqd: Cannot start TCP server on <CMData> port:" << conf.cmDataPort;
+      return true;
+     }
+     qInfo() << "octopus_hacqd: <CMData> listening on port" << conf.cmDataPort;
 
      hAcqThread=new HAcqThread(&conf,this);
      connect(hAcqThread,&HAcqThread::sendData,this,&HAcqDaemon::drainAndBroadcast);
@@ -146,7 +154,8 @@ class HAcqDaemon : public QObject {
    }
    switch (iCmd) {
     case CMD_ACQINFO: qDebug("octopus_hacqd: <Comm> Sending Amplifier(s) Info..");
-     client->write("-> Samplerate: "+QString::number(conf.sampleRate).toUtf8()+"sps\n");
+     client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
+     client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
      client->write("-> Bipolar channel(s)#: "+QString::number(conf.bipChnCount).toUtf8()+"\n");
      client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf.physChnCount).toUtf8()+"\n");
@@ -177,7 +186,8 @@ class HAcqDaemon : public QObject {
      break;
     case CMD_GETCONF: qDebug("octopus_hacqd: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
-                   QString::number(conf.sampleRate).toUtf8()+","+ \
+                   QString::number(conf.eegRate).toUtf8()+","+ \
+                   QString::number(conf.cmRate).toUtf8()+","+ \
                    QString::number(conf.refChnCount).toUtf8()+","+ \
                    QString::number(conf.bipChnCount).toUtf8()+","+ \
                    QString::number(conf.refGain).toUtf8()+","+ \
@@ -190,6 +200,8 @@ class HAcqDaemon : public QObject {
                     QString(ch.chnName).toUtf8()+","+ \
                     QString::number(ch.topoTheta).toUtf8()+","+ \
                     QString::number(ch.topoPhi).toUtf8()+","+ \
+                    QString::number(ch.topoX).toUtf8()+","+ \
+                    QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n");
      break;
     case CMD_REBOOT: qDebug("octopus_hacqd: <Comm> Rebooting server (if privileges are enough)..");
@@ -206,30 +218,42 @@ class HAcqDaemon : public QObject {
    }
   }
 
-  void onNewDataClient() {
-   while (dataServer.hasPendingConnections()) {
-    QTcpSocket *client=dataServer.nextPendingConnection();
-    dataClients.append(client);
+  void onNewEEGDataClient() {
+   while (eegServer.hasPendingConnections()) {
+    QTcpSocket *client=eegServer.nextPendingConnection(); eegDataClients.append(client);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     //for (int i=dataClients.size()-1;i>=0;--i) { QTcpSocket *client=dataClients.at(i);
-     // if (client->state()!=QAbstractSocket::ConnectedState) { dataClients.removeAt(i); x client->deleteLater(); }
+     //for (int i=eegDataClients.size()-1;i>=0;--i) { QTcpSocket *client=eegDataClients.at(i);
+     // if (client->state()!=QAbstractSocket::ConnectedState) { eegDataClients.removeAt(i); client->deleteLater(); }
      //}
-     qDebug() << "octopus_hacqd: <Data> client from" << client->peerAddress().toString() << "disconnected.";
-     dataClients.removeAll(client);
+     qDebug() << "octopus_hacqd: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
+     eegDataClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "octopus_hacqd: <Data> client connected from" << client->peerAddress().toString();
+    qInfo() << "octopus_hacqd: <EEGData> client connected from" << client->peerAddress().toString();
+   }
+  }
+
+  void onNewCMDataClient() {
+   while (cmServer.hasPendingConnections()) {
+    QTcpSocket *client=cmServer.nextPendingConnection(); cmDataClients.append(client);
+    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
+     qDebug() << "octopus_hacqd: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
+     cmDataClients.removeAll(client);
+     client->deleteLater();
+    });
+    qInfo() << "octopus_hacqd: <CMData> client connected from" << client->peerAddress().toString();
    }
   }
 
   void drainAndBroadcast() {
-   TcpSample tcpSample(conf.ampCount,conf.physChnCount);
-   while (hAcqThread->popSample(&tcpSample)) {
-    QByteArray payLoad=tcpSample.serialize();
+   TcpSample eegSample(conf.ampCount,conf.physChnCount);
+   TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
+   //TcpCMArray cm2(conf.ampCount,conf.physChnCount);
+   while (hAcqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
     //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() 
     //     << " ChCount:" << tcpSample.amp[0].dataF.size() 
     //     << " FirstVal:" << tcpSample.amp[0].dataF[0];
-    for (QTcpSocket *client:dataClients) {
+    for (QTcpSocket *client:eegDataClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
       quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
@@ -239,44 +263,26 @@ class HAcqDaemon : public QObject {
      }
     }
    }
-  }
-
-/* loopback deserialization test
-  void drainAndBroadcast() {
-   TcpSample tcpSample(conf.ampCount,conf.physChnCount);
-   while (hAcqThread->popSample(&tcpSample)) {
-    QByteArray payLoad=tcpSample.serialize();
-    // Loopback Test — Deserialize immediately to verify what we are about to send
-    QDataStream in(&payLoad,QIODevice::ReadOnly);
-    in.setByteOrder(QDataStream::LittleEndian);
-
-    quint32 trigger=0,ampCount=0; in>>trigger>>ampCount;
-
-    for (quint32 i=0;i<ampCount;++i) {
-     if (i==0) qDebug() << "[Loopback] trigger=" << trigger << "ampCount=" << ampCount;
-     float marker=0;
-     in>>marker;
-     if (i==0) qDebug() << "[Loopback] amp=" << i << "marker=" << marker;
-
-     auto readFloatVector=[&](int size,const char *label) {
-      QString line;
-      for (int k=0;k<size;++k) { float val; in>>val;
-       if (k<3) // Only print first few for sanity check
-       line+=QString("%1 %2: %3 ").arg(label).arg(k).arg(val,0,'g',6);
-      }
-      qDebug() << line;
-     };
-     readFloatVector(tcpSample.amp[i].data.size(),"raw");
-     readFloatVector(tcpSample.amp[i].dataF.size(),"flt");
+   while (hAcqThread->popCMArray(&cmArray)) { QByteArray payLoad=cmArray.serialize();
+	   // loopback test
+	   //cm2.deserialize(payLoad,conf.physChnCount);
+	   //qDebug() << cm2.cmLevel[1][3];
+    for (QTcpSocket *client:cmDataClients) {
+     if (client->state()==QAbstractSocket::ConnectedState) {
+      QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
+      quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
+      sizeStream<<msgLength;
+      client->write(payLoad);
+      client->flush(); // write actual serialized block
+      //qDebug() << "CM sent!";
+     }
     }
-    qDebug() << "[Loopback] payload size=" << payLoad.size() << " bytes read=" << in.device()->pos();
    }
   }
-*/
 
  private:
-  HAcqThread *hAcqThread; QVector<QTcpSocket*> dataClients;
-  QVector<ChnInfo> chnInfo; QTcpServer commServer,dataServer;
+  HAcqThread *hAcqThread; QVector<QTcpSocket*> eegDataClients,cmDataClients;
+  QVector<ChnInfo> chnInfo; QTcpServer commServer,eegServer,cmServer;
 };
 
 #endif

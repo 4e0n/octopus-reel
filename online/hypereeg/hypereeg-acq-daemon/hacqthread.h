@@ -46,9 +46,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../serialdevice.h"
 #include "../sample.h"
 #include "../tcpsample.h"
+#include "../tcpcmarray.h"
 #include "eeamp.h"
 
-#define DUMPSTREAM
+//#define DUMPEEGSTREAM
+//#define DUMPCMSTREAM
 
 // Audio settings
 const int AUDIO_SAMPLE_RATE=48000;
@@ -67,11 +69,20 @@ class HAcqThread : public QThread {
 
    audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS); audioOK=false;
 
-   smp=Sample(conf->physChnCount); tcpBufSize=conf->tcpBufSize*conf->sampleRate;
-   tcpS=TcpSample(conf->ampCount,conf->physChnCount);
-   tcpBuffer=QVector<TcpSample>(tcpBufSize,TcpSample(conf->ampCount,conf->physChnCount));
+   smp=Sample(conf->physChnCount);
+   tcpEEGBufSize=conf->tcpBufSize*conf->eegRate; tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
+   tcpEEGBuffer=QVector<TcpSample>(tcpEEGBufSize,TcpSample(conf->ampCount,conf->physChnCount));
 
-   cBufPivotPrev=cBufPivot=tcpBufHead=tcpBufTail=counter0=counter1=0;
+   tcpCMBufSize=conf->tcpBufSize*conf->cmRate; tcpCM=TcpCMArray(conf->ampCount,conf->physChnCount);
+   tcpCMBuffer=QVector<TcpCMArray>(tcpCMBufSize,TcpCMArray(conf->ampCount,conf->physChnCount));
+
+   // This buffer contains difference between squares of unfiltered and filtered data back in time
+   // for 1 seconds.
+   cmRMSBuf.resize(conf->ampCount);
+   for (auto& amp:cmRMSBuf) amp.resize(conf->physChnCount);
+   for (auto& amp:cmRMSBuf) for (auto& chn:amp) chn.resize(conf->eegRate);
+
+   cBufPivotPrev=cBufPivot=tcpEEGBufHead=tcpEEGBufTail=tcpCMBufHead=tcpCMBufTail=counter0=counter1=0;
   }
 
   void initAlsa() {
@@ -128,11 +139,13 @@ class HAcqThread : public QThread {
      std::cout << "Exception" << ex.what() << std::endl;
     }
     cBufPivotList[ampIdx]=ee.cBufIdx;
-    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) { smp.marker=M_PI;
+    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) {
      for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
       float dummy=ee.bpFilterList[chnIdx].filterSample(ee.buf.getSample(chnIdx,smpIdx));
-      smp.data[chnIdx]=dummy; // BP filtered
-      smp.dataF[chnIdx]=ee.nFilterList[chnIdx].filterSample(dummy); // BP+notch filtered
+      float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
+      smp.data[chnIdx]=dummy;   // BP filtered
+      smp.dataF[chnIdx]=dummyF; // BP+notch filtered
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=std::abs(dummy*dummy-dummyF*dummyF);
       //if (ampIdx==0 && chnIdx==0)
       // qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
      }
@@ -147,6 +160,7 @@ class HAcqThread : public QThread {
    }
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
+   cmRMSBufIdx++;
   }
 
   void fetchEegData() {
@@ -167,11 +181,13 @@ class HAcqThread : public QThread {
      std::cout << "Exception" << ex.what() << std::endl;
     }
     cBufPivotList[ampIdx]=ee.cBufIdx;
-    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) { smp.marker=M_PI;
+    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) {
      for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
       float dummy=ee.bpFilterList[chnIdx].filterSample(ee.buf.getSample(chnIdx,smpIdx));
-      smp.data[chnIdx]=dummy; // BP filtered
-      smp.dataF[chnIdx]=ee.nFilterList[chnIdx].filterSample(dummy); // BP+notch filtered
+      float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
+      smp.data[chnIdx]=dummy;   // BP filtered
+      smp.dataF[chnIdx]=dummyF; // BP+notch filtered
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=std::abs(dummy*dummy-dummyF*dummyF);
       //if (ampIdx==0 && chnIdx==0) qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
      }
      smp.trigger=ee.buf.getSample(chnCount-2,smpIdx);
@@ -193,6 +209,7 @@ class HAcqThread : public QThread {
    }
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
+   cmRMSBufIdx++;
   }
 
   void run() override {
@@ -230,7 +247,7 @@ class HAcqThread : public QThread {
    //qInfo("octopus_hacqd: <acqthread_amp_setup> RBMask: %llx %llx",rMask,bMask);
    std::size_t ampIdx=0;
    for (auto& ee:eeAmpsSorted) {
-    cBufSz=conf->sampleRate*CBUF_SIZE_IN_SECS;
+    cBufSz=conf->eegRate*CBUF_SIZE_IN_SECS;
     EEAmp e(ampIdx,ee,rMask,bMask,cBufSz,cBufSz/2,conf->physChnCount);
     // Select same channels for all eeAmps (i.e. All 64/64 referentials and 2/24 of bipolars)
     eeAmps.push_back(e);
@@ -256,7 +273,7 @@ class HAcqThread : public QThread {
    using namespace eesynth;
 #endif
    // Initialize EEG streams of amps.
-   for (auto& e:eeAmps) e.str=e.amp->OpenEegStream(conf->sampleRate,conf->refGain,conf->bipGain,e.chnList);
+   for (auto& e:eeAmps) e.str=e.amp->OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    qInfo() << "octopus_hacqd: <acqthread_switch2eeg> EEG upstream started..";
 
    // EEG stream
@@ -267,9 +284,14 @@ class HAcqThread : public QThread {
    sendTrigger(TRIG_AMPSYNC);
    qInfo() << "octopus_hacqd: <AmpSync> SYNC sent..";
 
-#ifdef DUMPSTREAM
-   QFile file("eegdump.txt");
-   file.open(QIODevice::Append|QIODevice::Text); QTextStream outStream(&file);
+#ifdef DUMPEEGSTREAM
+   QFile eegFile("eegdump.txt");
+   eegFile.open(QIODevice::Append|QIODevice::Text); QTextStream eegStream(&eegFile);
+#endif
+
+#ifdef DUMPCMSTREAM
+   QFile cmFile("cmdump.txt");
+   cmFile.open(QIODevice::Append|QIODevice::Text); QTextStream cmStream(&cmFile);
 #endif
 
    while (true) {
@@ -288,7 +310,7 @@ class HAcqThread : public QThread {
      // The following table determines the continuous offset additions for each amp to be aligned.
      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) arrivedTrig[ampIdx]-=trigOffsetMin;
      unsigned int trigOffsetMax=*std::max_element(arrivedTrig.begin(),arrivedTrig.end());
-     if (trigOffsetMax>conf->sampleRate) {
+     if (trigOffsetMax>conf->eegRate) {
       qDebug() << "octopus_hacqd: ERROR!!! <AmpSync> SYNC is not recvd within a second for at least one amp!";
      } else {
       qInfo() << "octopus_hacqd: <AmpSync> SYNC retro-adjustments (per-amp alignment sample offsets) to be made:";
@@ -308,14 +330,14 @@ class HAcqThread : public QThread {
       //qDebug() << "daemon pre-serialize: amp=" << ampIdx
       //         << " raw=" << ee[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz].data[0]
       //         << " flt=" << ee[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz].dataF[0];
-      tcpS.amp[ampIdx]=eeAmps[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz];
-      //if (ampIdx==0) qDebug() << "daemon: filled tcpS amp=" << ampIdx << " ch=0 - val=" << tcpS.amp[ampIdx].data[0] << tcpS.amp[ampIdx].dataF[0];
+      tcpEEG.amp[ampIdx]=eeAmps[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz];
+      //if (ampIdx==0) qDebug() << "daemon: filled tcpEEG amp=" << ampIdx << " ch=0 - val=" << tcpEEG.amp[ampIdx].data[0] << tcpEEG.amp[ampIdx].dataF[0];
      }
-     tcpS.trigger=0;
-     if (nonHWTrig) { tcpS.trigger=nonHWTrig; nonHWTrig=0; } // Set NonHW trigger in hyperEEG data struct
+     tcpEEG.trigger=0;
+     if (nonHWTrig) { tcpEEG.trigger=nonHWTrig; nonHWTrig=0; } // Set NonHW trigger in hyperEEG data struct
 
      // Receive current triggers from all amps.. They are supposed to be the same in value.
-     for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) chkTrig[ampIdx]=tcpS.amp[ampIdx].trigger;
+     for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) chkTrig[ampIdx]=tcpEEG.amp[ampIdx].trigger;
      bool syncFlag=true;
      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) if (chkTrig[ampIdx]!=chkTrig[0]) { syncFlag=false; break; }
      if (syncFlag) {
@@ -330,23 +352,42 @@ class HAcqThread : public QThread {
       chkTrigOffset=0;
      }
 
-     // Copy Audio L and Audio R in tcpS from Audio Circular Buffer
+     // Copy Audio L and Audio R in tcpEEG from Audio Circular Buffer
 
      counter0++;
 
-     tcpBuffer[(tcpBufHead+tcpDataIdx)%tcpBufSize]=tcpS; // Push to Circular Buffer
-#ifdef DUMPSTREAM
+     tcpEEGBuffer[(tcpEEGBufHead+tcpDataIdx)%tcpEEGBufSize]=tcpEEG; // Push to Circular Buffer
+#ifdef DUMPEEGSTREAM
      chnCount=conf->physChnCount;
      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) {
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) outStream << QString::number(tcpS.amp[ampIdx].data[chnIdx]) << " ";
-      //outStream << QString::number(tcpS.amp[ampIdx].data[chnIdx]);
-      outStream << "\n";
+      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) eegStream << QString::number(tcpEEG.amp[ampIdx].data[chnIdx]) << " ";
+      //eegStream << QString::number(tcpEEG.amp[ampIdx].data[chnIdx]);
+      eegStream << "\n";
      }
 #endif
     }
-    tcpBufHead+=tcpDataSize; // Update producer index
+ 
+    tcpEEGBufHead+=tcpDataSize; // Update producer index
     cBufPivotPrev=cBufPivot;
     //tcpMutex.unlock();
+    if (counter0%(conf->eegRate/conf->cmRate)==0) {
+
+     // Compute and populate TcpCM
+     std::size_t ampIdx=0;
+     for (auto& amp:cmRMSBuf) {
+      float ampSum=0.0f; QVector<float> ampCoeff;
+      for (auto& chn:amp) {
+       float chnSum=0.0f; for (auto& s:chn) chnSum+=s;
+       ampCoeff.append(chnSum); ampSum+=chnSum;
+      }
+      for (int chnIdx=0;chnIdx<ampCoeff.size();chnIdx++) {
+       tcpCM.cmLevel[ampIdx][chnIdx]=(unsigned char)(ampCoeff[chnIdx]/ampSum*256.0f);
+      }
+      ampIdx++;
+     }
+     tcpCMBuffer[tcpCMBufHead%tcpCMBufSize]=tcpCM; tcpCMBufHead++; // Push to Circular Buffer
+    }
+
     emit sendData();
 
     msleep(conf->eegProbeMsecs);
@@ -362,9 +403,16 @@ class HAcqThread : public QThread {
    qInfo("octopus_hacqd: <acqthread> Exiting thread..");
   }
 
-  bool popSample(TcpSample *outSample) {
-   if (tcpBufTail<tcpBufHead) {
-    *outSample=tcpBuffer[tcpBufTail%tcpBufSize]; tcpBufTail++;
+  bool popEEGSample(TcpSample *outSample) {
+   if (tcpEEGBufTail<tcpEEGBufHead) {
+    *outSample=tcpEEGBuffer[tcpEEGBufTail%tcpEEGBufSize]; tcpEEGBufTail++;
+    return true;
+   } else return false;
+  }
+
+  bool popCMArray(TcpCMArray *outArray) {
+   if (tcpCMBufTail<tcpCMBufHead) {
+    *outArray=tcpCMBuffer[tcpCMBufTail%tcpCMBufSize]; tcpCMBufTail++;
     return true;
    } else return false;
   }
@@ -394,11 +442,16 @@ class HAcqThread : public QThread {
 
   ConfParam *conf;
 
-  TcpSample tcpS;
+  TcpSample tcpEEG; TcpCMArray tcpCM;
   Sample smp;
-  QVector<TcpSample> tcpBuffer;
-  int tcpBufSize;
-  quint64 tcpBufHead,tcpBufTail;
+  QVector<TcpSample> tcpEEGBuffer;
+  QVector<TcpCMArray> tcpCMBuffer;
+  int tcpEEGBufSize,tcpCMBufSize;
+  quint64 tcpEEGBufHead,tcpEEGBufTail;
+  quint64 tcpCMBufHead,tcpCMBufTail;
+
+  QVector<QVector<QVector<float> > > cmRMSBuf;
+  quint64 cmRMSBufIdx; unsigned int cmRMSBufSize;
 
   std::vector<EEAmp> eeAmps;
   unsigned int cBufSz,smpCount,chnCount;
