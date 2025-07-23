@@ -52,10 +52,7 @@ class ChnInfo {
   Vec3 real,realS; // Realistic coords - if set externally.
 
   QVector<QVector<float> > avgData,stdData;
-  //QVector<float> pastData,pastFilt;
   float cmLevel; QColor cmColor; // Instantly computed line noise level..
-// private:
-//  ConfParam *confParam;
 
   // Continuous and Average visibility and recording flags exist as strings
   // in the constructor, which is how they are read from the config file..

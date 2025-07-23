@@ -53,8 +53,8 @@ class ConfigParser {
     cfgFile.close();
 
     // Separate AMP, NET, CHN, GUI parameter lines
-    for (int i=0;i<cfgLines.size();i++) {
-     opts=cfgLines[i].split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
+    for (auto& cl:cfgLines) {
+     opts=cl.split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
      else if (opts[0].trimmed()=="PLT") pltSection.append(opts[1]);
@@ -73,8 +73,8 @@ class ConfigParser {
 
     // NET section
     if (netSection.size()>0) {
-     for (int i=0;i<netSection.size();i++) {
-      opts=netSection[i].split("=");
+     for (const auto& sect:netSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(","); // IP, ConfigPort and DataPort are separated by ","
        if (opts2.size()==4) {
@@ -106,15 +106,13 @@ class ConfigParser {
 
     // BUF section
     if (bufSection.size()>0) {
-     for (int i=0;i<bufSection.size();i++) {
-      opts=bufSection[i].split("=");
+     for (const auto& sect:bufSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
-       if (!(conf->tcpBufSize >= 1000 && conf->tcpBufSize <= 20000)) {
-        qDebug() << "octopus_hacq_client: <ConfigParser> <BUF> ERROR: PAST not within inclusive (1000,20000) range!";
+       if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
+        qDebug() << "octopus_hacq_client: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
-       } else {
-        conf->tcpBuffer.resize(conf->tcpBufSize);
        }
       } else {
        qDebug() << "octopus_hacq_client: <ConfigParser> <BUF> ERROR: Invalid section command!";
@@ -129,8 +127,8 @@ class ConfigParser {
     // PLT - Color palette entries
     int colR,colG,colB,colA; 
     if (pltSection.size()>0) {
-     for (int i=0;i<pltSection.size();i++) {
-      opts=pltSection[i].split("=");
+     for (const auto& sect:pltSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="ADD") {
        opts2=opts[1].split(",");
        if (opts2.size()==4) {
@@ -154,13 +152,13 @@ class ConfigParser {
      qDebug() << "octopus_acq_client: <ConfigParser> <PLT> ERROR: No parameters in section!";
      return true;
     }
-    //for (int i=0;i<conf->rgbPalette.size();i++) qDebug() << conf->rgbPalette[i];
+    //for (auto& pal:conf->rgbPalette) qDebug() << pal[i];
 
     // EVT - Event Space and Hierarchy
     int evtNo,evtColIdx; QString evtName;
     if (evtSection.size()>0) {
-     for (int i=0;i<evtSection.size();i++) {
-      opts=evtSection[i].split("=");
+     for (const auto& sect:evtSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="ADD") {
        opts2=opts[1].split(",");
        evtNo=opts2[0].toInt(); evtName=opts2[1].trimmed(); evtColIdx=opts2[2].toInt();
@@ -188,7 +186,7 @@ class ConfigParser {
 /*
     // CHN section
     if (chnSection.size()>0) {
-     for (int i=0;i<chnSection.size();i++) {
+     for (const auto& sect:chnSection) {
       opts=chnSection[i].split("=");
       if (opts[0].trimmed()=="SETPARAM") {
        opts2=opts[1].split(",");
@@ -234,8 +232,8 @@ class ConfigParser {
 
     // MOD section
     if (modSection.size()>0) {
-     for (int i=0;i<modSection.size();i++) {
-      opts=modSection[i].split("=");
+     for (const auto& sect:modSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="GIZMO") {
        opts2=opts[1].split(",");
        if (opts2.size()==1) {
@@ -288,8 +286,8 @@ class ConfigParser {
 */
     // GUI section
     if (guiSection.size()>0) {
-     for (int i=0;i<guiSection.size();i++) {
-      opts=guiSection[i].split("=");
+     for (const auto& sect:guiSection) {
+      opts=sect.split("=");
       if (opts[0].trimmed()=="CTRL") {
        opts2=opts[1].split(",");
        if (opts2.size()==4) {

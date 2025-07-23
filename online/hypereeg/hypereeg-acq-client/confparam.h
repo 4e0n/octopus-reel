@@ -28,17 +28,24 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QColor>
 #include <QTcpSocket>
 #include <QMutex>
+#include <QWaitCondition>
+#include <QThread>
 #include <atomic>
 #include <QVector>
 #include "chninfo.h"
 #include "../../../common/event.h"
 #include "../tcpsample.h"
 
+const int EEG_SCROLL_REFRESH_RATE=100; // 100Hz max.
+
 class ConfParam : public QObject {
  Q_OBJECT
  public:
   ConfParam() {};
-  void init(int ampC=0) { ampCount=ampC; tcpBufHead=tcpBufTail=0; updateInstant=false; cntSmpCount=10; eegAmpX.resize(ampCount); };
+  void init(int ampC=0) {
+   ampCount=ampC; tcpBufHead=tcpBufTail=0; scrollersUpdating=0; ampX.resize(ampCount); threads.resize(ampCount);
+   eegScrollRefreshRate=EEG_SCROLL_REFRESH_RATE; threadOn=true;
+  };
 
   QString commandToDaemon(const QString &command, int timeoutMs=1000) {
    if (!commSocket || commSocket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
@@ -49,6 +56,7 @@ class ConfParam : public QObject {
   }
 
   QTcpSocket *commSocket,*eegDataSocket,*cmDataSocket;
+  //std::atomic<quint64> tcpBufHead,tcpBufTail;
   QVector<TcpSample> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize;
 
   unsigned int ampCount,sampleRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs; float refGain,bipGain;
@@ -56,11 +64,25 @@ class ConfParam : public QObject {
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH,guiStrmX,guiStrmY,guiStrmW,guiStrmH,guiHeadX,guiHeadY,guiHeadW,guiHeadH;
   int eegFrameW,eegFrameH,glFrameW,glFrameH;
 
-  QVector<QVector<float> > scrPrvData,scrPrvDataF,scrCurData,scrCurDataF; QVector<float> cntAmpX;
-  quint32 scrCounter,cntSpeedX,cntSmpCount; bool tick,event;
+  bool tick,event; int spdX;
+
+  bool threadOn;
+
+  int eegScrollRefreshRate,eegScrollFrameTimeMs;
+
+  QVector<QThread*> threads;
+
+  const float ampRange[6]={(1e6/1000.0),
+                           (1e6/ 500.0),
+                           (1e6/ 200.0),
+                           (1e6/ 100.0),
+                           (1e6/  50.0),
+                           (1e6/  20.0)};
+
+  const float spdRange[6]={10,8,4,2,1};
 
   QVector<Event*> acqEvents;
-  QVector<float> eegAmpX;
+  QVector<float> ampX;
   QVector<ChnInfo> chns;
   QString curEventName;
   quint32 curEventType;
@@ -71,11 +93,9 @@ class ConfParam : public QObject {
 
   QApplication *application;
 
-  std::atomic<bool> updateInstant; QVector<bool> updated;
-  mutable QMutex mutex;
-
-// signals:
-//  void scrData(bool tick,bool event);
+  QMutex mutex; QWaitCondition scrollWait;
+  //std::atomic<unsigned int> scrollersUpdating;
+  unsigned int scrSmpCount,scrollersUpdating; QVector<bool> scrollPending;
 
  public slots:
   void onEEGDataReady() {
@@ -95,19 +115,25 @@ class ConfParam : public QObject {
     } else {
      qWarning() << "Failed to deserialize TcpSample block.";
     }
-    if (!scrCounter) {
-     for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-      updated[ampIdx]=false;
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-       scrPrvData[ampIdx][chnIdx]=scrCurData[ampIdx][chnIdx];
-       scrPrvDataF[ampIdx][chnIdx]=scrCurDataF[ampIdx][chnIdx];
-       scrCurData[ampIdx][chnIdx] =tcpS.amp[ampIdx].data[chnIdx];
-       scrCurDataF[ampIdx][chnIdx]=tcpS.amp[ampIdx].dataF[chnIdx];
+
+    // Samples to fit in one frame of scrolling has just arrived
+    {
+     QMutexLocker locker(&mutex);
+     if ((tcpBufHead-tcpBufTail)>scrSmpCount && scrollersUpdating==0) {
+
+      if ((tcpBufHead-tcpBufTail) >= (tcpBufSize/2)) {
+       qWarning() << "[Client] Buffer overflow risk! Tail too slow.";
       }
+
+      //qDebug() << "[Client] 1.Min # EEG samples to fill one scrollframe has arrived, 2. All scrollers are idle.";
+      scrollersUpdating=ampCount; { for (auto& scr:scrollPending) scr=true; } scrollWait.wakeAll();
      }
-     updateInstant=true; tick=event=false;
     }
-    tcpBufTail++; scrCounter=(scrCounter+1)%cntSpeedX;
+
+    // Here the scrollings should asynchronously happen and this routine cannot enter the above region.
+    // As soon as the last scroller finishes, 1. the tcpBufTail will advance, 2.scrollersUpdating will be 0
+    // So, the region above will again be available for a single entry only.
+
     buffer.remove(0,4+blockSize); // Remove processed block
    }
   }

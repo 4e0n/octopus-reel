@@ -35,6 +35,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QMessageBox>
+#include <QThread>
+#include "unistd.h"
 #include "confparam.h"
 
 class AcqControlWindow : public QMainWindow {
@@ -112,10 +114,10 @@ class AcqControlWindow : public QMainWindow {
    QPushButton *dummyButton;
    cntSpdBG=new QButtonGroup();
    cntSpdBG->setExclusive(true);
-   for (int i=0;i<5;i++) { // EEG SPEED
+   for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG SPEED
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-310+i*60,mainTabWidget->height()-54,60,20);
-    cntSpdBG->addButton(dummyButton,i);
+    dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
+    cntSpdBG->addButton(dummyButton,speedIdx);
    }
    cntSpdBG->button(0)->setText("4s");
    cntSpdBG->button(1)->setText("2s");
@@ -127,9 +129,6 @@ class AcqControlWindow : public QMainWindow {
    connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
-
-   //connect(startButton,&QPushButton::clicked,this,[=](){statusLabel->setText("Status: Start clicked");}); // Future: emit start signal
-   //connect(stopButton,&QPushButton::clicked,this,[=](){statusLabel->setText("Status: Stop clicked");}); // Future: emit stop signal
   }
 
   ~AcqControlWindow() override {}
@@ -155,7 +154,25 @@ class AcqControlWindow : public QMainWindow {
   }
 
   void slotQuit() {
-   conf->application->quit();
+  
+   conf->mutex.lock();
+    conf->scrollWait.wakeAll();  // wake any threads waiting
+   conf->mutex.unlock();
+
+   for (auto& thread:conf->threads) {
+    thread->requestInterruption();
+    conf->scrollWait.wakeAll();
+    thread->wait();
+    delete thread;
+   }
+   
+   //if (conf->eegDataSocket && conf->eegDataSocket->isOpen()) {
+   // conf->eegDataSocket->disconnectFromHost();
+   // if (conf->eegDataSocket->state() != QAbstractSocket::UnconnectedState)
+   //  conf->eegDataSocket->waitForDisconnected(1000); // timeout in ms
+   //}
+
+   QApplication::quit();
   }
 
   void slotToggleRecording() {}
@@ -165,15 +182,8 @@ class AcqControlWindow : public QMainWindow {
 
   // *** SPEED OF THE VISUALS ***
 
-  void slotCntSpeed(int x) {
-   switch (x) {
-    case 0: conf->cntSpeedX=10; cntSpdBG->button(2)->setDown(false); break;
-    case 1: conf->cntSpeedX= 8; cntSpdBG->button(2)->setDown(false); break;
-    case 2: conf->cntSpeedX= 4; cntSpdBG->button(2)->setDown(false); break;
-    case 3: conf->cntSpeedX= 2; cntSpdBG->button(2)->setDown(false); break;
-    case 4: conf->cntSpeedX= 1; break;
-   }
-  }
+  void slotCntSpeed(int x) { conf->spdX=conf->spdRange[x]; }
+
  private:
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
@@ -182,7 +192,7 @@ class AcqControlWindow : public QMainWindow {
   QPushButton *toggleRecordingButton,*toggleNotchButton;
   QButtonGroup *cntSpdBG; QVector<QPushButton*> cntSpeedButtons;
 
-  unsigned int cntSpeedX;
+  unsigned int spdX;
 };
 
 #endif

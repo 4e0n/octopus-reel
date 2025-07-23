@@ -29,9 +29,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "eegthread.h"
 
-// Simple structure to hold mean and standard deviation for each time point
-//struct EEGScrollPoint { float mean=0.0f; float stdev=0.0f; };
-
 class EEGFrame : public QFrame {
  Q_OBJECT
  public:
@@ -39,6 +36,7 @@ class EEGFrame : public QFrame {
    conf=c; ampNo=a; scrollSched=false;
    scrollBuffer=QPixmap(conf->eegFrameW,conf->eegFrameH);
    eegThread=new EEGThread(conf,ampNo,&scrollBuffer,this);
+   conf->threads[ampNo]=eegThread;
    connect(eegThread,&EEGThread::updateEEGFrame,this,QOverload<>::of(&EEGFrame::update));
    eegThread->start(QThread::HighestPriority);
   }

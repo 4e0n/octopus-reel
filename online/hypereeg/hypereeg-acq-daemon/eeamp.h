@@ -28,13 +28,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "iirfilter.h"
 
 #ifdef EEMAGINE
+#define _UNICODE
+#define EEGO_SDK_BIND_DYNAMIC
+#include <eemagine/sdk/factory.h>
+#include <eemagine/sdk/amplifier.h>
 using namespace eemagine::sdk;
 #else
 using namespace eesynth;
 #endif
 
+// [0.1-100Hz] Band-pass
 const std::vector<double> b={0.06734199,0.          ,-0.13468398,0.         ,0.06734199};
 const std::vector<double> a={1.        , -3.14315078, 3.69970174,-1.96971135,0.41316049};
+
+// Notch@50Hz (Q=30)
 const std::vector<double> nb={0.99479124,-1.89220538,0.99479124};
 const std::vector<double> na={1.        ,-1.89220538,0.98958248};
 
@@ -49,7 +56,6 @@ struct EEAmp {
  unsigned int smpIdx=0;     // Absolute Sample Index: sent from the amplifier
  std::vector<Sample> cBuf; quint64 cBufIdx; // Abstract (our) buffer
 
- //_EEAmp(unsigned int id=0,size_t sample_count=0,size_t chn_count=0) : idx(id),cBuf(sample_count,Sample(chn_count)) {}
  EEAmp(unsigned int id=0,amplifier *ampx=nullptr,
        quint64 rMask=0,quint64 bMask=0,
        size_t cbs=0,size_t ci=0,size_t chnCount=0) { init(id,ampx,rMask,bMask,cbs,ci,chnCount); }

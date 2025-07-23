@@ -52,7 +52,7 @@ const double SYNTH_A1= 0.000050f;  // Wave 1 Amplitude -> 50uVp
 const double SYNTH_F1= 1.000000f;  // Wave 1 Frequency -> 1Hz
 const double SYNTH_P1= 2.*M_PI/7.; // Wave 1 Phase -> (1/7)/2pi radian
 const double SYNTH_A2= 0.000025f;  // Wave 2 Amplitude -> 25uVp
-const double SYNTH_F2=48.000000f;  // Wave 2 Frequency -> 48Hz
+const double SYNTH_F2=49.500000f;  // Wave 2 Frequency -> 48Hz
 const double SYNTH_P2= 2.*M_PI/9.; // Wave 2 Phase -> (1/9)/2pi radian
 
 // These arbitrary offsets mimic the randomly arriving physical SYNC triggers on a real amp.
@@ -132,7 +132,7 @@ class stream {
   buffer getData() {
    buffer b;
    if (impMode) {
-    b.setCounts(chnCount-2,1); // bipolars aren't counted for during imp mode?? Not handled currently!!!
+    b.setCounts(chnCount-2,1); // bipolar chns aren't counted for during imp mode?? Not handled currently!!!
     for (unsigned int cc=0;cc<chnCount;cc++) b.setSample(0,cc,2.71);
    } else {
     b.setCounts(chnCount,smpCount);
@@ -150,7 +150,7 @@ class stream {
   void setTrigger(unsigned int t) { trigger=(double)t; };
 
   bool impMode; double trigger,counter;
-  unsigned int chnCount,smpCount; double t,dt; //dc,a0,frqA,frqB,t,dt;
+  unsigned int chnCount,smpCount; double t,dt;
 };
 
 class amplifier {
@@ -219,6 +219,6 @@ class factory { // Creates any number of virtual amplifiers identical to EE.
   std::vector<std::string> sNos;
 };
 
-}
+} // eesynth namespace
 
 #endif

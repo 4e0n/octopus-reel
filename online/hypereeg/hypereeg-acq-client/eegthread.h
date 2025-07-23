@@ -32,6 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QVector>
 #include <thread>
 #include "confparam.h"
+#include "../sample.h"
 
 class EEGThread : public QThread {
  Q_OBJECT
@@ -43,8 +44,8 @@ class EEGThread : public QThread {
    colCount=std::ceil((float)chnCount/(float)(33.));
    chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
    int ww=(int)((float)(conf->eegFrameW)/(float)colCount);
-   for (int i=0;i<colCount;i++) { w0.append(i*ww+1); wX.append(i*ww+1); }
-   for (int i=0;i<colCount-1;i++) wn.append((i+1)*ww-1);
+   for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); wX.append(colIdx*ww+1); }
+   for (unsigned int colIdx=0;colIdx<colCount-1;colIdx++) wn.append((colIdx+1)*ww-1);
    wn.append(conf->eegFrameW-1);
 
    if (chnCount<16) chnFont=QFont("Helvetica",12,QFont::Bold);
@@ -61,10 +62,10 @@ class EEGThread : public QThread {
 
    chnTextCache.clear(); chnTextCache.reserve(chnCount);
 
-   for (int i=0;i<chnCount;++i) {
-    const QString& chName=conf->chns[i].chnName;
-    int chNo=conf->chns[i].physChn;
-    QString label=QString::number(chNo)+" "+chName;
+   for (auto& chn:conf->chns) {
+    const QString& chnName=chn.chnName;
+    int chnNo=chn.physChn;
+    QString label=QString::number(chnNo)+" "+chnName;
     QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
     staticLabel.setTextWidth(-1);  // No width constraint
     chnTextCache.append(staticLabel);
@@ -81,45 +82,57 @@ class EEGThread : public QThread {
    scrollPainter.end();
   }
 
-  void updateBuffer() { int curCol;
+  void updateBuffer() {
    scrollPainter.begin(scrollBuffer);
     scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     // Cursor vertical line for each column
-    for (c=0;c<colCount;c++) {
-     if (wX[c]<=wn[c]) {
-      scrollPainter.setPen(Qt::white); scrollPainter.drawLine(wX[c],1,wX[c],conf->eegFrameH-2);
-      if (wX[c]<(wn[c]-1)) { scrollPainter.setPen(Qt::black); scrollPainter.drawLine(wX[c]+1,1,wX[c]+1,conf->eegFrameH-2); }
+    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+     if (wX[colIdx]<=wn[colIdx]) {
+      scrollPainter.setPen(Qt::white);
+      scrollPainter.drawLine(wX[colIdx],1,wX[colIdx],conf->eegFrameH-2);
+      if (wX[colIdx]<(wn[colIdx]-1)) {
+       scrollPainter.setPen(Qt::black);
+       scrollPainter.drawLine(wX[colIdx]+1,1,wX[colIdx]+1,conf->eegFrameH-2);
+      }
      }
     }
 
-    if (conf->tick) {
-     scrollPainter.setPen(Qt::darkGray); scrollPainter.drawRect(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
-     for (c=0;c<colCount;c++) {
-      scrollPainter.drawLine(w0[c]-1,1,w0[c]-1,conf->eegFrameH-2);
-      scrollPainter.drawLine(wX[c],1,wX[c],conf->eegFrameH-2);
-     }
-    }
+    //if (conf->tick) {
+    // scrollPainter.setPen(Qt::darkGray); scrollPainter.drawRect(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
+    // for (int colIdx=0;colIdx<colCount;colIdx++) {
+    //  scrollPainter.drawLine(w0[colIdx]-1,1,w0[colIdx]-1,conf->eegFrameH-2);
+    //  scrollPainter.drawLine(wX[colIdx],1,wX[colIdx],conf->eegFrameH-2);
+    // }
+    //}
 
-    for (int i=0;i<chnCount;i++) {
-     c=chnCount/chnPerCol; curCol=i/chnPerCol;
-     chHeight=100.0; // 100 pixel is the indicated amp..
-     chY=(float)(conf->eegFrameH)/(float)(chnPerCol); scrCurY=(int)(chY/2.0+chY*(i%chnPerCol));
+    QVector<TcpSample> *tcpBuffer=&conf->tcpBuffer; unsigned int tcpBufSize=conf->tcpBufSize;
+    unsigned int tcpBufTail=conf->tcpBufTail; unsigned int scrSmpCount=conf->scrSmpCount;
 
+    chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+
+    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+     //int c=chnCount/chnPerCol;
+     unsigned int curCol=chnIdx/chnPerCol;
+     scrCurY=(int)(chnY/2.0+chnY*(chnIdx%chnPerCol));
      // Baseline
      scrollPainter.setPen(Qt::darkGray);
-     //scrollPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
+     scrollPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
 
      scrollPainter.setPen(Qt::black);
-     scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-      wX[curCol]-1,
-      scrCurY-(int)(conf->scrPrvDataF[ampNo][i]*2e5), // *chHeight*conf->eegAmpX[ampNo]/4.0),
-      wX[curCol],
-      scrCurY-(int)(conf->scrCurDataF[ampNo][i]*2e5) // *chHeight*conf->eegAmpX[ampNo]/4.0)
-     );
+
+     for (unsigned int smpIdx=0;smpIdx<scrSmpCount-1;smpIdx++) {
+      std::vector<float> s0=(*tcpBuffer)[(tcpBufTail+smpIdx+0)%tcpBufSize].amp[ampNo].dataF;
+      std::vector<float> s1=(*tcpBuffer)[(tcpBufTail+smpIdx+1)%tcpBufSize].amp[ampNo].dataF;
+      scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
+       wX[curCol]-1,scrCurY-(int)(s0[chnIdx]*chnY*conf->ampX[ampNo]),
+       wX[curCol],  scrCurY-(int)(s1[chnIdx]*chnY*conf->ampX[ampNo])
+      );
+     }
     }
 
     if (conf->event) { conf->event=false; rBuffer.fill(Qt::transparent);
+
      rotPainter.begin(&rBuffer);
       rotPainter.setRenderHint(QPainter::TextAntialiasing,true);
       rotPainter.setFont(evtFont); QColor penColor=Qt::darkGreen;
@@ -128,15 +141,15 @@ class EEGThread : public QThread {
      rotPainter.end();
      rBufferC=rBuffer.transformed(rTransform,Qt::SmoothTransformation);
 
-     //scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-     //for (c=0;c<chnCount/chnPerCol;c++) {
-     // scrollPainter.drawLine(wX[c]-1,1,wX[c]-1,conf->eegFrameH-1);
-     // scrollPainter.drawPixmap(wX[c]-15,conf->eegFrameH-104,rBufferC);
-     //}
+     scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+     for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) {
+      scrollPainter.drawLine(wX[colIdx]-1,1,wX[colIdx]-1,conf->eegFrameH-1);
+      scrollPainter.drawPixmap(wX[colIdx]-15,conf->eegFrameH-104,rBufferC);
+     }
     
      scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver); scrollPainter.setPen(Qt::blue); // Line color
-     QVector<QPainter::PixmapFragment> fragments; fragments.reserve(chnCount / chnPerCol);
-     for (c=0;c<chnCount/chnPerCol;c++) { int lineX=wX[c]-1;
+     QVector<QPainter::PixmapFragment> fragments; fragments.reserve(chnCount/chnPerCol);
+     for (unsigned int curCol=0;curCol<chnCount/chnPerCol;curCol++) { int lineX=wX[curCol]-1;
       scrollPainter.drawLine(lineX,1,lineX,conf->eegFrameH-1);
       // Prepare batched label blitting - for source in pixmap
       fragments.append(QPainter::PixmapFragment::create(QPointF(lineX-14,conf->eegFrameH-104),
@@ -145,17 +158,19 @@ class EEGThread : public QThread {
      scrollPainter.drawPixmapFragments(fragments.constData(),fragments.size(),rBufferC);
     } 
 
+    // Main position increments of columns
+    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; }
+
     // Channel names
     scrollPainter.setPen(QColor(50,50,150)); scrollPainter.setFont(chnFont);
-    for (int i=0;i<chnCount;++i) { curCol=i/chnPerCol;
-     chY=(float)(conf->eegFrameH)/(float)(chnPerCol); scrCurY=(int)(5+chY/2.0+chY*(i%chnPerCol));
-     scrollPainter.drawStaticText(w0[curCol]+4,scrCurY,chnTextCache[i]);
+    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+     unsigned int curCol=chnIdx/chnPerCol;
+     scrCurY=(int)(5+chnY/2.0+chnY*(chnIdx%chnPerCol));
+     scrollPainter.drawStaticText(w0[curCol]+4,scrCurY,chnTextCache[chnIdx]);
     }
 
-    if (wX[0]==150) scrollPainter.drawLine(149,300,149,400); // Amplitude legend
+   //if (wX[0]==150) scrollPainter.drawLine(149,300,149,400); // Amplitude legend
 
-    // Main position increments of columns
-    for (c=0;c<colCount;c++) { wX[c]++; if (wX[c]>wn[c]) wX[c]=w0[c]; }
    scrollPainter.end();
   }
 
@@ -164,30 +179,31 @@ class EEGThread : public QThread {
 
  protected:
   virtual void run() override {
-   while (true) {
-    //QMutexLocker locker(&(conf->mutex));
-    //conf->mutex.lock();
-    if (conf->updateInstant) {
+  
+   //while (true) {
+   while (!QThread::currentThread()->isInterruptionRequested()) {
+    {
+     QMutexLocker locker(&conf->mutex);
+     // Sleep until producer signals
+     while (!conf->scrollPending[ampNo]) {
+      conf->scrollWait.wait(&conf->mutex);
+     }
+
      updateBuffer();
      emit updateEEGFrame();
-     conf->updated[ampNo]=true;
-     //qDebug() << "Updating buffer";
+     //qDebug() << ampNo << "updated.";
+
+     conf->scrollPending[ampNo]=false;
+     conf->scrollersUpdating--; // semaphore.. kind of..  
+     if (conf->scrollersUpdating==0) conf->tcpBufTail+=conf->scrSmpCount; // If this was the last scroller, then advance tail..
     }
-    bool allUpdated=true;
-    for (unsigned int i=0;i<conf->ampCount;i++) if (conf->updated[i]==false) { allUpdated=false; break; }
-    if (allUpdated){
-     //qDebug() << "ALL UPDATED!";
-     conf->updateInstant=false;
-     //conf->mutex.unlock();
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
   }
 
  private:
   ConfParam *conf; unsigned int ampNo; QPixmap *scrollBuffer; QVector<int> w0,wn,wX;
-  int chnCount,colCount,chnPerCol,c,scrCurY; float chHeight,chY;
+  unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
   QFont chnFont,evtFont; QPixmap rBuffer,rBufferC; QTransform rTransform;
   QPainter scrollPainter,rotPainter; QVector<QStaticText> chnTextCache;
 };

@@ -51,7 +51,6 @@ class ConfigParser {
     cfgFile.close();
 
     // Separate AMP, NET, CHN, GUI parameter lines
-    //for (int i=0;i<cfgLines.size();i++) {
     for (const auto& cl:cfgLines) {
      opts=cl.split("#"); opts=opts[0].split("|");
           if (opts[0].trimmed()=="AMP") ampSection.append(opts[1]);
@@ -67,7 +66,6 @@ class ConfigParser {
 
     // AMP section
     if (ampSection.size()>0) {
-     //for (int i=0;i<ampSection.size();i++) {
      for (const auto& sect:ampSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="COUNT") {

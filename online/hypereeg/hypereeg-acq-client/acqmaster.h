@@ -49,11 +49,11 @@ class AcqMaster: public QObject {
  Q_OBJECT
  public:
   explicit AcqMaster(QApplication *app=nullptr,QObject *parent=nullptr) : QObject(parent) {
-   //conf=ConfParam();
    QString commResponse; QStringList sList,sList2;
    conf.application=app; conf.commSocket=new QTcpSocket(this);
    conf.eegDataSocket=new QTcpSocket(this); conf.cmDataSocket=new QTcpSocket(this);
-   conf.scrCounter=0; conf.cntSpeedX=1;
+   conf.spdX=1;
+
 
    // Initialize
    if (QFile::exists(cfgPath)) {
@@ -75,6 +75,10 @@ class AcqMaster: public QObject {
      sList=commResponse.split(",");
      conf.init(sList[0].toInt()); // ampCount
      conf.sampleRate=sList[1].toInt();
+     conf.tcpBufSize*=conf.sampleRate; // Convert tcpBufSize from seconds to samples
+     conf.tcpBuffer.resize(conf.tcpBufSize);
+     conf.eegScrollFrameTimeMs=conf.sampleRate/conf.eegScrollRefreshRate; // 1000/100=10ms
+     conf.scrSmpCount=conf.eegScrollFrameTimeMs*(conf.sampleRate/1000); // After how many samples will the scroller updated.
      conf.refChnCount=sList[2].toInt();
      conf.bipChnCount=sList[3].toInt();
      conf.refGain=sList[4].toFloat();
@@ -85,8 +89,8 @@ class AcqMaster: public QObject {
      if (!commResponse.isEmpty()) qDebug() << "octopus_hacq_client: <Config> Daemon replied:" << commResponse;
      else qDebug() << "octopus_hacq_client: <Config> No response or timeout.";
      sList=commResponse.split("\n"); ChnInfo chn;
-     for (int i=0;i<sList.size();i++) {
-      sList2=sList[i].split(",");
+     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) {
+      sList2=sList[chnIdx].split(",");
       chn.physChn=sList2[0].toInt();
       chn.chnName=sList2[1];
       chn.topoTheta=sList2[2].toFloat();
@@ -96,36 +100,19 @@ class AcqMaster: public QObject {
      }
      conf.chnCount=conf.chns.size();
 
-     for (unsigned int i=0;i<conf.chnCount;i++)
-      qDebug() << conf.chns[i].physChn << conf.chns[i].chnName << conf.chns[i].topoTheta << conf.chns[i].topoPhi << conf.chns[i].isBipolar;
+     for (auto& chn:conf.chns) qDebug() << chn.physChn << chn.chnName << chn.topoTheta << chn.topoPhi << chn.isBipolar;
 
      // Generate control window and EEG streaming windows
      controlWindow=new AcqControlWindow(&conf); controlWindow->show();
 
-     conf.updated.resize(conf.ampCount);
-     conf.scrPrvData.resize(conf.ampCount); conf.scrPrvDataF.resize(conf.ampCount);
-     conf.scrCurData.resize(conf.ampCount); conf.scrCurDataF.resize(conf.ampCount);
-     for (unsigned int i=0;i<conf.ampCount;i++) {
-      conf.updated[i]=false;
-      conf.scrPrvData[i].resize(conf.chnCount); conf.scrPrvDataF[i].resize(conf.chnCount);
-      conf.scrCurData[i].resize(conf.chnCount); conf.scrCurDataF[i].resize(conf.chnCount);
-     }
+     conf.scrollPending.resize(conf.ampCount);
+     for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) conf.scrollPending[ampIdx]=false;
 
-     for (unsigned int i=0;i<conf.ampCount;i++) {
-      AcqStreamWindow* streamWin=new AcqStreamWindow(i,&conf);
+     for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
+      AcqStreamWindow* streamWin=new AcqStreamWindow(ampIdx,&conf);
       streamWin->show();
       streamWindows.append(streamWin);
      }
-
-//     frameDivider=5; // 20 
-//     scrollTimer=new QTimer(this);
-//     dataPerBaseFrame=conf.sampleRate/EEGFRAME_REFRESH_RATE; // 1000/200=5
-//     auraSampleCount=dataPerBaseFrame*frameDivider; // 5*20=100
-//     auraTcpS.resize(auraSampleCount); auraS.resize(auraSampleCount);
-//     meanS.resize(chnCount); stdS.resize(chnCount);
-//     //(conf.sampleRate/conf.eegProbeMsecs); // Timebase is 100fps
-//     connect(scrollTimer,&QTimer::timeout,this,&AcqMaster::scrollSlot);
-//     scrollTimer->start(EEGFRAME_REFRESH_RATE);  // Timebase is: 100 ms → 10 fps
 
      connect(conf.eegDataSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onEEGDataReady);
 
@@ -147,18 +134,6 @@ class AcqMaster: public QObject {
 
  private:
   AcqControlWindow *controlWindow; QVector<AcqStreamWindow*> streamWindows;
-//  void computeMeanStd() {
-//   int N=auraS.size();
-//   if (N==0) { mean=0.0f; stDev=0.0f; return; }
-//   float sum=0.0f,sumSq=0.0f;
-//   for (float v:auraS) { sum+=v; sumSq+=v*v; }
-//   mean=sum/N; stDev=sqrtf( (sumSq/N)-(mean*mean)  ); // std::max Clamp to avoid negative variance due to FP errors
-//  }
-//  QVector<TcpSample> auraTcpS; QVector<float> auraS;
-//  QTimer *scrollTimer;
-//  quint32 auraSampleCount;
-//  float mean,stDev;
-//  int frameDivider,dataPerBaseFrame;
 };
 
 #endif

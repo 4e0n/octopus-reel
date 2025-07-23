@@ -48,27 +48,17 @@ struct TcpSample {
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
   for (const Sample& s:amp) {
    s.serialize(out);
-   //auto writeFloatVec=[&](const std::vector<float>& v) { for (float f:v) out<<f; };
-   //writeFloatVec(s.data); writeFloatVec(s.dataF);
   }
   return ba;
  }
 
  bool deserialize(const QByteArray &ba,size_t chnCount) {
-  QDataStream in(ba); //QDataStream in(&ba,QIODevice::ReadOnly);
+  QDataStream in(ba);
   in.setByteOrder(QDataStream::LittleEndian);
   quint32 magic,ampCount; in>>magic; if (magic!=MAGIC) return false;
   in >> trigger >> ampCount; amp.resize(ampCount);
   for (Sample &s:amp) {
    s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
-   //for (quint32 ampIdx=0;ampIdx<ampCount;++ampIdx) {
-   // Sample s;
-   // auto readFloatVector=[&](std::vector<float>& vec,int size) { vec.resize(size);
-   //  for (int k=0;k<size;++k) { float value; in>>value; vec[k]=value; }
-   // };
-   // readFloatVector(s.data,chnCount); readFloatVector(s.dataF,chnCount);
-   // amp[ampIdx]=s;
-   //}
   }
   return true;
  }

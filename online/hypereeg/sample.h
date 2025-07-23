@@ -41,19 +41,15 @@ struct Sample {
  Sample(size_t chnCount=0) { init(chnCount); }
  
  void serialize(QDataStream &out) const {
-  //out<<static_cast<quint32>(data.size());
   for (float f:data) out<<f;
   for (float f:dataF) out<<f;
  }
 
  bool deserialize(QDataStream &in,size_t chnCount) {
-  //quint32 len;
-  //if (in.atEnd()) return false;
-  //in>>len;
   data.resize(chnCount); dataF.resize(chnCount);
   for (float &f:data) in>>f;
   for (float &f:dataF) in>>f;
-  return true; //!in.atEnd();
+  return true;
  }
 };
 

@@ -76,8 +76,7 @@ class HAcqThread : public QThread {
    tcpCMBufSize=conf->tcpBufSize*conf->cmRate; tcpCM=TcpCMArray(conf->ampCount,conf->physChnCount);
    tcpCMBuffer=QVector<TcpCMArray>(tcpCMBufSize,TcpCMArray(conf->ampCount,conf->physChnCount));
 
-   // This buffer contains difference between squares of unfiltered and filtered data back in time
-   // for 1 seconds.
+   // This buffer contains difference between squares of unfiltered and filtered data back in time for 1 sec.
    cmRMSBuf.resize(conf->ampCount);
    for (auto& amp:cmRMSBuf) amp.resize(conf->physChnCount);
    for (auto& amp:cmRMSBuf) for (auto& chn:amp) chn.resize(conf->eegRate);
@@ -322,7 +321,7 @@ class HAcqThread : public QThread {
 
     instreamAudio();
 
-    //tcpMutex.lock();
+    //mutex.lock();
     quint64 tcpDataSize=cBufPivot-cBufPivotPrev; //qInfo() << cBufPivotPrev << cBufPivot;
     for (quint64 tcpDataIdx=0;tcpDataIdx<tcpDataSize;tcpDataIdx++) {
      // Alignment of each amplifier to the latest offset by +arrivedTrig[i]
@@ -369,7 +368,8 @@ class HAcqThread : public QThread {
  
     tcpEEGBufHead+=tcpDataSize; // Update producer index
     cBufPivotPrev=cBufPivot;
-    //tcpMutex.unlock();
+    //mutex.unlock();
+
     if (counter0%(conf->eegRate/conf->cmRate)==0) {
 
      // Compute and populate TcpCM
@@ -421,7 +421,7 @@ class HAcqThread : public QThread {
    if (t<256) { // also including TRIG_AMPSYNC=255
 #ifdef EEMAGINE
     unsigned char trig=(unsigned char)t;
-    if ((serDev.open()>0) { serDev.write(trig); }
+    if (serDev.open()>0) { serDev.write(trig); }
 #else
     nonHWTrig=t; // The same for eesynth.h -- includes TRIG_AMPSYNC
 #endif
@@ -434,12 +434,6 @@ class HAcqThread : public QThread {
   void sendData();
  
  private:
-//#ifdef EEMAGINE
-//  std::vector<eemagine::sdk::amplifier*> eeAmpsU;
-//#else
-//  std::vector<eesynth::amplifier*> eeAmpsU;
-//#endif
-
   ConfParam *conf;
 
   TcpSample tcpEEG; TcpCMArray tcpCM;
@@ -474,7 +468,6 @@ class HAcqThread : public QThread {
 
   quint64 counter0,counter1;
   unsigned int nonHWTrig;
-  //QMutex tcpMutex;
 };
 
 #endif

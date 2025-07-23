@@ -264,9 +264,9 @@ class HAcqDaemon : public QObject {
     }
    }
    while (hAcqThread->popCMArray(&cmArray)) { QByteArray payLoad=cmArray.serialize();
-	   // loopback test
-	   //cm2.deserialize(payLoad,conf.physChnCount);
-	   //qDebug() << cm2.cmLevel[1][3];
+    // serialization-deserialization loopback test
+    //cm2.deserialize(payLoad,conf.physChnCount);
+    //qDebug() << cm2.cmLevel[1][3];
     for (QTcpSocket *client:cmDataClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
