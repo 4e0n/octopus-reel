@@ -52,8 +52,6 @@ class AcqMaster: public QObject {
    QString commResponse; QStringList sList,sList2;
    conf.application=app; conf.commSocket=new QTcpSocket(this);
    conf.eegDataSocket=new QTcpSocket(this); conf.cmDataSocket=new QTcpSocket(this);
-   conf.spdX=1;
-
 
    // Initialize
    if (QFile::exists(cfgPath)) {
@@ -76,9 +74,14 @@ class AcqMaster: public QObject {
      conf.init(sList[0].toInt()); // ampCount
      conf.sampleRate=sList[1].toInt();
      conf.tcpBufSize*=conf.sampleRate; // Convert tcpBufSize from seconds to samples
+     conf.halfTcpBufSize=conf.tcpBufSize/2; // for fast-population check
      conf.tcpBuffer.resize(conf.tcpBufSize);
-     conf.eegScrollFrameTimeMs=conf.sampleRate/conf.eegScrollRefreshRate; // 1000/100=10ms
-     conf.scrSmpCount=conf.eegScrollFrameTimeMs*(conf.sampleRate/1000); // After how many samples will the scroller updated.
+
+     conf.eegScrollDivider=conf.eegScrollCoeff[2];
+     conf.eegScrollFrameTimeMs=conf.sampleRate/conf.eegScrollRefreshRate; // (1000sps/50Hz)=20ms=20samples
+     // # of data to wait for, to be available for screen plot/scroller
+     conf.scrAvailableSamples=conf.eegScrollFrameTimeMs*(conf.sampleRate/1000); // 20ms -> 20 sample
+
      conf.refChnCount=sList[2].toInt();
      conf.bipChnCount=sList[3].toInt();
      conf.refGain=sList[4].toFloat();

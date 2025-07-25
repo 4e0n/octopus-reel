@@ -48,9 +48,8 @@ class EEGThread : public QThread {
    for (unsigned int colIdx=0;colIdx<colCount-1;colIdx++) wn.append((colIdx+1)*ww-1);
    wn.append(conf->eegFrameW-1);
 
-   if (chnCount<16) chnFont=QFont("Helvetica",12,QFont::Bold);
-   else if (chnCount>16 && chnCount<32) chnFont=QFont("Helvetica",11,QFont::Bold);
-   else if (chnCount>96) chnFont=QFont("Helvetica",10);
+   tcpBuffer=&conf->tcpBuffer; tcpBufSize=conf->tcpBufSize; scrAvailSmp=conf->scrAvailableSamples;
+   chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
 
    evtFont=QFont("Helvetica",14,QFont::Bold);
    rTransform.rotate(-90);
@@ -59,78 +58,89 @@ class EEGThread : public QThread {
    rBufferC=QPixmap(); // cached - empty until first use
 
    resetScrollBuffer();
-
-   chnTextCache.clear(); chnTextCache.reserve(chnCount);
-
-   for (auto& chn:conf->chns) {
-    const QString& chnName=chn.chnName;
-    int chnNo=chn.physChn;
-    QString label=QString::number(chnNo)+" "+chnName;
-    QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
-    staticLabel.setTextWidth(-1);  // No width constraint
-    chnTextCache.append(staticLabel);
-   }
   }
 
   void resetScrollBuffer() {
    QRect cr(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
    scrollBuffer->fill(Qt::white);
-   scrollPainter.begin(scrollBuffer);
-    scrollPainter.setPen(Qt::red);
-    scrollPainter.drawRect(cr);
-    scrollPainter.drawLine(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
-   scrollPainter.end();
   }
 
+  void mean(unsigned int startIdx,std::vector<float> *mu,std::vector<float> *sigma) {
+   unsigned int tcpBufTail=conf->tcpBufTail; unsigned int scrUpdateSmp=conf->scrUpdateSamples;
+   const float invSmp=1.0f/static_cast<float>(scrUpdateSmp);
+   for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
+    float sum=0.0f,sumSq=0.0f;
+    for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
+     float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].dataF[chnIndex];
+     sum+=data; sumSq+=data*data;
+    }
+    float m=sum*invSmp;
+    (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
+   }
+  }
+  
   void updateBuffer() {
+   unsigned int scrUpdateSmp=conf->scrUpdateSamples;
+   unsigned int scrUpdateCount=scrAvailSmp/scrUpdateSmp;
+
    scrollPainter.begin(scrollBuffer);
     scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    // Cursor vertical line for each column
-    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-     if (wX[colIdx]<=wn[colIdx]) {
-      scrollPainter.setPen(Qt::white);
-      scrollPainter.drawLine(wX[colIdx],1,wX[colIdx],conf->eegFrameH-2);
-      if (wX[colIdx]<(wn[colIdx]-1)) {
-       scrollPainter.setPen(Qt::black);
-       scrollPainter.drawLine(wX[colIdx]+1,1,wX[colIdx]+1,conf->eegFrameH-2);
+    if (conf->scrollMode) { // Scroll contents left by scrUpdateCount pixels
+     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+      scrollBuffer->scroll(-scrUpdateCount,0,scrollBuffer->rect()); // Scroll contents left by scrUpdateCount pixels
+      wX[colIdx]=wn[colIdx]-scrUpdateCount; // Draw new segment on right
+     }
+    } else { // SweepMode: draw on moving cursor
+     //for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+     // //if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen
+//
+//
+//     }
+ ;   }
+
+    for (unsigned int smpIdx=0;smpIdx<scrUpdateCount-1;smpIdx++) {
+     std::vector<float> s0(chnCount); std::vector<float> s0s(chnCount);
+     std::vector<float> s1(chnCount); std::vector<float> s1s(chnCount);
+     mean((smpIdx+0)*scrUpdateSmp,&s0,&s0s); mean((smpIdx+1)*scrUpdateSmp,&s1,&s1s);
+
+     for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+      unsigned int colIdx=chnIdx/chnPerCol;
+      scrCurY=(int)(chnY/2.0+chnY*(chnIdx%chnPerCol));
+
+      // Cursor vertical line for each column
+      if (wX[colIdx]<=wn[colIdx]) {
+       scrollPainter.setPen(Qt::white); scrollPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->eegFrameH-1);
+       if (wX[colIdx]<(wn[colIdx]-1)) {
+        scrollPainter.setPen(Qt::black); scrollPainter.drawLine(wX[colIdx]+1,0,wX[colIdx]+1,conf->eegFrameH-1);
+       }
       }
+
+      // Baselines
+      //scrollPainter.setPen(Qt::darkGray);
+      //scrollPainter.drawLine(wX[colIdx]-1,scrCurY,wX[colIdx],scrCurY);
+      // Data
+ 
+      int mu0=scrCurY-(int)(s0[chnIdx]*chnY*conf->ampX[ampNo]);
+      int mu1=scrCurY-(int)(s1[chnIdx]*chnY*conf->ampX[ampNo]);
+      int sigma0=(int)(s0s[chnIdx]*chnY*conf->ampX[ampNo]*0.5);
+      int sigma1=(int)(s1s[chnIdx]*chnY*conf->ampX[ampNo]*0.5);
+
+      scrollPainter.setPen(Qt::blue);
+      scrollPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
+      scrollPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
+
+      scrollPainter.setPen(Qt::black);
+      scrollPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
+     }
+
+     for (int colIdx=0;colIdx<wX.size();colIdx++) {
+      wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen
      }
     }
-
-    //if (conf->tick) {
-    // scrollPainter.setPen(Qt::darkGray); scrollPainter.drawRect(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
-    // for (int colIdx=0;colIdx<colCount;colIdx++) {
-    //  scrollPainter.drawLine(w0[colIdx]-1,1,w0[colIdx]-1,conf->eegFrameH-2);
-    //  scrollPainter.drawLine(wX[colIdx],1,wX[colIdx],conf->eegFrameH-2);
-    // }
-    //}
-
-    QVector<TcpSample> *tcpBuffer=&conf->tcpBuffer; unsigned int tcpBufSize=conf->tcpBufSize;
-    unsigned int tcpBufTail=conf->tcpBufTail; unsigned int scrSmpCount=conf->scrSmpCount;
-
-    chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
-
-    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-     //int c=chnCount/chnPerCol;
-     unsigned int curCol=chnIdx/chnPerCol;
-     scrCurY=(int)(chnY/2.0+chnY*(chnIdx%chnPerCol));
-     // Baseline
-     scrollPainter.setPen(Qt::darkGray);
-     scrollPainter.drawLine(wX[curCol]-1,scrCurY,wX[curCol],scrCurY);
-
-     scrollPainter.setPen(Qt::black);
-
-     for (unsigned int smpIdx=0;smpIdx<scrSmpCount-1;smpIdx++) {
-      std::vector<float> s0=(*tcpBuffer)[(tcpBufTail+smpIdx+0)%tcpBufSize].amp[ampNo].dataF;
-      std::vector<float> s1=(*tcpBuffer)[(tcpBufTail+smpIdx+1)%tcpBufSize].amp[ampNo].dataF;
-      scrollPainter.drawLine( // Div400 bcs. range is 400uVpp..
-       wX[curCol]-1,scrCurY-(int)(s0[chnIdx]*chnY*conf->ampX[ampNo]),
-       wX[curCol],  scrCurY-(int)(s1[chnIdx]*chnY*conf->ampX[ampNo])
-      );
-     }
-    }
-
+ 
+/*
+    // Upcoming event
     if (conf->event) { conf->event=false; rBuffer.fill(Qt::transparent);
 
      rotPainter.begin(&rBuffer);
@@ -149,7 +159,7 @@ class EEGThread : public QThread {
     
      scrollPainter.setCompositionMode(QPainter::CompositionMode_SourceOver); scrollPainter.setPen(Qt::blue); // Line color
      QVector<QPainter::PixmapFragment> fragments; fragments.reserve(chnCount/chnPerCol);
-     for (unsigned int curCol=0;curCol<chnCount/chnPerCol;curCol++) { int lineX=wX[curCol]-1;
+     for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) { int lineX=wX[colIdx]-1;
       scrollPainter.drawLine(lineX,1,lineX,conf->eegFrameH-1);
       // Prepare batched label blitting - for source in pixmap
       fragments.append(QPainter::PixmapFragment::create(QPointF(lineX-14,conf->eegFrameH-104),
@@ -157,19 +167,24 @@ class EEGThread : public QThread {
      }
      scrollPainter.drawPixmapFragments(fragments.constData(),fragments.size(),rBufferC);
     } 
-
-    // Main position increments of columns
-    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; }
-
+*/
     // Channel names
-    scrollPainter.setPen(QColor(50,50,150)); scrollPainter.setFont(chnFont);
-    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-     unsigned int curCol=chnIdx/chnPerCol;
-     scrCurY=(int)(5+chnY/2.0+chnY*(chnIdx%chnPerCol));
-     scrollPainter.drawStaticText(w0[curCol]+4,scrCurY,chnTextCache[chnIdx]);
+//    scrollPainter.setPen(QColor(50,50,150)); scrollPainter.setFont(chnFont);
+//    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+//     unsigned int colIdx=chnIdx/chnPerCol;
+//     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
+//     scrollPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
+//    }
+/*
+    if (!conf->scrollMode) { // Scroll contents left by scrUpdateCount pixels
+     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+      // Main position increments of columns
+      //wX[colIdx]+=conf->scrUpdateCount;
+      wX[colIdx]++;
+     }
     }
-
-   //if (wX[0]==150) scrollPainter.drawLine(149,300,149,400); // Amplitude legend
+*/
+    //if (wX[0]==150) scrollPainter.drawLine(149,300,149,400); // Amplitude legend
 
    scrollPainter.end();
   }
@@ -195,7 +210,7 @@ class EEGThread : public QThread {
 
      conf->scrollPending[ampNo]=false;
      conf->scrollersUpdating--; // semaphore.. kind of..  
-     if (conf->scrollersUpdating==0) conf->tcpBufTail+=conf->scrSmpCount; // If this was the last scroller, then advance tail..
+     if (conf->scrollersUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples; // If this was the last scroller, then advance tail..
     }
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
@@ -204,8 +219,11 @@ class EEGThread : public QThread {
  private:
   ConfParam *conf; unsigned int ampNo; QPixmap *scrollBuffer; QVector<int> w0,wn,wX;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
+  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize,scrAvailSmp;
+
   QFont chnFont,evtFont; QPixmap rBuffer,rBufferC; QTransform rTransform;
   QPainter scrollPainter,rotPainter; QVector<QStaticText> chnTextCache;
+
 };
 
 #endif

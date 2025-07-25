@@ -119,14 +119,14 @@ class AcqControlWindow : public QMainWindow {
     dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
     cntSpdBG->addButton(dummyButton,speedIdx);
    }
-   cntSpdBG->button(0)->setText("4s");
-   cntSpdBG->button(1)->setText("2s");
-   cntSpdBG->button(2)->setText("800ms");
-   cntSpdBG->button(3)->setText("400ms");
-   cntSpdBG->button(4)->setText("200ms");
+   cntSpdBG->button(0)->setText("10");
+   cntSpdBG->button(1)->setText("5");
+   cntSpdBG->button(2)->setText("4");
+   cntSpdBG->button(3)->setText("2");
+   cntSpdBG->button(4)->setText("1");
    cntSpdBG->button(2)->setDown(true);
 
-   connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotCntSpeed(int)));
+   connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
   }
@@ -182,7 +182,7 @@ class AcqControlWindow : public QMainWindow {
 
   // *** SPEED OF THE VISUALS ***
 
-  void slotCntSpeed(int x) { conf->spdX=conf->spdRange[x]; }
+  void slotScrollSpeed(int x) { conf->eegScrollDivider=conf->eegScrollCoeff[x]; }
 
  private:
   QTabWidget *mainTabWidget; QWidget *cntWidget;

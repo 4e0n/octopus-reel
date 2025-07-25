@@ -36,7 +36,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../../../common/event.h"
 #include "../tcpsample.h"
 
-const int EEG_SCROLL_REFRESH_RATE=100; // 100Hz max.
+const int EEG_SCROLL_REFRESH_RATE=50; // 100Hz max.
 
 class ConfParam : public QObject {
  Q_OBJECT
@@ -44,7 +44,7 @@ class ConfParam : public QObject {
   ConfParam() {};
   void init(int ampC=0) {
    ampCount=ampC; tcpBufHead=tcpBufTail=0; scrollersUpdating=0; ampX.resize(ampCount); threads.resize(ampCount);
-   eegScrollRefreshRate=EEG_SCROLL_REFRESH_RATE; threadOn=true;
+   eegScrollRefreshRate=EEG_SCROLL_REFRESH_RATE; scrollMode=false;
   };
 
   QString commandToDaemon(const QString &command, int timeoutMs=1000) {
@@ -57,7 +57,7 @@ class ConfParam : public QObject {
 
   QTcpSocket *commSocket,*eegDataSocket,*cmDataSocket;
   //std::atomic<quint64> tcpBufHead,tcpBufTail;
-  QVector<TcpSample> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize;
+  QVector<TcpSample> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize,halfTcpBufSize;
 
   unsigned int ampCount,sampleRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs; float refGain,bipGain;
   QString ipAddr; quint32 commPort,eegDataPort,cmDataPort;
@@ -66,11 +66,13 @@ class ConfParam : public QObject {
 
   bool tick,event; int spdX;
 
-  bool threadOn;
+  bool scrollMode;
 
-  int eegScrollRefreshRate,eegScrollFrameTimeMs;
+  unsigned int eegScrollRefreshRate,eegScrollFrameTimeMs,eegScrollDivider;
 
   QVector<QThread*> threads;
+
+  const int eegScrollCoeff[5]={10,5,4,2,1};
 
   const float ampRange[6]={(1e6/1000.0),
                            (1e6/ 500.0),
@@ -78,8 +80,6 @@ class ConfParam : public QObject {
                            (1e6/ 100.0),
                            (1e6/  50.0),
                            (1e6/  20.0)};
-
-  const float spdRange[6]={10,8,4,2,1};
 
   QVector<Event*> acqEvents;
   QVector<float> ampX;
@@ -95,7 +95,7 @@ class ConfParam : public QObject {
 
   QMutex mutex; QWaitCondition scrollWait;
   //std::atomic<unsigned int> scrollersUpdating;
-  unsigned int scrSmpCount,scrollersUpdating; QVector<bool> scrollPending;
+  unsigned int scrAvailableSamples,scrUpdateSamples,scrollersUpdating; QVector<bool> scrollPending;
 
  public slots:
   void onEEGDataReady() {
@@ -116,16 +116,15 @@ class ConfParam : public QObject {
      qWarning() << "Failed to deserialize TcpSample block.";
     }
 
-    // Samples to fit in one frame of scrolling has just arrived
     {
      QMutexLocker locker(&mutex);
-     if ((tcpBufHead-tcpBufTail)>scrSmpCount && scrollersUpdating==0) {
-
-      if ((tcpBufHead-tcpBufTail) >= (tcpBufSize/2)) {
-       qWarning() << "[Client] Buffer overflow risk! Tail too slow.";
-      }
-
+     unsigned int availableSamples=tcpBufHead-tcpBufTail;
+     if (availableSamples>scrAvailableSamples && scrollersUpdating==0) {
+      if (availableSamples>=halfTcpBufSize) qWarning() << "[Client] Buffer overflow risk! Tail too slow.";
       //qDebug() << "[Client] 1.Min # EEG samples to fill one scrollframe has arrived, 2. All scrollers are idle.";
+      // A fraction of above - i.e. one pixel corresponds to how many physical samples
+      // 10:5Hz(100) 5:10Hz(200) 4:20Hz(250) 2:25Hz(500) 1:50Hz(1000)
+      scrUpdateSamples=scrAvailableSamples/(eegScrollFrameTimeMs/eegScrollDivider);
       scrollersUpdating=ampCount; { for (auto& scr:scrollPending) scr=true; } scrollWait.wakeAll();
      }
     }
