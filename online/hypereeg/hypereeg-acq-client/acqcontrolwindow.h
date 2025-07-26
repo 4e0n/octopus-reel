@@ -104,7 +104,7 @@ class AcqControlWindow : public QMainWindow {
    manualTrigButton->setGeometry(550,mainTabWidget->height()-54,60,20);
    connect(manualTrigButton,SIGNAL(clicked()),this,SLOT(slotManualTrig()));
 
-   toggleNotchButton=new QPushButton("MABPF",cntWidget);
+   toggleNotchButton=new QPushButton("Notch",cntWidget);
    toggleNotchButton->setGeometry(650,mainTabWidget->height()-54,60,20);
    toggleNotchButton->setCheckable(true); toggleNotchButton->setChecked(true);
    connect(toggleNotchButton,SIGNAL(clicked()),this,SLOT(slotToggleNotch()));
@@ -112,21 +112,20 @@ class AcqControlWindow : public QMainWindow {
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
    QPushButton *dummyButton;
-   cntSpdBG=new QButtonGroup();
-   cntSpdBG->setExclusive(true);
-   for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG SPEED
+   scrSpeedBG=new QButtonGroup();
+   scrSpeedBG->setExclusive(true);
+   for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG Scroll speed/resolution
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
     dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
-    cntSpdBG->addButton(dummyButton,speedIdx);
+    scrSpeedBG->addButton(dummyButton,speedIdx);
    }
-   cntSpdBG->button(0)->setText("10");
-   cntSpdBG->button(1)->setText("5");
-   cntSpdBG->button(2)->setText("4");
-   cntSpdBG->button(3)->setText("2");
-   cntSpdBG->button(4)->setText("1");
-   cntSpdBG->button(2)->setDown(true);
+   scrSpeedBG->button(0)->setText("10");
+   scrSpeedBG->button(1)->setText("5");
+   scrSpeedBG->button(2)->setText("4");
+   scrSpeedBG->button(3)->setText("2");
+   scrSpeedBG->button(4)->setText("1"); scrSpeedBG->button(2)->setDown(true);
 
-   connect(cntSpdBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
+   connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
   }
@@ -154,45 +153,40 @@ class AcqControlWindow : public QMainWindow {
   }
 
   void slotQuit() {
-  
-   conf->mutex.lock();
-    conf->scrollWait.wakeAll();  // wake any threads waiting
-   conf->mutex.unlock();
+   { QMutexLocker locker(&conf->mutex); conf->quitPending=true; }
 
-   for (auto& thread:conf->threads) {
-    thread->requestInterruption();
-    conf->scrollWait.wakeAll();
-    thread->wait();
-    delete thread;
-   }
+   if (conf->eegDataSocket->state() != QAbstractSocket::UnconnectedState)
+    conf->eegDataSocket->waitForDisconnected(1000); // timeout in ms
+   if (conf->cmDataSocket->state() != QAbstractSocket::UnconnectedState)
+    conf->cmDataSocket->waitForDisconnected(1000); // timeout in ms
+   //while (conf->eegDataSocket->state() != QAbstractSocket::UnconnectedState);
+   //while (conf->cmDataSocket->state() != QAbstractSocket::UnconnectedState);
+
+   for (auto& thread:conf->threads) { thread->wait(); delete thread; }
    
-   //if (conf->eegDataSocket && conf->eegDataSocket->isOpen()) {
-   // conf->eegDataSocket->disconnectFromHost();
-   // if (conf->eegDataSocket->state() != QAbstractSocket::UnconnectedState)
-   //  conf->eegDataSocket->waitForDisconnected(1000); // timeout in ms
-   //}
-
    QApplication::quit();
   }
 
   void slotToggleRecording() {}
   void slotManualSync() {}
   void slotManualTrig() {}
-  void slotToggleNotch() {}
 
-  // *** SPEED OF THE VISUALS ***
+  void slotToggleNotch() {
+   {
+    QMutexLocker locker(&conf->mutex);
+    conf->notchActive ? conf->notchActive=false : conf->notchActive=true;
+   }
+  }
 
   void slotScrollSpeed(int x) { conf->eegScrollDivider=conf->eegScrollCoeff[x]; }
 
  private:
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
-  QAction *rebootAction,*shutdownAction,*quitAction,*aboutAction;
+  QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
   QLabel *timeLabel; QPushButton *manualSyncButton,*manualTrigButton;
   QPushButton *toggleRecordingButton,*toggleNotchButton;
-  QButtonGroup *cntSpdBG; QVector<QPushButton*> cntSpeedButtons;
-
-  unsigned int spdX;
+  QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };
 
 #endif

@@ -30,7 +30,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
-#include <alsa/asoundlib.h>
 
 #ifdef EEMAGINE
 #define _UNICODE
@@ -48,14 +47,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../tcpsample.h"
 #include "../tcpcmarray.h"
 #include "eeamp.h"
+#include "audioamp.h"
 
 //#define DUMPEEGSTREAM
 //#define DUMPCMSTREAM
-
-// Audio settings
-const int AUDIO_SAMPLE_RATE=48000;
-const int AUDIO_NUM_CHANNELS=2;
-const int AUDIO_BUFFER_SIZE=4800;
 
 const unsigned int CBUF_SIZE_IN_SECS=10;
 
@@ -67,7 +62,7 @@ class HAcqThread : public QThread {
 
    serDev.init();
 
-   audioBuffer.resize(AUDIO_BUFFER_SIZE*AUDIO_NUM_CHANNELS); audioOK=false;
+   audioAmp.init(conf);
 
    smp=Sample(conf->physChnCount);
    tcpEEGBufSize=conf->tcpBufSize*conf->eegRate; tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
@@ -77,45 +72,12 @@ class HAcqThread : public QThread {
    tcpCMBuffer=QVector<TcpCMArray>(tcpCMBufSize,TcpCMArray(conf->ampCount,conf->physChnCount));
 
    // This buffer contains difference between squares of unfiltered and filtered data back in time for 1 sec.
+   cmRMSBufIdx=0; cmRMSBufSize=conf->eegRate; // 1 second
    cmRMSBuf.resize(conf->ampCount);
    for (auto& amp:cmRMSBuf) amp.resize(conf->physChnCount);
-   for (auto& amp:cmRMSBuf) for (auto& chn:amp) chn.resize(conf->eegRate);
+   for (auto& amp:cmRMSBuf) for (auto& chn:amp) chn.resize(cmRMSBufSize);
 
    cBufPivotPrev=cBufPivot=tcpEEGBufHead=tcpEEGBufTail=tcpCMBufHead=tcpCMBufTail=counter0=counter1=0;
-  }
-
-  void initAlsa() {
-   if (snd_pcm_open(&audioPCMHandle,"default",SND_PCM_STREAM_CAPTURE,0)==0) { // Open ALSA capture device
-    // Configure hardware parameters
-    snd_pcm_hw_params_alloca(&audioParams);
-    snd_pcm_hw_params_any(audioPCMHandle,audioParams);
-    snd_pcm_hw_params_set_access(audioPCMHandle,audioParams,SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(audioPCMHandle,audioParams,SND_PCM_FORMAT_S16_LE);
-    snd_pcm_hw_params_set_channels(audioPCMHandle,audioParams,AUDIO_NUM_CHANNELS);
-    snd_pcm_hw_params_set_rate(audioPCMHandle,audioParams,AUDIO_SAMPLE_RATE,0);
-    snd_pcm_hw_params_set_buffer_size(audioPCMHandle,audioParams,AUDIO_BUFFER_SIZE);
-    if (snd_pcm_hw_params(audioPCMHandle,audioParams)==0) audioOK=true;
-    else qDebug() << "octopus_hacqd: ERROR!!! <AlsaAudioInit> while setting PCM parameters.";
-   } else qDebug() << "octopus_hacqd: ERROR!!! <AlsaAudioInit> while opening PCM device.";
-   if (audioOK) qInfo() << "octopus_hacqd: <AlsaAudioInit> Alsa Audio Input successfully activated, audio streaming started.";
-  }
-
-  void instreamAudio() { // Call regularly within main loopthread
-   int err = snd_pcm_readi(audioPCMHandle,audioBuffer.data(),AUDIO_BUFFER_SIZE);
-   if (err==-EPIPE) {
-    qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> BUFFER OVERRUN!!! Recovering...";
-    snd_pcm_prepare(audioPCMHandle);
-   } else if (err<0) {
-    qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> ERROR READING AUDIO! Err.No:" << snd_strerror(err);
-   } else { ;
-    //qInfo() << "octopus_hacqd: <AlsaAudioStream> Instreamed" << AUDIO_BUFFER_SIZE << "frames (48kHz, Stereo)";
-   }
-  }
-   
-  void stopAudio() {
-   snd_pcm_drain(audioPCMHandle); // Clean up
-   snd_pcm_close(audioPCMHandle);
-   std::cout << "octopus_hacqd: <AlsaAudioStream> Instreaming stopped.\n";
   }
 
   // --------
@@ -142,9 +104,10 @@ class HAcqThread : public QThread {
      for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
       float dummy=ee.bpFilterList[chnIdx].filterSample(ee.buf.getSample(chnIdx,smpIdx));
       float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
+      float dummyC=std::abs(dummy*dummy-dummyF*dummyF)*1e10f;
       smp.data[chnIdx]=dummy;   // BP filtered
       smp.dataF[chnIdx]=dummyF; // BP+notch filtered
-      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=std::abs(dummy*dummy-dummyF*dummyF);
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=dummyC;
       //if (ampIdx==0 && chnIdx==0)
       // qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
      }
@@ -160,6 +123,8 @@ class HAcqThread : public QThread {
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
    cmRMSBufIdx++;
+
+   audioAmp.instreamAudio(); // Audio data during the same 100ms
   }
 
   void fetchEegData() {
@@ -184,10 +149,13 @@ class HAcqThread : public QThread {
      for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
       float dummy=ee.bpFilterList[chnIdx].filterSample(ee.buf.getSample(chnIdx,smpIdx));
       float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
+      float dummyC=std::abs(dummy*dummy-dummyF*dummyF)*1e10f;
       smp.data[chnIdx]=dummy;   // BP filtered
       smp.dataF[chnIdx]=dummyF; // BP+notch filtered
-      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=std::abs(dummy*dummy-dummyF*dummyF);
+      //qDebug() << ampIdx << chnIdx << cmRMSBufIdx << cmRMSBufSize;
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=dummyC;
       //if (ampIdx==0 && chnIdx==0) qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
+      //if (ampIdx==0 && chnIdx==0) qDebug() << dummyC;
      }
      smp.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      //--> The very 1st sample is set as EPOCH in init version
@@ -209,6 +177,8 @@ class HAcqThread : public QThread {
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
    cmRMSBufIdx++;
+
+   audioAmp.instreamAudio(); // Audio data during the same 100ms
   }
 
   void run() override {
@@ -220,7 +190,7 @@ class HAcqThread : public QThread {
 
    // --- Initial setup ---
 
-   initAlsa();
+   audioAmp.initAlsa();
 
    std::vector<amplifier*> eeAmpsUnsorted,eeAmpsSorted; std::vector<unsigned int> sUnsorted,serialNos;
    eeAmpsUnsorted=eeFact.getAmplifiers();
@@ -319,8 +289,6 @@ class HAcqThread : public QThread {
      syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
     }
 
-    instreamAudio();
-
     //mutex.lock();
     quint64 tcpDataSize=cBufPivot-cBufPivotPrev; //qInfo() << cBufPivotPrev << cBufPivot;
     for (quint64 tcpDataIdx=0;tcpDataIdx<tcpDataSize;tcpDataIdx++) {
@@ -370,20 +338,32 @@ class HAcqThread : public QThread {
     cBufPivotPrev=cBufPivot;
     //mutex.unlock();
 
-    if (counter0%(conf->eegRate/conf->cmRate)==0) {
+    chnCount=conf->physChnCount;
 
+    unsigned int cmSampleSize=conf->eegRate/5;
+
+    if (counter0%cmSampleSize==0) {
      // Compute and populate TcpCM
-     std::size_t ampIdx=0;
-     for (auto& amp:cmRMSBuf) {
-      float ampSum=0.0f; QVector<float> ampCoeff;
-      for (auto& chn:amp) {
-       float chnSum=0.0f; for (auto& s:chn) chnSum+=s;
-       ampCoeff.append(chnSum); ampSum+=chnSum;
+     for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
+      float ampChnMean=0.0f; QVector<float> ampChn(chnCount);
+      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+       float chnMean=0.0f;
+       for (unsigned int smpIdx=0;smpIdx<cmSampleSize;smpIdx++)
+        chnMean+=cmRMSBuf[ampIdx][chnIdx][(cmRMSBufIdx+cmRMSBufSize-smpIdx)%cmRMSBufSize];
+       chnMean/=(float)(cmSampleSize); ampChn[chnIdx]=chnMean;
+       ampChnMean+=chnMean; // sum of all channels to have a mean of all channels
       }
-      for (int chnIdx=0;chnIdx<ampCoeff.size();chnIdx++) {
-       tcpCM.cmLevel[ampIdx][chnIdx]=(unsigned char)(ampCoeff[chnIdx]/ampSum*256.0f);
+      ampChnMean/=(float)(chnCount);
+      //if (ampIdx==0) qDebug() << ampChn[0];
+      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+       float x=(ampChn[chnIdx]-ampChnMean)*1e7f+127.0f; // Absolute difference against mean of all chns
+       if (x<0.0f) x=0;
+       if (x>255.0f) x=255.0;
+
+//       if (ampIdx==0 && chnIdx==0) qDebug() << x; // How much percent different than mean noise
+
+       tcpCM.cmLevel[ampIdx][chnIdx]=(unsigned char)(x);
       }
-      ampIdx++;
      }
      tcpCMBuffer[tcpCMBufHead%tcpCMBufSize]=tcpCM; tcpCMBufHead++; // Push to Circular Buffer
     }
@@ -459,15 +439,10 @@ class HAcqThread : public QThread {
 
   QVector<unsigned int> chkTrig; unsigned int chkTrigOffset;
 
-  // Alsa Audio
-  snd_pcm_t* audioPCMHandle;
-  snd_pcm_hw_params_t* audioParams;
-  std::vector<int16_t> audioBuffer;
-
-  bool audioOK;
-
   quint64 counter0,counter1;
   unsigned int nonHWTrig;
+
+  AudioAmp audioAmp;
 };
 
 #endif

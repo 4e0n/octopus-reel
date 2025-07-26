@@ -125,7 +125,8 @@ class CMThread : public QThread {
     if (conf->updateInstant) {
      if (!conf->updated[ampNo]) {
       updateBuffer();
-      //for (unsigned int i=0;i<conf->chnCount;i++) qDebug() << (conf->cmCurData)[ampNo][i];
+      //for (unsigned int i=0;i<conf->chnCount;i++) qDebug("%d %d",ampNo,(conf->cmCurData)[ampNo][i]);
+      //qDebug("\n");
       //qDebug() << (conf->cmCurData)[1][7];
       emit updateCMFrame();
       //qDebug() << "I am Thread" << ampNo;

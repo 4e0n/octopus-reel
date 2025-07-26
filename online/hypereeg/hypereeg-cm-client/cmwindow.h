@@ -77,17 +77,6 @@ class CMWindow : public QMainWindow {
    CMFrame *cmF;
    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
     cmF=new CMFrame(conf,ampIdx,this);
-//    if (conf->ampCount<=conf->guiMaxAmpPerLine) {
-//     cmF->setGeometry(20+ampIdx*(conf->frameW+20),20,
-//                    //20+(ampIdx/conf->guiMaxAmpPerLine)*(conf->frameH+20),
-//                      conf->frameW,conf->frameH);
-//    } else {
-//     cmF->setGeometry(20+(conf->ampCount%(conf->ampCount/2))*(conf->frameW+20),
-//                    //20+(ampIdx%conf->guiMaxAmpPerLine)*(conf->frameW+20),
-//                      20+(conf->ampCount/(conf->ampCount/2))*(conf->frameH+20),
-//                    //20+(ampIdx/conf->guiMaxAmpPerLine)*(conf->frameH+20),
-//                      conf->frameW,conf->frameH);
-//    }
     cmF->show(); cmFrame.append(cmF);
    }
    setWindowTitle("Octopus HyperEEG Common Mode Levels");

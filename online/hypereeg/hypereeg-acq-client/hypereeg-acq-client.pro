@@ -32,6 +32,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 HEADERS += acqmaster.h \
            acqcontrolwindow.h \
            acqstreamwindow.h \
+           headglwidget.h \
+           audioframe.h \
            eegframe.h \
            eegthread.h \
            configparser.h \

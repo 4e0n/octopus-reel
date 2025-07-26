@@ -32,13 +32,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QVector>
 #include <thread>
 #include "confparam.h"
+#include "audioframe.h"
 #include "../sample.h"
 
 class EEGThread : public QThread {
  Q_OBJECT
  public:
-  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QPixmap *sb=nullptr,QObject *parent=nullptr) : QThread(parent) {
-   conf=c; ampNo=a; scrollBuffer=sb;
+  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QPixmap *sb=nullptr,QPixmap *asb=nullptr,
+                     QObject *parent=nullptr) : QThread(parent) {
+   conf=c; ampNo=a; scrollBuffer=sb; threadActive=true;
 
    chnCount=conf->chns.size();
    colCount=std::ceil((float)chnCount/(float)(33.));
@@ -68,14 +70,26 @@ class EEGThread : public QThread {
   void mean(unsigned int startIdx,std::vector<float> *mu,std::vector<float> *sigma) {
    unsigned int tcpBufTail=conf->tcpBufTail; unsigned int scrUpdateSmp=conf->scrUpdateSamples;
    const float invSmp=1.0f/static_cast<float>(scrUpdateSmp);
-   for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
-    float sum=0.0f,sumSq=0.0f;
-    for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
-     float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].dataF[chnIndex];
-     sum+=data; sumSq+=data*data;
+   if (conf->notchActive) {
+    for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
+     float sum=0.0f,sumSq=0.0f;
+     for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
+      float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].dataF[chnIndex];
+      sum+=data; sumSq+=data*data;
+     }
+     float m=sum*invSmp;
+     (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
     }
-    float m=sum*invSmp;
-    (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
+   } else {
+    for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
+     float sum=0.0f,sumSq=0.0f;
+     for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
+      float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].data[chnIndex];
+      sum+=data; sumSq+=data*data;
+     }
+     float m=sum*invSmp;
+     (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
+    }
    }
   }
   
@@ -196,21 +210,22 @@ class EEGThread : public QThread {
   virtual void run() override {
   
    //while (true) {
-   while (!QThread::currentThread()->isInterruptionRequested()) {
+   while (threadActive) { // && !QThread::currentThread()->isInterruptionRequested()) {
     {
      QMutexLocker locker(&conf->mutex);
      // Sleep until producer signals
-     while (!conf->scrollPending[ampNo]) {
-      conf->scrollWait.wait(&conf->mutex);
+     while (!conf->scrollPending[ampNo]) { conf->scrollWait.wait(&conf->mutex); }
+
+     if (conf->quitPending) {
+      threadActive=false; //qDebug() << "Thread got the finish signal:" << ampNo;
+     } else {
+      updateBuffer(); emit updateEEGFrame(); //qDebug() << ampNo << "updated.";
      }
-
-     updateBuffer();
-     emit updateEEGFrame();
-     //qDebug() << ampNo << "updated.";
-
      conf->scrollPending[ampNo]=false;
      conf->scrollersUpdating--; // semaphore.. kind of..  
-     if (conf->scrollersUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples; // If this was the last scroller, then advance tail..
+     // If this was the last scroller, then advance tail..
+     if (conf->scrollersUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples;
+     //if (!conf->quitPending)
     }
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
@@ -220,10 +235,10 @@ class EEGThread : public QThread {
   ConfParam *conf; unsigned int ampNo; QPixmap *scrollBuffer; QVector<int> w0,wn,wX;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
   QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize,scrAvailSmp;
+  bool threadActive;
 
   QFont chnFont,evtFont; QPixmap rBuffer,rBufferC; QTransform rTransform;
   QPainter scrollPainter,rotPainter; QVector<QStaticText> chnTextCache;
-
 };
 
 #endif

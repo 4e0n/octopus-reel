@@ -48,9 +48,9 @@ const QString cfgPath="/etc/octopus_hacq_client.conf";
 class AcqMaster: public QObject {
  Q_OBJECT
  public:
-  explicit AcqMaster(QApplication *app=nullptr,QObject *parent=nullptr) : QObject(parent) {
+  explicit AcqMaster(QObject *parent=nullptr) : QObject(parent) {
    QString commResponse; QStringList sList,sList2;
-   conf.application=app; conf.commSocket=new QTcpSocket(this);
+   conf.commSocket=new QTcpSocket(this);
    conf.eegDataSocket=new QTcpSocket(this); conf.cmDataSocket=new QTcpSocket(this);
 
    // Initialize
@@ -133,7 +133,7 @@ class AcqMaster: public QObject {
    }
   }
 
-  ConfParam conf; QVector<float> meanS,stdS;
+  ConfParam conf;
 
  private:
   AcqControlWindow *controlWindow; QVector<AcqStreamWindow*> streamWindows;

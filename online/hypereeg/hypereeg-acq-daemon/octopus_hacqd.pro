@@ -35,7 +35,10 @@ HEADERS += hacqdaemon.h \
 	   chninfo.h \
 	   eesynth.h \
            eeamp.h \
+           audioamp.h \
+	   audiosample.h \
            ../hacqglobals.h \
 	   ../serialdevice.h \
+	   ../sample.h \
            ../tcpcommand.h
 SOURCES += main.cpp

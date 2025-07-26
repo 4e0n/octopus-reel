@@ -21,30 +21,25 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef EEGFRAME_H
-#define EEGFRAME_H
+#ifndef AUDIOFRAME_H
+#define AUDIOFRAME_H
 
 #include <QFrame>
 #include <QPainter>
 #include <QStaticText>
 #include "confparam.h"
-#include "audioframe.h"
-#include "eegthread.h"
 
-class EEGFrame : public QFrame {
+class AudioFrame : public QFrame {
  Q_OBJECT
  public:
-  explicit EEGFrame(ConfParam *c=nullptr,unsigned int a=0,AudioFrame *aFrame=nullptr,
-                    QWidget *parent=nullptr) : QFrame(parent) {
+  explicit AudioFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
    conf=c; ampNo=a; scrollSched=false;
-   scrollBuffer=QPixmap(conf->eegFrameW,conf->eegFrameH);
-
-   audioFrame=aFrame;
-
+   scrollBuffer=QPixmap(conf->eegFrameW,conf->audioFrameH);
+/*
    chnCount=conf->chns.size();
-   colCount=std::ceil((float)chnCount/(float)(33)); // 33 !?
-   chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
-   chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   colCount=std::ceil((float)chnCount/(float)(33));
+   // 1 chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   chnY=(float)(conf->audioFrameH); // reserved vertical pixel count per channel
    int ww=(int)((float)(conf->eegFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }
    if (chnCount<16) chnFont=QFont("Helvetica",12,QFont::Bold);
@@ -59,30 +54,26 @@ class EEGFrame : public QFrame {
     staticLabel.setTextWidth(-1);  // No width constraint
     chnTextCache.append(staticLabel);
    }
-
-   eegThread=new EEGThread(conf,ampNo,&scrollBuffer,&(audioFrame->scrollBuffer),this);
-   conf->threads[ampNo]=eegThread;
-   connect(eegThread,&EEGThread::updateEEGFrame,this,QOverload<>::of(&EEGFrame::update));
-   eegThread->start(QThread::HighestPriority);
+   */
   }
 
-  bool scrollSched; QPixmap scrollBuffer; EEGThread *eegThread;
+  bool scrollSched; QPixmap scrollBuffer;
 
  protected:
   virtual void paintEvent(QPaintEvent *event) override {
    Q_UNUSED(event);
-   QRect cr(0,0,conf->eegFrameW-1,conf->eegFrameH-1);
+   QRect cr(0,0,conf->eegFrameW-1,conf->audioFrameH-1);
    mainPainter.begin(this);
    mainPainter.drawPixmap(0,0,scrollBuffer); scrollSched=false;
    mainPainter.setPen(Qt::black);
    mainPainter.drawRect(cr);
-   // Channel names
+/*   // Channel names
    mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
     unsigned int colIdx=chnIdx/chnPerCol;
     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
     mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
-   }
+   } */
    mainPainter.end();
   }
 
@@ -90,8 +81,6 @@ class EEGFrame : public QFrame {
   ConfParam *conf; unsigned int ampNo; QPainter mainPainter;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
   QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont;
-
-  AudioFrame *audioFrame;
 };
 
 #endif

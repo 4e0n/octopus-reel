@@ -33,12 +33,15 @@ struct TcpSample {
  std::vector<Sample> amp;
  unsigned int trigger=0;
 
+ //std::vector<qint16> audio;
+
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  void init(size_t ampCount, size_t chnCount) {
   amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); trigger=0;
+  //audio.resize(48*2);
  }
 
  QByteArray serialize() const {
@@ -49,6 +52,7 @@ struct TcpSample {
   for (const Sample& s:amp) {
    s.serialize(out);
   }
+  //for (qint16 s:audio) out<<s;
   return ba;
  }
 
@@ -60,6 +64,7 @@ struct TcpSample {
   for (Sample &s:amp) {
    s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
   }
+  //for (qint16 &s:audio) in>>s;
   return true;
  }
 };
