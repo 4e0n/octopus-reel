@@ -33,7 +33,7 @@ class AudioFrame : public QFrame {
  Q_OBJECT
  public:
   explicit AudioFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
-   conf=c; ampNo=a; scrollSched=false;
+   conf=c; ampNo=a;
    scrollBuffer=QPixmap(conf->eegFrameW,conf->audioFrameH);
 /*
    chnCount=conf->chns.size();
@@ -57,14 +57,14 @@ class AudioFrame : public QFrame {
    */
   }
 
-  bool scrollSched; QPixmap scrollBuffer;
+  QPixmap scrollBuffer;
 
  protected:
   virtual void paintEvent(QPaintEvent *event) override {
    Q_UNUSED(event);
    QRect cr(0,0,conf->eegFrameW-1,conf->audioFrameH-1);
    mainPainter.begin(this);
-   mainPainter.drawPixmap(0,0,scrollBuffer); scrollSched=false;
+   mainPainter.drawPixmap(0,0,scrollBuffer);
    mainPainter.setPen(Qt::black);
    mainPainter.drawRect(cr);
 /*   // Channel names

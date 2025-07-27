@@ -40,6 +40,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "eesynth.h"
 #endif
 
+#include <iostream>
 #include "confparam.h"
 #include "../hacqglobals.h"
 #include "../serialdevice.h"
@@ -357,8 +358,7 @@ class HAcqThread : public QThread {
       //if (ampIdx==0) qDebug() << ampChn[0];
       for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
        float x=(ampChn[chnIdx]-ampChnMean)*1e7f+127.0f; // Absolute difference against mean of all chns
-       if (x<0.0f) x=0;
-       if (x>255.0f) x=255.0;
+       if (x<0.0f) x=0; else if (x>255.0f) x=255.0;
 
 //       if (ampIdx==0 && chnIdx==0) qDebug() << x; // How much percent different than mean noise
 

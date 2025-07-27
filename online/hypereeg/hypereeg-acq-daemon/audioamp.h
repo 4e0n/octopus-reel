@@ -24,6 +24,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef _AUDIOAMP_H
 #define _AUDIOAMP_H
 
+#include <iostream>
 #include <alsa/asoundlib.h>
 #include "audiosample.h"
 #include "confparam.h"
@@ -69,7 +70,7 @@ struct AudioAmp {
    snd_pcm_hw_params_set_format(audioPCMHandle,audioParams,SND_PCM_FORMAT_S16_LE);
    snd_pcm_hw_params_set_channels(audioPCMHandle,audioParams,AUDIO_NUM_CHANNELS);
    snd_pcm_hw_params_set_rate(audioPCMHandle,audioParams,AUDIO_SAMPLE_RATE,0);
-   snd_pcm_hw_params_set_buffer_size(audioPCMHandle,audioParams,audioIntBufSize); // by default set to 0.1 second.
+   //snd_pcm_hw_params_set_buffer_size(audioPCMHandle,audioParams,audioIntBufSize); // by default set to 0.1 second.
    if (snd_pcm_hw_params(audioPCMHandle,audioParams)==0) audioOK=true;
    else qDebug() << "octopus_hacqd: ERROR!!! <AlsaAudioInit> while setting PCM parameters.";
   } else qDebug() << "octopus_hacqd: ERROR!!! <AlsaAudioInit> while opening PCM device.";
@@ -77,20 +78,20 @@ struct AudioAmp {
  }
 
  void instreamAudio() { // Call regularly within main loopthread
-  int err=snd_pcm_readi(audioPCMHandle,audioBuffer.data(),audioIntBufSize);
-  if (err==-EPIPE) {
-   qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> BUFFER OVERRUN!!! Recovering...";
-   snd_pcm_prepare(audioPCMHandle);
-  } else if (err<0) {
-   qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> ERROR READING AUDIO! Err.No:" << snd_strerror(err);
-  } else { ;
+//  int err=snd_pcm_readi(audioPCMHandle,audioBuffer.data(),audioIntBufSize);
+//  if (err==-EPIPE) {
+//   qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> BUFFER OVERRUN!!! Recovering...";
+//   snd_pcm_prepare(audioPCMHandle);
+//  } else if (err<0) {
+//   qWarning() << "octopus_hacqd: WARNING!!! <AlsaAudioStream> ERROR READING AUDIO! Err.No:" << snd_strerror(err);
+//  } else { ;
    //qInfo() << "octopus_hacqd: <AlsaAudioStream> Instreamed" << audioIntBufSize << "frames (48kHz, Stereo)" << ii++;
    //for (unsigned int bufIdx=0;bufIdx<audioIntBufSize;bufIdx++) {
    // for (unsigned int sIdx=0;sIdx<conf->setCount;sIdx++) {
    //  buffer[(bufHead+bufIdx)%bufSize].data[0]=audioBuffer[bufIdx];
    // }
    //}
-  }
+//  }
  }
 
  void stopAudio() {

@@ -102,6 +102,14 @@ class AcqMaster: public QObject {
       conf.chns.append(chn);
      }
      conf.chnCount=conf.chns.size();
+     conf.s0.resize(conf.scrAvailableSamples);
+     conf.s0s.resize(conf.scrAvailableSamples);
+     conf.s1.resize(conf.scrAvailableSamples);
+     conf.s1s.resize(conf.scrAvailableSamples);
+     for (unsigned int idx=0;idx<conf.scrAvailableSamples;idx++) {
+      conf.s0[idx].resize(conf.chnCount); conf.s0s[idx].resize(conf.chnCount);
+      conf.s1[idx].resize(conf.chnCount); conf.s1s[idx].resize(conf.chnCount);
+     }
 
      for (auto& chn:conf.chns) qDebug() << chn.physChn << chn.chnName << chn.topoTheta << chn.topoPhi << chn.isBipolar;
 
@@ -109,7 +117,9 @@ class AcqMaster: public QObject {
      controlWindow=new AcqControlWindow(&conf); controlWindow->show();
 
      conf.scrollPending.resize(conf.ampCount);
-     for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) conf.scrollPending[ampIdx]=false;
+     for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
+      conf.scrollPending[ampIdx]=false;
+     }
 
      for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
       AcqStreamWindow* streamWin=new AcqStreamWindow(ampIdx,&conf);

@@ -57,6 +57,8 @@ class ConfParam : public QObject {
    return QString::fromUtf8(commSocket->readAll()).trimmed();
   }
 
+  std::vector<std::vector<float>> s0,s0s,s1,s1s; // Scroll vals
+
   QTcpSocket *commSocket,*eegDataSocket,*cmDataSocket;
   //std::atomic<quint64> tcpBufHead,tcpBufTail;
   QVector<TcpSample> tcpBuffer; quint64 tcpBufHead,tcpBufTail; quint32 tcpBufSize,halfTcpBufSize;
@@ -98,7 +100,8 @@ class ConfParam : public QObject {
 
   QMutex mutex; QWaitCondition scrollWait;
   //std::atomic<unsigned int> scrollersUpdating;
-  unsigned int scrAvailableSamples,scrUpdateSamples,scrollersUpdating; QVector<bool> scrollPending;
+  unsigned int scrAvailableSamples,scrUpdateSamples,scrollersUpdating;
+  QVector<bool> scrollPending;
 
  public slots:
   void onEEGDataReady() {

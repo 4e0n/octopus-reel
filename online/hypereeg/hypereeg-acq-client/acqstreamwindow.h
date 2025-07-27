@@ -36,7 +36,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QListWidget>
 #include "confparam.h"
 #include "eegframe.h"
-#include "audioframe.h"
+//#include "audioframe.h"
 #include "headglwidget.h"
 
 class AcqStreamWindow : public QMainWindow {
@@ -59,9 +59,7 @@ class AcqStreamWindow : public QMainWindow {
 
    eegWidget=new QWidget(mainTabWidget);
 
-   audioFrame=new AudioFrame(conf,ampNo,eegWidget);
-   audioFrame->setGeometry(2,2,conf->eegFrameW,conf->audioFrameH);
-   eegFrame=new EEGFrame(conf,ampNo,audioFrame,eegWidget);
+   eegFrame=new EEGFrame(conf,ampNo,eegWidget);
    eegFrame->setGeometry(2,2,conf->eegFrameW,conf->eegFrameH); 
    gl3DWidget=new HeadGLWidget(conf,ampNo,eegWidget);
    gl3DWidget->setGeometry(conf->eegFrameW+10,2,conf->glFrameW,conf->glFrameH); eegWidget->show(); 
@@ -104,7 +102,7 @@ class AcqStreamWindow : public QMainWindow {
 
  private:
   QString dummyString; QPushButton *dummyButton;
-  AudioFrame *audioFrame; EEGFrame *eegFrame; HeadGLWidget *gl3DWidget;
+  EEGFrame *eegFrame; HeadGLWidget *gl3DWidget;
   QMenuBar *menuBar; QTabWidget *mainTabWidget; QWidget *eegWidget;
   QButtonGroup *ampBG;
   QVector<QPushButton*> ampButtons;
