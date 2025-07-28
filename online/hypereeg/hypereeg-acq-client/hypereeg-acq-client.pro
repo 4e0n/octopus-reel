@@ -20,7 +20,7 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = hypereeg-gui-client
+TARGET = hypereeg-acq-client
 INCLUDEPATH += .
 LIBS += -lGLU
 QT += core gui widgets network multimedia opengl

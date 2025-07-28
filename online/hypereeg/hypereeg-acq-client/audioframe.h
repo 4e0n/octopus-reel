@@ -26,6 +26,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QFrame>
 #include <QPainter>
+#include <QImage>
 #include <QStaticText>
 #include "confparam.h"
 
@@ -34,7 +35,7 @@ class AudioFrame : public QFrame {
  public:
   explicit AudioFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
    conf=c; ampNo=a;
-   scrollBuffer=QPixmap(conf->eegFrameW,conf->audioFrameH);
+   scrollBuffer=QImage(conf->eegFrameW,conf->audioFrameH,QImage::Format_RGB32);
 /*
    chnCount=conf->chns.size();
    colCount=std::ceil((float)chnCount/(float)(33));
@@ -57,14 +58,14 @@ class AudioFrame : public QFrame {
    */
   }
 
-  QPixmap scrollBuffer;
+  QImage scrollBuffer;
 
  protected:
   virtual void paintEvent(QPaintEvent *event) override {
    Q_UNUSED(event);
    QRect cr(0,0,conf->eegFrameW-1,conf->audioFrameH-1);
    mainPainter.begin(this);
-   mainPainter.drawPixmap(0,0,scrollBuffer);
+   mainPainter.drawImage(0,0,scrollBuffer);
    mainPainter.setPen(Qt::black);
    mainPainter.drawRect(cr);
 /*   // Channel names
