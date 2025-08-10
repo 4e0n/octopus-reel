@@ -401,7 +401,7 @@ class HAcqThread : public QThread {
    if (t<256) { // also including TRIG_AMPSYNC=255
 #ifdef EEMAGINE
     unsigned char trig=(unsigned char)t;
-    if (serDev.open()>0) { serDev.write(trig); }
+    serDev.write(trig);
 #else
     nonHWTrig=t; // The same for eesynth.h -- includes TRIG_AMPSYNC
 #endif

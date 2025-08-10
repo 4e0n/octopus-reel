@@ -38,6 +38,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QThread>
 #include "unistd.h"
 #include "confparam.h"
+#include "../tcpcommand.h"
 
 class AcqControlWindow : public QMainWindow {
  Q_OBJECT
@@ -123,7 +124,7 @@ class AcqControlWindow : public QMainWindow {
    scrSpeedBG->button(1)->setText("5");
    scrSpeedBG->button(2)->setText("4");
    scrSpeedBG->button(3)->setText("2");
-   scrSpeedBG->button(4)->setText("1"); scrSpeedBG->button(2)->setDown(true);
+   scrSpeedBG->button(4)->setText("1"); scrSpeedBG->button(0)->setDown(true);
 
    connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
@@ -168,7 +169,7 @@ class AcqControlWindow : public QMainWindow {
   }
 
   void slotToggleRecording() {}
-  void slotManualSync() {}
+  void slotManualSync() { conf->commandToDaemon(CMD_AMPSYNC); }
   void slotManualTrig() {}
 
   void slotToggleNotch() {

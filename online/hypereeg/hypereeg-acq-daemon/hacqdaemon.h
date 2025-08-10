@@ -137,23 +137,23 @@ class HAcqDaemon : public QObject {
    qInfo() << "octopus_hacqd: <Comm> Received command:" << cmd;
    if (!cmd.contains("|")) {
     sList.append(cmd);
-    if (cmd==CMD_ACQINFO_S) iCmd=CMD_ACQINFO;
-    else if (cmd==CMD_AMPSYNC_S) iCmd=CMD_AMPSYNC;
-    else if (cmd==CMD_STATUS_S) iCmd=CMD_STATUS;
-    else if (cmd==CMD_DISCONNECT_S) iCmd=CMD_DISCONNECT;
-    else if (cmd==CMD_GETCONF_S) iCmd=CMD_GETCONF;
-    else if (cmd==CMD_GETCHAN_S) iCmd=CMD_GETCHAN;
-    else if (cmd==CMD_REBOOT_S) iCmd=CMD_REBOOT;
-    else if (cmd==CMD_SHUTDOWN_S) iCmd=CMD_SHUTDOWN;
+    if (cmd==CMD_ACQINFO) iCmd=CMD_ACQINFO_B;
+    else if (cmd==CMD_AMPSYNC) iCmd=CMD_AMPSYNC_B;
+    else if (cmd==CMD_STATUS) iCmd=CMD_STATUS_B;
+    else if (cmd==CMD_DISCONNECT) iCmd=CMD_DISCONNECT_B;
+    else if (cmd==CMD_GETCONF) iCmd=CMD_GETCONF_B;
+    else if (cmd==CMD_GETCHAN) iCmd=CMD_GETCHAN_B;
+    else if (cmd==CMD_REBOOT) iCmd=CMD_REBOOT_B;
+    else if (cmd==CMD_SHUTDOWN) iCmd=CMD_SHUTDOWN_B;
    } else { // command with parameter
     sList=cmd.split("|");
     if (sList[0]=="TRIGGER") {
-     iCmd=CMD_TRIGGER; int pos=0;
+     iCmd=CMD_TRIGGER_B; int pos=0;
      if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
     }
    }
    switch (iCmd) {
-    case CMD_ACQINFO: qDebug("octopus_hacqd: <Comm> Sending Amplifier(s) Info..");
+    case CMD_ACQINFO_B: qDebug("octopus_hacqd: <Comm> Sending Amplifier(s) Info..");
      client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
      client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
@@ -163,7 +163,7 @@ class HAcqDaemon : public QObject {
      client->write("-> Grand total channels# from all amps: "+QString::number(conf.totalCount).toUtf8()+"\n");
      client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
      break;
-    case CMD_TRIGGER:
+    case CMD_TRIGGER_B:
      if (iParam<0xffff) {
       qDebug("octopus_hacqd: <Comm> Conveying **non-hardware** trigger to amplifier(s).. TCode:%d",iParam);
       hAcqThread->sendTrigger(iParam);
@@ -173,18 +173,18 @@ class HAcqDaemon : public QObject {
       client->write("Error! **Non-hardware** Trigger should be between (256,65535). Trigger not conveyed.\n");
      }
      break;
-    case CMD_AMPSYNC: qDebug("octopus_hacqd: <Comm> Conveying SYNC to amplifier(s)..");
+    case CMD_AMPSYNC_B: qDebug("octopus_hacqd: <Comm> Conveying SYNC to amplifier(s)..");
      hAcqThread->sendTrigger(TRIG_AMPSYNC);
      client->write("SYNC conveyed to amps.\n");
      break;
-    case CMD_STATUS: qDebug("octopus_hacqd: <Comm> Sending Amp(s) status..");
+    case CMD_STATUS_B: qDebug("octopus_hacqd: <Comm> Sending Amp(s) status..");
      client->write("Amp(s) streaming EEG.\n");
      break;
-    case CMD_DISCONNECT: qDebug("octopus_hacqd: <Comm> Disconnecting client..");
+    case CMD_DISCONNECT_B: qDebug("octopus_hacqd: <Comm> Disconnecting client..");
      client->write("Disconnecting...\n");
      client->disconnectFromHost();
      break;
-    case CMD_GETCONF: qDebug("octopus_hacqd: <Comm> Sending Config Parameters..");
+    case CMD_GETCONF_B: qDebug("octopus_hacqd: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
                    QString::number(conf.eegRate).toUtf8()+","+ \
                    QString::number(conf.cmRate).toUtf8()+","+ \
@@ -194,7 +194,7 @@ class HAcqDaemon : public QObject {
                    QString::number(conf.bipGain).toUtf8()+","+ \
                    QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
      break;
-    case CMD_GETCHAN: qDebug("octopus_hacqd: <Comm> Sending Channels' Parameters..");
+    case CMD_GETCHAN_B: qDebug("octopus_hacqd: <Comm> Sending Channels' Parameters..");
      for (const auto& ch:chnInfo)
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
@@ -204,11 +204,11 @@ class HAcqDaemon : public QObject {
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n");
      break;
-    case CMD_REBOOT: qDebug("octopus_hacqd: <Comm> Rebooting server (if privileges are enough)..");
+    case CMD_REBOOT_B: qDebug("octopus_hacqd: <Comm> Rebooting server (if privileges are enough)..");
      client->write("Rebooting system (if privileges are enough)...\n");
      system("/sbin/shutdown -r now");
      break;
-    case CMD_SHUTDOWN: qDebug("octopus_hacqd: <Comm> Shutting down server (if privileges are enough)..");
+    case CMD_SHUTDOWN_B: qDebug("octopus_hacqd: <Comm> Shutting down server (if privileges are enough)..");
      client->write("Shutting down system (if privileges are enough)...\n");
      system("/sbin/shutdown -h now");
      break;

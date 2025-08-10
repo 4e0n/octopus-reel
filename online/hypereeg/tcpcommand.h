@@ -24,28 +24,28 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef TCPCOMMAND_H
 #define TCPCOMMAND_H
 
-const int CMD_ACQINFO=0x0001;
-const QString CMD_ACQINFO_S="ACQINFO";
-const int CMD_TRIGGER=0x0002;
-const QString CMD_TRIGGER_S="TRIGGER";
-const int CMD_AMPSYNC=0x0003;
-const QString CMD_AMPSYNC_S="AMPSYNC";
-const int CMD_STATUS=0x0004;
-const QString CMD_STATUS_S="STATUS";
-const int CMD_STOP_EEGSTRM=0x0005;
-const QString CMD_STOP_EEGSTRM_S="STOPEEGSTRM";
+const int CMD_ACQINFO_B=0x0001;
+const QString CMD_ACQINFO="ACQINFO";
+const int CMD_TRIGGER_B=0x0002;
+const QString CMD_TRIGGER="TRIGGER";
+const int CMD_AMPSYNC_B=0x0003;
+const QString CMD_AMPSYNC="AMPSYNC";
+const int CMD_STATUS_B=0x0004;
+const QString CMD_STATUS="STATUS";
+const int CMD_STOP_EEGSTRM_B=0x0005;
+const QString CMD_STOP_EEGSTRM="STOPEEGSTRM";
 
-const int CMD_DISCONNECT=0x000f;
-const QString CMD_DISCONNECT_S="DISCONNECT";
+const int CMD_DISCONNECT_B=0x000f;
+const QString CMD_DISCONNECT="DISCONNECT";
 
-const int CMD_GETCONF=0x1001;
-const QString CMD_GETCONF_S="GETCONF";
-const int CMD_GETCHAN=0x1002;
-const QString CMD_GETCHAN_S="GETCHAN";
+const int CMD_GETCONF_B=0x1001;
+const QString CMD_GETCONF="GETCONF";
+const int CMD_GETCHAN_B=0x1002;
+const QString CMD_GETCHAN="GETCHAN";
 
-const int CMD_REBOOT=0xfffe;
-const QString CMD_REBOOT_S="REBOOT";
-const int CMD_SHUTDOWN=0xffff;
-const QString CMD_SHUTDOWN_S="SHUTDOWN";
+const int CMD_REBOOT_B=0xfffe;
+const QString CMD_REBOOT="REBOOT";
+const int CMD_SHUTDOWN_B=0xffff;
+const QString CMD_SHUTDOWN="SHUTDOWN";
 
 #endif

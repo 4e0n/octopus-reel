@@ -67,7 +67,7 @@ class AcqMaster: public QObject {
      // Setup command socket
      conf.commSocket->connectToHost(conf.ipAddr,conf.commPort); conf.commSocket->waitForConnected();
 
-     commResponse=conf.commandToDaemon(CMD_GETCONF_S);
+     commResponse=conf.commandToDaemon(CMD_GETCONF);
      if (!commResponse.isEmpty()) qDebug() << "octopus_hacq_client: <Config> Daemon replied:" << commResponse;
      else qDebug() << "octopus_hacq_client: <Config> No response or timeout.";
      sList=commResponse.split(",");
@@ -77,7 +77,7 @@ class AcqMaster: public QObject {
      conf.halfTcpBufSize=conf.tcpBufSize/2; // for fast-population check
      conf.tcpBuffer.resize(conf.tcpBufSize);
 
-     conf.eegScrollDivider=conf.eegScrollCoeff[2];
+     conf.eegScrollDivider=conf.eegScrollCoeff[0];
      conf.eegScrollFrameTimeMs=conf.sampleRate/conf.eegScrollRefreshRate; // (1000sps/50Hz)=20ms=20samples
      // # of data to wait for, to be available for screen plot/scroller
      conf.scrAvailableSamples=conf.eegScrollFrameTimeMs*(conf.sampleRate/1000); // 20ms -> 20 sample
@@ -88,7 +88,7 @@ class AcqMaster: public QObject {
      conf.bipGain=sList[5].toFloat();
      conf.eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with sampleRate
 
-     commResponse=conf.commandToDaemon(CMD_GETCHAN_S);
+     commResponse=conf.commandToDaemon(CMD_GETCHAN);
      if (!commResponse.isEmpty()) qDebug() << "octopus_hacq_client: <Config> Daemon replied:" << commResponse;
      else qDebug() << "octopus_hacq_client: <Config> No response or timeout.";
      sList=commResponse.split("\n"); ChnInfo chn;

@@ -79,8 +79,8 @@ class AcqStreamWindow : public QMainWindow {
    ampBG->button(0)->setText("1mV");   ampBG->button(1)->setText("500uV");
    ampBG->button(2)->setText("200uV"); ampBG->button(3)->setText("100uV");
    ampBG->button(4)->setText("50uV");  ampBG->button(5)->setText("20uV");
-   ampBG->button(3)->setDown(true);
-   conf->ampX[ampNo]=(1000000.0/100.0);
+   ampBG->button(0)->setDown(true);
+   conf->ampX[ampNo]=conf->ampRange[0]; //(1000000.0/100.0);
    connect(ampBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGAmp(int)));
 
    // *** MENUBAR ***

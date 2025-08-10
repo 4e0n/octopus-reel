@@ -43,7 +43,7 @@ class ConfParam : public QObject {
   ConfParam() {};
   void init(int ampC=0) {
    ampCount=ampC; tcpBufHead=tcpBufTail=0; scrollersUpdating=0; ampX.resize(ampCount); threads.resize(ampCount);
-   eegScrollRefreshRate=EEG_SCROLL_REFRESH_RATE; scrollMode=notchActive=quitPending=false;
+   eegScrollRefreshRate=EEG_SCROLL_REFRESH_RATE; scrollMode=quitPending=false; notchActive=true;
    audioFrameH=100;
    //gl3DGuiX=160; gl3DGuiY=160;
    gl3DGuiW=400; gl3DGuiH=300;
