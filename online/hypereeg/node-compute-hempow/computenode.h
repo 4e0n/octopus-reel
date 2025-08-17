@@ -1,0 +1,256 @@
+/*
+Octopus-ReEL - Realtime Encephalography Laboratory Network
+   Copyright (C) 2007-2025 Barkin Ilhan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+ Contact info:
+ E-Mail:  barkin@unrlabs.org
+ Website: http://icon.unrlabs.org/staff/barkin/
+ Repo:    https://github.com/4e0n/
+*/
+
+/* a.k.a. The HyperEEG "Compute Node"..
+    This is the master compute node class who starts all others,
+    e.g. predefined parameters, configuration and management class
+    shared over all other classes. */
+
+#ifndef COMPUTENODE_H
+#define COMPUTENODE_H
+
+#include <QObject>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QIntValidator>
+#include <QString>
+#include <QVector>
+#include "../globals.h"
+#include "../tcpsample.h"
+#include "../cmd_acqd.h"
+#include "../cmd_comp.h"
+#include "confparam.h"
+#include "configparser.h"
+#include "chninfo.h"
+#include "computethread.h"
+
+const int HYPEREEG_COMPUTE_NODE_VER=200;
+const int COMPUTE_REFRESH_RATE=200; // Base refresh rate
+
+const QString cfgPath=basePath+"compute_hempow.conf";
+
+class ComputeNode: public QObject {
+ Q_OBJECT
+ public:
+  explicit ComputeNode(QObject *parent=nullptr) : QObject(parent) {
+   // Upstream (we're client)
+   conf.commSocket=new QTcpSocket(this);
+   conf.strmSocket=new QTcpSocket(this);
+   // Downstream (we're server)
+   connect(&commServer,&QTcpServer::newConnection,this,&ComputeNode::onNewCommClient);
+   connect(&strmServer,&QTcpServer::newConnection,this,&ComputeNode::onNewStrmClient);
+  }
+
+  bool initialize() {
+   QString commResponse; QStringList sList,sList2;
+   if (QFile::exists(cfgPath)) {
+    ConfigParser cfp(cfgPath);
+    if (!cfp.parse(&conf)) {
+     qInfo() << "---------------------------------------------------------------";
+     qInfo() << "hnode_compute_hempow: <ServerIP> is" << conf.ipAddr;
+     qInfo() << "hnode_compute_hempow: <Comm> listening on ports (comm,strm):" << conf.commPort << conf.strmPort;
+
+     // Setup command socket
+     conf.commSocket->connectToHost(conf.ipAddr,conf.commPort); conf.commSocket->waitForConnected();
+
+     commResponse=conf.commandToDaemon(CMD_ACQD_GETCONF);
+     if (!commResponse.isEmpty()) qDebug() << "hnode_compute_hempow: <Config> Daemon replied:" << commResponse;
+     else qDebug() << "hnode_compute_hempow: <Config> No response or timeout.";
+     sList=commResponse.split(",");
+     conf.init(sList[0].toInt()); // ampCount
+     conf.sampleRate=sList[1].toInt();
+     conf.tcpBufSize*=conf.sampleRate; // Convert tcpBufSize from seconds to samples
+     conf.halfTcpBufSize=conf.tcpBufSize/2; // for fast-population check
+     conf.tcpBuffer.resize(conf.tcpBufSize);
+
+     conf.refChnCount=sList[2].toInt();
+     conf.bipChnCount=sList[3].toInt();
+     conf.refGain=sList[4].toFloat();
+     conf.bipGain=sList[5].toFloat();
+     conf.eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with sampleRate
+
+     commResponse=conf.commandToDaemon(CMD_ACQD_GETCHAN);
+     if (!commResponse.isEmpty()) qDebug() << "hnode_compute_hempow: <Config> Daemon replied:" << commResponse;
+     else qDebug() << "hnode_compute_hempow: <Config> No response or timeout.";
+     sList=commResponse.split("\n"); ChnInfo chn;
+     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) {
+      sList2=sList[chnIdx].split(",");
+      chn.physChn=sList2[0].toInt();
+      chn.chnName=sList2[1];
+      chn.topoTheta=sList2[2].toFloat();
+      chn.topoPhi=sList2[3].toFloat();
+      chn.isBipolar=(bool)sList2[4].toInt();
+      conf.chns.append(chn);
+     }
+     conf.chnCount=conf.chns.size();
+
+     for (auto& chn:conf.chns) qDebug() << chn.physChn << chn.chnName << chn.topoTheta << chn.topoPhi << chn.isBipolar;
+
+     connect(conf.strmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady);
+
+     // At this point the scrolling widgets, and everything should be initialized and ready.
+     // Setup data socket -- only safe after handshake and receiving crucial info about streaming
+     conf.strmSocket->connectToHost(conf.ipAddr,conf.strmPort); conf.strmSocket->waitForConnected();
+
+     if (!commServer.listen(QHostAddress::Any,conf.svrCommPort)) {
+      qCritical() << "hnode_compute_hempow: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
+      return true;
+     }
+     qInfo() << "hnode_compute_hempow: <Comm> listening on port" << conf.svrCommPort;
+
+     if (!strmServer.listen(QHostAddress::Any,conf.svrStrmPort)) {
+      qCritical() << "hnode_compute_hempow: Cannot start TCP server on <EEGData> port:" << conf.svrStrmPort;
+      return true;
+     }
+     qInfo() << "hnode_compute_hempow: <EEGData> listening on port" << conf.svrStrmPort;
+
+     return false;
+    } else {
+     qWarning() << "hnode_compute_hempow: The config file" << cfgPath << "is corrupt!";
+     return true;
+    }
+   } else {
+    qWarning() << "hnode_compute_hempow: The config file" << cfgPath << "does not exist!";
+    return true;
+   }
+  }
+
+  ConfParam conf;
+
+ signals:
+  void sendData();
+
+ private slots:
+  void onNewCommClient() {
+   while (commServer.hasPendingConnections()) {
+    QTcpSocket *client=commServer.nextPendingConnection();
+    connect(client,&QTcpSocket::readyRead,this,[this,client]() {
+     QByteArray cmd=client->readAll().trimmed();
+     handleCommand(QString::fromUtf8(cmd),client);
+    });
+    connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
+    qInfo() << "hnode_compute_hempow: <Comm> Client connected from" << client->peerAddress().toString();
+   }
+  }
+
+  void handleCommand(const QString &cmd,QTcpSocket *client) {
+   QStringList sList; //int iCmd=0; int iParam=0xffff;
+   QIntValidator trigV(256,65535,this);
+   qInfo() << "hnode_compute_hempow: <Comm> Received command:" << cmd;
+   if (!cmd.contains("|")) {
+    sList.append(cmd);
+    if (cmd==CMD_COMP_ACQINFO) {
+/*     qDebug("hnode_compute_hempow: <Comm> Sending Amplifier(s) Info..");
+     client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
+     client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
+     client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
+     client->write("-> Bipolar channel(s)#: "+QString::number(conf.bipChnCount).toUtf8()+"\n");
+     client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf.physChnCount).toUtf8()+"\n");
+     client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(conf.totalChnCount).toUtf8()+"\n");
+     client->write("-> Grand total channels# from all amps: "+QString::number(conf.totalCount).toUtf8()+"\n");
+     client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
+    } else if (cmd==CMD_COMP_AMPSYNC) {
+    } else if (cmd==CMD_COMP_STATUS) {
+     qDebug("hnode_compute_hempow: <Comm> Sending computation status..");
+     client->write("Hemispheric powers are computed on-the-fly for the  streaming EEG.\n");
+    } else if (cmd==CMD_COMP_DISCONNECT) {
+//     qDebug("hnode_compute_hempow: <Comm> Disconnecting client..");
+//     client->write("Disconnecting...\n");
+//     client->disconnectFromHost();
+    } else if (cmd==CMD_COMP_GETCONF) {
+/*     qDebug("hnode_compute_hempow: <Comm> Sending Config Parameters..");
+     client->write(QString::number(conf.ampCount).toUtf8()+","+ \
+                   QString::number(conf.eegRate).toUtf8()+","+ \
+                   QString::number(conf.cmRate).toUtf8()+","+ \
+                   QString::number(conf.refChnCount).toUtf8()+","+ \
+                   QString::number(conf.bipChnCount).toUtf8()+","+ \
+                   QString::number(conf.refGain).toUtf8()+","+ \
+                   QString::number(conf.bipGain).toUtf8()+","+ \
+                   QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
+    } else if (cmd==CMD_COMP_GETCHAN) {
+/*     qDebug("hnode_compute_hempow: <Comm> Sending Channels' Parameters..");
+     for (const auto& ch:chnInfo)
+      client->write(QString::number(ch.physChn).toUtf8()+","+ \
+                    QString(ch.chnName).toUtf8()+","+ \
+                    QString::number(ch.topoTheta).toUtf8()+","+ \
+                    QString::number(ch.topoPhi).toUtf8()+","+ \
+                    QString::number(ch.topoX).toUtf8()+","+ \
+                    QString::number(ch.topoY).toUtf8()+","+ \
+                    QString::number(ch.isBipolar).toUtf8()+"\n"); */
+    } else if (cmd==CMD_COMP_REBOOT) {
+//     qDebug("hnode_compute_hempow: <Comm> Rebooting server (if privileges are enough)..");
+//     client->write("Rebooting system (if privileges are enough)...\n");
+//     system("/sbin/shutdown -r now");
+    } else if (cmd==CMD_COMP_SHUTDOWN) {
+//     qDebug("hnode_compute_hempow: <Comm> Shutting down server (if privileges are enough)..");
+//     client->write("Shutting down system (if privileges are enough)...\n");
+//     system("/sbin/shutdown -h now");
+    }
+   } //else { // command with parameter
+    //sList=cmd.split("|");
+    //if (sList[0]=="TRIGGER") {
+    // int pos=0;
+    // if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
+    //} // else {
+//     qDebug("hnode_compute_hempow: <Comm> Unknown command received..");
+//     client->write("Unknown command..\n");
+//    }
+//   }
+  }
+
+  void onNewStrmClient() {
+   while (strmServer.hasPendingConnections()) {
+    QTcpSocket *client=strmServer.nextPendingConnection(); strmClients.append(client);
+    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
+     //for (int i=strmClients.size()-1;i>=0;--i) { QTcpSocket *client=strmClients.at(i);
+     // if (client->state()!=QAbstractSocket::ConnectedState) { strmClients.removeAt(i); client->deleteLater(); }
+     //}
+     qDebug() << "hnode_compute_hempow: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
+     strmClients.removeAll(client);
+     client->deleteLater();
+    });
+    qInfo() << "hnode_compute_hempow: <EEGData> client connected from" << client->peerAddress().toString();
+   }
+  }
+
+  void drainAndBroadcast() {
+//   TcpSample eegSample(conf.ampCount,conf.physChnCount);
+//   while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
+//    for (QTcpSocket *client:strmClients) {
+//     if (client->state()==QAbstractSocket::ConnectedState) {
+//      QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
+//      quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
+//      sizeStream<<msgLength;
+//      client->write(payLoad);
+//      client->flush(); // write actual serialized block
+//     }
+//    }
+//   }
+  }
+
+ private:
+  QTcpServer commServer,strmServer;
+  QVector<QTcpSocket*> strmClients;
+};
+
+#endif

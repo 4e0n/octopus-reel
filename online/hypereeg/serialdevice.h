@@ -37,7 +37,6 @@ class SerialDevice {
  public:
   SerialDevice() {};
   void init() {
-   //if (devIsOpen) { ::close(device); devIsOpen=false; }
    devName="/dev/ttyACM0";
    baudRate=B115200;
    if (open()<0) {
@@ -76,7 +75,7 @@ class SerialDevice {
 
    // --- Readiness handshake (up to ~2s total) ---
    std::string line;
-   auto until_ms=[](int ms){ return ms; }; // readability
+//   auto until_ms=[](int ms){ return ms; }; // readability
 
    int elapsed=0;
    while (elapsed<2000) {

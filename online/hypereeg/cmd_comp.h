@@ -21,38 +21,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _SAMPLE_H
-#define _SAMPLE_H
+#ifndef CMD_COMP_H
+#define CMD_COMP_H
 
-#include <vector>
-#include <QDataStream>
+const QString CMD_COMP_ACQINFO="ACQINFO";
+const QString CMD_COMP_TRIGGER="TRIGGER";
+const QString CMD_COMP_AMPSYNC="AMPSYNC";
+const QString CMD_COMP_STATUS="STATUS";
+const QString CMD_COMP_STOP_EEGSTRM="STOPEEGSTRM";
 
-struct Sample {
- std::vector<float> dataR; // Raw (non-filtered) amplifier data.
- std::vector<float> data;  // [0.1-100]Hz IIR filtered amplifier data.
- std::vector<float> dataF; // 30Q @ 50Hz IIR notch filtered version of data
- unsigned int trigger=0,offset=0;
+const QString CMD_COMP_DISCONNECT="DISCONNECT";
 
- void init(size_t chnCount) {
-  trigger=0; offset=0;
-  dataR.assign(chnCount, 0.0f);
-  data.assign(chnCount, 0.0f);
-  dataF.assign(chnCount, 0.0f);
- }
+const QString CMD_COMP_GETCONF="GETCONF";
+const QString CMD_COMP_GETCHAN="GETCHAN";
 
- Sample(size_t chnCount=0) { init(chnCount); }
- 
- void serialize(QDataStream &out) const {
-  for (float f:data) out<<f;
-  for (float f:dataF) out<<f;
- }
-
- bool deserialize(QDataStream &in,size_t chnCount) {
-  data.resize(chnCount); dataF.resize(chnCount);
-  for (float &f:data) in>>f;
-  for (float &f:dataF) in>>f;
-  return true;
- }
-};
+const QString CMD_COMP_REBOOT="REBOOT";
+const QString CMD_COMP_SHUTDOWN="SHUTDOWN";
 
 #endif

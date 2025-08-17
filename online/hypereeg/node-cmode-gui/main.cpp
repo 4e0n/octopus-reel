@@ -21,38 +21,17 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _SAMPLE_H
-#define _SAMPLE_H
+#include <QApplication>
+#include "cmodclient.h"
 
-#include <vector>
-#include <QDataStream>
+int main(int argc,char* argv[]) {
+ QApplication app(argc,argv);
+ CModClient cModClient;
 
-struct Sample {
- std::vector<float> dataR; // Raw (non-filtered) amplifier data.
- std::vector<float> data;  // [0.1-100]Hz IIR filtered amplifier data.
- std::vector<float> dataF; // 30Q @ 50Hz IIR notch filtered version of data
- unsigned int trigger=0,offset=0;
-
- void init(size_t chnCount) {
-  trigger=0; offset=0;
-  dataR.assign(chnCount, 0.0f);
-  data.assign(chnCount, 0.0f);
-  dataF.assign(chnCount, 0.0f);
+ if (cModClient.initialize()) {
+  qCritical("hnode_cmod_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Common-Mode GUI Client.");
+  return 1;
  }
 
- Sample(size_t chnCount=0) { init(chnCount); }
- 
- void serialize(QDataStream &out) const {
-  for (float f:data) out<<f;
-  for (float f:dataF) out<<f;
- }
-
- bool deserialize(QDataStream &in,size_t chnCount) {
-  data.resize(chnCount); dataF.resize(chnCount);
-  for (float &f:data) in>>f;
-  for (float &f:dataF) in>>f;
-  return true;
- }
-};
-
-#endif
+ return app.exec();
+}

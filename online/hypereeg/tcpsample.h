@@ -32,6 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 struct TcpSample {
  std::vector<Sample> amp;
  unsigned int trigger=0;
+ quint64 offset=0;
 
  //std::vector<qint16> audio;
 
@@ -48,6 +49,7 @@ struct TcpSample {
   QByteArray ba; QDataStream out(&ba, QIODevice::WriteOnly);
   out.setByteOrder(QDataStream::LittleEndian);
   out << MAGIC;
+  out << static_cast<quint64>(offset);
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
   for (const Sample& s:amp) {
    s.serialize(out);
@@ -60,6 +62,7 @@ struct TcpSample {
   QDataStream in(ba);
   in.setByteOrder(QDataStream::LittleEndian);
   quint32 magic,ampCount; in>>magic; if (magic!=MAGIC) return false;
+  in >> offset;
   in >> trigger >> ampCount; amp.resize(ampCount);
   for (Sample &s:amp) {
    s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
