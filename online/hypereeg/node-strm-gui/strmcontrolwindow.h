@@ -35,6 +35,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QMessageBox>
+#include <QDateTime>
 #include <QThread>
 #include "unistd.h"
 #include "confparam.h"
@@ -94,8 +95,8 @@ class StrmControlWindow : public QMainWindow {
    toggleRecordingButton->setCheckable(true);
    connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
 
-   timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
-   timeLabel->setGeometry(110,mainTabWidget->height()-52,190,20);
+   conf->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
+   conf->timeLabel->setGeometry(110,mainTabWidget->height()-52,190,20);
 
    manualSyncButton=new QPushButton("SYNC",cntWidget);
    manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
@@ -167,7 +168,61 @@ class StrmControlWindow : public QMainWindow {
    QApplication::quit();
   }
 
-  void slotToggleRecording() {}
+  void slotToggleRecording() {
+   QDateTime currentDT(QDateTime::currentDateTime());
+   if (!conf->recording) {
+    // Generate filename using current date and time
+    // add current data and time to base: trial-20071228-123012-332.heg
+    QString cntFN="trial-"+currentDT.toString("yyyyMMdd-hhmmss-zzz");
+    conf->hegFile.setFileName(cntFN+".heg");
+    if (!conf->hegFile.open(QIODevice::WriteOnly)) {
+     qDebug() << "hnode_strm_gui: <ToggleRecording> <ERROR> Cannot open .occ file for writing!";
+     return;
+    } conf->hegStream.setDevice(&conf->hegFile);
+
+//    conf->hegStream << (int)(OCTOPUS_VER);		// Version
+    conf->hegStream << conf->ampCount << "\n";		// Amplifier Count
+    conf->hegStream << conf->sampleRate << "\n";	// Sample rate
+    conf->hegStream << conf->chns.size() << "\n";	// Sample rate
+//    conf->hegStream << cntRecChns.size();	// Channel count
+
+    for (int i=0;i<conf->chns.size();i++) // Channel names - Cstyle
+     conf->hegStream << conf->chns[i].chnName << " "; //.toLatin1().data();
+    conf->hegStream << "\n";	// Sample rate
+
+//    for (int i=0;i<cntRecChns.size();i++) { // Param coords
+//     conf->hegStream << acqChannels[cntRecChns[i]]->param.y;
+//     conf->hegStream << acqChannels[cntRecChns[i]]->param.z;
+//    }
+//    for (int i=0;i<cntRecChns.size();i++) { // Real/measured coords
+//     conf->hegStream << acqChannels[cntRecChns[i]]->real[0];
+//     conf->hegStream << acqChannels[cntRecChns[i]]->real[1];
+//     conf->hegStream << acqChannels[cntRecChns[i]]->real[2];
+//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[0];
+//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[1];
+//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[2];
+//    }
+
+//    conf->hegStream << acqEvents.size();	// Event count
+//    for (int i=0;i<acqEvents.size();i++) { // Event Info of the session
+//     conf->hegStream << acqEvents[i]->no;	// Event #
+//     conf->hegStream << acqEvents[i]->name.toLatin1().data(); // Name - Cstyle
+//     conf->hegStream << acqEvents[i]->type;	// STIM or RESP
+//     conf->hegStream << acqEvents[i]->color.red(); // Color
+//     conf->hegStream << acqEvents[i]->color.green();
+//     conf->hegStream << acqEvents[i]->color.blue();
+//    }
+    
+    // Here continuous data begins..
+
+    conf->timeLabel->setText("Rec.Time: 00:00:00");
+    conf->recCounter=0; conf->recording=true;
+   } else { conf->recording=false;
+    //if (stimulation) slotToggleStimulation();
+    conf->hegStream.setDevice(0); conf->hegFile.close();
+   }
+  }
+
   void slotManualSync() { conf->commandToDaemon(CMD_ACQD_AMPSYNC); }
   void slotManualTrig() {}
 
@@ -184,7 +239,8 @@ class StrmControlWindow : public QMainWindow {
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
-  QLabel *timeLabel; QPushButton *manualSyncButton,*manualTrigButton;
+  //QLabel *timeLabel;
+  QPushButton *manualSyncButton,*manualTrigButton;
   QPushButton *toggleRecordingButton,*toggleNotchButton;
   QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };

@@ -30,7 +30,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QWaitCondition>
 #include <QThread>
 #include <atomic>
+#include <QFile>
+#include <QTextStream>
 #include <QVector>
+#include <QLabel>
 #include "chninfo.h"
 #include "../../../common/event.h"
 #include "../tcpsample.h"
@@ -47,6 +50,7 @@ class ConfParam : public QObject {
    audioFrameH=100;
    //gl3DGuiX=160; gl3DGuiY=160;
    gl3DGuiW=400; gl3DGuiH=300;
+   recCounter=0; recording=false;
   };
 
   QString commandToDaemon(const QString &command, int timeoutMs=1000) { // Upstream command
@@ -105,6 +109,11 @@ class ConfParam : public QObject {
   unsigned int scrAvailableSamples,scrUpdateSamples;
   unsigned int guiUpdating; QVector<bool> guiPending;
 
+  QFile hegFile; QTextStream hegStream;
+  quint64 recCounter; bool recording;
+  QString rHour,rMin,rSec;
+  QLabel *timeLabel;
+
  public slots:
   void onStrmDataReady() {
    static QByteArray buffer; buffer.append(strmSocket->readAll());
@@ -119,7 +128,18 @@ class ConfParam : public QObject {
     TcpSample tcpS;
     if (tcpS.deserialize(block,chnCount)) {
      // Push the deserialized tcpSample to circular buffer
-     tcpBuffer[tcpBufHead%tcpBufSize]=tcpS; tcpBufHead++;
+     tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
+     
+     if (recording) { // .. to disk ..
+      hegStream << tcpS.offset << "\n";
+      for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
+       for (unsigned int chnIdx=0;chnIdx<chns.size();chnIdx++) hegStream << tcpS.amp[ampIdx].dataF[chnIdx] << " ";
+       hegStream << tcpS.trigger << "\n";
+      }
+      recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
+     }
+     
+     tcpBufHead++;
     } else {
      qWarning() << "Failed to deserialize TcpSample block.";
     }
@@ -147,6 +167,14 @@ class ConfParam : public QObject {
 
     buffer.remove(0,4+blockSize); // Remove processed block
    }
+  }
+ private:
+  void updateRecTime() { int s,m,h; QString dummyString;
+   s=recCounter/sampleRate; m=s/60; h=m/60;
+   if (h<10) rHour="0"; else rHour=""; rHour+=dummyString.setNum(h);
+   if (m<10) rMin="0"; else rMin=""; rMin+=dummyString.setNum(m);
+   if (s<10) rSec="0"; else rSec=""; rSec+=dummyString.setNum(s);
+   timeLabel->setText("Rec.Time: "+rHour+":"+rMin+":"+rSec);
   }
 };
 
