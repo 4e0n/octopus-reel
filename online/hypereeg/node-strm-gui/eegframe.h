@@ -29,39 +29,35 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QPainter>
 #include <QStaticText>
 #include "confparam.h"
-#include "audioframe.h"
 #include "eegthread.h"
 
 class EEGFrame : public QFrame {
  Q_OBJECT
  public:
-  explicit EEGFrame(ConfParam *c=nullptr,unsigned int a=0,AudioFrame *aFrame=nullptr,
-                    QWidget *parent=nullptr) : QFrame(parent) {
+  explicit EEGFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
    conf=c; ampNo=a; scrollSched=false;
    guiBuffer=QImage(conf->eegFrameW,conf->eegFrameH,QImage::Format_RGB32);
 
-   audioFrame=aFrame;
-
    chnCount=conf->chns.size();
-   colCount=std::ceil((float)chnCount/(float)(33)); // 33 !?
+   colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
    chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
-   chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   chnY=(float)(conf->eegFrameH-conf->audFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
    int ww=(int)((float)(conf->eegFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }
    if (chnCount<16) chnFont=QFont("Helvetica",16,QFont::Bold);
    else if (chnCount>16 && chnCount<32) chnFont=QFont("Helvetica",14,QFont::Bold);
    else if (chnCount>96) chnFont=QFont("Helvetica",12);
    chnTextCache.clear(); chnTextCache.reserve(chnCount);
-   for (auto& chn:conf->chns) {
-    const QString& chnName=chn.chnName;
-    int chnNo=chn.physChn;
+   for (unsigned int i=0;i<chnCount;i++) {
+    int chnNo=conf->chns[i].physChn;
+    const QString& chnName=conf->chns[i].chnName;
     QString label=QString::number(chnNo)+" "+chnName;
     QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
     staticLabel.setTextWidth(-1);  // No width constraint
     chnTextCache.append(staticLabel);
    }
-
-   eegThread=new EEGThread(conf,ampNo,&guiBuffer, /* &(audioFrame->guiBuffer), */ this);
+   audLabel.setText("AUDIO");
+   eegThread=new EEGThread(conf,ampNo,&guiBuffer,this);
    conf->threads[ampNo]=eegThread;
    connect(eegThread,&EEGThread::updateEEGFrame,this,QOverload<>::of(&EEGFrame::update));
    eegThread->start(QThread::HighestPriority);
@@ -79,12 +75,16 @@ class EEGFrame : public QFrame {
    mainPainter.drawRect(cr);
    // Channel names
    mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
-   for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+   for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) { // 2 audio channels
     unsigned int colIdx=chnIdx/chnPerCol;
     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
     mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
     mainPainter.setPen(Qt::black);
     mainPainter.drawLine(width()/2,0,width()/2,height()-1);
+   }
+   mainPainter.setPen(Qt::blue);
+   for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+    mainPainter.drawStaticText(w0[colIdx]+4,conf->eegFrameH-conf->audFrameH/2,audLabel);
    }
    mainPainter.end();
   }
@@ -93,8 +93,7 @@ class EEGFrame : public QFrame {
   ConfParam *conf; unsigned int ampNo; QPainter mainPainter;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
   QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont;
-
-  AudioFrame *audioFrame;
+  QStaticText audLabel;
 };
 
 #endif

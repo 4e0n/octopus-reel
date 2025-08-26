@@ -23,10 +23,13 @@ TEMPLATE = app
 TARGET = hnode-cmod-gui
 INCLUDEPATH += .
 LIBS += -lGLU
+LIBS += -fopenmp
 QT += core gui widgets network multimedia opengl
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+#QMAKE_CXXFLAGS += -DOCTO_OMP=1
+QMAKE_CXXFLAGS += -fopenmp
 
 # Input
 HEADERS += cmodclient.h \

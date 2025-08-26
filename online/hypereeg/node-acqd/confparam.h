@@ -24,6 +24,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CONFPARAM_H
 #define CONFPARAM_H
 
+#include <QFile>
+#include <QDataStream>
+
 struct ConfParam {
  unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
@@ -32,7 +35,9 @@ struct ConfParam {
  unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
  unsigned int totalChnCount; // refChnCount+bipChnCount+2
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
- bool dumpRawEEGStream;
+ unsigned int eegSamplesInTick;
+ QFile hEEGFile; QDataStream hEEGStream;
+ bool dumpRaw;
 };
 
 #endif

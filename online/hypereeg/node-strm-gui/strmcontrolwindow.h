@@ -190,31 +190,6 @@ class StrmControlWindow : public QMainWindow {
      conf->hegStream << conf->chns[i].chnName << " "; //.toLatin1().data();
     conf->hegStream << "\n";	// Sample rate
 
-//    for (int i=0;i<cntRecChns.size();i++) { // Param coords
-//     conf->hegStream << acqChannels[cntRecChns[i]]->param.y;
-//     conf->hegStream << acqChannels[cntRecChns[i]]->param.z;
-//    }
-//    for (int i=0;i<cntRecChns.size();i++) { // Real/measured coords
-//     conf->hegStream << acqChannels[cntRecChns[i]]->real[0];
-//     conf->hegStream << acqChannels[cntRecChns[i]]->real[1];
-//     conf->hegStream << acqChannels[cntRecChns[i]]->real[2];
-//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[0];
-//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[1];
-//     conf->hegStream << acqChannels[cntRecChns[i]]->realS[2];
-//    }
-
-//    conf->hegStream << acqEvents.size();	// Event count
-//    for (int i=0;i<acqEvents.size();i++) { // Event Info of the session
-//     conf->hegStream << acqEvents[i]->no;	// Event #
-//     conf->hegStream << acqEvents[i]->name.toLatin1().data(); // Name - Cstyle
-//     conf->hegStream << acqEvents[i]->type;	// STIM or RESP
-//     conf->hegStream << acqEvents[i]->color.red(); // Color
-//     conf->hegStream << acqEvents[i]->color.green();
-//     conf->hegStream << acqEvents[i]->color.blue();
-//    }
-    
-    // Here continuous data begins..
-
     conf->timeLabel->setText("Rec.Time: 00:00:00");
     conf->recCounter=0; conf->recording=true;
    } else { conf->recording=false;
@@ -239,7 +214,6 @@ class StrmControlWindow : public QMainWindow {
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
-  //QLabel *timeLabel;
   QPushButton *manualSyncButton,*manualTrigButton;
   QPushButton *toggleRecordingButton,*toggleNotchButton;
   QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;

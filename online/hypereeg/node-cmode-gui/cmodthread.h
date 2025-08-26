@@ -49,7 +49,6 @@ class CModThread : public QThread {
    // Green <-> Yellow <-> Red
    for (unsigned int i=0;i<128;i++) palette.append(QColor(2*i,255,0));
    for (unsigned int i=0;i<128;i++) palette.append(QColor(255,255-2*i,0));
-   //for (auto& p:palette) qDebug() << p;
   }
 
   void resetCMBuffer() {
@@ -150,7 +149,7 @@ class CModThread : public QThread {
   QString dummyString;
   bool threadActive;
   QFont hdrFont1,chnFont1,chnFont2;
-  QPainter cmPainter; //QVector<QStaticText> chnTextCache;
+  QPainter cmPainter;
   QVector<QColor> palette;
 };
 

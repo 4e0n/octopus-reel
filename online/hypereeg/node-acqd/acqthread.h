@@ -29,7 +29,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QDebug>
 #include <QFile>
-#include <QTextStream>
+#include <QDataStream>
 
 #ifdef EEMAGINE
 #define _UNICODE
@@ -41,6 +41,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #endif
 
 #include <iostream>
+#include <vector>
+#include <algorithm> // nth_element
+#include <cstdint>
+#include <cmath>
+
 #include "confparam.h"
 #include "../globals.h"
 #include "../sample.h"
@@ -49,11 +54,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../serialdevice.h"
 #include "eeamp.h"
 #include "audioamp.h"
-
-//#define DUMPEEGSTREAM
-//#define DUMPCMSTREAM
-
-const unsigned int CBUF_SIZE_IN_SECS=10;
+#include "cmodutility.h"
 
 class AcqThread : public QThread {
  Q_OBJECT
@@ -61,15 +62,17 @@ class AcqThread : public QThread {
   AcqThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
    conf=c; nonHWTrig=0;
 
-   serDev.init();
-
-   audioAmp.init(conf);
+   serDev.init(); audioAmp.init(conf);
 
    smp=Sample(conf->physChnCount);
    tcpEEGBufSize=conf->tcpBufSize*conf->eegRate; tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
    tcpEEGBuffer=QVector<TcpSample>(tcpEEGBufSize,TcpSample(conf->ampCount,conf->physChnCount));
 
    tcpCMBufSize=conf->tcpBufSize*conf->cmRate; tcpCM=TcpCMArray(conf->ampCount,conf->physChnCount);
+
+   // init once at startup:
+   tcpCM.init(conf->ampCount, chnCount, /*withReasons=*/true);
+
    tcpCMBuffer=QVector<TcpCMArray>(tcpCMBufSize,TcpCMArray(conf->ampCount,conf->physChnCount));
 
    // This buffer contains difference between squares of unfiltered and filtered data back in time for 1 sec.
@@ -101,33 +104,32 @@ class AcqThread : public QThread {
      std::cout << "Exception" << ex.what() << std::endl;
     }
     cBufPivotList[ampIdx]=ee.cBufIdx;
-    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) {
-     for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
-      float dummyR=ee.buf.getSample(chnIdx,smpIdx);
-      float dummy=ee.bpFilterList[chnIdx].filterSample(dummyR);
-      float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
-      float dummyC=std::abs(dummy*dummy-dummyF*dummyF)*1e10f;
-      smp.dataR[chnIdx]=dummyR; // Raw
-      smp.data[chnIdx]=dummy;   // BP filtered
-      smp.dataF[chnIdx]=dummyF; // BP+notch filtered
-      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=dummyC;
-      //if (ampIdx==0 && chnIdx==0)
-      // qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
+    // -----
+    const int eegCh=int(chnCount-2); const unsigned baseIdx=ee.cBufIdx;
+    #pragma omp parallel for schedule(static) if(eegCh>=8)
+    for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
+     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.nFilterList[chnIdx];
+     for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
+      float xR=ee.buf.getSample(chnIdx,smpIdx);
+      float x=bp.filterSample(xR); float xf=nf.filterSample(x);
+      float c=std::abs(x*x-xf*xf)*1e10f;
+      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
+      dst.dataR[chnIdx]=xR; dst.data[chnIdx]=x; dst.dataF[chnIdx]=xf;
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=c;
      }
-     smp.trigger=ee.buf.getSample(chnCount-2,smpIdx);
-     if (smpIdx==0) ee.baseSmpIdx=ee.buf.getSample(chnCount-1,smpIdx); // -- The very 1st sample is set as EPOCH
-     smp.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx; // Sample# after Epoch
-     //--> SYNC received for individual amps here in loop version
-     ee.cBuf[(ee.cBufIdx+smpIdx)%cBufSz]=smp;
     }
-    ee.cBufIdx+=ee.smpCount;
+    for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) { // set trigger/offset serially
+     auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
+     dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
+     dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
+    }
+    // -----
+    ee.cBufIdx+=ee.smpCount; // advance head once per block
     ampIdx++;
    }
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
    cmRMSBufIdx++;
-
-   audioAmp.instreamAudio(); // Audio data during the same 100ms
   }
 
   void fetchEegData() {
@@ -148,42 +150,47 @@ class AcqThread : public QThread {
      std::cout << "Exception" << ex.what() << std::endl;
     }
     cBufPivotList[ampIdx]=ee.cBufIdx;
-    for (unsigned int smpIdx=0;smpIdx<ee.smpCount;smpIdx++) {
-     for (unsigned int chnIdx=0;chnIdx<chnCount-2;chnIdx++) {
-      float dummyR=ee.buf.getSample(chnIdx,smpIdx);
-      float dummy=ee.bpFilterList[chnIdx].filterSample(dummyR);
-      float dummyF=ee.nFilterList[chnIdx].filterSample(dummy);
-      float dummyC=std::abs(dummy*dummy-dummyF*dummyF)*1e10f;
-      smp.dataR[chnIdx]=dummyR; // Raw
-      smp.data[chnIdx]=dummy;   // BP filtered
-      smp.dataF[chnIdx]=dummyF; // BP+notch filtered
-      //qDebug() << ampIdx << chnIdx << cmRMSBufIdx << cmRMSBufSize;
-      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=dummyC;
-      //if (ampIdx==0 && chnIdx==0) qDebug() << "fetchData: amp=" << ampIdx << " smpIdx=" << smpIdx << " ch=" << chnIdx << " val=" << dummy << dummyF;
-      //if (ampIdx==0 && chnIdx==0) qDebug() << dummyC;
+    // -----
+    const int eegCh=int(chnCount-2); const unsigned baseIdx=ee.cBufIdx;
+    #pragma omp parallel for schedule(static) if(eegCh>=8)
+    for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
+     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.nFilterList[chnIdx];
+     for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
+      float xR=ee.buf.getSample(chnIdx,smpIdx);
+      float x=bp.filterSample(xR); float xf=nf.filterSample(x);
+      float c=std::abs(x*x-xf*xf)*1e10f;
+      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
+      dst.dataR[chnIdx]=xR; dst.data[chnIdx]=x; dst.dataF[chnIdx]=xf;
+      cmRMSBuf[ampIdx][chnIdx][cmRMSBufIdx%cmRMSBufSize]=c;
      }
-     smp.trigger=ee.buf.getSample(chnCount-2,smpIdx);
-     //--> The very 1st sample is set as EPOCH in init version
-     smp.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx; // Sample# after Epoch
-     // Receive SYNC for individual amps
-     if (smp.trigger != 0) {
-      if (smp.trigger==(unsigned int)(TRIG_AMPSYNC)) {
-       qInfo("hnode_acqd: <AmpSync> SYNC received by @AMP#%d -- %d",(int)ampIdx+1,smp.offset);
-       arrivedTrig[ampIdx]=smp.offset; syncTrig++; // arrived to one of amps, wait for the rest..
+    }
+    for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) { // set trigger/offset serially
+     auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
+     dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
+     dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
+     if (dst.trigger!=0) {
+      if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
+       qInfo("hnode_acqd: <AmpSync> SYNC received by @AMP#%u -- %u",(unsigned)ampIdx+1,(unsigned)dst.offset);
+       arrivedTrig[ampIdx]=dst.offset;
+       ++syncTrig; // arrived to one of amps, wait for the rest... - also; serial here -> no atomics needed
       } else { // Other trigger than SYNC
-       qInfo("hnode_acqd: <AmpSync> Trigger #%d arrived at AMP#%d -- @sampleoffset=%d",smp.trigger,(int)ampIdx+1,smp.offset);
+       qInfo("hnode_acqd: <AmpSync> Trigger #%u arrived at AMP#%u -- @sampleoffset=%u",(unsigned)dst.trigger,(unsigned)ampIdx+1,(unsigned)dst.offset);
       }
      }
-     ee.cBuf[(ee.cBufIdx+smpIdx)%cBufSz]=smp;
-    } // Derive the minimum index among # of samples fetched via any amp (to use later in circular buffer updates)
-    ee.cBufIdx+=ee.smpCount;
+    }
+    // -----
+    ee.cBufIdx+=ee.smpCount; // advance head once per block
     ampIdx++;
    }
    cBufPivotPrev=cBufPivot;
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
    cmRMSBufIdx++;
+  }
 
-   audioAmp.instreamAudio(); // Audio data during the same 100ms
+  std::vector<float> audioEnv;
+  void fetchAudioData() {
+   audioAmp.instreamAudio(); // reads exactly one period (e.g., 4800 frames)
+   audioAmp.pushEnvelopeTick(conf->eegRate,conf->eegSamplesInTick); // builds+stores env in ring
   }
 
   void run() override {
@@ -195,7 +202,15 @@ class AcqThread : public QThread {
 
    // --- Initial setup ---
 
-   audioAmp.initAlsa();
+   if (Ssmooth_.empty()) {
+    Ssmooth_.assign(conf->ampCount,std::vector<float>(conf->physChnCount,0.f));
+    tmpAmpChn_.assign(conf->ampCount,std::vector<float>(conf->physChnCount,0.f));
+    tmpAbsDev_.assign(conf->ampCount,std::vector<float>(conf->physChnCount,0.f));
+    cmWarmupFilled_=0;
+    isBad_.assign(conf->ampCount,std::vector<uint8_t>(conf->physChnCount,0));
+   }
+
+   audioAmp.init(conf); audioAmp.initAlsa();
 
    std::vector<amplifier*> eeAmpsUnsorted,eeAmpsSorted; std::vector<unsigned int> sUnsorted,serialNos;
    eeAmpsUnsorted=eeFact.getAmplifiers();
@@ -247,26 +262,17 @@ class AcqThread : public QThread {
    using namespace eesynth;
 #endif
    // Initialize EEG streams of amps.
-   for (auto& e:eeAmps) e.str=e.amp->OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
+   //for (auto& e:eeAmps) e.str=e.amp->OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
+   for (auto& e:eeAmps) e.str=e.OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    qInfo() << "hnode_acqd: <acqthread_switch2eeg> EEG upstream started..";
 
    // EEG stream
    // -----------------------------------------------------------------------------------------------------------------
-   fetchEegData0(); // The first round of acquisition - to preadjust certain things
+   fetchEegData0(); fetchAudioData(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
    sendTrigger(TRIG_AMPSYNC);
    qInfo() << "hnode_acqd: <AmpSync> SYNC sent..";
-
-//#ifdef DUMPEEGSTREAM
-   QFile eegFile("raweegdump.txt");
-   eegFile.open(QIODevice::Append|QIODevice::Text); QTextStream eegStream(&eegFile);
-//#endif
-
-//#ifdef DUMPCMSTREAM
-   QFile cmFile("rawcmdump.txt");
-   cmFile.open(QIODevice::Append|QIODevice::Text); QTextStream cmStream(&cmFile);
-//#endif
 
    while (true) {
 #ifndef EEMAGINE
@@ -275,7 +281,7 @@ class AcqThread : public QThread {
                                                               // It will be received later for inter-amp syncronization
     }
 #endif
-    fetchEegData();
+    fetchEegData(); fetchAudioData();
 
     // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
     if (eeAmps.size()>1 && syncTrig==eeAmps.size()) {
@@ -294,7 +300,17 @@ class AcqThread : public QThread {
      syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
     }
 
-    //mutex.lock();
+    // pick the latest env block; later you can pass k>0 if you rewind ticks
+    const std::vector<float>* audBlk=audioAmp.getEnvelopeBack(0); // k=
+    const unsigned Nexp=conf->eegSamplesInTick; // e.g., 100
+
+    // One-time mismatch warning
+    static bool warned=false;
+    if (audBlk && audBlk->size()!=Nexp && !warned) {
+     qWarning() << "[AUD] envelope size" << audBlk->size() << "!= Nexp" << Nexp;
+     warned=true;
+    }
+
     quint64 tcpDataSize=cBufPivot-cBufPivotPrev; //qInfo() << cBufPivotPrev << cBufPivot;
     for (quint64 tcpDataIdx=0;tcpDataIdx<tcpDataSize;tcpDataIdx++) {
      // Alignment of each amplifier to the latest offset by +arrivedTrig[i]
@@ -324,71 +340,109 @@ class AcqThread : public QThread {
       chkTrigOffset=0;
      }
 
-     // Copy Audio L and Audio R in tcpEEG from Audio Circular Buffer
+     // Copy Audio L and Audio R in tcpEEG from Audio Circular Buffer ---- audio envelope for this sample ----
+     //   map tcpDataIdx (0..Nexp-1) to the envelope slot s (same tick)
+     unsigned s=unsigned(tcpDataIdx); // 1:1 within the tick
+     tcpEEG.audioEnv=(audBlk && s<audBlk->size()) ? (*audBlk)[s] : 0.f;
 
-     tcpEEG.offset=counter0;
-     counter0++;
+     tcpEEG.offset=counter0; counter0++;
 
      tcpEEGBuffer[(tcpEEGBufHead+tcpDataIdx)%tcpEEGBufSize]=tcpEEG; // Push to Circular Buffer
-//#ifdef DUMPEEGSTREAM
-     if (conf->dumpRawEEGStream) {
+
+     // Record RAW EEG to files..
+     if (conf->dumpRaw) {
       chnCount=conf->physChnCount; unsigned int ampCount=eeAmps.size();
       for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-       if (ampIdx==0) eegStream << QString::number(tcpEEG.offset) << " - ";
-       for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) eegStream << QString::number(tcpEEG.amp[ampIdx].data[chnIdx]*1e6) << " ";
-       if (ampIdx<ampCount-1) eegStream << "- ";
-       //eegStream << QString::number(tcpEEG.amp[ampIdx].data[chnIdx]);
-       else if (ampIdx==ampCount-1) eegStream << "\n";
+       if (ampIdx==0) conf->hEEGStream << tcpEEG.offset;
+       for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) conf->hEEGStream << tcpEEG.amp[ampIdx].data[chnIdx];
+       if (ampIdx==ampCount-1) conf->hEEGStream << tcpEEG.trigger;
       }
      }
-//#endif
     }
  
     tcpEEGBufHead+=tcpDataSize; // Update producer index
     cBufPivotPrev=cBufPivot;
-    //mutex.unlock();
 
     chnCount=conf->physChnCount;
 
     unsigned int cmSampleSize=conf->eegRate/5;
 
+    // after you push one new sample’s cm feature into cmRMSBuf[...] and increment cmRMSBufIdx
+    cmWarmupFilled_++; // count total samples accumulated into cmRMSBuf
+
     if (counter0%cmSampleSize==0) {
+     // ======= warmup guard: wait until we have a full window =======
+     if (cmWarmupFilled_<cmSampleSize) {
+      // optional: publish a muted frame
+      for (unsigned a=0;a<conf->ampCount;++a) for (unsigned c=0;c<chnCount;++c) tcpCM.cmLevel[a][c]=0;
+       // push or skip as you wish:
+       // tcpCMBuffer[tcpCMBufHead%tcpCMBufSize]=tcpCM; ++tcpCMBufHead;
+       goto cm_done; // or `continue;`
+     }
      // Compute and populate TcpCM
      for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
-      float ampChnMean=0.0f; QVector<float> ampChn(chnCount);
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-       float chnMean=0.0f;
-       for (unsigned int smpIdx=0;smpIdx<cmSampleSize;smpIdx++)
-        chnMean+=cmRMSBuf[ampIdx][chnIdx][(cmRMSBufIdx+cmRMSBufSize-smpIdx)%cmRMSBufSize];
-       chnMean/=(float)(cmSampleSize); ampChn[chnIdx]=chnMean;
-       ampChnMean+=chnMean; // sum of all channels to have a mean of all channels
+      auto& ampChn=tmpAmpChn_[ampIdx]; // length=chnCount
+      auto& absdev=tmpAbsDev_[ampIdx]; // length=chnCount
+      // 1) per-channel mean over last cmSampleSize values from your ring
+      for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+       float acc=0.f;
+       for (unsigned s=0;s<cmSampleSize;++s) {
+        const unsigned ridx=(cmRMSBufIdx+cmRMSBufSize-s)%cmRMSBufSize;
+        acc+=cmRMSBuf[ampIdx][chnIdx][ridx];
+       }
+       ampChn[chnIdx]=acc/float(cmSampleSize);
       }
-      ampChnMean/=(float)(chnCount);
-      //if (ampIdx==0) qDebug() << ampChn[0];
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-       float x=(ampChn[chnIdx]-ampChnMean)*1e7f+127.0f; // Absolute difference against mean of all chns
-       if (x<0.0f) x=0; else if (x>255.0f) x=255.0;
-
-//       if (ampIdx==0 && chnIdx==0) qDebug() << x; // How much percent different than mean noise
-
-       tcpCM.cmLevel[ampIdx][chnIdx]=(unsigned char)(x);
+      // 2) robust center & scale (median & MAD)
+      std::vector<float> tmp=ampChn; // local copy for median
+      const float med=median_inplace(tmp);
+      for (unsigned i=0;i<chnCount;++i) absdev[i]=std::fabs(ampChn[i]-med);
+      float mad=median_inplace(absdev);
+      if (!std::isfinite(mad)) mad=0.f;
+      const float robScale=1.4826f*mad+EPS;
+      // 3) robust z+ → EMA, track Smax
+      float Smax=0.f;
+      for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+       const float zpos=std::max(0.f,(ampChn[chnIdx]-med)/robScale);
+       const float S=CM_ALPHA*zpos+(1.f-CM_ALPHA)*Ssmooth_[ampIdx][chnIdx];
+       Ssmooth_[ampIdx][chnIdx]=S;
+       if (S>Smax) Smax=S;
+      }
+      // 3.5) Hysteresis update (NEW)
+      for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+       float S=Ssmooth_[ampIdx][chnIdx];
+       if (!isBad_[ampIdx][chnIdx] && S>BAD_ON) isBad_[ampIdx][chnIdx]=1;
+       else if (isBad_[ampIdx][chnIdx] && S<BAD_OFF) isBad_[ampIdx][chnIdx]=0;
+      }
+      // 4) “all-good” cap: mute only if nobody stands out AND no channel is flagged bad
+      bool anyBad=false;
+      for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx)
+       if (isBad_[ampIdx][chnIdx]) { anyBad=true; break; }
+      const bool allGood=(Smax<0.5f) && !anyBad;
+      // 5) map to 0..255 for transport (0=good/green, 255=bad/red)
+      for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+       float S=Ssmooth_[ampIdx][chnIdx];
+       float Sprime=(S-S_FLOOR)/(S_HIGH-S_FLOOR);
+       if (Sprime<0.f) Sprime=0.f;
+       if (Sprime>1.f) Sprime=1.f;
+       if (allGood) Sprime=0.f; // keep the map quiet when everyone is fine
+       // optional: ensure flagged BAD doesn’t look “too green”
+       // (gives a subtle visual latch; comment out if you prefer purely continuous color)
+       if (isBad_[ampIdx][chnIdx] && Sprime<0.35f) Sprime=0.35f;
+       tcpCM.cmLevel[ampIdx][chnIdx]=map01_to_u8(Sprime);
       }
      }
-     tcpCMBuffer[tcpCMBufHead%tcpCMBufSize]=tcpCM; tcpCMBufHead++; // Push to Circular Buffer
-    }
 
+     tcpCMBuffer[tcpCMBufHead%tcpCMBufSize]=tcpCM; // Push to Circular Buffer
+     tcpCMBufHead++;
+    }
+cm_done:
     emit sendData();
 
     msleep(conf->eegProbeMsecs);
-    // --Alternatives:
-    //usleep(conf->eegProbeMsecs*1000);
-    //std::this_thread::sleep_for(std::chrono::milliseconds(conf->eegProbeMsecs));
     counter1++;
    } // EEG stream
-   // -----------------------------------------------------------------------------------------------------------------
 
    for (auto& e:eeAmps) { delete e.str; delete e.amp; } // EEG stream stops..
-
    qInfo("hnode_acqd: <acqthread> Exiting thread..");
   }
 
@@ -425,33 +479,30 @@ class AcqThread : public QThread {
  private:
   ConfParam *conf;
 
-  TcpSample tcpEEG; TcpCMArray tcpCM;
-  Sample smp;
-  QVector<TcpSample> tcpEEGBuffer;
-  QVector<TcpCMArray> tcpCMBuffer;
-  int tcpEEGBufSize,tcpCMBufSize;
-  quint64 tcpEEGBufHead,tcpEEGBufTail;
-  quint64 tcpCMBufHead,tcpCMBufTail;
+  TcpSample tcpEEG; TcpCMArray tcpCM; Sample smp;
+  QVector<TcpSample> tcpEEGBuffer; QVector<TcpCMArray> tcpCMBuffer;
+  int tcpEEGBufSize,tcpCMBufSize; quint64 tcpEEGBufHead,tcpEEGBufTail,tcpCMBufHead,tcpCMBufTail;
 
-  QVector<QVector<QVector<float> > > cmRMSBuf;
-  quint64 cmRMSBufIdx; unsigned int cmRMSBufSize;
+  QVector<QVector<QVector<float> > > cmRMSBuf; quint64 cmRMSBufIdx; unsigned int cmRMSBufSize;
 
-  std::vector<EEAmp> eeAmps;
-  unsigned int cBufSz,smpCount,chnCount;
-  quint64 cBufPivotPrev,cBufPivot;
-  std::vector<unsigned int> cBufPivotList;
+  std::vector<EEAmp> eeAmps; unsigned int cBufSz,smpCount,chnCount; quint64 cBufPivotPrev,cBufPivot; std::vector<unsigned int> cBufPivotList;
 
   SerialDevice serDev;
 
-  QVector<unsigned int> arrivedTrig; // Trigger offsets for syncronization.
-  unsigned int syncTrig;
-
+  unsigned int syncTrig; QVector<unsigned int> arrivedTrig; // Trigger offsets for syncronization.
   QVector<unsigned int> chkTrig; unsigned int chkTrigOffset;
 
-  quint64 counter0,counter1;
-  unsigned int nonHWTrig;
+  quint64 counter0,counter1; unsigned int nonHWTrig;
 
   AudioAmp audioAmp;
+
+  // CM state (per-amp, per-chn)
+  uint64_t cmWarmupFilled_=0; // samples seen in cmRMSBuf
+  std::vector<std::vector<float>> Ssmooth_;   // EMA of robust z+
+  std::vector<std::vector<float>> tmpAmpChn_; // scratch: per-amp [chnCount]
+  std::vector<std::vector<float>> tmpAbsDev_; // scratch: per-amp [chnCount]
+
+  std::vector<std::vector<uint8_t>> isBad_; // hysteresis state: 0/1
 };
 
 #endif

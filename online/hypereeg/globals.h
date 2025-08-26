@@ -26,9 +26,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 //#define EEMAGINE
 
-#define PARAMETRIC_SYNTH
+//#define PARAMETRIC_SYNTH
 
 #define HACQ_VERBOSE
+
+#define OCTO_OMP
+#include "octo_omp.h"
 
 const unsigned int EE_MAX_AMPCOUNT=8;
 const unsigned int REF_CHN_MAXCOUNT=64;

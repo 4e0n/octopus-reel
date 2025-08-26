@@ -33,14 +33,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QVector>
 #include <thread>
 #include "confparam.h"
-#include "audioframe.h"
 #include "../sample.h"
+#include "../octo_omp.h"
+
+#include "auddisplay.h"
+static AudSymLin gAudSym; // state for symmetric-linear view
 
 class EEGThread : public QThread {
  Q_OBJECT
  public:
-  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,//QImage *asb=nullptr,
-                     QObject *parent=nullptr) : QThread(parent) {
+  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,QObject *parent=nullptr) : QThread(parent) {
    conf=c; ampNo=a; guiBuffer=sb; threadActive=true;
 
    chnCount=conf->chns.size();
@@ -52,7 +54,7 @@ class EEGThread : public QThread {
    wn.append(conf->eegFrameW-1);
 
    tcpBuffer=&conf->tcpBuffer; tcpBufSize=conf->tcpBufSize; scrAvailSmp=conf->scrAvailableSamples;
-   chnY=(float)(conf->eegFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   chnY=(float)(conf->eegFrameH-conf->audFrameH)/(float)(chnPerCol); // reserved vertical pixel count per channel
 
    evtFont=QFont("Helvetica",14,QFont::Bold);
    rTransform.rotate(-90);
@@ -68,32 +70,45 @@ class EEGThread : public QThread {
    guiBuffer->fill(Qt::white);
   }
 
-  void mean(unsigned int startIdx,std::vector<float> *mu,std::vector<float> *sigma) {
-   unsigned int tcpBufTail=conf->tcpBufTail; unsigned int scrUpdateSmp=conf->scrUpdateSamples;
-   const float invSmp=1.0f/static_cast<float>(scrUpdateSmp);
-   if (conf->notchActive) {
-    for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
-     float sum=0.0f,sumSq=0.0f;
-     for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
-      float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].dataF[chnIndex];
-      sum+=data; sumSq+=data*data;
+  void meanf(unsigned int startIdx, float* mu, float* sigma) {
+   const unsigned tcpBufTail=conf->tcpBufTail; const unsigned scrUpdateSmp=conf->scrUpdateSamples;
+   const float invSmp=1.0f/float(scrUpdateSmp);
+   double sum=0.0,sumSq=0.0;
+   SIMD_REDUCE2(sum,sumSq)
+   for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
+    const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
+    const float x=s.audioEnv;
+    sum+=x; sumSq+=double(x)*double(x);
+   }
+   const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
+   *mu=float(m); *sigma=float(std::sqrt(v));
+  }
+
+  void mean(unsigned int startIdx,std::vector<float>* mu,std::vector<float>* sigma) {
+   const unsigned tcpBufTail=conf->tcpBufTail; const unsigned scrUpdateSmp=conf->scrUpdateSamples;
+   const float invSmp=1.0f/float(scrUpdateSmp); const bool useNotch=conf->notchActive;
+   PARFOR(chnIndex,0,int(chnCount)) {
+    double sum=0.0,sumSq=0.0;
+    if (useNotch) {
+     SIMD_REDUCE2(sum,sumSq)
+     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
+      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
+      const float x=s.amp[ampNo].dataF[chnIndex];
+      sum+=x; sumSq+=double(x)*double(x);
      }
-     float m=sum*invSmp;
-     (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
-    }
-   } else {
-    for (unsigned int chnIndex=0;chnIndex<chnCount;chnIndex++) {
-     float sum=0.0f,sumSq=0.0f;
-     for (unsigned int smpIndex=0;smpIndex<scrUpdateSmp;smpIndex++) {
-      float data=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize].amp[ampNo].data[chnIndex];
-      sum+=data; sumSq+=data*data;
+    } else {
+     SIMD_REDUCE2(sum,sumSq)
+     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
+      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
+      const float x=s.amp[ampNo].data[chnIndex];
+      sum+=x; sumSq+=double(x)*double(x);
      }
-     float m=sum*invSmp;
-     (*mu)[chnIndex]=m; (*sigma)[chnIndex]=std::sqrt(sumSq*invSmp-m*m);
     }
+    const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
+    (*mu)[chnIndex]=float(m); (*sigma)[chnIndex]=float(std::sqrt(v));
    }
   }
-  
+
   void updateBuffer() {
    unsigned int scrUpdateSmp=conf->scrUpdateSamples;
    unsigned int scrUpdateCount=scrAvailSmp/scrUpdateSmp;
@@ -112,12 +127,14 @@ class EEGThread : public QThread {
 //
 //
 //     }
- ;   }
+;   }
 
     for (unsigned int smpIdx=0;smpIdx<scrUpdateCount-1;smpIdx++) {
      std::vector<float> s0(chnCount); std::vector<float> s0s(chnCount);
      std::vector<float> s1(chnCount); std::vector<float> s1s(chnCount);
+     float sA0,sA1; float sA0s,sA1s;
      mean((smpIdx+0)*scrUpdateSmp,&s0,&s0s); mean((smpIdx+1)*scrUpdateSmp,&s1,&s1s);
+     meanf((smpIdx+0)*scrUpdateSmp,&sA0,&sA0s); meanf((smpIdx+1)*scrUpdateSmp,&sA1,&sA1s);
 
      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
       unsigned int colIdx=chnIdx/chnPerCol;
@@ -148,6 +165,46 @@ class EEGThread : public QThread {
       guiPainter.setPen(Qt::black);
       guiPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
      }
+
+     scrCurY=conf->eegFrameH-conf->audFrameH/2;
+     int mu0=scrCurY-(int)(sA0*conf->audFrameH*20);
+     int mu1=scrCurY-(int)(sA1*conf->audFrameH*20);
+     int sigma0=(int)(sA0s*conf->audFrameH*20*0.5);
+     int sigma1=(int)(sA1s*conf->audFrameH*20*0.5);
+
+     guiPainter.setPen(Qt::red);
+     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+//      //guiPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
+//      //guiPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
+//      //guiPainter.setPen(Qt::black);
+      guiPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
+     }
+
+
+     // ---- AUDIO (symmetric linear envelope) ----
+//     const float e0=std::max(sA0, 1e-7f); // step-mean envelope (linear 0..1)
+//     const float e1=std::max(sA1, 1e-7f);
+
+     // update EMAs and get signed deviations for the two step endpoints
+//     const float dev0=audsym_update(gAudSym,e0,/*alphaMean*/0.22f, /*alphaAbs*/0.22f);
+//     const float dev1=audsym_update(gAudSym,e1,/*alphaMean*/0.22f, /*alphaAbs*/0.22f);
+
+     // map to signed pixels around the midline
+//     const int midY = conf->eegFrameH - conf->audFrameH/2;
+//     const int dy0  = audsym_dev_to_px(dev0, gAudSym, conf->audFrameH, /*k*/4.0f);
+//     const int dy1  = audsym_dev_to_px(dev1, gAudSym, conf->audFrameH, /*k*/4.0f);
+
+     // draw zero-centered red trace
+//     guiPainter.setPen(Qt::red);
+//     for (unsigned colIdx=0; colIdx<colCount; ++colIdx) {
+//      guiPainter.drawLine(wX[colIdx]-1, midY - dy0,
+//                      wX[colIdx],   midY - dy1);
+//     }
+
+
+// optional centerline
+//guiPainter.setPen(QColor(200,200,200,110));
+//guiPainter.drawLine(0, midY, conf->eegFrameW-1, midY);
 
      for (int colIdx=0;colIdx<wX.size();colIdx++) {
       wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen
@@ -199,7 +256,7 @@ class EEGThread : public QThread {
      }
     }
 */
-    //if (wX[0]==150) guiPainter.drawLine(149,300,149,400); // Amplitude legend
+   //if (wX[0]==150) guiPainter.drawLine(149,300,149,400); // Amplitude legend
 
    guiPainter.end();
   }
@@ -210,8 +267,7 @@ class EEGThread : public QThread {
  protected:
   virtual void run() override {
   
-   //while (true) {
-   while (threadActive) { // && !QThread::currentThread()->isInterruptionRequested()) {
+   while (threadActive) {
     {
      QMutexLocker locker(&conf->mutex);
      // Sleep until producer signals
@@ -227,7 +283,6 @@ class EEGThread : public QThread {
      conf->guiUpdating--; // semaphore.. kind of..  
      // If this was the last scroller, then advance tail..
      if (conf->guiUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples;
-     //if (!conf->quitPending)
     }
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");

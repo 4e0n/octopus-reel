@@ -24,7 +24,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef CONFPARAM_H
 #define CONFPARAM_H
 
-//#include <QApplication>
 #include <QColor>
 #include <QTcpSocket>
 #include <QMutex>
@@ -44,8 +43,7 @@ class ConfParam : public QObject {
   ConfParam() {};
   void init(int ampC=0) {
    ampCount=ampC; tcpBufHead=tcpBufTail=0; guiUpdating=0; threads.resize(ampCount);
-   quitPending=false; //updateInstant=false;
-   //updated.resize(ampCount);
+   quitPending=false;
    guiMaxAmpPerLine=GUI_MAX_AMP_PER_LINE;
   };
 
@@ -72,8 +70,7 @@ class ConfParam : public QObject {
   QVector<ChnInfo> chns;
   QVector<QColor> rgbPalette;
 
-  //std::atomic<bool> updateInstant;
-  bool quitPending; //QVector<bool> updated;
+  bool quitPending;
   mutable QMutex mutex; QWaitCondition guiWait;
   unsigned int guiUpdating; QVector<bool> guiPending;
 

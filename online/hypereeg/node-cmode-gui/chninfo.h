@@ -27,11 +27,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../../../common/vec3.h"
 
 struct ChnInfo {
-//  ChnInfo() {}
-  unsigned int physChn,topoX,topoY;
-  QString chnName;
-  bool isBipolar;
-  unsigned char cmLevel; // Common Mode noise level
+ unsigned int physChn,topoX,topoY;
+ QString chnName;
+ bool isBipolar;
+ unsigned char cmLevel; // Common Mode noise level
 };
 
 #endif

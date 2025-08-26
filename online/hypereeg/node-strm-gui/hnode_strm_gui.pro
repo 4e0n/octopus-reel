@@ -23,25 +23,23 @@ TEMPLATE = app
 TARGET = hnode-strm-gui
 INCLUDEPATH += .
 LIBS += -lGLU
+LIBS += -fopenmp
 QT += core gui widgets network multimedia opengl
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+#QMAKE_CXXFLAGS += -DOCTO_OMP=1
+QMAKE_CXXFLAGS += -fopenmp
 
 # Input
 HEADERS += strmclient.h \
            strmcontrolwindow.h \
            ampstreamwindow.h \
-           headglwidget.h \
-           audioframe.h \
            eegframe.h \
            eegthread.h \
            configparser.h \
            confparam.h \
            chninfo.h \
-#           headmodel.h \
-#           legendframe.h \
-#           headglwidget.h \
            ../../../common/event.h \
            ../../../common/vec3.h \
            ../../../common/coord3d.h \

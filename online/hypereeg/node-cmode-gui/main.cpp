@@ -22,11 +22,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 #include <QApplication>
+#include "../globals.h"
 #include "cmodclient.h"
 
 int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
  CModClient cModClient;
+
+ omp_diag();
 
  if (cModClient.initialize()) {
   qCritical("hnode_cmod_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Common-Mode GUI Client.");

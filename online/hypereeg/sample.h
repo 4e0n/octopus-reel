@@ -34,10 +34,7 @@ struct Sample {
  unsigned int trigger=0,offset=0;
 
  void init(size_t chnCount) {
-  trigger=0; offset=0;
-  dataR.assign(chnCount, 0.0f);
-  data.assign(chnCount, 0.0f);
-  dataF.assign(chnCount, 0.0f);
+  trigger=0; offset=0; dataR.assign(chnCount,0.0f); data.assign(chnCount,0.0f); dataF.assign(chnCount,0.0f);
  }
 
  Sample(size_t chnCount=0) { init(chnCount); }

@@ -29,6 +29,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QTcpSocket>
 #include <QString>
 #include <QIntValidator>
+#include <QDateTime>
 #include "../globals.h"
 #include "../sample.h"
 #include "../tcpsample.h"
@@ -68,7 +69,9 @@ class AcqDaemon : public QObject {
      conf.totalChnCount=conf.physChnCount+2;
      conf.totalCount=conf.ampCount*conf.totalChnCount;
 
-     conf.dumpRawEEGStream=false;
+     conf.eegSamplesInTick=conf.eegRate*conf.eegProbeMsecs/1000;
+
+     conf.dumpRaw=false;
 
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "hnode_acqd: ---> Datahandling Info <---";
@@ -181,10 +184,19 @@ class AcqDaemon : public QObject {
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_DUMPRAWON) {
-     conf.dumpRawEEGStream=true;
+     QDateTime currentDT(QDateTime::currentDateTime());
+     QString tStamp=currentDT.toString("yyyyMMdd-hhmmss-zzz");
+     conf.hEEGFile.setFileName("/opt/octopus/heegdump-"+tStamp+".raw");
+     conf.hEEGFile.open(QIODevice::WriteOnly);
+     conf.hEEGStream.setDevice(&(conf.hEEGFile));
+     conf.hEEGStream.setByteOrder(QDataStream::LittleEndian);
+     conf.hEEGStream.setFloatingPointPrecision(QDataStream::SinglePrecision); // 32-bit
+     conf.hEEGStream << "OCTOPUS_HEEG";
+     conf.hEEGStream << conf.ampCount << conf.physChnCount;
+     conf.dumpRaw=true;
      client->write("hnode_acqd: Raw EEG dumping started.\n");
     } else if (cmd==CMD_ACQD_DUMPRAWOFF) {
-     conf.dumpRawEEGStream=false;
+     conf.dumpRaw=false; conf.hEEGStream.setDevice(nullptr); conf.hEEGFile.close();
      client->write("hnode_acqd: Raw EEG dumping stopped.\n");
     } else if (cmd==CMD_ACQD_REBOOT) {
      qDebug("hnode_acqd: <Comm> Rebooting server (if privileges are enough)..");
@@ -208,9 +220,10 @@ class AcqDaemon : public QObject {
       qDebug() << "hnode_acqd: ERROR!!! <Comm> **Non-hardware** trigger is not between designated interval (256,65535).";
       client->write("Error! **Non-hardware** Trigger should be between (256,65535). Trigger not conveyed.\n");
      }
-    } //else {
-     //qDebug("hnode_acqd: <Comm> Unknown command received..");
-     //client->write("Unknown command..\n");
+    }
+    //else {
+    // qDebug("hnode_acqd: <Comm> Unknown command received..");
+    // client->write("Unknown command..\n");
     //}
    }
   }
@@ -247,9 +260,7 @@ class AcqDaemon : public QObject {
    TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
    //TcpCMArray cm2(conf.ampCount,conf.physChnCount);
    while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
-    //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() 
-    //     << " ChCount:" << tcpSample.amp[0].dataF.size() 
-    //     << " FirstVal:" << tcpSample.amp[0].dataF[0];
+    //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() << " ChCount:" << tcpSample.amp[0].dataF.size() << " FirstVal:" << tcpSample.amp[0].dataF[0];
     for (QTcpSocket *client:strmClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
@@ -262,8 +273,7 @@ class AcqDaemon : public QObject {
    }
    while (acqThread->popCMArray(&cmArray)) { QByteArray payLoad=cmArray.serialize();
     // serialization-deserialization loopback test
-    //cm2.deserialize(payLoad,conf.physChnCount);
-    //qDebug() << cm2.cmLevel[1][3];
+    //cm2.deserialize(payLoad,conf.physChnCount); qDebug() << cm2.cmLevel[1][3];
     for (QTcpSocket *client:cmodClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);

@@ -52,6 +52,8 @@ int main(int argc,char *argv[]) {
  QCoreApplication app(argc,argv);
  AcqDaemon acqDaemon;
 
+ omp_diag();
+
  if (acqDaemon.initialize()) {
   qCritical("hnode_acqd: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
   return 1;

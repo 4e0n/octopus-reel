@@ -31,16 +31,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 struct TcpSample {
  std::vector<Sample> amp;
- unsigned int trigger=0;
+ float audioEnv; //std::vector<qint16> audio;
  quint64 offset=0;
-
- //std::vector<qint16> audio;
+ unsigned int trigger=0;
 
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
- void init(size_t ampCount, size_t chnCount) {
+ void init(size_t ampCount,size_t chnCount) {
   amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); trigger=0;
   //audio.resize(48*2);
  }
@@ -54,6 +53,7 @@ struct TcpSample {
   for (const Sample& s:amp) {
    s.serialize(out);
   }
+  out << static_cast<float>(audioEnv);
   //for (qint16 s:audio) out<<s;
   return ba;
  }
@@ -67,6 +67,7 @@ struct TcpSample {
   for (Sample &s:amp) {
    s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
   }
+  in >> audioEnv;
   //for (qint16 &s:audio) in>>s;
   return true;
  }

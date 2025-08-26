@@ -63,7 +63,6 @@ class ConfigParser {
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]); // AVG merged in CHN
      else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else if (opts[0].trimmed()=="MOD") modSection.append(opts[1]);
-     //else if (opts[0].trimmed()=="DIG") digSection.append(opts[1]);
      else {
       qDebug() << "hnode_strm_gui: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
@@ -172,7 +171,6 @@ class ConfigParser {
      qDebug() << "hnode_strm_gui: <ConfigParser> <PLT> ERROR: No parameters in section!";
      return true;
     }
-    //for (auto& pal:conf->rgbPalette) qDebug() << pal[i];
 
     // EVT - Event Space and Hierarchy
     int evtNo,evtColIdx; QString evtName;
@@ -340,22 +338,22 @@ class ConfigParser {
         qDebug() << "hnode_strm_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
 	return true;
        }
-      } else if (opts[0].trimmed()=="HEAD") { // Head frame within STRM window
-       opts2=opts[1].split(",");
-       if (opts2.size()==4) {
-        conf->guiHeadX=opts2[0].toInt(); conf->guiHeadY=opts2[1].toInt();
-        conf->guiHeadW=opts2[2].toInt(); conf->guiHeadH=opts2[3].toInt();
-        if ((!(conf->guiHeadX >= -2000 && conf->guiHeadX <= 2000)) ||
-            (!(conf->guiHeadY >= -2000 && conf->guiHeadY <= 2000)) ||
-            (!(conf->guiHeadW >=   400 && conf->guiHeadW <= 2000)) ||
-            (!(conf->guiHeadH >=   300 && conf->guiHeadH <= 2000))) {
-         qDebug() << "hnode_strm_gui: <ConfigParser> <GUI> <HEAD> ERROR: Window size settings not in appropriate range!";
-	 return true;
-        }
-       } else {
-        qDebug() << "hnode_strm_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
-	return true;
-       }
+      //} else if (opts[0].trimmed()=="HEAD") { // Head frame within STRM window
+      // opts2=opts[1].split(",");
+      // if (opts2.size()==4) {
+      //  conf->guiHeadX=opts2[0].toInt(); conf->guiHeadY=opts2[1].toInt();
+      //  conf->guiHeadW=opts2[2].toInt(); conf->guiHeadH=opts2[3].toInt();
+      //  if ((!(conf->guiHeadX >= -2000 && conf->guiHeadX <= 2000)) ||
+      //      (!(conf->guiHeadY >= -2000 && conf->guiHeadY <= 2000)) ||
+      //      (!(conf->guiHeadW >=   400 && conf->guiHeadW <= 2000)) ||
+      //      (!(conf->guiHeadH >=   300 && conf->guiHeadH <= 2000))) {
+      //   qDebug() << "hnode_strm_gui: <ConfigParser> <GUI> <HEAD> ERROR: Window size settings not in appropriate range!";
+      //   return true;
+      //  }
+      // } else {
+      //  qDebug() << "hnode_strm_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+      //  return true;
+      // }
       }
      }
     } else {

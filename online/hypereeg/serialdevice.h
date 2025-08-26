@@ -102,14 +102,12 @@ class SerialDevice {
         // Not our board; consider closing and trying next tty
         // close(device); return NotFound;
        }
-
       }
      }
     }
     // else timeout slice; loop continues
    }
    // fd stays O_NONBLOCK; that’s fine for our write+optional-ACK pattern.
-
    sleep(1);
    return 1;
   }

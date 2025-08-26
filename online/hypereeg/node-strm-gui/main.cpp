@@ -22,11 +22,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 #include <QApplication>
+#include "../globals.h"
 #include "strmclient.h"
 
 int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
  StrmClient strmClient;
+
+ omp_diag();
 
  if (strmClient.initialize()) {
   qCritical("hnode_strm_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Stream GUI Client.");

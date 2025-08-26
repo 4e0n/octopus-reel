@@ -36,8 +36,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QListWidget>
 #include "confparam.h"
 #include "eegframe.h"
-#include "audioframe.h"
-#include "headglwidget.h"
 
 class AmpStreamWindow : public QMainWindow {
  Q_OBJECT
@@ -47,10 +45,10 @@ class AmpStreamWindow : public QMainWindow {
    setGeometry(ampNo*conf->guiStrmW+conf->guiStrmX,conf->guiStrmY,conf->guiStrmW,conf->guiStrmH);
    setFixedSize(conf->guiStrmW,conf->guiStrmH);
 
-   conf->eegFrameH=conf->guiStrmH-90; conf->eegFrameW=(int)(.66*(float)(conf->guiStrmW));
+   conf->eegFrameH=conf->guiStrmH-90;
+   //conf->eegFrameW=(int)(.66*(float)(conf->guiStrmW));
+   conf->eegFrameW=conf->guiStrmW-6;
    if (conf->eegFrameW%2==1) conf->eegFrameW--;
-   conf->glFrameW=(int)(.33*(float)(conf->guiStrmW));
-   if (conf->glFrameW%2==1) { conf->glFrameW--; } conf->glFrameH=conf->glFrameW;
 
    // *** TABS & TABWIDGETS ***
 
@@ -59,12 +57,9 @@ class AmpStreamWindow : public QMainWindow {
 
    eegWidget=new QWidget(mainTabWidget);
 
-   audioFrame=new AudioFrame(conf,ampNo,eegWidget);
-   audioFrame->setGeometry(2,2,conf->eegFrameW,conf->audioFrameH);
-   eegFrame=new EEGFrame(conf,ampNo,audioFrame,eegWidget);
+   eegFrame=new EEGFrame(conf,ampNo,eegWidget);
    eegFrame->setGeometry(2,2,conf->eegFrameW,conf->eegFrameH); 
-   gl3DWidget=new HeadGLWidget(conf,ampNo,eegWidget);
-   gl3DWidget->setGeometry(conf->eegFrameW+10,2,conf->glFrameW,conf->glFrameH); eegWidget->show(); 
+   eegWidget->show(); 
  
    mainTabWidget->addTab(eegWidget,"EEG/ERP"); mainTabWidget->show();
 
@@ -104,7 +99,7 @@ class AmpStreamWindow : public QMainWindow {
 
  private:
   QString dummyString; QPushButton *dummyButton;
-  AudioFrame *audioFrame; EEGFrame *eegFrame; HeadGLWidget *gl3DWidget;
+  EEGFrame *eegFrame;
   QMenuBar *menuBar; QTabWidget *mainTabWidget; QWidget *eegWidget;
   QButtonGroup *ampBG;
   QVector<QPushButton*> ampButtons;

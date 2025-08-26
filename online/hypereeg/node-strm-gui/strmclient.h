@@ -73,11 +73,9 @@ class StrmClient: public QObject {
      qInfo() << "hnode_strm_gui: <Comm> listening on ports (comm,strm,cmod):" << conf.commPort << conf.strmPort << conf.cmodPort;
      qInfo() << "hnode_strm_gui: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
      qInfo() << "hnode_strm_gui: <GUI> Strm (X,Y,W,H):" << conf.guiStrmX << conf.guiStrmY << conf.guiStrmW << conf.guiStrmH;
-     qInfo() << "hnode_strm_gui: <GUI> Heam (X,Y,W,H):" << conf.guiHeadX << conf.guiHeadY << conf.guiHeadW << conf.guiHeadH;
 
      // Setup command socket
      conf.commSocket->connectToHost(conf.ipAddr,conf.commPort); conf.commSocket->waitForConnected();
-//   qDebug() << "HERE!";
 
      commResponse=conf.commandToDaemon(CMD_ACQD_GETCONF);
      if (!commResponse.isEmpty()) qDebug() << "hnode_strm_gui: <Config> Daemon replied:" << commResponse;
