@@ -184,15 +184,17 @@ class AcqDaemon : public QObject {
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_DUMPRAWON) {
+     static constexpr char dumpSign[]="OCTOPUS_HEEG"; // 12 bytes, no \0
      QDateTime currentDT(QDateTime::currentDateTime());
      QString tStamp=currentDT.toString("yyyyMMdd-hhmmss-zzz");
      conf.hEEGFile.setFileName("/opt/octopus/heegdump-"+tStamp+".raw");
      conf.hEEGFile.open(QIODevice::WriteOnly);
      conf.hEEGStream.setDevice(&(conf.hEEGFile));
+     conf.hEEGStream.setVersion(QDataStream::Qt_5_15); // 5_12
      conf.hEEGStream.setByteOrder(QDataStream::LittleEndian);
      conf.hEEGStream.setFloatingPointPrecision(QDataStream::SinglePrecision); // 32-bit
-     conf.hEEGStream << "OCTOPUS_HEEG";
-     conf.hEEGStream << conf.ampCount << conf.physChnCount;
+     conf.hEEGStream.writeRawData(dumpSign,sizeof(dumpSign)-1); // write signature *without* length or NUL
+     conf.hEEGStream << quint32(conf.ampCount) << quint32(conf.physChnCount);
      conf.dumpRaw=true;
      client->write("hnode_acqd: Raw EEG dumping started.\n");
     } else if (cmd==CMD_ACQD_DUMPRAWOFF) {
@@ -230,7 +232,13 @@ class AcqDaemon : public QObject {
 
   void onNewStrmClient() {
    while (strmServer.hasPendingConnections()) {
-    QTcpSocket *client=strmServer.nextPendingConnection(); strmClients.append(client);
+    QTcpSocket *client=strmServer.nextPendingConnection();
+    
+    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);   // TCP_NODELAY
+    // optional: smaller buffers to avoid deep OS queues
+    client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption, 64*1024);
+    
+    strmClients.append(client);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      //for (int i=strmClients.size()-1;i>=0;--i) { QTcpSocket *client=strmClients.at(i);
      // if (client->state()!=QAbstractSocket::ConnectedState) { strmClients.removeAt(i); client->deleteLater(); }
@@ -245,7 +253,13 @@ class AcqDaemon : public QObject {
 
   void onNewCmodClient() {
    while (cmodServer.hasPendingConnections()) {
-    QTcpSocket *client=cmodServer.nextPendingConnection(); cmodClients.append(client);
+    QTcpSocket *client=cmodServer.nextPendingConnection();
+    
+    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);   // TCP_NODELAY
+    // optional: smaller buffers to avoid deep OS queues
+    client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption, 64*1024);
+    
+    cmodClients.append(client);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      qDebug() << "hnode_acqd: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
      cmodClients.removeAll(client);

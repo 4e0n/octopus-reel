@@ -34,6 +34,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QTextStream>
 #include <QVector>
 #include <QLabel>
+#include <QDateTime>
 #include "chninfo.h"
 #include "../../../common/event.h"
 #include "../tcpsample.h"
@@ -121,6 +122,12 @@ class ConfParam : public QObject {
     // Deserialize into TcpSample
     TcpSample tcpS;
     if (tcpS.deserialize(block,chnCount)) {
+
+     if (tcpS.offset%1000==0) {
+      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
+      qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";
+     }
+
      // Push the deserialized tcpSample to circular buffer
      tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
      

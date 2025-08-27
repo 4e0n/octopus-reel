@@ -39,7 +39,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  */
 
 #include <QCoreApplication>
-
 #include "../globals.h"
 
 #ifdef EEMAGINE
@@ -61,3 +60,69 @@ int main(int argc,char *argv[]) {
 
  return app.exec();
 }
+
+/*
+#include <QCoreApplication>
+#include <QSocketNotifier>
+#include <csignal>
+#include <atomic>
+#include <unistd.h>   // pipe(), read(), write()
+#include "audioamp.h" // your AudioAmp
+
+static int sigPipeFd[2] = {-1, -1};
+static std::atomic<bool> g_stop{false};
+
+// POSIX signal handler: write 1 byte to the pipe (async-signal-safe)
+extern "C" void on_unix_signal(int) {
+    g_stop.store(true, std::memory_order_relaxed);
+    char ch = 1;
+    ::write(sigPipeFd[1], &ch, 1);  // ignore EAGAIN
+}
+
+static void setup_unix_signal_handlers() {
+    ::pipe(sigPipeFd);
+    // make pipe non-blocking if you like
+    struct sigaction sa{};
+    sa.sa_handler = on_unix_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT,  &sa, nullptr);
+    sigaction(SIGTERM, &sa, nullptr);
+}
+
+int main(int argc, char** argv) {
+    QCoreApplication app(argc, argv);
+
+    // 1) Install SIGINT/SIGTERM handlers
+    setup_unix_signal_handlers();
+
+    // 2) Your objects
+    AudioAmp audio;
+    audio.init();                 // alloc ring, reset state
+    if (audio.initAlsa()) {
+        audio.start();
+    }
+
+    // 3) Ensure cleanup on normal quit as well
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&](){
+        audio.stop();             // calls snd_pcm_drop/close inside
+    });
+
+    // 4) QSocketNotifier watches the read end of the pipe.
+    QSocketNotifier sn(sigPipeFd[0], QSocketNotifier::Read, &app);
+    QObject::connect(&sn, &QSocketNotifier::activated, [&](int){
+        // drain the pipe
+        char buf[64];
+        while (::read(sigPipeFd[0], buf, sizeof(buf)) > 0) {}
+        // request graceful shutdown
+        if (g_stop.load(std::memory_order_relaxed)) {
+            // stop audio (safe: we're on the Qt main thread)
+            audio.stop();
+            app.quit();
+        }
+    });
+
+    // 5) Run Qt event loop
+    return app.exec();
+}
+*/

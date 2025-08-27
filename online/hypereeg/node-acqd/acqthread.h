@@ -29,6 +29,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QDebug>
 #include <QFile>
+#include <QDateTime>
 #include <QDataStream>
 
 #ifdef EEMAGINE
@@ -62,7 +63,7 @@ class AcqThread : public QThread {
   AcqThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
    conf=c; nonHWTrig=0;
 
-   serDev.init(); audioAmp.init(conf);
+   serDev.init();
 
    smp=Sample(conf->physChnCount);
    tcpEEGBufSize=conf->tcpBufSize*conf->eegRate; tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
@@ -187,12 +188,6 @@ class AcqThread : public QThread {
    cmRMSBufIdx++;
   }
 
-  std::vector<float> audioEnv;
-  void fetchAudioData() {
-   audioAmp.instreamAudio(); // reads exactly one period (e.g., 4800 frames)
-   audioAmp.pushEnvelopeTick(conf->eegRate,conf->eegSamplesInTick); // builds+stores env in ring
-  }
-
   void run() override {
 #ifdef EEMAGINE
    using namespace eemagine::sdk; factory eeFact("libeego-SDK.so");
@@ -210,7 +205,13 @@ class AcqThread : public QThread {
     isBad_.assign(conf->ampCount,std::vector<uint8_t>(conf->physChnCount,0));
    }
 
-   audioAmp.init(conf); audioAmp.initAlsa();
+   audioAmp.init();
+   if (!audioAmp.initAlsa()) {
+    qWarning() << "Audio init failed; continuing without audio.";
+   } else {
+    audioAmp.start(); // Audio capture thread is spawn
+    audioAmp.alignConsumerToProducerNow();
+   }
 
    std::vector<amplifier*> eeAmpsUnsorted,eeAmpsSorted; std::vector<unsigned int> sUnsorted,serialNos;
    eeAmpsUnsorted=eeFact.getAmplifiers();
@@ -268,7 +269,7 @@ class AcqThread : public QThread {
 
    // EEG stream
    // -----------------------------------------------------------------------------------------------------------------
-   fetchEegData0(); fetchAudioData(); // The first round of acquisition - to preadjust certain things
+   fetchEegData0(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
    sendTrigger(TRIG_AMPSYNC);
@@ -281,7 +282,7 @@ class AcqThread : public QThread {
                                                               // It will be received later for inter-amp syncronization
     }
 #endif
-    fetchEegData(); fetchAudioData();
+    fetchEegData();
 
     // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
     if (eeAmps.size()>1 && syncTrig==eeAmps.size()) {
@@ -300,16 +301,7 @@ class AcqThread : public QThread {
      syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
     }
 
-    // pick the latest env block; later you can pass k>0 if you rewind ticks
-    const std::vector<float>* audBlk=audioAmp.getEnvelopeBack(0); // k=
-    const unsigned Nexp=conf->eegSamplesInTick; // e.g., 100
-
-    // One-time mismatch warning
-    static bool warned=false;
-    if (audBlk && audBlk->size()!=Nexp && !warned) {
-     qWarning() << "[AUD] envelope size" << audBlk->size() << "!= Nexp" << Nexp;
-     warned=true;
-    }
+    // ===================================================================================================================
 
     quint64 tcpDataSize=cBufPivot-cBufPivotPrev; //qInfo() << cBufPivotPrev << cBufPivot;
     for (quint64 tcpDataIdx=0;tcpDataIdx<tcpDataSize;tcpDataIdx++) {
@@ -340,10 +332,9 @@ class AcqThread : public QThread {
       chkTrigOffset=0;
      }
 
-     // Copy Audio L and Audio R in tcpEEG from Audio Circular Buffer ---- audio envelope for this sample ----
-     //   map tcpDataIdx (0..Nexp-1) to the envelope slot s (same tick)
-     unsigned s=unsigned(tcpDataIdx); // 1:1 within the tick
-     tcpEEG.audioEnv=(audBlk && s<audBlk->size()) ? (*audBlk)[s] : 0.f;
+     (void)audioAmp.fetch48(tcpEEG.audio48,20); // tol_ms=20
+
+     tcpEEG.timestampMs=QDateTime::currentMSecsSinceEpoch();
 
      tcpEEG.offset=counter0; counter0++;
 

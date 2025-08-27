@@ -36,8 +36,21 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../sample.h"
 #include "../octo_omp.h"
 
-#include "auddisplay.h"
-static AudSymLin gAudSym; // state for symmetric-linear view
+//#include "auddisplay.h"
+//static AudSymLin gAudSym; // state for symmetric-linear view
+
+// Compute one envelope value from 48 normalized samples in [-1,1]
+inline float audioEnvFrom48_RMS(const float *a48) {
+ double acc=0.0;
+ for (int i=0;i<48;++i) acc+=double(a48[i])*double(a48[i]);
+ return float(std::sqrt(acc/48.0));
+}
+
+inline float audioEnvFrom48_MAV(const float *a48) {
+ double acc=0.0;
+ for (int i=0;i<48;++i) acc+=std::abs(double(a48[i]));
+ return float(acc/48.0);
+}
 
 class EEGThread : public QThread {
  Q_OBJECT
@@ -77,7 +90,7 @@ class EEGThread : public QThread {
    SIMD_REDUCE2(sum,sumSq)
    for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
     const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-    const float x=s.audioEnv;
+    const float x=audioEnvFrom48_RMS(s.audio48);
     sum+=x; sumSq+=double(x)*double(x);
    }
    const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
@@ -136,6 +149,12 @@ class EEGThread : public QThread {
      mean((smpIdx+0)*scrUpdateSmp,&s0,&s0s); mean((smpIdx+1)*scrUpdateSmp,&s1,&s1s);
      meanf((smpIdx+0)*scrUpdateSmp,&sA0,&sA0s); meanf((smpIdx+1)*scrUpdateSmp,&sA1,&sA1s);
 
+     TcpSample tcpS=(*tcpBuffer)[(conf->tcpBufTail+smpIdx)%conf->tcpBufSize];
+     if (tcpS.offset%1000==0) {
+      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
+      qInfo() << "Sample latency @updateBuffer:" << age << "ms";
+     }
+
      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
       unsigned int colIdx=chnIdx/chnPerCol;
       scrCurY=(int)(chnY/2.0+chnY*(chnIdx%chnPerCol));
@@ -169,42 +188,16 @@ class EEGThread : public QThread {
      scrCurY=conf->eegFrameH-conf->audFrameH/2;
      int mu0=scrCurY-(int)(sA0*conf->audFrameH*20);
      int mu1=scrCurY-(int)(sA1*conf->audFrameH*20);
-     int sigma0=(int)(sA0s*conf->audFrameH*20*0.5);
-     int sigma1=(int)(sA1s*conf->audFrameH*20*0.5);
+     //int sigma0=(int)(sA0s*conf->audFrameH*20*0.5);
+     //int sigma1=(int)(sA1s*conf->audFrameH*20*0.5);
 
      guiPainter.setPen(Qt::red);
      for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-//      //guiPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
-//      //guiPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
-//      //guiPainter.setPen(Qt::black);
+     // guiPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
+     // guiPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
+     // guiPainter.setPen(Qt::black);
       guiPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
      }
-
-
-     // ---- AUDIO (symmetric linear envelope) ----
-//     const float e0=std::max(sA0, 1e-7f); // step-mean envelope (linear 0..1)
-//     const float e1=std::max(sA1, 1e-7f);
-
-     // update EMAs and get signed deviations for the two step endpoints
-//     const float dev0=audsym_update(gAudSym,e0,/*alphaMean*/0.22f, /*alphaAbs*/0.22f);
-//     const float dev1=audsym_update(gAudSym,e1,/*alphaMean*/0.22f, /*alphaAbs*/0.22f);
-
-     // map to signed pixels around the midline
-//     const int midY = conf->eegFrameH - conf->audFrameH/2;
-//     const int dy0  = audsym_dev_to_px(dev0, gAudSym, conf->audFrameH, /*k*/4.0f);
-//     const int dy1  = audsym_dev_to_px(dev1, gAudSym, conf->audFrameH, /*k*/4.0f);
-
-     // draw zero-centered red trace
-//     guiPainter.setPen(Qt::red);
-//     for (unsigned colIdx=0; colIdx<colCount; ++colIdx) {
-//      guiPainter.drawLine(wX[colIdx]-1, midY - dy0,
-//                      wX[colIdx],   midY - dy1);
-//     }
-
-
-// optional centerline
-//guiPainter.setPen(QColor(200,200,200,110));
-//guiPainter.drawLine(0, midY, conf->eegFrameW-1, midY);
 
      for (int colIdx=0;colIdx<wX.size();colIdx++) {
       wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen

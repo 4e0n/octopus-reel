@@ -30,10 +30,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "sample.h"
 
 struct TcpSample {
- std::vector<Sample> amp;
- float audioEnv; //std::vector<qint16> audio;
- quint64 offset=0;
- unsigned int trigger=0;
+ std::vector<Sample> amp; float audio48[48];
+ quint64 offset=0; unsigned int trigger=0;
+ quint64 timestampMs=0; // wall-clock at creation
 
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
 
@@ -41,7 +40,6 @@ struct TcpSample {
 
  void init(size_t ampCount,size_t chnCount) {
   amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); trigger=0;
-  //audio.resize(48*2);
  }
 
  QByteArray serialize() const {
@@ -50,25 +48,33 @@ struct TcpSample {
   out << MAGIC;
   out << static_cast<quint64>(offset);
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
+  out << static_cast<quint64>(timestampMs);
   for (const Sample& s:amp) {
    s.serialize(out);
   }
-  out << static_cast<float>(audioEnv);
-  //for (qint16 s:audio) out<<s;
+  for (int i=0;i<48;++i) {
+   out << static_cast<float>(audio48[i]);
+  }
   return ba;
  }
 
  bool deserialize(const QByteArray &ba,size_t chnCount) {
   QDataStream in(ba);
   in.setByteOrder(QDataStream::LittleEndian);
-  quint32 magic,ampCount; in>>magic; if (magic!=MAGIC) return false;
+  quint32 magic=0,ampCount=0;
+  in>>magic; if (magic!=MAGIC) return false;
   in >> offset;
-  in >> trigger >> ampCount; amp.resize(ampCount);
+  in >> trigger >> ampCount;
+  in >> timestampMs;
+  amp.resize(ampCount);
   for (Sample &s:amp) {
    s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
   }
-  in >> audioEnv;
-  //for (qint16 &s:audio) in>>s;
+  for (int i=0;i<48;++i) {
+   float v=0.f;
+   in >> v;
+   audio48[i]=v;
+  }
   return true;
  }
 };

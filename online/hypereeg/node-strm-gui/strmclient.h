@@ -55,8 +55,14 @@ class StrmClient: public QObject {
   explicit StrmClient(QObject *parent=nullptr) : QObject(parent) {
    // Upstream (we're client)
    conf.commSocket=new QTcpSocket(this);
+   conf.commSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+   conf.commSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
    conf.strmSocket=new QTcpSocket(this);
+   conf.strmSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+   conf.strmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
    conf.cmodSocket=new QTcpSocket(this);
+   conf.cmodSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+   conf.cmodSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
    // Downstream (we're server)
    connect(&commServer,&QTcpServer::newConnection,this,&StrmClient::onNewCommClient);
    connect(&strmServer,&QTcpServer::newConnection,this,&StrmClient::onNewStrmClient);
@@ -181,6 +187,10 @@ class StrmClient: public QObject {
   void onNewCommClient() {
    while (commServer.hasPendingConnections()) {
     QTcpSocket *client=commServer.nextPendingConnection();
+
+    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
+
     connect(client,&QTcpSocket::readyRead,this,[this,client]() {
      QByteArray cmd=client->readAll().trimmed();
      handleCommand(QString::fromUtf8(cmd),client);
@@ -258,6 +268,10 @@ class StrmClient: public QObject {
   void onNewStrmClient() {
    while (strmServer.hasPendingConnections()) {
     QTcpSocket *client=strmServer.nextPendingConnection(); strmClients.append(client);
+
+    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
+
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      //for (int i=strmClients.size()-1;i>=0;--i) { QTcpSocket *client=strmClients.at(i);
      // if (client->state()!=QAbstractSocket::ConnectedState) { strmClients.removeAt(i); client->deleteLater(); }
@@ -273,6 +287,10 @@ class StrmClient: public QObject {
   void onNewCmodClient() {
    while (cmodServer.hasPendingConnections()) {
     QTcpSocket *client=cmodServer.nextPendingConnection(); cmodClients.append(client);
+
+    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
+
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      qDebug() << "hnode_strm_gui: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
      cmodClients.removeAll(client);
