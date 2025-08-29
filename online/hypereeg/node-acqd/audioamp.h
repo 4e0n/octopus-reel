@@ -28,300 +28,261 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <atomic>
 #include <thread>
 #include <vector>
-#include <cstdio>
-#include <cstring>
+#include <mutex>
+#include <condition_variable>
 #include <chrono>
-#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <cstdio>
+#include <QtGlobal>
+
+#define DEBUG_AUDIOAMP 1
 
 const unsigned AUDIO_SAMPLE_RATE=48000;
 const unsigned AUDIO_NUM_CHANNELS=2;
 const unsigned AUDIO_CBUF_SECONDS=10; // ~10s ring
 
-struct AudioAmp {
- std::atomic<uint64_t> consFrame{0};  // absolute frame index the consumer will read next
-
- // Synchronization for “new audio available”
- std::mutex cvMx;
- std::condition_variable cvAvail;
-
- // In class AudioAmp (private or public section)
- bool audioOK=false;
-
- // --- Ring buffer ---
- std::vector<int16_t> audioRing;   // interleaved L,R
- unsigned bufSizeFrames=0;         // total frames in ring
- std::atomic<unsigned> bufHead{0}; // producer index in frames
- std::atomic<bool> run{false};
-
- // --- ALSA ---
- snd_pcm_t* handle=nullptr; // audioPCMHandle
- std::thread th;
-
- // --- Stats ---
- std::atomic<uint64_t> audioFrameCounter{0};
- std::atomic<uint64_t> underruns{0};
-
- // --- Trigger detection state ---
- float trigHigh=8000.f;
- float trigLow=4000.f;
- unsigned trigMinGap=2400; // 50 ms @ 48 kHz
- bool trigState=false;
- uint64_t lastTrigFrame=0;
-
- // Init ring
- void init() {
-  bufSizeFrames=AUDIO_CBUF_SECONDS*AUDIO_SAMPLE_RATE;
-  audioRing.resize(size_t(bufSizeFrames)*AUDIO_NUM_CHANNELS);
-  bufHead.store(0);
- }
-
-bool initAlsa() {
-    // Open device (blocking capture)
-    int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_CAPTURE, 0);
-    if (rc < 0) { qWarning() << "octopus_hacqd: <ALSAAudioInit> open failed:" << snd_strerror(rc); return false; }
-
-    // ---- HW params ----
-    snd_pcm_hw_params_t* params = nullptr;
-    snd_pcm_hw_params_alloca(&params);
-    snd_pcm_hw_params_any(handle, params);
-
-    snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
-    snd_pcm_hw_params_set_channels(handle, params, AUDIO_NUM_CHANNELS);
-
-    // Disable kernel resampler; try to force exact 48k
-    snd_pcm_hw_params_set_rate_resample(handle, params, 0);
-    unsigned rate = AUDIO_SAMPLE_RATE;
-    rc = snd_pcm_hw_params_set_rate(handle, params, rate, 0);
-    if (rc < 0) {
-        qWarning() << "octopus_hacqd: <ALSAAudioInit> set_rate exact failed, trying near:" << snd_strerror(rc);
-        rc = snd_pcm_hw_params_set_rate_near(handle, params, &rate, nullptr);
-        if (rc < 0) {
-            qWarning() << "octopus_hacqd: <ALSAAudioInit> set_rate_near failed:" << snd_strerror(rc);
-        }
-    }
-
-    // Try HARD low-latency: 1 ms period, 4 ms buffer
-    snd_pcm_uframes_t period  = 48;
-    snd_pcm_uframes_t bufsize = period * 4;
-
-    rc = snd_pcm_hw_params_set_period_size(handle, params, period, 0);
-    if (rc < 0) {
-        qWarning() << "octopus_hacqd: <ALSAAudioInit> set_period_size exact failed, trying near:" << snd_strerror(rc);
-        rc = snd_pcm_hw_params_set_period_size_near(handle, params, &period, nullptr);
-        if (rc < 0) {
-            qWarning() << "octopus_hacqd: <ALSAAudioInit> set_period_size_near failed:" << snd_strerror(rc);
-        }
-        bufsize = period * 4; // keep 4×period relationship
-    }
-
-    rc = snd_pcm_hw_params_set_buffer_size(handle, params, bufsize);
-    if (rc < 0) {
-        qWarning() << "octopus_hacqd: <ALSAAudioInit> set_buffer_size exact failed, trying near:" << snd_strerror(rc);
-        rc = snd_pcm_hw_params_set_buffer_size_near(handle, params, &bufsize);
-        if (rc < 0) {
-            qWarning() << "octopus_hacqd: <ALSAAudioInit> set_buffer_size_near failed:" << snd_strerror(rc);
-        }
-    }
-
-    rc = snd_pcm_hw_params(handle, params);
-    if (rc < 0) { qWarning() << "octopus_hacqd: <ALSAAudioInit> hw_params commit failed:" << snd_strerror(rc); return false; }
-
-    // ---- SW params: start ASAP, wake each period ----
-    snd_pcm_sw_params_t* sw = nullptr;
-    snd_pcm_sw_params_malloc(&sw);
-    snd_pcm_sw_params_current(handle, sw);
-
-    // Wake when at least one period is available
-    snd_pcm_sw_params_set_avail_min(handle, sw, period);
-    // Start as soon as any data arrives (minimize initial latency)
-    snd_pcm_sw_params_set_start_threshold(handle, sw, 1);
-
-    rc = snd_pcm_sw_params(handle, sw);
-    snd_pcm_sw_params_free(sw);
-    if (rc < 0) { qWarning() << "octopus_hacqd: <ALSAAudioInit> sw_params commit failed:" << snd_strerror(rc); return false; }
-
-    // Prepare PCM
-    rc = snd_pcm_prepare(handle);
-    if (rc < 0) { qWarning() << "octopus_hacqd: <ALSAAudioInit> prepare failed:" << snd_strerror(rc); return false; }
-
-    // Report negotiated actuals
-    snd_pcm_hw_params_get_rate(params, &rate, 0);
-    snd_pcm_hw_params_get_period_size(params, &period, 0);
-    snd_pcm_hw_params_get_buffer_size(params, &bufsize);
-
-    const double latency_ms = 1000.0 * double(bufsize) / double(rate);
-    qInfo() << "octopus_hacqd: <ALSAAudioInit> ready. rate=" << rate
-            << "Hz period=" << (unsigned)period
-            << "frames buffer=" << (unsigned)bufsize
-            << "frames (~" << latency_ms << "ms)";
-
-    audioOK = true;
-    return true;
+inline uint64_t now_ns() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-/*
+struct AudioAmp {
+    // --- Ring buffer ---
+    std::vector<int16_t> audioRing;
+    unsigned bufSizeFrames=0;
+    std::atomic<unsigned> bufHead{0};
+    std::atomic<uint64_t> audioFrameCounter{0};
+    std::atomic<uint64_t> consFrame{0};
 
- bool initAlsa(const char* dev="default") {
-  int rc=snd_pcm_open(&handle,dev,SND_PCM_STREAM_CAPTURE,0);
-  if (rc<0) { std::fprintf(stderr,"[AudioAmp] open failed: %s\n",snd_strerror(rc)); return false; }
+    // --- Control ---
+    std::atomic<bool> run{false};
+    std::thread th;
+    std::mutex cvMx;
+    std::condition_variable cvAvail;
+    bool audioOK=false;
 
-  snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
-  snd_pcm_hw_params_any(handle,p);
-  snd_pcm_hw_params_set_access(handle,p,SND_PCM_ACCESS_RW_INTERLEAVED);
-  snd_pcm_hw_params_set_format(handle,p,SND_PCM_FORMAT_S16_LE);
-  snd_pcm_hw_params_set_channels(handle,p,AUDIO_NUM_CHANNELS);
+    // --- ALSA ---
+    snd_pcm_t* handle=nullptr;
 
-  unsigned rate=AUDIO_SAMPLE_RATE;
-  //snd_pcm_hw_params_set_rate_near(handle,p,&rate,0);
-  rc=snd_pcm_hw_params_set_rate(handle,p,rate,0);
+    // --- Trigger detection ---
+    float trigHigh=8000.f;
+    float trigLow=4000.f;
+    unsigned trigMinGap=2400; // 50ms @ 48kHz
+    bool trigState=false;
+    uint64_t lastTrigFrame=0;
 
-  // Force period = 48 (1 ms), buffer=period*4=192 (4ms)
-  snd_pcm_uframes_t period=48;
-  //snd_pcm_uframes_t period=240;
-  snd_pcm_uframes_t buf=period*4;
+    // --- Resampling PLL ---
+    double   rs_srcPos   = 0.0;
+    double   rs_srcStep  = 1.0;
+    double   rs_srcStepLP= 1.0;
+    uint64_t rs_lastProd = 0;
+    uint64_t rs_last_ns  = 0;
+    bool     rs_inited   = false;
 
-  rc=snd_pcm_hw_params_set_rate_resample(handle,p,0); // no resample
-  //snd_pcm_hw_params_set_period_size_near(handle,p,&period,nullptr);
-  //snd_pcm_hw_params_set_buffer_size_near(handle,p,&buf);
-  // OR stricter:
-  snd_pcm_hw_params_set_period_size(handle,p,period,0);
-  snd_pcm_hw_params_set_buffer_size(handle,p,buf);
+    bool     rs_locked   = false;
+    bool     rs_waitSync = false;
+    uint64_t rs_syncTick = 0;
 
-  rc=snd_pcm_hw_params(handle,p);
-  if (rc<0) { std::fprintf(stderr,"[AudioAmp] hw_params: %s\n", snd_strerror(rc)); return false; }
+    // Init ring
+    void init() {
+        bufSizeFrames=AUDIO_CBUF_SECONDS*AUDIO_SAMPLE_RATE;
+        audioRing.resize(size_t(bufSizeFrames)*AUDIO_NUM_CHANNELS);
+        bufHead.store(0);
+    }
 
-  snd_pcm_prepare(handle);
-  std::fprintf(stderr,"[AudioAmp] ready, period=%lu, buffer=%lu\n",(unsigned long)period,(unsigned long)buf);
-  return true;
- }
-*/
- void start() {
-  if (!handle) return;
-  run.store(true);
-  th=std::thread([this]{ this->captureLoop(); });
- }
+    bool initAlsa() {
+        int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_CAPTURE, 0);
+        if (rc < 0) {
+            qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc);
+            return false;
+        }
 
- void stop() {
-  run.store(false);
-  if (th.joinable()) th.join();
-  if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
- }
+        snd_pcm_hw_params_t* params=nullptr;
+        snd_pcm_hw_params_alloca(&params);
+        snd_pcm_hw_params_any(handle, params);
+        snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
+        snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
+        snd_pcm_hw_params_set_channels(handle, params, AUDIO_NUM_CHANNELS);
 
- // Call from acqThread just before the 1 kHz loop starts
- void alignConsumerToProducerNow() {
-   consFrame.store(audioFrameCounter.load(std::memory_order_acquire),std::memory_order_release);
- }
+        unsigned rate=AUDIO_SAMPLE_RATE;
+        snd_pcm_hw_params_set_rate_resample(handle, params, 0);
+        rc=snd_pcm_hw_params_set_rate(handle, params, rate, 0);
+        if (rc<0) {
+            qWarning() << "[AudioAmp] set_rate exact failed:" << snd_strerror(rc);
+            snd_pcm_hw_params_set_rate_near(handle, params, &rate, nullptr);
+        }
 
-// Fills dst48 with 48 normalized LEFT samples; returns trigger offset [0..47] or UINT_MAX.
-// Blocks up to wait_ms if producer hasn't delivered enough; on timeout, zero-pads and returns UINT_MAX.
-// Consumer cursor NEVER advances unless 48 real frames were read.
-unsigned fetch48(float* dst48, int wait_ms = 20) {
-    constexpr unsigned NEED = 48;
+        snd_pcm_uframes_t period=48;
+        snd_pcm_uframes_t bufsize=period*4;
+        snd_pcm_hw_params_set_period_size_near(handle, params, &period, nullptr);
+        snd_pcm_hw_params_set_buffer_size_near(handle, params, &bufsize);
 
-    for (;;) {
-        const uint64_t prod = audioFrameCounter.load(std::memory_order_acquire);
-        const uint64_t cur  = consFrame.load(std::memory_order_relaxed);
+        rc=snd_pcm_hw_params(handle, params);
+        if (rc<0) {
+            qWarning() << "[AudioAmp] hw_params commit failed:" << snd_strerror(rc);
+            return false;
+        }
 
-        if (prod >= cur + NEED) {
-            // Enough frames → consume exactly 48
-            const unsigned start = unsigned(cur % bufSizeFrames);
-            const unsigned toEnd = bufSizeFrames - start;
-            const unsigned first = std::min(NEED, toEnd);
+        snd_pcm_prepare(handle);
 
-            auto i16_to_f32 = [](int16_t s)->float {
-                return (s == INT16_MIN) ? -1.0f : float(s) / 32767.0f;
-            };
+        snd_pcm_hw_params_get_rate(params, &rate, 0);
+        snd_pcm_hw_params_get_period_size(params, &period, 0);
+        snd_pcm_hw_params_get_buffer_size(params, &bufsize);
 
-            // LEFT → dst48
-            for (unsigned i = 0; i < first; ++i)
-                dst48[i] = i16_to_f32(audioRing[(size_t(start + i) * AUDIO_NUM_CHANNELS) + 0]);
-            for (unsigned i = 0; i < NEED - first; ++i)
-                dst48[first + i] = i16_to_f32(audioRing[(size_t(i) * AUDIO_NUM_CHANNELS) + 0]);
+        double latency_ms = 1000.0*double(bufsize)/double(rate);
+        qInfo() << "[AudioAmp] ready. rate="<<rate<<"Hz period="<<(unsigned)period
+                <<" buf="<<(unsigned)bufsize<<" (~"<<latency_ms<<"ms)";
+        audioOK=true;
+        return true;
+    }
 
-            // RIGHT → trigger detection (hysteresis + min-gap)
-            unsigned trigOff = UINT_MAX;
-            for (unsigned i = 0; i < NEED; ++i) {
-                const unsigned idx = ((start + i) % bufSizeFrames) * AUDIO_NUM_CHANNELS + 1; // RIGHT
-                const float v = float(audioRing[idx]); // raw int16 domain
-                const bool high = (v >= trigHigh);
-                const bool low  = (v <= trigLow);
-                if (!trigState && high) {
-                    const uint64_t absFrame = cur + i;
-                    if (absFrame - lastTrigFrame >= trigMinGap) {
-                        trigOff = i;
-                        lastTrigFrame = absFrame;
+    void start() {
+        if (!handle) return;
+        run.store(true);
+        th=std::thread([this]{ this->captureLoop(); });
+    }
+
+    void stop() {
+        run.store(false);
+        if (th.joinable()) th.join();
+        if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
+    }
+
+    void resamplerInit() {
+        rs_lastProd=audioFrameCounter.load(std::memory_order_acquire);
+        rs_last_ns =now_ns();
+        rs_srcPos  =double(rs_lastProd);
+        rs_srcStepLP=1.0;
+        rs_inited  =true;
+    }
+
+    unsigned fetch48(float* dst48,int wait_ms=20,uint64_t eegTickNow=0) {
+        constexpr unsigned NEED=48;
+        if (!rs_inited) resamplerInit();
+
+        // --- update Fs estimate every ~100ms ---
+        uint64_t ns=now_ns();
+        uint64_t prod=audioFrameCounter.load(std::memory_order_acquire);
+        uint64_t d_ns=ns-rs_last_ns;
+        if (d_ns>=100'000'000ull) {
+            uint64_t d_f=prod-rs_lastProd;
+            if (d_f>0) {
+                double fs_meas=double(d_f)/(double(d_ns)*1e-9);
+                double step_new=fs_meas/48000.0;
+                double alpha=0.05;
+                rs_srcStepLP=(1.0-alpha)*rs_srcStepLP+alpha*step_new;
+                rs_srcStep=rs_srcStepLP;
+#if DEBUG_AUDIOAMP
+                qInfo() << "[PLL]"<<"fs_meas="<<fs_meas<<" step_new="<<step_new
+                        <<" stepLP="<<rs_srcStepLP;
+#endif
+            }
+            rs_last_ns=ns;
+            rs_lastProd=prod;
+        }
+
+        double needSpan=rs_srcStep*(NEED-1)+1.0;
+        uint64_t needUpTo=(uint64_t)std::ceil(rs_srcPos+needSpan);
+
+        auto enough=[&]{return audioFrameCounter.load(std::memory_order_acquire)>=needUpTo;};
+        if (!enough()) {
+            std::unique_lock<std::mutex> lk(cvMx);
+            cvAvail.wait_for(lk,std::chrono::milliseconds(wait_ms),enough);
+            if (!enough()) {
+                std::fill(dst48,dst48+NEED,0.0f);
+                return UINT_MAX;
+            }
+        }
+
+        auto sampleLR=[&](double absPos,int chan)->float {
+            double ringPos=std::fmod(absPos,double(bufSizeFrames));
+            int i0=int(ringPos);
+            int i1=(i0+1==int(bufSizeFrames))?0:(i0+1);
+            float frac=float(ringPos-double(i0));
+            int idx0=i0*AUDIO_NUM_CHANNELS+chan;
+            int idx1=i1*AUDIO_NUM_CHANNELS+chan;
+            int16_t s0=audioRing[idx0];
+            int16_t s1=audioRing[idx1];
+            float v0=(s0==INT16_MIN)?-1.0f:float(s0)/32767.0f;
+            float v1=(s1==INT16_MIN)?-1.0f:float(s1)/32767.0f;
+            return v0+frac*(v1-v0);
+        };
+
+        unsigned trigOff=UINT_MAX;
+        double pos=rs_srcPos;
+        for (unsigned i=0;i<NEED;i++,pos+=rs_srcStep) {
+            dst48[i]=sampleLR(pos,0);
+            if (trigOff==UINT_MAX) {
+                int idx=(int(std::floor(pos))%bufSizeFrames)*AUDIO_NUM_CHANNELS+1;
+                int16_t r=audioRing[idx];
+                if (!trigState && r>=int16_t(trigHigh)) {
+                    if ((audioFrameCounter.load()-lastTrigFrame)>=trigMinGap) {
+                        trigOff=i;
+                        lastTrigFrame=audioFrameCounter.load();
                     }
-                    trigState = true;
-                } else if (trigState && low) {
-                    trigState = false;
+                    trigState=true;
+                } else if (trigState && r<=int16_t(trigLow)) {
+                    trigState=false;
                 }
             }
-
-            // Advance only on success
-            consFrame.store(cur + NEED, std::memory_order_release);
-            return trigOff;
         }
+        rs_srcPos=pos;
 
-        // Not enough yet → block up to wait_ms (bounded)
-        if (wait_ms <= 0) {
-            // No waiting requested: pad and return
-            std::fill(dst48, dst48 + NEED, 0.0f);
-            underruns.fetch_add(1, std::memory_order_relaxed);
-            return UINT_MAX;
+        // PLL nudge at sync
+        if (!rs_locked && rs_waitSync && trigOff!=UINT_MAX) {
+            double err_samples=double(trigOff);
+            double err_frames=err_samples*rs_srcStep;
+            double Kp=0.5,Ki=0.001;
+            rs_srcPos-=Kp*err_frames;
+            rs_srcStep*=(1.0-Ki*(err_samples/48.0));
+            rs_locked=true;
+            rs_waitSync=false;
+#if DEBUG_AUDIOAMP
+            qInfo() << "[PLL] lock. err_samples="<<err_samples<<" new_step="<<rs_srcStep;
+#endif
         }
-
-        std::unique_lock<std::mutex> lk(cvMx);
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(wait_ms);
-        // Predicate re-checks prod vs cur to handle spurious wakeups
-        cvAvail.wait_until(lk, deadline, [&]{
-            return audioFrameCounter.load(std::memory_order_acquire) >=
-                   consFrame.load(std::memory_order_relaxed) + NEED;
-        });
-
-        // loop back and try again; if still short, we’ll timeout and pad
-        if (std::chrono::steady_clock::now() >= deadline) {
-            std::fill(dst48, dst48 + NEED, 0.0f);
-            underruns.fetch_add(1, std::memory_order_relaxed);
-            return UINT_MAX; // consumer cursor NOT advanced
-        }
+        return trigOff;
     }
-}
 
 private:
- void captureLoop() {
-  // try to raise RT priority (best effort)
-#ifdef __linux__
-  struct sched_param sp{30};
-  pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+    void captureLoop() {
+        snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
+        snd_pcm_hw_params_current(handle,p);
+        snd_pcm_uframes_t period=0; snd_pcm_hw_params_get_period_size(p,&period,0);
+        std::vector<int16_t> buf(size_t(period)*AUDIO_NUM_CHANNELS);
+
+        uint64_t lastPrint=0;
+        while (run.load()) {
+            int r=snd_pcm_readi(handle,buf.data(),period);
+            if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
+            if (r<0) { continue; }
+
+            unsigned head=bufHead.load();
+            unsigned spaceToEnd=bufSizeFrames-head;
+            unsigned first=std::min<unsigned>(r,spaceToEnd);
+            std::memcpy(&audioRing[size_t(head)*AUDIO_NUM_CHANNELS],
+                        buf.data(),size_t(first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
+            if (r>(int)first)
+                std::memcpy(&audioRing[0],buf.data()+size_t(first)*AUDIO_NUM_CHANNELS,
+                            size_t(r-first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
+            audioFrameCounter.fetch_add(r,std::memory_order_relaxed);
+            bufHead.store((head+r)%bufSizeFrames,std::memory_order_release);
+
+            {
+                std::lock_guard<std::mutex> lk(cvMx);
+                cvAvail.notify_all();
+            }
+
+#if DEBUG_AUDIOAMP
+            uint64_t nowTick=audioFrameCounter.load();
+            if (nowTick/48000 != lastPrint/48000) { // once per ~sec
+                qInfo() << "[AudioAmp]"<<"prod="<<nowTick<<"cons="<<consFrame.load();
+            }
+            lastPrint=nowTick;
 #endif
-  // ALSA period detection
-  snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
-  snd_pcm_hw_params_current(handle,p);
-  snd_pcm_uframes_t period=0; snd_pcm_hw_params_get_period_size(p,&period,0);
-
-  std::vector<int16_t> buf(size_t(period)*AUDIO_NUM_CHANNELS);
-
-  while (run.load()) {
-   int r=snd_pcm_readi(handle,buf.data(),period);
-   if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
-    if (r<0) { std::fprintf(stderr,"[AudioAmp] read: %s\n",snd_strerror(r)); continue; }
-    // copy into ring
-    unsigned head=bufHead.load();
-    unsigned spaceToEnd=bufSizeFrames-head;
-    unsigned first=std::min<unsigned>(r,spaceToEnd);
-    std::memcpy(&audioRing[size_t(head)*AUDIO_NUM_CHANNELS],buf.data(),size_t(first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
-    if (r>(int)first) std::memcpy(&audioRing[0],buf.data()+size_t(first)*AUDIO_NUM_CHANNELS,
-                                           size_t(r-first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
-    audioFrameCounter.fetch_add(r,std::memory_order_relaxed);
-    bufHead.store((head+r)%bufSizeFrames,std::memory_order_release);
-    // notify consumers waiting for more frames
-    {
-     std::lock_guard<std::mutex> lk(cvMx);
-     cvAvail.notify_all();
+        }
     }
-   }
-  }
 };
 
 #endif

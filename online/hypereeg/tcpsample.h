@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _TCPSAMPLE_H
-#define _TCPSAMPLE_H
+#pragma once
 
 #include <vector>
 #include <QByteArray>
@@ -30,31 +29,26 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "sample.h"
 
 struct TcpSample {
- std::vector<Sample> amp; float audio48[48];
- quint64 offset=0; unsigned int trigger=0;
- quint64 timestampMs=0; // wall-clock at creation
-
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
+ quint64 offset=0,timestampMs=0; // wall-clock at creation
+ std::vector<Sample> amp;
+ float audio48[48];
+ unsigned int trigger=0;
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  void init(size_t ampCount,size_t chnCount) {
-  amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); trigger=0;
+  amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); offset=0; timestampMs=0; trigger=0;
  }
 
- QByteArray serialize() const {
-  QByteArray ba; QDataStream out(&ba, QIODevice::WriteOnly);
+ QByteArray serialize() const { QByteArray ba;
+  QDataStream out(&ba,QIODevice::WriteOnly);
   out.setByteOrder(QDataStream::LittleEndian);
-  out << MAGIC;
-  out << static_cast<quint64>(offset);
+  out << static_cast<quint32>(MAGIC);
+  out << static_cast<quint64>(offset) << static_cast<quint64>(timestampMs);
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
-  out << static_cast<quint64>(timestampMs);
-  for (const Sample& s:amp) {
-   s.serialize(out);
-  }
-  for (int i=0;i<48;++i) {
-   out << static_cast<float>(audio48[i]);
-  }
+  for (const Sample& s:amp) { s.serialize(out); }
+  for (size_t audIndex=0;audIndex<48;audIndex++) { out << static_cast<float>(audio48[audIndex]); }
   return ba;
  }
 
@@ -62,21 +56,16 @@ struct TcpSample {
   QDataStream in(ba);
   in.setByteOrder(QDataStream::LittleEndian);
   quint32 magic=0,ampCount=0;
-  in>>magic; if (magic!=MAGIC) return false;
-  in >> offset;
-  in >> trigger >> ampCount;
-  in >> timestampMs;
+  in>>magic; if (magic!=MAGIC) { qDebug() << "<TCPSample> MAGIC mismatch!!!"; return false; }
+  in >> offset >> timestampMs >> trigger >> ampCount;
   amp.resize(ampCount);
-  for (Sample &s:amp) {
-   s.init(chnCount); if (!s.deserialize(in,chnCount)) return false;
+  for (Sample &s:amp) { s.init(chnCount);
+   if (!s.deserialize(in,chnCount)) { qDebug() << "<TCPSample> Sample desrialization error!!"; return false; }
   }
-  for (int i=0;i<48;++i) {
-   float v=0.f;
+  for (size_t audIndex=0;audIndex<48;audIndex++) { float v=0.f;
    in >> v;
-   audio48[i]=v;
+   audio48[audIndex]=v;
   }
   return true;
  }
 };
-
-#endif

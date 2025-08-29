@@ -123,6 +123,8 @@ class ConfParam : public QObject {
     TcpSample tcpS;
     if (tcpS.deserialize(block,chnCount)) {
 
+//     if (tcpS.offset%1000==0) qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
+
      if (tcpS.offset%1000==0) {
       qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
       qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";

@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _SAMPLE_H
-#define _SAMPLE_H
+#pragma once
 
 #include <vector>
 #include <QDataStream>
@@ -51,5 +50,3 @@ struct Sample {
   return true;
  }
 };
-
-#endif

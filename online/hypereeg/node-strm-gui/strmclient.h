@@ -47,7 +47,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 const int HYPEREEG_ACQ_CLIENT_VER=200;
 const int EEGFRAME_REFRESH_RATE=200; // Base refresh rate
 
-const QString cfgPath=basePath+"strmclient.conf";
+const QString cfgPath=hyperConfPath+"node-compute-gui-strm.conf";
 
 class StrmClient: public QObject {
  Q_OBJECT

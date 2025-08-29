@@ -38,8 +38,10 @@ const unsigned int REF_CHN_MAXCOUNT=64;
 const unsigned int BIP_CHN_MAXCOUNT=24;
 const unsigned int TRIG_AMPSYNC=0xFF;
 
-const QString basePath="/etc/octopus/online/hypereeg/";
-
-const QString synthDataPath=basePath+"synth.eeg";
+const QString basePath="/opt/octopus/";
+const QString confPath=basePath+"conf/";
+const QString dataPath=basePath+"data/";
+const QString synthDataPath=dataPath+"raweeg/synth-eeg.raw";
+const QString hyperConfPath=confPath+"online/hypereeg/";
 
 #endif

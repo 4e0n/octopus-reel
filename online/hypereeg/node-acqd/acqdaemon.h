@@ -41,7 +41,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 const int HYPEREEG_ACQ_DAEMON_VER=200;
 
-const QString cfgPath=basePath+"acqd.conf";
+const QString cfgPath=hyperConfPath+"node-master-acqd.conf";
 
 class AcqDaemon : public QObject {
  Q_OBJECT
@@ -270,35 +270,32 @@ class AcqDaemon : public QObject {
   }
 
   void drainAndBroadcast() {
-   TcpSample eegSample(conf.ampCount,conf.physChnCount);
-   TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
-   //TcpCMArray cm2(conf.ampCount,conf.physChnCount);
+   TcpSample eegSample(conf.ampCount,conf.physChnCount); TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
+
    while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
-    //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() << " ChCount:" << tcpSample.amp[0].dataF.size() << " FirstVal:" << tcpSample.amp[0].dataF[0];
     for (QTcpSocket *client:strmClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
       quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
-      sizeStream<<msgLength;
+      sizeStream << msgLength;
       client->write(payLoad);
       client->flush(); // write actual serialized block
      }
     }
    }
+
    while (acqThread->popCMArray(&cmArray)) { QByteArray payLoad=cmArray.serialize();
-    // serialization-deserialization loopback test
-    //cm2.deserialize(payLoad,conf.physChnCount); qDebug() << cm2.cmLevel[1][3];
     for (QTcpSocket *client:cmodClients) {
      if (client->state()==QAbstractSocket::ConnectedState) {
       QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
       quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
-      sizeStream<<msgLength;
+      sizeStream << msgLength;
       client->write(payLoad);
       client->flush(); // write actual serialized block
-      //qDebug() << "CM sent!";
      }
     }
    }
+
   }
 
  private:

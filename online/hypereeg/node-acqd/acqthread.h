@@ -205,12 +205,12 @@ class AcqThread : public QThread {
     isBad_.assign(conf->ampCount,std::vector<uint8_t>(conf->physChnCount,0));
    }
 
+
    audioAmp.init();
    if (!audioAmp.initAlsa()) {
-    qWarning() << "Audio init failed; continuing without audio.";
+    qWarning() << "<AcqThread> AudioAmp ALSA init failed";
    } else {
-    audioAmp.start(); // Audio capture thread is spawn
-    audioAmp.alignConsumerToProducerNow();
+    audioAmp.start();
    }
 
    std::vector<amplifier*> eeAmpsUnsorted,eeAmpsSorted; std::vector<unsigned int> sUnsorted,serialNos;
@@ -272,6 +272,9 @@ class AcqThread : public QThread {
    fetchEegData0(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
+
+   //audioAmp.expectStartupSync(currentEEGtick); 
+
    sendTrigger(TRIG_AMPSYNC);
    qInfo() << "hnode_acqd: <AmpSync> SYNC sent..";
 
@@ -311,7 +314,7 @@ class AcqThread : public QThread {
       //         << " raw=" << ee[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz].data[0]
       //         << " flt=" << ee[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz].dataF[0];
       tcpEEG.amp[ampIdx]=eeAmps[ampIdx].cBuf[(cBufPivotPrev+tcpDataIdx+arrivedTrig[ampIdx])%cBufSz];
-      //if (ampIdx==0) qDebug() << "daemon: filled tcpEEG amp=" << ampIdx << " ch=0 - val=" << tcpEEG.amp[ampIdx].data[0] << tcpEEG.amp[ampIdx].dataF[0];
+      //if (ampIdx==0) qDebug() << "daemon: filled  amp=" << ampIdx << " ch=0 - val=" << tcpEEG.amp[ampIdx].data[0] << tcpEEG.amp[ampIdx].dataF[0];
      }
      tcpEEG.trigger=0;
      if (nonHWTrig) { tcpEEG.trigger=nonHWTrig; nonHWTrig=0; } // Set NonHW trigger in hyperEEG data struct
@@ -332,13 +335,20 @@ class AcqThread : public QThread {
       chkTrigOffset=0;
      }
 
-     (void)audioAmp.fetch48(tcpEEG.audio48,20); // tol_ms=20
+     unsigned trigOff=audioAmp.fetch48(tcpEEG.audio48, /*wait_ms*/ 20);
+     //if (trigOff != UINT_MAX) {
+     // sample.audioTrigger = trigOff; // trigger offset (0..47)
+     //} else {
+     // sample.audioTrigger = -1;
+     //}
 
      tcpEEG.timestampMs=QDateTime::currentMSecsSinceEpoch();
 
      tcpEEG.offset=counter0; counter0++;
 
      tcpEEGBuffer[(tcpEEGBufHead+tcpDataIdx)%tcpEEGBufSize]=tcpEEG; // Push to Circular Buffer
+
+     //if (counter0%1000==0) qDebug("BUFFER(mod1000) SENT! tcpEEG.offset-> %lld - Magic: %x",tcpEEG.offset,tcpEEG.MAGIC);
 
      // Record RAW EEG to files..
      if (conf->dumpRaw) {
