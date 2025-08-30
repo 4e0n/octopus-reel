@@ -205,6 +205,8 @@ class AcqThread : public QThread {
     isBad_.assign(conf->ampCount,std::vector<uint8_t>(conf->physChnCount,0));
    }
 
+//   audioAmp.setLogFile(stderr);
+//   audioAmp.start();
 
    audioAmp.init();
    if (!audioAmp.initAlsa()) {
@@ -273,8 +275,6 @@ class AcqThread : public QThread {
 
    // Send SYNC
 
-   //audioAmp.expectStartupSync(currentEEGtick); 
-
    sendTrigger(TRIG_AMPSYNC);
    qInfo() << "hnode_acqd: <AmpSync> SYNC sent..";
 
@@ -335,6 +335,7 @@ class AcqThread : public QThread {
       chkTrigOffset=0;
      }
 
+//     audioAmp.fetch48(tcpEEG.audio48);
      unsigned trigOff=audioAmp.fetch48(tcpEEG.audio48, /*wait_ms*/ 20);
      //if (trigOff != UINT_MAX) {
      // sample.audioTrigger = trigOff; // trigger offset (0..47)
