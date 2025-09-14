@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef ACQDAEMON_H
-#define ACQDAEMON_H
+#pragma once
 
 #include <QObject>
 #include <QTcpServer>
@@ -30,18 +29,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QString>
 #include <QIntValidator>
 #include <QDateTime>
-#include "../globals.h"
-#include "../sample.h"
-#include "../tcpsample.h"
-#include "../tcpcmarray.h"
-#include "../cmd_acqd.h"
+#include "../common/globals.h"
+#include "../common/sample.h"
+#include "../common/tcpsample.h"
+#include "../common/tcpcmarray.h"
+#include "../common/tcp_commands.h"
 #include "confparam.h"
 #include "configparser.h"
 #include "acqthread.h"
 
 const int HYPEREEG_ACQ_DAEMON_VER=200;
 
-const QString cfgPath=hyperConfPath+"node-master-acqd.conf";
+const QString cfgPath=hyperConfPath+"node-acqd.conf";
 
 class AcqDaemon : public QObject {
  Q_OBJECT
@@ -59,9 +58,12 @@ class AcqDaemon : public QObject {
 #ifdef HACQ_VERBOSE
      qInfo() << "hnode_acqd: Detailed channels info:";
      qInfo() << "--------------------------------------";
-     for (const auto& ch:chnInfo)
-      qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] Bipolar=%d",ch.physChn,qUtf8Printable(ch.chnName),
-                                                            ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.isBipolar);
+     QString interElec;
+     for (const auto& ch:chnInfo) {
+      interElec=""; for (int i=0;i<ch.interElec.size();i++) interElec.append(QString::number(ch.interElec[i])+" ");
+      qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] Bipolar=%d, inter=%s",ch.physChn,qUtf8Printable(ch.chnName),
+                                                            ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.isBipolar,interElec.toUtf8().constData());
+     }
 #endif
      conf.refChnMaxCount=REF_CHN_MAXCOUNT;
      conf.bipChnMaxCount=BIP_CHN_MAXCOUNT;
@@ -175,14 +177,26 @@ class AcqDaemon : public QObject {
                    QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_GETCHAN) {
      qDebug("hnode_acqd: <Comm> Sending Channels' Parameters..");
-     for (const auto& ch:chnInfo)
+     for (const auto& ch:chnInfo) {
+      QString interElec="";
+      for (int idx=0;idx<ch.interElec.size();idx++) interElec.append(QString::number(ch.interElec[idx])+",");
+      interElec.remove(interElec.size()-1,1);
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
                     QString::number(ch.topoTheta).toUtf8()+","+ \
                     QString::number(ch.topoPhi).toUtf8()+","+ \
                     QString::number(ch.topoX).toUtf8()+","+ \
                     QString::number(ch.topoY).toUtf8()+","+ \
-                    QString::number(ch.isBipolar).toUtf8()+"\n");
+                    QString::number(ch.isBipolar).toUtf8()+","+ \
+		    QString::number(ch.interElec.size()).toUtf8()+","+ \
+                    interElec.toUtf8()+"\n");
+     }
+    } else if (cmd==CMD_ACQD_S_TRIG_1000) {
+     acqThread->sendTrigger(1000);
+    } else if (cmd==CMD_ACQD_S_TRIG_1) {
+     acqThread->sendTrigger(1);
+    } else if (cmd==CMD_ACQD_S_TRIG_2) {
+     acqThread->sendTrigger(2);
     } else if (cmd==CMD_ACQD_DUMPRAWON) {
      static constexpr char dumpSign[]="OCTOPUS_HEEG"; // 12 bytes, no \0
      QDateTime currentDT(QDateTime::currentDateTime());
@@ -303,5 +317,3 @@ class AcqDaemon : public QObject {
   QVector<QTcpSocket*> strmClients,cmodClients;
   AcqThread *acqThread; QVector<ChnInfo> chnInfo;
 };
-
-#endif

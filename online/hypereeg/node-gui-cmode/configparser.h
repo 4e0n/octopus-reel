@@ -23,9 +23,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <QHostInfo>
 #include <QFile>
 #include <QColor>
+#include <QHostInfo>
 #include "confparam.h"
 
 const int MAX_LINE_SIZE=160; // chars
@@ -36,10 +36,12 @@ class ConfigParser {
 
   bool parse(ConfParam *conf) {
    QTextStream cfgStream;
-   QStringList cfgLines,opts,opts2,netSection,bufSection;
+   QStringList cfgLines,opts,opts2,netSection;
+
+   QStringList bufSection,guiSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "node_compute_hempow: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qDebug() << "hnode_cmod_gui: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
@@ -55,8 +57,9 @@ class ConfigParser {
      opts=cl.split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
+     else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else {
-      qDebug() << "node_compute_hempow: <ConfigParser> ERROR: Unknown section in config file!";
+      qDebug() << "hnode_cmod_gui: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -68,66 +71,75 @@ class ConfigParser {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="IN") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
+       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port  are separated by ","
        if (opts2.size()==4) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->ipAddr=acqHostInfo.addresses().first().toString();
-        conf->commPort=opts2[1].toInt();
-        conf->strmPort=opts2[2].toInt();
+        conf->commPort=opts2[1].toInt(); // [2] is for eegDataPort
+        conf->dataPort=opts2[3].toInt();
         if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
-            (!(conf->strmPort >= 65000 && conf->strmPort < 65500))) {
-         qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: Invalid (uplink) hostname/IP/port settings!";
+            (!(conf->dataPort >= 65000 && conf->dataPort < 65500))) {
+         qDebug() << "hnode_cmod_gui: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: Invalid (uplink) count of NET|IN params!";
+        qDebug() << "hnode_cmod_gui: <ConfigParser> <NET> ERROR: Invalid count of NET|IN params!";
         return true;
        }
-       qDebug() << "node_compute_hempow:" << conf->ipAddr << conf->commPort << conf->strmPort;
-      } else if (opts[0].trimmed()=="OUT") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==4) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->svrIpAddr=acqHostInfo.addresses().first().toString();
-        conf->svrCommPort=opts2[1].toInt();
-        conf->svrStrmPort=opts2[2].toInt();
-        if ((!(conf->svrCommPort >= 65000 && conf->svrCommPort < 65500)) || // Simple port validation
-            (!(conf->svrStrmPort >= 65000 && conf->svrStrmPort < 65500))) {
-         qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: Invalid (downlink) hostname/IP/port settings!";
-         return true;
-        }
-       } else {
-        qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: Invalid (downlink) count of NET|OUT params!";
-        return true;
-       }
-       qDebug() << "node_compute_hempow:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort;
+       qDebug() << "hnode_cmod_gui: <ConfigParser> (ServerIP,CommPort,DataPort):" << conf->ipAddr << "-" << conf->commPort << "-" << conf->dataPort;
       } else {
-       qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
+       qDebug() << "hnode_cmod_gui: <ConfigParser> <NET> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_compute_hempow: <ConfigParser> <NET> ERROR: No parameters in section!";
+     qDebug() << "hnode_cmod_gui: <ConfigParser> <NET> ERROR: No parameters in section!";
      return true;
     }
 
     // BUF section
     if (bufSection.size()>0) {
-     for (const auto& sect:bufSection) {
+     for (auto& sect:bufSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
-       if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
-        qDebug() << "node_compute_hempow: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
+       if (!(conf->tcpBufSize >= 1 && conf->tcpBufSize <= 20)) {
+        qDebug() << "hnode_cmod_gui: <ConfigParser> <BUF> ERROR: PAST not within inclusive (1,20) seconds range!";
         return true;
        }
       } else {
-       qDebug() << "node_compute_hempow: <ConfigParser> <BUF> ERROR: Invalid section command!";
+       qDebug() << "hnode_cmod_gui: <ConfigParser> <BUF> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_compute_hempow: <ConfigParser> <BUF> ERROR: No parameters in section!";
+     qDebug() << "hnode_cmod_gui: <ConfigParser> <BUF> ERROR: No parameters in section!";
+     return true;
+    }
+
+    // GUI section
+    if (guiSection.size()>0) {
+     for (const auto& sect:guiSection) {
+      opts=sect.split("=");
+      if (opts[0].trimmed()=="CMODE") {
+       opts2=opts[1].split(",");
+       if (opts2.size()==3) {
+        conf->guiX=opts2[0].toInt(); conf->guiY=opts2[1].toInt();
+        conf->guiCellSize=opts2[2].toInt();
+        if ((!(conf->guiX >= -4000 && conf->guiX <= 4000)) ||
+            (!(conf->guiY >= -3000 && conf->guiY <= 3000)) ||
+            (!(conf->guiCellSize >= 40 && conf->guiCellSize <= 80))) {
+         qDebug() << "hnode_cmod_gui: <ConfigParser> <GUI> <CMode> ERROR: Window size settings not in appropriate range!";
+         return true;
+        }
+       } else {
+        qDebug() << "hnode_cmod_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        return true;
+       }
+      }
+     }
+    } else {
+     qDebug() << "hnode_cmod_gui: <ConfigParser> <GUI> ERROR: No parameters in section!";
      return true;
     }
 

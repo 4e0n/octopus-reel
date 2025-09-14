@@ -23,18 +23,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <QFile>
-#include <QDataStream>
+#include "../../../common/vec3.h"
 
-struct ConfParam {
- unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
- float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort,cmodPort;
- unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
- unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
- unsigned int totalChnCount; // refChnCount+bipChnCount+2
- unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
- unsigned int eegSamplesInTick;
- QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw;
+struct ChnInfo {
+ unsigned int physChn,topoX,topoY;
+ QString chnName;
+ bool isBipolar;
+ unsigned char cmLevel; // Common Mode noise level
 };

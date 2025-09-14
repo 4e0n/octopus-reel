@@ -32,8 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    This is the file of eesynth namespace and all classes that mimicks the overall system.
 */
 
-#ifndef EESYNTH
-#define EESYNTH
+#pragma once
 
 #include <string>
 #include <cstring>
@@ -46,7 +45,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <algorithm>
 #include <random>
 
-#include "../globals.h"
+#include "../common/globals.h"
 
 namespace eesynth {
 
@@ -393,5 +392,3 @@ class factory { // Creates any number of virtual amplifiers identical to EE.
 };
 
 } // eesynth namespace
-
-#endif

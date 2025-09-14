@@ -30,8 +30,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class Gizmo {
  public:
   Gizmo(QString nm) { name=nm; }
+  Gizmo() {}
 
-  QString name; QVector<int> seq; QVector<QVector<int> > tri,lin;
+  QString name; QVector<unsigned int> seq; QVector<QVector<unsigned int>> tri,lin;
 };
 
 #endif

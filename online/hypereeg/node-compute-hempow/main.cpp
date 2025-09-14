@@ -29,7 +29,7 @@ int main(int argc,char* argv[]) {
  ComputeNode computeNode;
 
  if (computeNode.initialize()) {
-  qCritical("hnode_compute_hempow: <FatalError> Failed to initialize Octopus-ReEL EEG HyperCompute Node.");
+  qCritical("node_compute_hempow: <FatalError> Failed to initialize Octopus-ReEL EEG HyperCompute Node.");
   return 1;
  }
 

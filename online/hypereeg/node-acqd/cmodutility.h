@@ -21,6 +21,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
+#pragma once
+
 const unsigned int CBUF_SIZE_IN_SECS=10;
 
 static inline float median_inplace(std::vector<float>& v) {

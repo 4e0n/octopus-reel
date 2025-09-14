@@ -21,20 +21,23 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#pragma once
+#include <QApplication>
+#include "../common/globals.h"
+#include "guiclient.h"
 
-#include <QFile>
-#include <QDataStream>
+int main(int argc,char* argv[]) {
+ QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+ QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
-struct ConfParam {
- unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
- float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort,cmodPort;
- unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
- unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
- unsigned int totalChnCount; // refChnCount+bipChnCount+2
- unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
- unsigned int eegSamplesInTick;
- QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw;
-};
+ QApplication app(argc,argv);
+ GUIClient guiClient;
+
+ omp_diag();
+
+ if (guiClient.initialize()) {
+  qCritical("hnode_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Stream GUI Client.");
+  return 1;
+ }
+
+ return app.exec();
+}

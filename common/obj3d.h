@@ -21,20 +21,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#pragma once
+/* Simple coord structure when the possible overhead of Vec3 class is
+   considered anyway. */
 
-#include <QFile>
-#include <QDataStream>
+#ifndef OBJ3D_H
+#define OBJ3D_H
 
-struct ConfParam {
- unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
- float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort,cmodPort;
- unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
- unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
- unsigned int totalChnCount; // refChnCount+bipChnCount+2
- unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
- unsigned int eegSamplesInTick;
- QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw;
+#include <QVector>
+#include "coord3d.h"
+
+struct Obj3D {
+ void reset() { idx.resize(0); c.resize(0); }
+ QVector<Coord3D> c; QVector<QVector<unsigned int>> idx;
 };
+
+#endif

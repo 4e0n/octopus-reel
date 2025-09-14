@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef ACQTHREAD_H
-#define ACQTHREAD_H
+#pragma once
 
 #include <QThread>
 #include <QString>
@@ -48,11 +47,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cmath>
 
 #include "confparam.h"
-#include "../globals.h"
-#include "../sample.h"
-#include "../tcpsample.h"
-#include "../tcpcmarray.h"
-#include "../serialdevice.h"
+#include "../common/globals.h"
+#include "../common/sample.h"
+#include "../common/tcpsample.h"
+#include "../common/tcpcmarray.h"
+#include "serialdevice.h"
 #include "eeamp.h"
 #include "audioamp.h"
 #include "cmodutility.h"
@@ -506,5 +505,3 @@ cm_done:
 
   std::vector<std::vector<uint8_t>> isBad_; // hysteresis state: 0/1
 };
-
-#endif

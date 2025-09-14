@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef CHNINFO_H
-#define CHNINFO_H
+#pragma once
 
 struct ChnInfo {
  unsigned int physChn;
@@ -30,6 +29,5 @@ struct ChnInfo {
  float topoTheta,topoPhi;
  unsigned int topoX,topoY;
  bool isBipolar;
+ QVector<unsigned int> interElec;
 };
-
-#endif

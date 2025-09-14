@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef COMPUTETHREAD_H
-#define COMPUTETHREAD_H
+#pragma once
 
 #include <QThread>
 #include <QString>
@@ -32,8 +31,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QTextStream>
 #include <iostream>
 #include "confparam.h"
-#include "../globals.h"
-#include "../tcpsample.h"
+#include "../common/globals.h"
+#include "../common/tcpsample.h"
 
 class ComputeThread : public QThread {
  Q_OBJECT
@@ -71,7 +70,7 @@ class ComputeThread : public QThread {
 
    } // EEG stream
 
-   qInfo("hnode_compute_hempow: <acqthread> Exiting thread..");
+   qInfo("node_compute_hempow: <acqthread> Exiting thread..");
   }
 
   bool popEEGSample(TcpSample *outSample) {
@@ -94,5 +93,3 @@ class ComputeThread : public QThread {
 
   unsigned int cBufSz,smpCount,chnCount;
 };
-
-#endif

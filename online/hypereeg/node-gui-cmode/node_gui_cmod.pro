@@ -20,28 +20,25 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node_acqd
+TARGET = node-gui-cmod
 INCLUDEPATH += .
-QT += widgets network
-#LIBS += -leego-SDK
-LIBS += -lasound
+LIBS += -lGLU
 LIBS += -fopenmp
+QT += core gui widgets network multimedia opengl
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 #QMAKE_CXXFLAGS += -DOCTO_OMP=1
-QMAKE_CXXFLAGS += -fopenmp #-O1 -g
+QMAKE_CXXFLAGS += -fopenmp
 
 # Input
-HEADERS += acqdaemon.h \
-           acqthread.h \
-	   configparser.h \
-	   confparam.h \
-	   chninfo.h \
-	   eesynth.h \
-           eeamp.h \
-           audioamp.h \
-	   serialdevice.h \
-           ../common/globals.h \
-	   ../common/sample.h \
+HEADERS += cmodclient.h \
+           cmodwindow.h \
+           cmodframe.h \
+           cmodthread.h \
+           configparser.h \
+           confparam.h \
+           chninfo.h \
            ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

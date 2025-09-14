@@ -27,6 +27,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #ifndef COORD3D_H
 #define COORD3D_H
 
-typedef struct _Coord3D { float x,y,z; } Coord3D;
+struct Coord3D { float x,y,z; };
 
 #endif

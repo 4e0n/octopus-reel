@@ -23,18 +23,22 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <QFile>
-#include <QDataStream>
+//#define EEMAGINE
 
-struct ConfParam {
- unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
- float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort,cmodPort;
- unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
- unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
- unsigned int totalChnCount; // refChnCount+bipChnCount+2
- unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
- unsigned int eegSamplesInTick;
- QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw;
-};
+//#define PARAMETRIC_SYNTH
+
+#define HACQ_VERBOSE
+
+#define OCTO_OMP
+#include "octo_omp.h"
+
+const unsigned int EE_MAX_AMPCOUNT=8;
+const unsigned int REF_CHN_MAXCOUNT=64;
+const unsigned int BIP_CHN_MAXCOUNT=24;
+const unsigned int TRIG_AMPSYNC=0xFF;
+
+const QString basePath="/opt/octopus/";
+const QString confPath=basePath+"conf/";
+const QString dataPath=basePath+"data/";
+const QString synthDataPath=dataPath+"raweeg/synth-eeg.raw";
+const QString hyperConfPath=confPath+"online/hypereeg/";

@@ -21,8 +21,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef CONFIGPARSER_H
-#define CONFIGPARSER_H
+#pragma once
 
 #include <QHostInfo>
 #include <QFile>
@@ -163,7 +162,8 @@ class ConfigParser {
      for (const auto& sect:chnSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="APPEND") {
-       opts2=opts[1].split(",");
+       opts=opts[1].split(">");
+       opts2=opts[0].split(",");
        if (opts2.size()==7) {
         opts2[0]=opts2[0].trimmed(); // Ref vs. Bip
         opts2[2]=opts2[2].trimmed(); // Channel name
@@ -185,11 +185,24 @@ class ConfigParser {
 	 dummyChnInfo.topoX=opts2[5].toInt();           // TopoXY - X
 	 dummyChnInfo.topoY=opts2[6].toInt();           // TopoXY - Y
          dummyChnInfo.isBipolar=bipChn;                 // Is bipolar?
-         chnTopo->append(dummyChnInfo); // add channel to info table
          if (bipChn) conf->bipChnCount++; else conf->refChnCount++;
         }
        } else {
         qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: Invalid count of APPEND parameters!";
+	return true;
+       }
+       opts2=opts[1].split(","); // Interpolation electrodes
+       if (opts2.size()>=1 && opts2.size()<=4) {
+        dummyChnInfo.interElec.resize(0);
+        if (opts2[0].toInt()==0) {
+         if (!dummyChnInfo.isBipolar) dummyChnInfo.interElec.append(dummyChnInfo.physChn-1);
+	 else dummyChnInfo.interElec.append(0);
+	} else {
+	 for (int idx=0;idx<opts2.size();idx++) dummyChnInfo.interElec.append(opts2[idx].toInt()-1);
+	}
+        chnTopo->append(dummyChnInfo); // add channel to info table
+       } else {
+        qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: Invalid count of APPEND (chn interpolation) parameters!";
 	return true;
        }
       }
@@ -208,5 +221,3 @@ class ConfigParser {
  private:
   QString cfgPath,cfgLine; QFile cfgFile;
 };
-
-#endif

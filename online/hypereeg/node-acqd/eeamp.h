@@ -21,10 +21,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#ifndef _EEAMP_H
-#define _EEAMP_H
+#pragma once
 
-#include "../globals.h"
+#include "../common/globals.h"
 #include "iirfilter.h"
 
 #ifdef EEMAGINE
@@ -92,5 +91,3 @@ struct EEAmp {
   return amp->OpenEegStream(sampling_rate,reference_range,bipolar_range,channel_list);
  }
 };
-
-#endif

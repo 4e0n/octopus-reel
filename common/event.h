@@ -30,11 +30,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class Event {
  public:
   Event(int eNo,QString eName,int cIdx) {
-   no=eNo; name=eName; colorIndex=cIdx;
+   no=eNo; name=eName; colorIndex=cIdx; accepted=rejected=0;
   }
   ~Event() {}
 
-  int no,colorIndex; QString name;
+  int no,colorIndex,accepted,rejected; QString name;
 };
 
 #endif

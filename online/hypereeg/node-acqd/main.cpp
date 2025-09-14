@@ -39,7 +39,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  */
 
 #include <QCoreApplication>
-#include "../globals.h"
+#include "../common/globals.h"
 
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
