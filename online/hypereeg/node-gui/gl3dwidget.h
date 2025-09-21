@@ -83,14 +83,19 @@ class GL3DWidget : public QGLWidget {
 
  public slots:
   void glUpdateSlot() { updateGL(); }
-  void glUpdateParamSlot() {
-   if (conf->glGizmoLoaded) { glDeleteLists(gizmo,6); gizmo=makeGizmo(); }
-   glDeleteLists(parametric,4); parametric=makeParametric();
-   updateGL();
+  void glUpdateParamSlot(int a) {
+   if (a==ampNo) {
+    if (conf->glGizmoLoaded) { glDeleteLists(gizmo,6); gizmo=makeGizmo(); }
+    glDeleteLists(parametric,4); parametric=makeParametric();
+    updateGL();
+   }
   }
 
  protected:
   void initializeGL() override {
+   qDebug() << "GL VENDOR:" << reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+   qDebug() << "RENDERER:"  << reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+   qDebug() << "VERSION:"   << reinterpret_cast<const char*>(glGetString(GL_VERSION));
    frame=makeFrame(); grid=makeGrid();
 //   if (acqM->digExists[ampNo]) dig=makeDigitizer();
    parametric=makeParametric();
@@ -114,9 +119,6 @@ class GL3DWidget : public QGLWidget {
    glClearColor(120/255.f,120/255.f,150/255.f,1.0f);
 
    glEnable(GL_DEPTH_TEST);
-   qDebug() << "GL VENDOR:" << reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-   qDebug() << "RENDERER:"  << reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-   qDebug() << "VERSION:"   << reinterpret_cast<const char*>(glGetString(GL_VERSION));
    glEnable(GL_MULTISAMPLE);
    glEnable(GL_LIGHTING);
    glEnable(GL_LIGHT0);
@@ -132,11 +134,11 @@ class GL3DWidget : public QGLWidget {
 //   glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); // GL_POINT may be cool!
 //   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 //   glMatrixMode(GL_PROJECTION);
-// //  glLoadIdentity(); gluPerspective(CAMERA_FOV,(float)(conf->ampFrameW)/(float)(conf->ampFrameH),1.,300.);
+// //  glLoadIdentity(); gluPerspective(CAMERA_FOV,(float)(conf->sweepFrameW)/(float)(conf->sweepFrameH),1.,300.);
 //       gluPerspective(CAMERA_FOV, 1.0, 0.5, 300.0);  // safe placeholder
 //   glMatrixMode(GL_MODELVIEW);
    connect(conf,SIGNAL(glUpdate()),this,SLOT(glUpdateSlot())); 
-   connect(conf,SIGNAL(glUpdateParam()),this,SLOT(glUpdateParamSlot())); 
+   connect(conf,SIGNAL(glUpdateParam(int)),this,SLOT(glUpdateParamSlot(int))); 
   }
 /*
   void paintGL() override {
@@ -201,7 +203,7 @@ class GL3DWidget : public QGLWidget {
 //  void resizeGL(int width,int height) { int side=qMin(width,height);
 //   glViewport((width-side)/2,(height-side)/2,side,side);
 //   glMatrixMode(GL_PROJECTION); glLoadIdentity(); // glOrtho(-0.5,+0.5,+0.5,-0.5,4.0,15.0);
-//   gluPerspective(CAMERA_FOV,(float)(conf->ampFrameW)/(float)(conf->ampFrameH),2.,120.);
+//   gluPerspective(CAMERA_FOV,(float)(conf->sweepFrameW)/(float)(conf->sweepFrameH),2.,120.);
 //   glMatrixMode(GL_MODELVIEW);
 //  }
 

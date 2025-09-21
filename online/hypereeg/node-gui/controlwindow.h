@@ -73,7 +73,7 @@ class ControlWindow : public QMainWindow {
    shutdownAction=new QAction("&Shutdown Servers",this);
    aboutAction=new QAction("&About..",this);
    quitAction=new QAction("&Quit",this);
-   rebootAction->setStatusTip("Reboot hnode_acqd via hwd server");
+   rebootAction->setStatusTip("Reboot node_acqd via hwd server");
    shutdownAction->setStatusTip("Shutdown ACQuisition host computer");
    aboutAction->setStatusTip("About HyperStream GUI..");
    quitAction->setStatusTip("Quit HyperStream GUI");
@@ -182,7 +182,7 @@ class ControlWindow : public QMainWindow {
     QString cntFN="trial-"+currentDT.toString("yyyyMMdd-hhmmss-zzz");
     conf->hegFile.setFileName(cntFN+".heg");
     if (!conf->hegFile.open(QIODevice::WriteOnly)) {
-     qDebug() << "hnode_strm_gui: <ToggleRecording> <ERROR> Cannot open .occ file for writing!";
+     qDebug() << "node_gui: <ToggleRecording> <ERROR> Cannot open .occ file for writing!";
      return;
     } conf->hegStream.setDevice(&conf->hegFile);
 

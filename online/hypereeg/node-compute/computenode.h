@@ -43,7 +43,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 const int HYPEREEG_COMPUTE_NODE_VER=200;
 const int COMPUTE_REFRESH_RATE=200; // Base refresh rate
 
-const QString cfgPath=basePath+"compute_hempow.conf";
+const QString cfgPath=hyperConfPath+"node-compute.conf";
 
 class ComputeNode: public QObject {
  Q_OBJECT
@@ -57,76 +57,49 @@ class ComputeNode: public QObject {
    connect(&strmServer,&QTcpServer::newConnection,this,&ComputeNode::onNewStrmClient);
   }
 
-  bool initialize() {
-   QString commResponse; QStringList sList,sList2;
-   if (QFile::exists(cfgPath)) {
-    ConfigParser cfp(cfgPath);
+  bool initialize() { //QString commResponse; QStringList sList,sList2;
+   if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
     if (!cfp.parse(&conf)) {
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "node_compute_hempow: <ServerIP> is" << conf.ipAddr;
-     qInfo() << "node_compute_hempow: <Comm> listening on ports (comm,strm):" << conf.commPort << conf.strmPort;
+     qInfo() << "node_compute: <ServerIP> is" << conf.ipAddr;
+     qInfo() << "node_compute: <Comm> listening on ports (comm,strm):" << conf.commPort << conf.strmPort;
+     qInfo() << "node_compute: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
+     qInfo() << "node_compute: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
 
-     // Setup command socket
-     conf.commSocket->connectToHost(conf.ipAddr,conf.commPort); conf.commSocket->waitForConnected();
+     //controlWindow=new ControlWindow(&conf); controlWindow->show();
 
-     commResponse=conf.commandToDaemon(CMD_ACQD_GETCONF);
-     if (!commResponse.isEmpty()) qDebug() << "node_compute_hempow: <Config> Daemon replied:" << commResponse;
-     else qDebug() << "node_compute_hempow: <Config> No response or timeout.";
-     sList=commResponse.split(",");
-     conf.init(sList[0].toInt()); // ampCount
-     conf.sampleRate=sList[1].toInt();
-     conf.tcpBufSize*=conf.sampleRate; // Convert tcpBufSize from seconds to samples
-     conf.halfTcpBufSize=conf.tcpBufSize/2; // for fast-population check
-     conf.tcpBuffer.resize(conf.tcpBufSize);
-
-     conf.refChnCount=sList[2].toInt();
-     conf.bipChnCount=sList[3].toInt();
-     conf.refGain=sList[4].toFloat();
-     conf.bipGain=sList[5].toFloat();
-     conf.eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with sampleRate
-
-     commResponse=conf.commandToDaemon(CMD_ACQD_GETCHAN);
-     if (!commResponse.isEmpty()) qDebug() << "node_compute_hempow: <Config> Daemon replied:" << commResponse;
-     else qDebug() << "node_compute_hempow: <Config> No response or timeout.";
-     sList=commResponse.split("\n"); ChnInfo chn;
-     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) {
-      sList2=sList[chnIdx].split(",");
-      chn.physChn=sList2[0].toInt();
-      chn.chnName=sList2[1];
-      chn.topoTheta=sList2[2].toFloat();
-      chn.topoPhi=sList2[3].toFloat();
-      chn.isBipolar=(bool)sList2[4].toInt();
-      conf.chns.append(chn);
-     }
-     conf.chnCount=conf.chns.size();
-
-     for (auto& chn:conf.chns) qDebug() << chn.physChn << chn.chnName << chn.topoTheta << chn.topoPhi << chn.isBipolar;
-
+     // Generate EEG GUI (streaming/channel interpolation/3D head view) windows
+     //for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
+     // AmpWindow* sWin=new AmpWindow(ampIdx,&conf); ampWindows.append(sWin); sWin->show();
+     //}
      connect(conf.strmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady);
 
+     // ------------------------------------------------------------------------------------
      // At this point the scrolling widgets, and everything should be initialized and ready.
+
      // Setup data socket -- only safe after handshake and receiving crucial info about streaming
      conf.strmSocket->connectToHost(conf.ipAddr,conf.strmPort); conf.strmSocket->waitForConnected();
+     qDebug() << "HERE";
 
      if (!commServer.listen(QHostAddress::Any,conf.svrCommPort)) {
-      qCritical() << "node_compute_hempow: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
+      qCritical() << "node_compute: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
       return true;
      }
-     qInfo() << "node_compute_hempow: <Comm> listening on port" << conf.svrCommPort;
+     qInfo() << "node_compute: <Comm> listening on port" << conf.svrCommPort;
 
      if (!strmServer.listen(QHostAddress::Any,conf.svrStrmPort)) {
-      qCritical() << "node_compute_hempow: Cannot start TCP server on <EEGData> port:" << conf.svrStrmPort;
+      qCritical() << "node_compute: Cannot start TCP server on <EEGStream> port:" << conf.svrStrmPort;
       return true;
      }
-     qInfo() << "node_compute_hempow: <EEGData> listening on port" << conf.svrStrmPort;
+     qInfo() << "node_compute: <EEGStream> listening on port" << conf.svrStrmPort;
 
      return false;
     } else {
-     qWarning() << "node_compute_hempow: The config file" << cfgPath << "is corrupt!";
+     qWarning() << "node_compute: The config file" << cfgPath << "is corrupt!";
      return true;
     }
    } else {
-    qWarning() << "node_compute_hempow: The config file" << cfgPath << "does not exist!";
+    qWarning() << "node_compute: The config file" << cfgPath << "does not exist!";
     return true;
    }
   }
@@ -145,18 +118,18 @@ class ComputeNode: public QObject {
      handleCommand(QString::fromUtf8(cmd),client);
     });
     connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
-    qInfo() << "node_compute_hempow: <Comm> Client connected from" << client->peerAddress().toString();
+    qInfo() << "node_compute: <Comm> Client connected from" << client->peerAddress().toString();
    }
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
    QStringList sList; //int iCmd=0; int iParam=0xffff;
    QIntValidator trigV(256,65535,this);
-   qInfo() << "node_compute_hempow: <Comm> Received command:" << cmd;
+   qInfo() << "node_compute: <Comm> Received command:" << cmd;
    if (!cmd.contains("|")) {
     sList.append(cmd);
     if (cmd==CMD_COMP_ACQINFO) {
-/*     qDebug("node_compute_hempow: <Comm> Sending Amplifier(s) Info..");
+/*     qDebug("node_compute: <Comm> Sending Amplifier(s) Info..");
      client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
      client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
@@ -167,14 +140,14 @@ class ComputeNode: public QObject {
      client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
     } else if (cmd==CMD_COMP_AMPSYNC) {
     } else if (cmd==CMD_COMP_STATUS) {
-     qDebug("node_compute_hempow: <Comm> Sending computation status..");
+     qDebug("node_compute: <Comm> Sending computation status..");
      client->write("Hemispheric powers are computed on-the-fly for the  streaming EEG.\n");
     } else if (cmd==CMD_COMP_DISCONNECT) {
-//     qDebug("node_compute_hempow: <Comm> Disconnecting client..");
+//     qDebug("node_compute: <Comm> Disconnecting client..");
 //     client->write("Disconnecting...\n");
 //     client->disconnectFromHost();
     } else if (cmd==CMD_COMP_GETCONF) {
-/*     qDebug("node_compute_hempow: <Comm> Sending Config Parameters..");
+/*     qDebug("node_compute: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
                    QString::number(conf.eegRate).toUtf8()+","+ \
                    QString::number(conf.cmRate).toUtf8()+","+ \
@@ -184,7 +157,7 @@ class ComputeNode: public QObject {
                    QString::number(conf.bipGain).toUtf8()+","+ \
                    QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
     } else if (cmd==CMD_COMP_GETCHAN) {
-/*     qDebug("node_compute_hempow: <Comm> Sending Channels' Parameters..");
+/*     qDebug("node_compute: <Comm> Sending Channels' Parameters..");
      for (const auto& ch:chnInfo)
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
@@ -194,11 +167,11 @@ class ComputeNode: public QObject {
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n"); */
     } else if (cmd==CMD_COMP_REBOOT) {
-//     qDebug("node_compute_hempow: <Comm> Rebooting server (if privileges are enough)..");
+//     qDebug("node_compute: <Comm> Rebooting server (if privileges are enough)..");
 //     client->write("Rebooting system (if privileges are enough)...\n");
 //     system("/sbin/shutdown -r now");
     } else if (cmd==CMD_COMP_SHUTDOWN) {
-//     qDebug("node_compute_hempow: <Comm> Shutting down server (if privileges are enough)..");
+//     qDebug("node_compute: <Comm> Shutting down server (if privileges are enough)..");
 //     client->write("Shutting down system (if privileges are enough)...\n");
 //     system("/sbin/shutdown -h now");
     }
@@ -208,7 +181,7 @@ class ComputeNode: public QObject {
     // int pos=0;
     // if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
     //} // else {
-//     qDebug("node_compute_hempow: <Comm> Unknown command received..");
+//     qDebug("node_compute: <Comm> Unknown command received..");
 //     client->write("Unknown command..\n");
 //    }
 //   }
@@ -221,11 +194,11 @@ class ComputeNode: public QObject {
      //for (int i=strmClients.size()-1;i>=0;--i) { QTcpSocket *client=strmClients.at(i);
      // if (client->state()!=QAbstractSocket::ConnectedState) { strmClients.removeAt(i); client->deleteLater(); }
      //}
-     qDebug() << "node_compute_hempow: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
+     qDebug() << "node_compute: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
      strmClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "node_compute_hempow: <EEGData> client connected from" << client->peerAddress().toString();
+    qInfo() << "node_compute: <EEGData> client connected from" << client->peerAddress().toString();
    }
   }
 

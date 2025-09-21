@@ -57,13 +57,13 @@ class EEGThread : public QThread {
    chnCount=conf->chns.size();
    colCount=std::ceil((float)chnCount/(float)(33.));
    chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
-   int ww=(int)((float)(conf->ampFrameW)/(float)colCount);
+   int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); wX.append(colIdx*ww+1); }
    for (unsigned int colIdx=0;colIdx<colCount-1;colIdx++) wn.append((colIdx+1)*ww-1);
-   wn.append(conf->ampFrameW-1);
+   wn.append(conf->sweepFrameW-1);
 
    tcpBuffer=&conf->tcpBuffer; tcpBufSize=conf->tcpBufSize; scrAvailSmp=conf->scrAvailableSamples;
-   chnY=(float)(conf->ampFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
 
    evtFont=QFont("Helvetica",14,QFont::Bold);
    rTransform.rotate(-90);
@@ -75,7 +75,7 @@ class EEGThread : public QThread {
   }
 
   void resetScrollBuffer() {
-   QRect cr(0,0,conf->ampFrameW-1,conf->ampFrameH-1);
+   QRect cr(0,0,conf->sweepFrameW-1,conf->sweepFrameH-1);
    sweepBuffer->fill(Qt::white);
   }
 
@@ -148,10 +148,11 @@ class EEGThread : public QThread {
      meanf((smpIdx+0)*scrUpdateSmp,&sA0,&sA0s); meanf((smpIdx+1)*scrUpdateSmp,&sA1,&sA1s);
 
      TcpSample tcpS=(*tcpBuffer)[(conf->tcpBufTail+smpIdx)%conf->tcpBufSize];
-     if (tcpS.offset%1000==0) {
-      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
-      qInfo() << "Sample latency @updateBuffer:" << age << "ms";
-     }
+
+//     if (tcpS.offset%1000==0) {
+//      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
+//      qInfo() << "Sample latency @updateBuffer:" << age << "ms";
+//     }
 
      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
       unsigned int colIdx=chnIdx/chnPerCol;
@@ -159,9 +160,9 @@ class EEGThread : public QThread {
 
       // Cursor vertical line for each column
       if (wX[colIdx]<=wn[colIdx]) {
-       sweepPainter.setPen(Qt::white); sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->ampFrameH-1);
+       sweepPainter.setPen(Qt::white); sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->sweepFrameH-1);
        if (wX[colIdx]<(wn[colIdx]-1)) {
-        sweepPainter.setPen(Qt::black); sweepPainter.drawLine(wX[colIdx]+1,0,wX[colIdx]+1,conf->ampFrameH-1);
+        sweepPainter.setPen(Qt::black); sweepPainter.drawLine(wX[colIdx]+1,0,wX[colIdx]+1,conf->sweepFrameH-1);
        }
       }
 
@@ -184,7 +185,7 @@ class EEGThread : public QThread {
 
      }
 
-     scrCurY=conf->ampFrameH-conf->audWaveH/2;
+     scrCurY=conf->sweepFrameH-conf->audWaveH/2;
      int mu0=scrCurY-(int)(sA0*conf->audWaveH*20);
      int mu1=scrCurY-(int)(sA1*conf->audWaveH*20);
      //int sigma0=(int)(sA0s*conf->audWaveH*20*0.5);
@@ -201,7 +202,7 @@ class EEGThread : public QThread {
      if (trigger) { trigger=0;
       sweepPainter.setPen(Qt::blue);
       for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-       sweepPainter.drawLine(wX[colIdx]-1,0,wX[colIdx]-1,conf->ampFrameH);
+       sweepPainter.drawLine(wX[colIdx]-1,0,wX[colIdx]-1,conf->sweepFrameH);
       }
      }
 
@@ -224,16 +225,16 @@ class EEGThread : public QThread {
 
      sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
      for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) {
-      sweepPainter.drawLine(wX[colIdx]-1,1,wX[colIdx]-1,conf->ampFrameH-1);
-      sweepPainter.drawPixmap(wX[colIdx]-15,conf->ampFrameH-104,rBufferC);
+      sweepPainter.drawLine(wX[colIdx]-1,1,wX[colIdx]-1,conf->sweepFrameH-1);
+      sweepPainter.drawPixmap(wX[colIdx]-15,conf->sweepFrameH-104,rBufferC);
      }
     
      sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver); sweepPainter.setPen(Qt::blue); // Line color
      QVector<QPainter::PixmapFragment> fragments; fragments.reserve(chnCount/chnPerCol);
      for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) { int lineX=wX[colIdx]-1;
-      sweepPainter.drawLine(lineX,1,lineX,conf->ampFrameH-1);
+      sweepPainter.drawLine(lineX,1,lineX,conf->sweepFrameH-1);
       // Prepare batched label blitting - for source in pixmap
-      fragments.append(QPainter::PixmapFragment::create(QPointF(lineX-14,conf->ampFrameH-104),
+      fragments.append(QPainter::PixmapFragment::create(QPointF(lineX-14,conf->sweepFrameH-104),
                                                         QRectF(0,0,rBufferC.width(),rBufferC.height())));
      }
      sweepPainter.drawPixmapFragments(fragments.constData(),fragments.size(),rBufferC);

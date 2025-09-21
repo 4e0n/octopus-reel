@@ -26,8 +26,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "guiclient.h"
 
 int main(int argc,char* argv[]) {
- QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
- QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+ QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
+// QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
  QApplication app(argc,argv);
  GUIClient guiClient;
@@ -35,7 +35,7 @@ int main(int argc,char* argv[]) {
  omp_diag();
 
  if (guiClient.initialize()) {
-  qCritical("hnode_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Stream GUI Client.");
+  qCritical("node_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Stream GUI Client.");
   return 1;
  }
 

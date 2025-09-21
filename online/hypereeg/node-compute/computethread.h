@@ -70,7 +70,7 @@ class ComputeThread : public QThread {
 
    } // EEG stream
 
-   qInfo("node_compute_hempow: <acqthread> Exiting thread..");
+   qInfo("node_compute: <acqthread> Exiting thread..");
   }
 
   bool popEEGSample(TcpSample *outSample) {

@@ -54,7 +54,7 @@ int main(int argc,char *argv[]) {
  omp_diag();
 
  if (acqDaemon.initialize()) {
-  qCritical("hnode_acqd: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
+  qCritical("node_acq: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
   return 1;
  }
 

@@ -51,9 +51,8 @@ class ChnInfo {
   QVector<QVector<QVector<float>>> avgData;
   float cmLevel; QColor cmColor; // Instantly computed line noise level..
 
-  QVector<unsigned int> interElec;
-
-  QVector<bool> interActive; // for each amp
+  QVector<unsigned int> chnViewMode; // for each amp - 2 is disabled
+  QVector<unsigned int> interElec;   // Neighboring electrodes
 
   // Continuous and Average visibility and recording flags exist as strings
   // in the constructor, which is how they are read from the config file..

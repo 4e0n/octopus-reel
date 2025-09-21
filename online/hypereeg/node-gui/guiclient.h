@@ -43,7 +43,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "ampwindow.h"
 
 const int HYPEREEG_ACQ_CLIENT_VER=200;
-const int EEGFRAME_REFRESH_RATE=200; // Base refresh rate
+const int EEGFRAME_REFRESH_RATE=100; // Base refresh rate
 
 const QString cfgPath=hyperConfPath+"node-gui.conf";
 
@@ -71,10 +71,10 @@ class GUIClient: public QObject {
    if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
     if (!cfp.parse(&conf)) {
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "hnode_gui: <ServerIP> is" << conf.ipAddr;
-     qInfo() << "hnode_gui: <Comm> listening on ports (comm,strm,cmod):" << conf.commPort << conf.strmPort << conf.cmodPort;
-     qInfo() << "hnode_gui: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
-     qInfo() << "hnode_gui: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
+     qInfo() << "node_gui: <ServerIP> is" << conf.ipAddr;
+     qInfo() << "node_gui: <Comm> listening on ports (comm,strm,cmod):" << conf.commPort << conf.strmPort << conf.cmodPort;
+     qInfo() << "node_gui: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
+     qInfo() << "node_gui: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
 
      // Generate Control Window
      controlWindow=new ControlWindow(&conf); controlWindow->show();
@@ -93,30 +93,30 @@ class GUIClient: public QObject {
      conf.cmodSocket->connectToHost(conf.ipAddr,conf.cmodPort); conf.cmodSocket->waitForConnected();
 
      if (!commServer.listen(QHostAddress::Any,conf.svrCommPort)) {
-      qCritical() << "hnode_gui: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
+      qCritical() << "node_gui: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
       return true;
      }
-     qInfo() << "hnode_gui: <Comm> listening on port" << conf.svrCommPort;
+     qInfo() << "node_gui: <Comm> listening on port" << conf.svrCommPort;
 
      if (!strmServer.listen(QHostAddress::Any,conf.svrStrmPort)) {
-      qCritical() << "hnode_gui: Cannot start TCP server on <EEGStream> port:" << conf.svrStrmPort;
+      qCritical() << "node_gui: Cannot start TCP server on <EEGStream> port:" << conf.svrStrmPort;
       return true;
      }
-     qInfo() << "hnode_gui: <EEGStream> listening on port" << conf.svrStrmPort;
+     qInfo() << "node_gui: <EEGStream> listening on port" << conf.svrStrmPort;
 
      if (!cmodServer.listen(QHostAddress::Any,conf.svrCmodPort)) {
-      qCritical() << "hnode_gui: Cannot start TCP server on <CMStream> port:" << conf.svrCmodPort;
+      qCritical() << "node_gui: Cannot start TCP server on <CMStream> port:" << conf.svrCmodPort;
       return true;
      }
-     qInfo() << "hnode_gui: <CMStream> listening on port" << conf.svrCmodPort;
+     qInfo() << "node_gui: <CMStream> listening on port" << conf.svrCmodPort;
 
      return false;
     } else {
-     qWarning() << "hnode_gui: The config file" << cfgPath << "is corrupt!";
+     qWarning() << "node_gui: The config file" << cfgPath << "is corrupt!";
      return true;
     }
    } else {
-    qWarning() << "hnode_gui: The config file" << cfgPath << "does not exist!";
+    qWarning() << "node_gui: The config file" << cfgPath << "does not exist!";
     return true;
    }
   }
@@ -137,17 +137,17 @@ class GUIClient: public QObject {
      handleCommand(QString::fromUtf8(cmd),client);
     });
     connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
-    qInfo() << "hnode_gui: <Comm> Client connected from" << client->peerAddress().toString();
+    qInfo() << "node_gui: <Comm> Client connected from" << client->peerAddress().toString();
    }
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
    QStringList sList; QIntValidator trigV(256,65535,this);
-   qInfo() << "hnode_gui: <Comm> Received command:" << cmd;
+   qInfo() << "node_gui: <Comm> Received command:" << cmd;
    if (!cmd.contains("|")) {
     sList.append(cmd);
     if (cmd==CMD_GUIC_ACQINFO) {
-/*     qDebug("hnode_gui: <Comm> Sending Amplifier(s) Info..");
+/*     qDebug("node_gui: <Comm> Sending Amplifier(s) Info..");
      client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
      client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
@@ -158,14 +158,14 @@ class GUIClient: public QObject {
      client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
     } else if (cmd==CMD_GUIC_AMPSYNC) {
     } else if (cmd==CMD_GUIC_STATUS) {
-     qDebug("hnode_gui: <Comm> Sending visualization status..");
+     qDebug("node_gui: <Comm> Sending visualization status..");
      client->write("EEG data scrolling.\n");
     } else if (cmd==CMD_GUIC_DISCONNECT) {
-//     qDebug("hnode_gui: <Comm> Disconnecting client..");
+//     qDebug("node_gui: <Comm> Disconnecting client..");
 //     client->write("Disconnecting...\n");
 //     client->disconnectFromHost();
     } else if (cmd==CMD_GUIC_GETCONF) {
-/*     qDebug("hnode_gui: <Comm> Sending Config Parameters..");
+/*     qDebug("node_gui: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
                    QString::number(conf.eegRate).toUtf8()+","+ \
                    QString::number(conf.cmRate).toUtf8()+","+ \
@@ -175,7 +175,7 @@ class GUIClient: public QObject {
                    QString::number(conf.bipGain).toUtf8()+","+ \
                    QString::number(conf.eegProbeMsecs).toUtf8()+"\n"); */
     } else if (cmd==CMD_GUIC_GETCHAN) {
-/*     qDebug("hnode_gui: <Comm> Sending Channels' Parameters..");
+/*     qDebug("node_gui: <Comm> Sending Channels' Parameters..");
      for (const auto& ch:chnInfo)
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
@@ -185,11 +185,11 @@ class GUIClient: public QObject {
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+"\n"); */
     } else if (cmd==CMD_GUIC_REBOOT) {
-//     qDebug("hnode_gui: <Comm> Rebooting server (if privileges are enough)..");
+//     qDebug("node_gui: <Comm> Rebooting server (if privileges are enough)..");
 //     client->write("Rebooting system (if privileges are enough)...\n");
 //     system("/sbin/shutdown -r now");
     } else if (cmd==CMD_GUIC_SHUTDOWN) {
-//     qDebug("hnode_gui: <Comm> Shutting down server (if privileges are enough)..");
+//     qDebug("node_gui: <Comm> Shutting down server (if privileges are enough)..");
 //     client->write("Shutting down system (if privileges are enough)...\n");
 //     system("/sbin/shutdown -h now");
     }
@@ -199,7 +199,7 @@ class GUIClient: public QObject {
     // int pos=0;
     // if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
     //} // else {
-//     qDebug("hnode_gui: <Comm> Unknown command received..");
+//     qDebug("node_gui: <Comm> Unknown command received..");
 //     client->write("Unknown command..\n");
 //    }
 //   }
@@ -211,11 +211,11 @@ class GUIClient: public QObject {
     client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
     client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "hnode_gui: <EEGStream> client from" << client->peerAddress().toString() << "disconnected.";
+     qDebug() << "node_gui: <EEGStream> client from" << client->peerAddress().toString() << "disconnected.";
      strmClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "hnode_gui: <EEGStream> client connected from" << client->peerAddress().toString();
+    qInfo() << "node_gui: <EEGStream> client connected from" << client->peerAddress().toString();
    }
   }
 
@@ -225,11 +225,11 @@ class GUIClient: public QObject {
     client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
     client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "hnode_gui: <CMStream> client from" << client->peerAddress().toString() << "disconnected.";
+     qDebug() << "node_gui: <CMStream> client from" << client->peerAddress().toString() << "disconnected.";
      cmodClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "hnode_gui: <CMStream> client connected from" << client->peerAddress().toString();
+    qInfo() << "node_gui: <CMStream> client connected from" << client->peerAddress().toString();
    }
   }
 

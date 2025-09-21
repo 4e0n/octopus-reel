@@ -22,7 +22,7 @@
 TEMPLATE = app
 TARGET = node-gui
 INCLUDEPATH += .
-LIBS += -lGLU
+LIBS += -lGLU -lX11
 LIBS += -fopenmp
 QT += core gui widgets network multimedia opengl
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets

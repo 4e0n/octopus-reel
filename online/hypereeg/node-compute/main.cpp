@@ -21,13 +21,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#pragma once
+// Compute skeleton
 
-struct ChnInfo {
- unsigned int physChn;
- QString chnName;
- float topoTheta,topoPhi;
- unsigned int topoX,topoY;
- bool isBipolar;
- QVector<unsigned int> interElec;
-};
+#include <QApplication>
+#include "computenode.h"
+
+int main(int argc,char* argv[]) {
+ QApplication app(argc,argv);
+ ComputeNode computeNode;
+
+ if (computeNode.initialize()) {
+  qCritical("node_compute: <FatalError> Failed to initialize Octopus-ReEL EEG HyperCompute Node.");
+  return 1;
+ }
+
+ return app.exec();
+}

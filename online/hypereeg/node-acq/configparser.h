@@ -41,7 +41,7 @@ class ConfigParser {
    QStringList ampSection; ChnInfo dummyChnInfo;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "octopus_hacqd: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qDebug() << "node_acq: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
@@ -59,7 +59,7 @@ class ConfigParser {
      else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]);
      else {
-      qDebug() << "octopus_hacqd: <ConfigParser> ERROR: Unknown section in config file!";
+      qDebug() << "node_acq: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -73,7 +73,7 @@ class ConfigParser {
       if (opts[0].trimmed()=="COUNT") {
        conf->ampCount=opts[1].toInt();
        if (conf->ampCount > EE_MAX_AMPCOUNT) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: Currently more than" \
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: Currently more than" \
 		 << EE_MAX_AMPCOUNT \
                  << "simultaneously connected amplifiers is not supported!";
         return true;
@@ -81,46 +81,46 @@ class ConfigParser {
       } else if (opts[0].trimmed()=="BUFPAST") {
        conf->tcpBufSize=opts[1].toInt();
        if (!(conf->tcpBufSize >= 2 && conf->tcpBufSize <= 50)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: BUFPAST not within [2,50] seconds range!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: BUFPAST not within [2,50] seconds range!";
         return true;
        }
       } else if (opts[0].trimmed()=="EEGRATE") {
        conf->eegRate=opts[1].toInt();
        if (!(conf->eegRate == 500 || conf->eegRate == 1000)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: EEG Samplerate not among {500,1000}!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: EEG Samplerate not among {500,1000}!";
         return true;
        }
       } else if (opts[0].trimmed()=="CMRATE") {
        conf->cmRate=opts[1].toInt();
        if (!(conf->cmRate == 1 || conf->cmRate == 2)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: CommonMode Samplerate not among {1,10}!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: CommonMode Samplerate not among {1,10}!";
         return true;
        }
       } else if (opts[0].trimmed()=="EEGPROBEMS") {
        conf->eegProbeMsecs=opts[1].toInt();
        if (!(conf->eegProbeMsecs >= 20 && conf->eegProbeMsecs <= 1000)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: EEGPROBEMS not within [20,1000] msecs range!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: EEGPROBEMS not within [20,1000] msecs range!";
         return true;
        }
       } else if (opts[0].trimmed()=="REFGAIN") {
        conf->refGain=opts[1].toFloat();
        if (!(conf->refGain==1.0 ||  conf->refGain==2.0)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: REFGAIN not among {1.0,2.0}x range!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: REFGAIN not among {1.0,2.0}x range!";
         return true;
        }
       } else if (opts[0].trimmed()=="BIPGAIN") {
        conf->bipGain=opts[1].toFloat();
        if (!(conf->bipGain==4.0 ||  conf->bipGain==8.0)) {
-        qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: BIPGAIN not among {4.0,8.0}x range!";
+        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: BIPGAIN not among {4.0,8.0}x range!";
         return true;
        }
       } else {
-       qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: Unknown subsection in AMP section!";
+       qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: Unknown subsection in AMP section!";
        return true;
       }
      }
     } else {
-     qDebug() << "octopus_hacqd: <ConfigParser> <AMP> ERROR: No parameters in section!";
+     qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: No parameters in section!";
      return true;
     }
 
@@ -139,20 +139,20 @@ class ConfigParser {
         if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
             (!(conf->strmPort >= 65000 && conf->strmPort < 65500)) ||
             (!(conf->cmodPort >= 65000 && conf->cmodPort < 65500))) {
-         qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
+         qDebug() << "node_acq: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Invalid count of NET|OUT params!";
+        qDebug() << "node_acq: <ConfigParser> <NET> ERROR: Invalid count of NET|OUT params!";
         return true;
        }
       } else {
-       qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
+       qDebug() << "node_acq: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
        return true;
       }
      }
     } else {
-     qDebug() << "octopus_hacqd: <ConfigParser> <NET> ERROR: No parameters in section!";
+     qDebug() << "node_acq: <ConfigParser> <NET> ERROR: No parameters in section!";
      return true;
     }
 
@@ -164,7 +164,7 @@ class ConfigParser {
       if (opts[0].trimmed()=="APPEND") {
        opts=opts[1].split(">");
        opts2=opts[0].split(",");
-       if (opts2.size()==7) {
+       if (opts2.size()==8) {
         opts2[0]=opts2[0].trimmed(); // Ref vs. Bip
         opts2[2]=opts2[2].trimmed(); // Channel name
         if ((opts2[0].size()!=1) || !(opts2[0]=="R" || opts2[0]=="B") || // Ref or Bip
@@ -174,7 +174,7 @@ class ConfigParser {
             (!((float)opts2[4].toFloat()>=0. && (float)opts2[4].toFloat()<360.)) || // TopoThetaPhi - Phi
             (!((unsigned)opts2[5].toInt()>=1 && (unsigned)opts2[5].toInt()<=11)) || // TopoXY - X
             (!((unsigned)opts2[6].toInt()>=1 && (unsigned)opts2[6].toInt()<=11))) { // TopoXY - Y
-         qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: Invalid parameter!";
+         qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid parameter!";
 	 return true;
         } else { // Set and append new channel..
          opts2[0]=="B" ? bipChn=true : bipChn=false;
@@ -184,11 +184,12 @@ class ConfigParser {
 	 dummyChnInfo.topoPhi=opts2[4].toFloat();       // TopoThetaPhi - Phi
 	 dummyChnInfo.topoX=opts2[5].toInt();           // TopoXY - X
 	 dummyChnInfo.topoY=opts2[6].toInt();           // TopoXY - Y
+	 dummyChnInfo.chnViewMode=opts2[7].toInt();     // Channel View Mode - 0: Off 1: On 2: Spatial Interpolation
          dummyChnInfo.isBipolar=bipChn;                 // Is bipolar?
          if (bipChn) conf->bipChnCount++; else conf->refChnCount++;
         }
        } else {
-        qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: Invalid count of APPEND parameters!";
+        qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid count of APPEND parameters!";
 	return true;
        }
        opts2=opts[1].split(","); // Interpolation electrodes
@@ -202,13 +203,13 @@ class ConfigParser {
 	}
         chnTopo->append(dummyChnInfo); // add channel to info table
        } else {
-        qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: Invalid count of APPEND (chn interpolation) parameters!";
+        qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid count of APPEND (chn interpolation) parameters!";
 	return true;
        }
       }
      }
     } else {
-     qDebug() << "octopus_hacqd: <ConfigParser> <CHN> ERROR: No parameters in section!";
+     qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: No parameters in section!";
      return true;
     }
 

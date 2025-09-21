@@ -34,14 +34,14 @@ class EEGFrame : public QFrame {
  Q_OBJECT
  public:
   explicit EEGFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
-   conf=c; ampNo=a; streamSched=false;
-   streamBuffer=QImage(conf->ampFrameW,conf->ampFrameH,QImage::Format_RGB32);
+   conf=c; ampNo=a; sweepSched=false;
+   sweepBuffer=QImage(conf->sweepFrameW,conf->sweepFrameH,QImage::Format_RGB32);
 
    chnCount=conf->chns.size();
    colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
    chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
-   chnY=(float)(conf->ampFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
-   int ww=(int)((float)(conf->ampFrameW)/(float)colCount);
+   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }
    if (chnCount<16) chnFont=QFont("Helvetica",16,QFont::Bold);
    else if (chnCount>16 && chnCount<32) chnFont=QFont("Helvetica",14,QFont::Bold);
@@ -56,20 +56,20 @@ class EEGFrame : public QFrame {
     chnTextCache.append(staticLabel);
    }
    audLabel.setText("AUDIO");
-   eegThread=new EEGThread(conf,ampNo,&streamBuffer,this);
+   eegThread=new EEGThread(conf,ampNo,&sweepBuffer,this);
    conf->threads[ampNo]=eegThread;
    connect(eegThread,&EEGThread::updateEEGFrame,this,QOverload<>::of(&EEGFrame::update));
    eegThread->start(QThread::HighestPriority);
   }
 
-  bool streamSched; QImage streamBuffer; EEGThread *eegThread;
+  bool sweepSched; QImage sweepBuffer; EEGThread *eegThread;
 
  protected:
   virtual void paintEvent(QPaintEvent *event) override {
    Q_UNUSED(event);
-   QRect cr(0,0,conf->ampFrameW-1,conf->ampFrameH-1);
+   QRect cr(0,0,conf->sweepFrameW-1,conf->sweepFrameH-1);
    mainPainter.begin(this);
-   mainPainter.drawImage(0,0,streamBuffer); streamSched=false;
+   mainPainter.drawImage(0,0,sweepBuffer); sweepSched=false;
    mainPainter.setPen(Qt::black);
    mainPainter.drawRect(cr);
    // Channel names
@@ -83,7 +83,7 @@ class EEGFrame : public QFrame {
    }
    mainPainter.setPen(Qt::blue);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-    mainPainter.drawStaticText(w0[colIdx]+4,conf->ampFrameH-conf->audWaveH/2,audLabel);
+    mainPainter.drawStaticText(w0[colIdx]+4,conf->sweepFrameH-conf->audWaveH/2,audLabel);
    }
    mainPainter.end();
   }

@@ -103,7 +103,7 @@ class ConfParam : public QObject {
         t[0]=opts2[j*3+0].toInt()-1; t[1]=opts2[j*3+1].toInt()-1; t[2]=opts2[j*3+2].toInt()-1; glGizmo[k].tri.append(t);
        }
       } else { gError=true;
-       qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
+       qDebug() << "node_compute: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
       }
      } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%2==0) {
@@ -112,10 +112,10 @@ class ConfParam : public QObject {
 	glGizmo[k].lin.append(ll);
        }
       } else { gError=true;
-       qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
+       qDebug() << "node_compute: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
       }
      }
-    } else { gError=true; qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
+    } else { gError=true; qDebug() << "node_compute: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
    } if (!gError) glGizmoLoaded=true;
   }
 
@@ -209,10 +209,10 @@ class ConfParam : public QObject {
 
 //     if (tcpS.offset%1000==0) qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
 
-//     if (tcpS.offset%1000==0) {
-//      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
-//      qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";
-//     }
+     if (tcpS.offset%1000==0) {
+      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
+      qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";
+     }
 
      //if (tcpS.trigger) qDebug() << "Trigger arrived!";
  

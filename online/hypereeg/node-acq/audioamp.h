@@ -185,7 +185,7 @@ struct AudioAmp {
   // ---------- PLL + PI every ~200ms ----------
   static uint64_t pll_ns_prev=now_ns();
   static uint64_t pll_prod_prev=0;
-  static uint64_t pll_updates=0;
+//  static uint64_t pll_updates=0;
   static uint64_t pll_lastLog=now_ns();
 
   // bias loop state (slow recentring of stepCorr toward 1)
@@ -260,19 +260,19 @@ struct AudioAmp {
      }
 
      // Debug ~1 Hz
-     ++pll_updates;
-     if (now-pll_lastLog >= 1'000'000'000ULL) {
-      const double callHz=double(pll_updates)/(double(now-pll_lastLog)*1e-9);
-      qInfo() << "[PLL]"
-              << "fs_meas="   << QString::number(fs_meas,'f',1)
-              << " stepEst="  << QString::number(rs_stepEst,'f',6)
-              << " callHz="   << QString::number(callHz,'f',1)
-              << " stepBias=" << QString::number(rs_stepBias,'f',6)
-              << " stepCorr=" << QString::number(rs_stepCorr,'f',6)
-              << " stepUse="  << QString::number((rs_stepEst+rs_stepBias)*rs_stepCorr,'f',6);
-      pll_updates=0;
-      pll_lastLog=now;
-     }
+//     ++pll_updates;
+//     if (now-pll_lastLog >= 1'000'000'000ULL) {
+//      const double callHz=double(pll_updates)/(double(now-pll_lastLog)*1e-9);
+//      qInfo() << "[PLL]"
+//              << "fs_meas="   << QString::number(fs_meas,'f',1)
+//              << " stepEst="  << QString::number(rs_stepEst,'f',6)
+//              << " callHz="   << QString::number(callHz,'f',1)
+//              << " stepBias=" << QString::number(rs_stepBias,'f',6)
+//              << " stepCorr=" << QString::number(rs_stepCorr,'f',6)
+//              << " stepUse="  << QString::number((rs_stepEst+rs_stepBias)*rs_stepCorr,'f',6);
+//      pll_updates=0;
+//      pll_lastLog=now;
+//     }
     }
     pll_ns_prev=now;
     pll_prod_prev=prod;
@@ -401,7 +401,7 @@ private:
 
   std::vector<int16_t> buf(size_t(period)*AUDIO_NUM_CHANNELS);
 
-  uint64_t lastPrint=0;
+//  uint64_t lastPrint=0;
   while (run.load(std::memory_order_acquire)) {
    int r=snd_pcm_readi(handle,buf.data(),period);
    if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
@@ -422,11 +422,11 @@ private:
 
    { std::lock_guard<std::mutex> lk(cvMx); cvAvail.notify_all(); }
 
-   uint64_t nowTick=audioFrameCounter.load(std::memory_order_relaxed);
-   if (nowTick/48000!=lastPrint/48000) {
-    qInfo() << "[AudioAmp] prod=" << nowTick << "cons=0";
-   }
-   lastPrint=nowTick;
+//   uint64_t nowTick=audioFrameCounter.load(std::memory_order_relaxed);
+//   if (nowTick/48000!=lastPrint/48000) {
+//    qInfo() << "[AudioAmp] prod=" << nowTick << "cons=0";
+//   }
+//   lastPrint=nowTick;
   }
  }
 };

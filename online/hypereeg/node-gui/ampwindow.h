@@ -43,30 +43,65 @@ class AmpWindow : public QMainWindow {
  public:
   explicit AmpWindow(unsigned int aNo=0,ConfParam *c=nullptr,QWidget *parent=nullptr) : QMainWindow(parent) {
    ampNo=aNo; conf=c;
-   setGeometry(ampNo*conf->guiAmpW+conf->guiAmpX,conf->guiAmpY,conf->guiAmpW,conf->guiAmpH);
+   setGeometry(ampNo*(conf->guiAmpW+10)+conf->guiAmpX,conf->guiAmpY,conf->guiAmpW,conf->guiAmpH);
    setFixedSize(conf->guiAmpW,conf->guiAmpH);
 
-   conf->ampFrameH=conf->guiAmpH-90;
-   //conf->ampFrameW=(int)(.66*(float)(conf->guiAmpW));
-   conf->ampFrameW=conf->guiAmpW-6;
-   if (conf->ampFrameW%2==1) conf->ampFrameW--;
+   // *** MENUBAR ***
+
+   menuBar=new QMenuBar(this); menuBar->setFixedWidth(conf->guiAmpW);
+   QMenu *modelMenu=new QMenu("&Model",menuBar); QMenu *viewMenu=new QMenu("&View",menuBar);
+   menuBar->addMenu(modelMenu); menuBar->addMenu(viewMenu);
+
 
    // *** TABS & TABWIDGETS ***
+   //
+   int tabW=conf->guiAmpW; int tabH=conf->guiAmpH-menuBar->height();
+   if (tabW%2==1) tabW--;
 
    mainTabWidget=new QTabWidget(this);
-   mainTabWidget->setGeometry(1,32,this->width()-2,this->height());
+   mainTabWidget->setGeometry(1,32,tabW,tabH);
+   tabH-=60; // mainTabWidget->height()
+
+   // *** Channels & Interpolation
+   chnWidget=new QWidget(mainTabWidget); chnWidget->setGeometry(2,2,tabW-4,tabH-4); 
+   unsigned int chnIdx,topoX,topoY,a,y,sz; QString chnName; int tXmax=0,tYmax=0;
+   for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
+    tXmax<conf->chns[chnIdx].topoX ? tXmax=conf->chns[chnIdx].topoX : tXmax;
+    tYmax<conf->chns[chnIdx].topoY ? tYmax=conf->chns[chnIdx].topoY : tYmax;
+   }
+   float cf=(float)(tXmax)/((float)(tXmax)+1.); // Aspect ratio multiplier
+   a=tabH/(float)tXmax; sz=a*((float)(5.)/6.); // guiCellSize
+   QRect mRect(0,0,sz*cf,sz*cf); QRegion mRegion(mRect,QRegion::Ellipse);
+   int xOff=tabW/2-a*(tXmax/2)*cf-a*cf/2.; // Leftmost vertical line
+   chnBG=new QButtonGroup(); chnBG->setExclusive(false);
+   for (int btnIdx=0;btnIdx<conf->chns.size();btnIdx++) { // Chns Interpolation
+    chnIdx=conf->chns[btnIdx].physChn; chnName=conf->chns[btnIdx].chnName;
+    topoX=conf->chns[btnIdx].topoX; topoY=conf->chns[btnIdx].topoY;
+    y=(a/2)*cf;
+    if (topoY>1) y+=a/2;
+    if (topoY>10) y+=a/2;
+    QRect cr(xOff+a*(topoX-1)*cf,y+a*(topoY-1)*cf,sz*cf,sz*cf);
+    dummyButton=new QPushButton(chnWidget); dummyButton->setCheckable(true);
+    dummyButton->setText(QString::number(chnIdx)+"\n"+chnName);
+    dummyButton->setGeometry(cr); dummyButton->setMask(mRegion);
+    dummyButton->setStyleSheet("QPushButton { background-color: white; }"
+                               "QPushButton { color: black; }"
+                               "QPushButton:checked { background-color: yellow; }"
+                               "QPushButton:checked { color: black; }");
+    dummyButton->setChecked((bool)conf->chns[btnIdx].chnViewMode[ampNo]);
+    chnBG->addButton(dummyButton,btnIdx);
+   }
+   connect(chnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotChnInter(int)));
 
    // *** EEG Streaming
-
-   eegWidget=new QWidget(mainTabWidget);
+   conf->sweepFrameW=tabW-4; conf->sweepFrameH=tabH-20;
+   eegWidget=new QWidget(mainTabWidget); eegWidget->setGeometry(2,2,tabW-4,tabH-4); 
    eegFrame=new EEGFrame(conf,ampNo,eegWidget);
-   eegFrame->setGeometry(2,2,conf->ampFrameW,conf->ampFrameH); 
-   eegWidget->show(); 
-
+   eegFrame->setGeometry(2,2,conf->sweepFrameW,conf->sweepFrameH); 
    eegAmpBG=new QButtonGroup(); eegAmpBG->setExclusive(true);
-   for (int btnIdx=0;btnIdx<6;btnIdx++) { // EEG Amplification
+   for (int btnIdx=0;btnIdx<6;btnIdx++) { // EEG Multiplier
     dummyButton=new QPushButton(eegWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(100+btnIdx*60,eegWidget->height(),60,20);
+    dummyButton->setGeometry(100+btnIdx*60,tabH-12,60,40);
     eegAmpBG->addButton(dummyButton,btnIdx);
    }
    eegAmpBG->button(0)->setText("1mV");   eegAmpBG->button(1)->setText("500uV");
@@ -76,56 +111,48 @@ class AmpWindow : public QMainWindow {
    conf->eegAmpX[ampNo]=conf->eegAmpRange[0]; //(1000000.0/100.0);
    connect(eegAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGAmp(int)));
 
-   // *** Channels & Interpolation
-
-   chnWidget=new QWidget(mainTabWidget);
-   unsigned int chnIdx,topoX,topoY,a,y,sz; QString chnName;
-   QRect cr(0,0,conf->ampFrameW-1,conf->ampFrameH-1);
-   a=conf->ampFrameW/16; // guiCellSize
-   sz=5*a/6;
-   QRect mRect(0,0,sz,sz); QRegion mRegion(mRect,QRegion::Ellipse);
-   chnBG=new QButtonGroup(); chnBG->setExclusive(false);
-   for (int btnIdx=0;btnIdx<conf->chns.size();btnIdx++) { // Chns Interpolation
-    chnIdx=(conf->chns)[btnIdx].physChn; chnName=(conf->chns)[btnIdx].chnName;
-    topoX=(conf->chns)[btnIdx].topoX; topoY=(conf->chns)[btnIdx].topoY;
-    y=0;
-    if (topoY>1) y+=a/2;
-    if (topoY>10) y+=a/2;
-    QRect cr(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2,sz,sz);
-    //QRect tr1(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2-sz/4,sz,sz);
-    //QRect tr2(a/2+a*(topoX-1)-sz/2,y+a/2+a*(topoY-1)-sz/2+sz/6,sz,sz);
-    dummyButton=new QPushButton(chnWidget); dummyButton->setCheckable(true);
-    dummyButton->setText(QString::number(chnIdx)+"\n"+chnName);
-    dummyButton->setGeometry(cr); dummyButton->setMask(mRegion);
-    dummyButton->setStyleSheet("QPushButton { background-color: white; }"
-                               "QPushButton { color: black; }"
-                               "QPushButton:checked { background-color: yellow; }"
-                               "QPushButton:checked { color: red; }");
-    dummyButton->setChecked(false);
-    chnBG->addButton(dummyButton,btnIdx);
-   }
-   connect(chnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotChnInter(int)));
-   chnWidget->show(); 
-
    // *** ERP OpenGL View
-
-   head3DWidget=new QWidget(mainTabWidget);
-   head3DWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-   gl3DContainer=new QWidget(head3DWidget);
-   gl3DContainer->setGeometry(2,2,conf->ampFrameW*2/3-2,conf->ampFrameH-60); 
+   conf->gl3DFrameW=(tabW-4)*2/3-2; conf->gl3DFrameH=tabH-30-60;
+   headWidget=new QWidget(mainTabWidget); headWidget->setGeometry(2,2,tabW-4,tabH-4); 
+   QWidget* gl3DContainer=new QWidget(headWidget); gl3DContainer->setGeometry(2,2,conf->gl3DFrameW,conf->gl3DFrameH); 
    gl3DWidget=new GL3DWidget(conf,ampNo,gl3DContainer);
 //   gl3DWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
    //gl3DWidget->setMinimumSize(600,600);
    //gl3DWidget->resize(1600, 1200);  // immediate push
-   //gl3DWidget->setGeometry(2,2,conf->ampFrameW,conf->ampFrameH); 
 //   gl3DWidget->setAttribute(Qt::WA_NoSystemBackground, true);
-//   gl3DWidget->setAutoFillBackground(false);
+   gl3DWidget->setAutoFillBackground(false);
+
+   cModeLabel=new QLabel("CM(RMS)("+dummyString.setNum(conf->headModel[ampNo].cModeThreshold)+"uV2):",headWidget);
+   cModeLabel->setGeometry(2,conf->gl3DFrameH+10,120,30); 
+   QSlider *cModeSlider=new QSlider(Qt::Horizontal,headWidget);
+   cModeSlider->setGeometry(122,conf->gl3DFrameH+5,tabW*2/3-102,30); 
+   cModeSlider->setRange(1,500); // in mm because of int - divide by ten
+   cModeSlider->setSingleStep(1);
+   cModeSlider->setPageStep(10); // step in uV2s..
+   cModeSlider->setSliderPosition((int)(conf->headModel[ampNo].cModeThreshold*10.));
+   cModeSlider->setEnabled(true);
+   connect(cModeSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetCModeThr(int)));
+
+   paramRLabel=new QLabel("P.Rad("+dummyString.setNum(conf->headModel[ampNo].scalpParamR)+"cm):",headWidget);
+   paramRLabel->setGeometry(2,conf->gl3DFrameH+30+10,120,30); 
+   QSlider *paramRSlider=new QSlider(Qt::Horizontal,headWidget);
+   paramRSlider->setGeometry(122,conf->gl3DFrameH+40+5,tabW*2/3-102,30); 
+   paramRSlider->setRange(70,500); // in mm because of int - divide by ten
+   paramRSlider->setSingleStep(1);
+   paramRSlider->setPageStep(10); // step in cms..
+   paramRSlider->setSliderPosition(conf->headModel[ampNo].scalpParamR*10);
+   paramRSlider->setEnabled(true);
+   connect(paramRSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetScalpParamR(int)));
+
+   gizmoList=new QListWidget(headWidget); gizmoList->setGeometry(4+conf->gl3DFrameW,2,conf->gl3DFrameW/2,(tabH-24)/3); 
+   electrodeList=new QListWidget(headWidget); electrodeList->setGeometry(4+conf->gl3DFrameW,gizmoList->height()+4,conf->gl3DFrameW/2,(tabH-24)/3); 
+   glLegendFrame=new GLLegendFrame(conf,headWidget);
+   glLegendFrame->setGeometry(4+conf->gl3DFrameW,gizmoList->height()+electrodeList->height()+6,conf->gl3DFrameW/2,(tabH-24)/3); 
 
    erpAmpBG=new QButtonGroup(); erpAmpBG->setExclusive(true);
    for (int btnIdx=0;btnIdx<6;btnIdx++) { // ERP Multiplier
-    dummyButton=new QPushButton(head3DWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(100+btnIdx*60,eegWidget->height(),60,20);
+    dummyButton=new QPushButton(headWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(100+btnIdx*60,tabH-12,60,40);
     erpAmpBG->addButton(dummyButton,btnIdx);
    }
    erpAmpBG->button(0)->setText("100uV"); erpAmpBG->button(1)->setText("50uV");
@@ -135,52 +162,16 @@ class AmpWindow : public QMainWindow {
    conf->erpAmpX[ampNo]=conf->erpAmpRange[0];
    connect(erpAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotERPAmp(int)));
 
-   clrAvgsButton=new QPushButton("CLR",head3DWidget);
-   clrAvgsButton->setGeometry(eegWidget->width()-50,eegWidget->height(),40,20);
+   clrAvgsButton=new QPushButton("CLR",headWidget); clrAvgsButton->setGeometry(tabW-50,tabH-12,50,40);
    connect(clrAvgsButton,SIGNAL(clicked()),this,SLOT(slotClrAvgs()));
-
-   cModeLabel=new QLabel("CM(RMS)("+dummyString.setNum(conf->headModel[ampNo].cModeThreshold)+"uV2):",head3DWidget);
-   cModeLabel->setGeometry(2,conf->ampFrameH-40,120,20); 
-   QSlider *cModeSlider=new QSlider(Qt::Horizontal,head3DWidget);
-   cModeSlider->setGeometry(122,conf->ampFrameH-40,conf->ampFrameW*2/3-102,20); 
-   cModeSlider->setRange(1,500); // in mm because of int - divide by ten
-   cModeSlider->setSingleStep(1);
-   cModeSlider->setPageStep(10); // step in uV2s..
-   cModeSlider->setSliderPosition((int)(conf->headModel[ampNo].cModeThreshold*10.));
-   cModeSlider->setEnabled(true);
-   connect(cModeSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetCModeThr(int)));
-
-
-   paramRLabel=new QLabel("P.Rad("+dummyString.setNum(conf->headModel[ampNo].scalpParamR)+"cm):",head3DWidget);
-   paramRLabel->setGeometry(2,conf->ampFrameH-20,120,20); 
-   QSlider *paramRSlider=new QSlider(Qt::Horizontal,head3DWidget);
-   paramRSlider->setGeometry(122,conf->ampFrameH-20,conf->ampFrameW*2/3-102,20); 
-   paramRSlider->setRange(70,500); // in mm because of int - divide by ten
-   paramRSlider->setSingleStep(1);
-   paramRSlider->setPageStep(10); // step in cms..
-   paramRSlider->setSliderPosition(conf->headModel[ampNo].scalpParamR*10);
-   paramRSlider->setEnabled(true);
-   connect(paramRSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetScalpParamR(int)));
-
-   gizmoList=new QListWidget(head3DWidget);
-   gizmoList->setGeometry(2+conf->ampFrameW*2/3,2,conf->ampFrameW/3,conf->ampFrameH/3); 
-   electrodeList=new QListWidget(head3DWidget);
-   electrodeList->setGeometry(2+conf->ampFrameW*2/3,2+conf->ampFrameH/3,conf->ampFrameW/3,conf->ampFrameH/3); 
-   glLegendFrame=new GLLegendFrame(conf,head3DWidget);
-   glLegendFrame->setGeometry(2+conf->ampFrameW*2/3,2+conf->ampFrameH*2/3,conf->ampFrameW/3,conf->ampFrameH/3); 
-
    // Add all tab widgets
 
-   mainTabWidget->addTab(eegWidget,"EEG Stream");
-   mainTabWidget->addTab(chnWidget,"Chn Inter");
-   mainTabWidget->addTab(head3DWidget,"3D Head");
+   mainTabWidget->addTab(chnWidget,"Channels");
+   mainTabWidget->addTab(eegWidget,"Continuous EEG");
+   mainTabWidget->addTab(headWidget,"Head Model");
    mainTabWidget->show();
 
-   // *** MENUBAR ***
-
-   menuBar=new QMenuBar(this); menuBar->setFixedWidth(width());
-   QMenu *modelMenu=new QMenu("&Model",menuBar); QMenu *viewMenu=new QMenu("&View",menuBar);
-   menuBar->addMenu(modelMenu); menuBar->addMenu(viewMenu);
+   // MENUBAR Items
 
    // View Menu
    frameToggleAction=new QAction("&Frame",this); viewMenu->addAction(frameToggleAction);
@@ -233,8 +224,22 @@ class AmpWindow : public QMainWindow {
  public slots:
   void slotEEGAmp(int x) { conf->eegAmpX[ampNo]=conf->eegAmpRange[x]; }
 
-  void slotChnInter(int x) { conf->chns[x].interActive[ampNo]=!conf->chns[x].interActive[ampNo];
-  // qDebug() << ampNo << "Chn" << x << conf->chns[x].interActive[ampNo];
+  void slotChnInter(int x) { QPushButton *b=(QPushButton *)chnBG->button(x);
+   conf->chns[x].chnViewMode[ampNo]++; conf->chns[x].chnViewMode[ampNo]%=3; // 0-> View disabled 1-> Normal View 2-> Sp.Interpolation
+   if (conf->chns[x].chnViewMode[ampNo]==0) {
+    b->setStyleSheet("QPushButton { background-color: white; }"
+                     "QPushButton { color: black; }");
+    b->setChecked(false);
+   } else if (conf->chns[x].chnViewMode[ampNo]==1) {
+    b->setStyleSheet("QPushButton:checked { background-color: yellow; }"
+                     "QPushButton:checked { color: black; }");
+    b->setChecked(true);
+   } else if (conf->chns[x].chnViewMode[ampNo]==2) {
+    b->setStyleSheet("QPushButton:checked { background-color: red; }"
+                     "QPushButton:checked { color: white; }");
+    b->setChecked(true);
+   }
+//   qDebug() << "Amp:" << ampNo << "- ChnIdx:" << conf->chns[x].physChn << conf->chns[x].chnViewMode[ampNo];
   }
 
   void slotERPAmp(int x) { conf->erpAmpX[ampNo]=conf->erpAmpRange[x]; }
@@ -244,13 +249,13 @@ class AmpWindow : public QMainWindow {
   void slotSetCModeThr(int x) {
    conf->headModel[ampNo].cModeThreshold=(float)(x)/10.; // .1 uV2 Resolution
    cModeLabel->setText("CM(RMS)("+dummyString.setNum(conf->headModel[ampNo].cModeThreshold)+"uV2):");
-   conf->glUpdateParam();
+   conf->glUpdateParam(ampNo);
   }
 
-  void slotSetScalpParamR(int x) {
-   conf->headModel[ampNo].scalpParamR=(float)(x)/10.;
+  void slotSetScalpParamR(int r) {
+   conf->headModel[ampNo].scalpParamR=(float)(r)/10.;
    paramRLabel->setText("P.Rad("+dummyString.setNum(conf->headModel[ampNo].scalpParamR)+"cm):");
-   conf->glUpdateParam();
+   conf->glUpdateParam(ampNo);
   }
 
  private:
@@ -258,14 +263,13 @@ class AmpWindow : public QMainWindow {
   EEGFrame *eegFrame; GL3DWidget *gl3DWidget; GLLegendFrame *glLegendFrame;
   QMenuBar *menuBar;
   QAction *frameToggleAction,*gridToggleAction, *scalpToggleAction,*skullToggleAction,*brainToggleAction,*gizmoToggleAction,*electrodesToggleAction;
-  QTabWidget *mainTabWidget; QWidget *eegWidget,*chnWidget,*head3DWidget;
+  QTabWidget *mainTabWidget; QWidget *eegWidget,*chnWidget,*headWidget;
   QButtonGroup *eegAmpBG,*erpAmpBG,*chnBG;
 
-  QWidget *gl3DContainer;
   QListWidget *gizmoList,*electrodeList;
   QLabel *cModeLabel,*paramRLabel; QSlider *cModeSlider,*paramRSlider;
   QPushButton *clrAvgsButton;
-  //QStatusBar *ctrlStatusBar;
+  //QStatusBar *statusBar;
 };
 
    // Model Menu

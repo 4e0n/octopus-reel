@@ -6,8 +6,8 @@ from scipy.signal import butter
 #order = 2  # per direction → 4th order zero-phase
 
 fs = 1000  # Hz
-lowcut = 2.0
-highcut = 40
+lowcut = 28.0
+highcut = 40.0
 order = 2  # per direction → 4th order zero-phase
 
 nyq = 0.5 * fs

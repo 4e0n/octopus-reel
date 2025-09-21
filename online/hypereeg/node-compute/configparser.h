@@ -42,7 +42,7 @@ class ConfigParser {
    QStringList bufSection,pltSection,evtSection,guiSection,headSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "node_gui: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qDebug() << "node_compute: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
@@ -64,7 +64,7 @@ class ConfigParser {
      else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else if (opts[0].trimmed()=="HEAD") headSection.append(opts[1]);
      else {
-      qDebug() << "node_gui: <ConfigParser> ERROR: Unknown section in config file!";
+      qDebug() << "node_compute: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -86,14 +86,14 @@ class ConfigParser {
         if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
             (!(conf->strmPort >= 65000 && conf->strmPort < 65500)) ||
             (!(conf->cmodPort >= 65000 && conf->cmodPort < 65500))) {
-         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) hostname/IP/port settings!";
+         qDebug() << "node_compute: <ConfigParser> <NET> ERROR: Invalid (uplink) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) count of NET|IN params!";
+        qDebug() << "node_compute: <ConfigParser> <NET> ERROR: Invalid (uplink) count of NET|IN params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->ipAddr << conf->commPort << conf->strmPort << conf->cmodPort;
+       qDebug() << "node_compute:" << conf->ipAddr << conf->commPort << conf->strmPort << conf->cmodPort;
       } else if (opts[0].trimmed()=="OUT") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==4) {
@@ -105,21 +105,21 @@ class ConfigParser {
         if ((!(conf->svrCommPort >= 65000 && conf->svrCommPort < 65500)) || // Simple port validation
             (!(conf->svrStrmPort >= 65000 && conf->svrStrmPort < 65500)) ||
             (!(conf->svrCmodPort >= 65000 && conf->svrCmodPort < 65500))) {
-         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) hostname/IP/port settings!";
+         qDebug() << "node_compute: <ConfigParser> <NET> ERROR: Invalid (downlink) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) count of NET|OUT params!";
+        qDebug() << "node_compute: <ConfigParser> <NET> ERROR: Invalid (downlink) count of NET|OUT params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort << conf->svrCmodPort;
+       qDebug() << "node_compute:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort << conf->svrCmodPort;
       } else {
-       qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
+       qDebug() << "node_compute: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <NET> ERROR: No parameters in section!";
+     qDebug() << "node_compute: <ConfigParser> <NET> ERROR: No parameters in section!";
      return true;
     }
 
@@ -130,16 +130,16 @@ class ConfigParser {
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
        if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
-        qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
+        qDebug() << "node_compute: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: Invalid section command!";
+       qDebug() << "node_compute: <ConfigParser> <BUF> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: No parameters in section!";
+     qDebug() << "node_compute: <ConfigParser> <BUF> ERROR: No parameters in section!";
      return true;
     }
 
@@ -150,8 +150,8 @@ class ConfigParser {
 
     // Get more crucial info from master node
     commResponse=conf->commandToDaemon(CMD_ACQD_GETCONF);
-    if (!commResponse.isEmpty()) qDebug() << "node_gui: <ConfigParser> Daemon replied:" << commResponse;
-    else qDebug() << "node_gui: <ConfigParser> (Timeout) No response from master node!";
+    if (!commResponse.isEmpty()) qDebug() << "node_compute: <ConfigParser> Daemon replied:" << commResponse;
+    else qDebug() << "node_compute: <ConfigParser> (Timeout) No response from master node!";
     sList=commResponse.split(",");
 
     conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
@@ -175,8 +175,8 @@ class ConfigParser {
     // CHANNELS
 
     commResponse=conf->commandToDaemon(CMD_ACQD_GETCHAN);
-    if (!commResponse.isEmpty()) qDebug() << "node_gui: <Config> Daemon replied:" << commResponse;
-    else qDebug() << "node_gui: <Config> No response or timeout.";
+    if (!commResponse.isEmpty()) qDebug() << "node_compute: <Config> Daemon replied:" << commResponse;
+    else qDebug() << "node_compute: <Config> No response or timeout.";
     sList=commResponse.split("\n"); ChnInfo chn;
 
     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
@@ -239,22 +239,22 @@ class ConfigParser {
        if (opts2.size()==4) {
         colR=opts2[0].toInt(); colG=opts2[1].toInt(); colB=opts2[2].toInt(); colA=opts2[3].toInt();
         if (!(colR>=0 && colR<256) || !(colG>=0 && colG<256) || !(colB>=0 && colB<256) || !(colA>=0 && colA<256)) {
-         qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid RGBcolor parameter!";
+         qDebug() << "node_compute: <ConfigParser> <PLT> ERROR: Invalid RGBcolor parameter!";
 	 return true;
         } else { // Add to the list of recognized colors.
 	 conf->rgbPalette.append(QColor(colR,colG,colB,colA));
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid count of RGBcolor parameters!";
+        qDebug() << "node_compute: <ConfigParser> <PLT> ERROR: Invalid count of RGBcolor parameters!";
 	return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid section command!";
+       qDebug() << "node_compute: <ConfigParser> <PLT> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: No parameters in section!";
+     qDebug() << "node_compute: <ConfigParser> <PLT> ERROR: No parameters in section!";
      return true;
     }
 
@@ -272,11 +272,11 @@ class ConfigParser {
         if (!(conf->erpRejBwd>=-2000 && conf->erpRejBwd<=2000 && conf->erpAvgBwd>=-2000 && conf->erpAvgBwd<=2000 &&
               conf->erpAvgFwd>=-2000 && conf->erpAvgFwd<=2000 && conf->erpRejFwd>=-2000 && conf->erpRejFwd<=2000) ||
             conf->erpRejBwd>conf->erpAvgBwd || conf->erpAvgBwd>conf->erpAvgFwd || conf->erpAvgFwd>conf->erpRejFwd) {
-         qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid INTERVAL parameter!";
+         qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: Invalid INTERVAL parameter!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid count of INTERVAL parameters!";
+        qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: Invalid count of INTERVAL parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="ADD") {
@@ -285,22 +285,22 @@ class ConfigParser {
        if (opts2.size()==3) {
         if (!(evtNo>0 && evtNo<256) || (evtName.size()>100) || // max 100 chars for name should be more than enough?
             !(evtColIdx>=0 && evtColIdx<conf->rgbPalette.size())) { // should be within range of present color entries
-         qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid EventNo parameter!";
+         qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: Invalid EventNo parameter!";
          return true;
         } else { // Add to the list of pre-recognized events.
 	 conf->events.append(Event(evtNo,evtName,evtColIdx));
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid count of STIM parameters!";
+        qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: Invalid count of STIM parameters!";
         return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid section command!";
+       qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: No parameters in section!";
+     qDebug() << "node_compute: <ConfigParser> <EVT> ERROR: No parameters in section!";
      return true;
     }
 
@@ -323,11 +323,11 @@ class ConfigParser {
          //}
 
         } else {
-         qDebug() << "node_gui: <ConfigParser> <HEAD> <GIZMO> ERROR: filename error!";
+         qDebug() << "node_compute: <ConfigParser> <HEAD> <GIZMO> ERROR: filename error!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <HEAD> <GIZMO> ERROR: while parsing parameters!";
+        qDebug() << "node_compute: <ConfigParser> <HEAD> <GIZMO> ERROR: while parsing parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="SCALP" || opts[0].trimmed()=="SKULL" || opts[0].trimmed()=="BRAIN") {
@@ -335,7 +335,7 @@ class ConfigParser {
        if (opts2.size()==2) {
         int headNo=opts2[0].toInt()-1; 
         if (!(headNo>=0 && headNo<(int)conf->ampCount)) { // ampCount should be determined by now.
-         qDebug() << "node_gui: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: head# overflow!";
+         qDebug() << "node_compute: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: head# overflow!";
          return true;
         } else {
          if (opts[0].trimmed()=="SCALP") {
@@ -345,7 +345,7 @@ class ConfigParser {
          } else if (opts[0].trimmed()=="BRAIN") {
           conf->headModel[headNo].loadBrain(opts2[1].trimmed());
          } else {
-          qDebug() << "node_gui: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: while parsing parameters!";
+          qDebug() << "node_compute: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: while parsing parameters!";
           return true;
          }
         }
@@ -367,11 +367,11 @@ class ConfigParser {
             (!(conf->guiCtrlY >= -3000 && conf->guiCtrlY <= 3000)) ||
             (!(conf->guiCtrlW >=   400 && conf->guiCtrlW <= 2000)) ||
             (!(conf->guiCtrlH >=    60 && conf->guiCtrlH <= 1800))) {
-         qDebug() << "node_gui: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
+         qDebug() << "node_compute: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        qDebug() << "node_compute: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="STRM") {
@@ -383,17 +383,17 @@ class ConfigParser {
             (!(conf->guiAmpY >= -3000 && conf->guiAmpY <= 3000)) ||
             (!(conf->guiAmpW >=   400 && conf->guiAmpW <= 4000)) ||
             (!(conf->guiAmpH >=   800 && conf->guiAmpH <= 4000))) {
-         qDebug() << "node_gui: <ConfigParser> <GUI> <STRM> ERROR: Window size settings not in appropriate range!";
+         qDebug() << "node_compute: <ConfigParser> <GUI> <STRM> ERROR: Window size settings not in appropriate range!";
 	 return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        qDebug() << "node_compute: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
 	return true;
        }
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: No parameters in section!";
+     qDebug() << "node_compute: <ConfigParser> <GUI> ERROR: No parameters in section!";
      return true;
     }
 

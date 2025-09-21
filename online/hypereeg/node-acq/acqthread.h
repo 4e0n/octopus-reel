@@ -60,7 +60,7 @@ class AcqThread : public QThread {
  Q_OBJECT
  public:
   AcqThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
-   conf=c; nonHWTrig=0;
+   conf=c; nonHWTrig=0; initPassed=false;
 
    serDev.init();
 
@@ -85,7 +85,7 @@ class AcqThread : public QThread {
   }
 
   // --------
-
+/*
   void fetchEegData0() {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -99,7 +99,7 @@ class AcqThread : public QThread {
      chnCount=ee.buf.getChannelCount();
      ee.smpCount=ee.buf.getSampleCount();
      if (chnCount!=conf->totalChnCount)
-      qWarning() << "hnode_acqd: WARNING!!! <fetchEegData> Channel count mismatch!!!" << chnCount << conf->totalChnCount;
+      qWarning() << "node_acq: WARNING!!! <fetchEegData> Channel count mismatch!!!" << chnCount << conf->totalChnCount;
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception" << ex.what() << std::endl;
     }
@@ -108,7 +108,7 @@ class AcqThread : public QThread {
     const int eegCh=int(chnCount-2); const unsigned baseIdx=ee.cBufIdx;
     #pragma omp parallel for schedule(static) if(eegCh>=8)
     for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.nFilterList[chnIdx];
+     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.notchFilterList[chnIdx];
      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
       float xR=ee.buf.getSample(chnIdx,smpIdx);
       float x=bp.filterSample(xR); float xf=nf.filterSample(x);
@@ -131,7 +131,7 @@ class AcqThread : public QThread {
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
    cmRMSBufIdx++;
   }
-
+*/
   void fetchEegData() {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -145,7 +145,7 @@ class AcqThread : public QThread {
      chnCount=ee.buf.getChannelCount();
      ee.smpCount=ee.buf.getSampleCount();
      if (chnCount!=conf->totalChnCount)
-      qWarning() << "hnode_acqd: WARNING!!! <fetchEegData> Channel count mismatch!!!" << chnCount << conf->totalChnCount;
+      qWarning() << "node_acq: WARNING!!! <fetchEegData> Channel count mismatch!!!" << chnCount << conf->totalChnCount;
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception" << ex.what() << std::endl;
     }
@@ -154,7 +154,7 @@ class AcqThread : public QThread {
     const int eegCh=int(chnCount-2); const unsigned baseIdx=ee.cBufIdx;
     #pragma omp parallel for schedule(static) if(eegCh>=8)
     for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.nFilterList[chnIdx];
+     auto &bp=ee.bpFilterList[chnIdx]; auto &nf=ee.notchFilterList[chnIdx];
      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
       float xR=ee.buf.getSample(chnIdx,smpIdx);
       float x=bp.filterSample(xR); float xf=nf.filterSample(x);
@@ -168,15 +168,20 @@ class AcqThread : public QThread {
      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
      dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
-     if (dst.trigger!=0) {
-      if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
-       qInfo("hnode_acqd: <AmpSync> SYNC received by @AMP#%u -- %u",(unsigned)ampIdx+1,(unsigned)dst.offset);
-       arrivedTrig[ampIdx]=dst.offset;
-       ++syncTrig; // arrived to one of amps, wait for the rest... - also; serial here -> no atomics needed
-      } else { // Other trigger than SYNC
-       qInfo("hnode_acqd: <AmpSync> Trigger #%u arrived at AMP#%u -- @sampleoffset=%u",(unsigned)dst.trigger,(unsigned)ampIdx+1,(unsigned)dst.offset);
+
+     if (initPassed) {
+      if (dst.trigger!=0) {
+       if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
+        qInfo("node_acq: <AmpSync> SYNC received by @AMP#%u -- %u",(unsigned)ampIdx+1,(unsigned)dst.offset);
+        arrivedTrig[ampIdx]=dst.offset;
+        ++syncTrig; // arrived to one of amps, wait for the rest... - also; serial here -> no atomics needed
+       } else { // Other trigger than SYNC
+        qInfo("node_acq: <AmpSync> Trigger #%u arrived at AMP#%u -- @sampleoffset=%u",(unsigned)dst.trigger,(unsigned)ampIdx+1,(unsigned)dst.offset);
+       }
       }
      }
+     else { initPassed=true;  qDebug() << "INIT"; }
+
     }
     // -----
     ee.cBufIdx+=ee.smpCount; // advance head once per block
@@ -217,7 +222,7 @@ class AcqThread : public QThread {
    std::vector<amplifier*> eeAmpsUnsorted,eeAmpsSorted; std::vector<unsigned int> sUnsorted,serialNos;
    eeAmpsUnsorted=eeFact.getAmplifiers();
    if (eeAmpsUnsorted.size()<conf->ampCount) {
-    qDebug() << "hnode_acqd: FATAL ERROR!!! <acqthread_amp_setup> At least one  of the amplifiers is offline!";
+    qDebug() << "node_acq: FATAL ERROR!!! <acqthread_amp_setup> At least one  of the amplifiers is offline!";
     return;
    }
 
@@ -235,7 +240,7 @@ class AcqThread : public QThread {
    quint64 rMask,bMask; // Create channel selection masks -- subsequent channels assumed..
    rMask=0; for (unsigned int i=0;i<conf->refChnCount;i++) { rMask<<=1; rMask|=1; }
    bMask=0; for (unsigned int i=0;i<conf->bipChnCount;i++) { bMask<<=1; bMask|=1; }
-   //qInfo("hnode_acqd: <acqthread_amp_setup> RBMask: %llx %llx",rMask,bMask);
+   //qInfo("node_acq: <acqthread_amp_setup> RBMask: %llx %llx",rMask,bMask);
    std::size_t ampIdx=0;
    for (auto& ee:eeAmpsSorted) {
     cBufSz=conf->eegRate*CBUF_SIZE_IN_SECS;
@@ -251,7 +256,7 @@ class AcqThread : public QThread {
    // ----- List unsorted vs. sorted
    { std::size_t ampIdx=0;
     for (auto& ee:eeAmps) {
-     qInfo("hnode_acqd: <AmpSerial> Amp#%d: %d",(int)ampIdx+1,stoi(ee.amp->getSerialNumber()));
+     qInfo("node_acq: <AmpSerial> Amp#%d: %d",(int)ampIdx+1,stoi(ee.amp->getSerialNumber()));
      ampIdx++;
     }
    }
@@ -266,16 +271,16 @@ class AcqThread : public QThread {
    // Initialize EEG streams of amps.
    //for (auto& e:eeAmps) e.str=e.amp->OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    for (auto& e:eeAmps) e.str=e.OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
-   qInfo() << "hnode_acqd: <acqthread_switch2eeg> EEG upstream started..";
+   qInfo() << "node_acq: <acqthread_switch2eeg> EEG upstream started..";
 
    // EEG stream
    // -----------------------------------------------------------------------------------------------------------------
-   fetchEegData0(); // The first round of acquisition - to preadjust certain things
+   fetchEegData(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
 
    sendTrigger(TRIG_AMPSYNC);
-   qInfo() << "hnode_acqd: <AmpSync> SYNC sent..";
+   qInfo() << "node_acq: <AmpSync> SYNC sent..";
 
    while (true) {
 #ifndef EEMAGINE
@@ -288,17 +293,17 @@ class AcqThread : public QThread {
 
     // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
     if (eeAmps.size()>1 && syncTrig==eeAmps.size()) {
-     qInfo() << "hnode_acqd: <AmpSync> SYNC received by all amps.. validating offsets.. ";
+     qInfo() << "node_acq: <AmpSync> SYNC received by all amps.. validating offsets.. ";
      unsigned int trigOffsetMin=*std::min_element(arrivedTrig.begin(),arrivedTrig.end());
      // The following table determines the continuous offset additions for each amp to be aligned.
      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) arrivedTrig[ampIdx]-=trigOffsetMin;
      unsigned int trigOffsetMax=*std::max_element(arrivedTrig.begin(),arrivedTrig.end());
      if (trigOffsetMax>conf->eegRate) {
-      qDebug() << "hnode_acqd: ERROR!!! <AmpSync> SYNC is not recvd within a second for at least one amp!";
+      qDebug() << "node_acq: ERROR!!! <AmpSync> SYNC is not recvd within a second for at least one amp!";
      } else {
-      qInfo() << "hnode_acqd: <AmpSync> SYNC retro-adjustments (per-amp alignment sample offsets) to be made:";
+      qInfo() << "node_acq: <AmpSync> SYNC retro-adjustments (per-amp alignment sample offsets) to be made:";
       for (int trigIdx=0;trigIdx<arrivedTrig.size();trigIdx++) qDebug(" AMP#%d -> %d",trigIdx+1,arrivedTrig[trigIdx]);
-      qInfo() << "hnode_acqd: <AmpSync> SUCCESS. Offsets are now being synced on-the-fly to the earliest amp at TCPsample package level.";
+      qInfo() << "node_acq: <AmpSync> SUCCESS. Offsets are now being synced on-the-fly to the earliest amp at TCPsample package level.";
      }
      syncTrig=0; // Ready for future SYNCing to update arrivedTrig[i] values
     }
@@ -324,11 +329,11 @@ class AcqThread : public QThread {
      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) if (chkTrig[ampIdx]!=chkTrig[0]) { syncFlag=false; break; }
      if (syncFlag) {
       if (chkTrig[0]!=0) {
-       qInfo() << "hnode_acqd: <AmpSync> Yay!!! Syncronized triggers received!";
+       qInfo() << "node_acq: <AmpSync> Yay!!! Syncronized triggers received!";
        chkTrigOffset++;
       }
      } else {
-      qDebug() << "hnode_acqd: ERROR!!! <AmpSync> That's bad. Single offset lag..:" << syncFlag;
+      qDebug() << "node_acq: ERROR!!! <AmpSync> That's bad. Single offset lag..:" << syncFlag;
       for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) qDebug() << "Trig" << ampIdx << ":" << chkTrig[ampIdx];
       qDebug() << "-> Offset:" << chkTrigOffset;
       chkTrigOffset=0;
@@ -444,7 +449,7 @@ cm_done:
    } // EEG stream
 
    for (auto& e:eeAmps) { delete e.str; delete e.amp; } // EEG stream stops..
-   qInfo("hnode_acqd: <acqthread> Exiting thread..");
+   qInfo("node_acq: <acqthread> Exiting thread..");
   }
 
   bool popEEGSample(TcpSample *outSample) {
@@ -478,7 +483,7 @@ cm_done:
   void sendData();
  
  private:
-  ConfParam *conf;
+  ConfParam *conf; bool initPassed;
 
   TcpSample tcpEEG; TcpCMArray tcpCM; Sample smp;
   QVector<TcpSample> tcpEEGBuffer; QVector<TcpCMArray> tcpCMBuffer;

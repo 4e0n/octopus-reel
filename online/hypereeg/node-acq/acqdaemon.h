@@ -40,7 +40,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 const int HYPEREEG_ACQ_DAEMON_VER=200;
 
-const QString cfgPath=hyperConfPath+"node-acqd.conf";
+const QString cfgPath=hyperConfPath+"node-acq.conf";
 
 class AcqDaemon : public QObject {
  Q_OBJECT
@@ -56,7 +56,7 @@ class AcqDaemon : public QObject {
     ConfigParser cfp(cfgPath);
     if (!cfp.parse(&conf,&chnInfo)) {
 #ifdef HACQ_VERBOSE
-     qInfo() << "hnode_acqd: Detailed channels info:";
+     qInfo() << "node_acq: Detailed channels info:";
      qInfo() << "--------------------------------------";
      QString interElec;
      for (const auto& ch:chnInfo) {
@@ -76,36 +76,36 @@ class AcqDaemon : public QObject {
      conf.dumpRaw=false;
 
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "hnode_acqd: ---> Datahandling Info <---";
-     qInfo() << "hnode_acqd: Connected # of amplifier(s):" << conf.ampCount;
-     qInfo() << "hnode_acqd: Sample Rate->" << conf.eegRate << "sps, CM Rate->" << conf.cmRate << "sps";
-     qInfo() << "hnode_acqd: TCP Ringbuffer allocated for" << conf.tcpBufSize << "seconds.";
-     qInfo() << "hnode_acqd: EEG data fetched every" << conf.eegProbeMsecs << "ms.";
-     qInfo("hnode_acqd: Per-amp Physical Channel#: %d (%d+%d)",conf.physChnCount,conf.refChnCount,conf.bipChnCount);
-     qInfo() << "hnode_acqd: Per-amp Total Channel# (with Trig and Offset):" << conf.totalChnCount;
-     qInfo() << "hnode_acqd: Total Channel# from all amps:" << conf.totalCount;
-     qInfo() << "hnode_acqd: Referential channels gain:" << conf.refGain;
-     qInfo() << "hnode_acqd: Bipolar channels gain:" << conf.bipGain;
+     qInfo() << "node_acq: ---> Datahandling Info <---";
+     qInfo() << "node_acq: Connected # of amplifier(s):" << conf.ampCount;
+     qInfo() << "node_acq: Sample Rate->" << conf.eegRate << "sps, CM Rate->" << conf.cmRate << "sps";
+     qInfo() << "node_acq: TCP Ringbuffer allocated for" << conf.tcpBufSize << "seconds.";
+     qInfo() << "node_acq: EEG data fetched every" << conf.eegProbeMsecs << "ms.";
+     qInfo("node_acq: Per-amp Physical Channel#: %d (%d+%d)",conf.physChnCount,conf.refChnCount,conf.bipChnCount);
+     qInfo() << "node_acq: Per-amp Total Channel# (with Trig and Offset):" << conf.totalChnCount;
+     qInfo() << "node_acq: Total Channel# from all amps:" << conf.totalCount;
+     qInfo() << "node_acq: Referential channels gain:" << conf.refGain;
+     qInfo() << "node_acq: Bipolar channels gain:" << conf.bipGain;
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "hnode_acqd: <ServerIP> is" << conf.ipAddr;
+     qInfo() << "node_acq: <ServerIP> is" << conf.ipAddr;
  
      if (!commServer.listen(QHostAddress::Any,conf.commPort)) {
-      qCritical() << "hnode_acqd: Cannot start TCP server on <Comm> port:" << conf.commPort;
+      qCritical() << "node_acq: Cannot start TCP server on <Comm> port:" << conf.commPort;
       return true;
      }
-     qInfo() << "hnode_acqd: <Comm> listening on port" << conf.commPort;
+     qInfo() << "node_acq: <Comm> listening on port" << conf.commPort;
 
      if (!strmServer.listen(QHostAddress::Any,conf.strmPort)) {
-      qCritical() << "hnode_acqd: Cannot start TCP server on <EEGData> port:" << conf.strmPort;
+      qCritical() << "node_acq: Cannot start TCP server on <EEGData> port:" << conf.strmPort;
       return true;
      }
-     qInfo() << "hnode_acqd: <EEGData> listening on port" << conf.strmPort;
+     qInfo() << "node_acq: <EEGData> listening on port" << conf.strmPort;
 
      if (!cmodServer.listen(QHostAddress::Any,conf.cmodPort)) {
-      qCritical() << "hnode_acqd: Cannot start TCP server on <CMData> port:" << conf.cmodPort;
+      qCritical() << "node_acq: Cannot start TCP server on <CMData> port:" << conf.cmodPort;
       return true;
      }
-     qInfo() << "hnode_acqd: <CMData> listening on port" << conf.cmodPort;
+     qInfo() << "node_acq: <CMData> listening on port" << conf.cmodPort;
 
      acqThread=new AcqThread(&conf,this);
      connect(acqThread,&AcqThread::sendData,this,&AcqDaemon::drainAndBroadcast);
@@ -113,10 +113,10 @@ class AcqDaemon : public QObject {
 
      return false;
     }
-    qWarning() << "hnode_acqd: The config file" << cfgPath << "is corrupt!";
+    qWarning() << "node_acq: The config file" << cfgPath << "is corrupt!";
     return true;
    }
-   qWarning() << "hnode_acqd: The config file" << cfgPath << "does not exist!";
+   qWarning() << "node_acq: The config file" << cfgPath << "does not exist!";
    return true;
   }
 
@@ -134,18 +134,18 @@ class AcqDaemon : public QObject {
      handleCommand(QString::fromUtf8(cmd),client);
     });
     connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
-    qInfo() << "hnode_acqd: <Comm> Client connected from" << client->peerAddress().toString();
+    qInfo() << "node_acq: <Comm> Client connected from" << client->peerAddress().toString();
    }
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
    QStringList sList; int iParam=0xffff;
    QIntValidator trigV(256,65535,this);
-   qInfo() << "hnode_acqd: <Comm> Received command:" << cmd;
+   qInfo() << "node_acq: <Comm> Received command:" << cmd;
    if (!cmd.contains("|")) {
     sList.append(cmd);
     if (cmd==CMD_ACQD_ACQINFO) {
-     qDebug("hnode_acqd: <Comm> Sending Amplifier(s) Info..");
+     qDebug("node_acq: <Comm> Sending Amplifier(s) Info..");
      client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
      client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
@@ -155,18 +155,18 @@ class AcqDaemon : public QObject {
      client->write("-> Grand total channels# from all amps: "+QString::number(conf.totalCount).toUtf8()+"\n");
      client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_AMPSYNC) {
-     qDebug("hnode_acqd: <Comm> Conveying SYNC to amplifier(s)..");
+     qDebug("node_acq: <Comm> Conveying SYNC to amplifier(s)..");
      acqThread->sendTrigger(TRIG_AMPSYNC);
      client->write("SYNC conveyed to amps.\n");
     } else if (cmd==CMD_ACQD_STATUS) {
-     qDebug("hnode_acqd: <Comm> Sending Amp(s) status..");
+     qDebug("node_acq: <Comm> Sending Amp(s) status..");
      client->write("Amp(s) streaming EEG.\n");
     } else if (cmd==CMD_ACQD_DISCONNECT) { 
-     qDebug("hnode_acqd: <Comm> Disconnecting client..");
+     qDebug("node_acq: <Comm> Disconnecting client..");
      client->write("Disconnecting...\n");
      client->disconnectFromHost();
     } else if (cmd==CMD_ACQD_GETCONF) {
-     qDebug("hnode_acqd: <Comm> Sending Config Parameters..");
+     qDebug("node_acq: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
                    QString::number(conf.eegRate).toUtf8()+","+ \
                    QString::number(conf.cmRate).toUtf8()+","+ \
@@ -176,7 +176,7 @@ class AcqDaemon : public QObject {
                    QString::number(conf.bipGain).toUtf8()+","+ \
                    QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_GETCHAN) {
-     qDebug("hnode_acqd: <Comm> Sending Channels' Parameters..");
+     qDebug("node_acq: <Comm> Sending Channels' Parameters..");
      for (const auto& ch:chnInfo) {
       QString interElec="";
       for (int idx=0;idx<ch.interElec.size();idx++) interElec.append(QString::number(ch.interElec[idx])+",");
@@ -188,6 +188,7 @@ class AcqDaemon : public QObject {
                     QString::number(ch.topoX).toUtf8()+","+ \
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.isBipolar).toUtf8()+","+ \
+                    QString::number(ch.chnViewMode).toUtf8()+","+ \
 		    QString::number(ch.interElec.size()).toUtf8()+","+ \
                     interElec.toUtf8()+"\n");
      }
@@ -210,16 +211,16 @@ class AcqDaemon : public QObject {
      conf.hEEGStream.writeRawData(dumpSign,sizeof(dumpSign)-1); // write signature *without* length or NUL
      conf.hEEGStream << quint32(conf.ampCount) << quint32(conf.physChnCount);
      conf.dumpRaw=true;
-     client->write("hnode_acqd: Raw EEG dumping started.\n");
+     client->write("node_acq: Raw EEG dumping started.\n");
     } else if (cmd==CMD_ACQD_DUMPRAWOFF) {
      conf.dumpRaw=false; conf.hEEGStream.setDevice(nullptr); conf.hEEGFile.close();
-     client->write("hnode_acqd: Raw EEG dumping stopped.\n");
+     client->write("node_acq: Raw EEG dumping stopped.\n");
     } else if (cmd==CMD_ACQD_REBOOT) {
-     qDebug("hnode_acqd: <Comm> Rebooting server (if privileges are enough)..");
+     qDebug("node_acq: <Comm> Rebooting server (if privileges are enough)..");
      client->write("Rebooting system (if privileges are enough)...\n");
      system("/sbin/shutdown -r now");
     } else if (cmd==CMD_ACQD_SHUTDOWN) {
-     qDebug("hnode_acqd: <Comm> Shutting down server (if privileges are enough)..");
+     qDebug("node_acq: <Comm> Shutting down server (if privileges are enough)..");
      client->write("Shutting down system (if privileges are enough)...\n");
      system("/sbin/shutdown -h now");
     }
@@ -229,16 +230,16 @@ class AcqDaemon : public QObject {
      int pos=0;
      if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
      if (iParam<0xffff) {
-      qDebug("hnode_acqd: <Comm> Conveying **non-hardware** trigger to amplifier(s).. TCode:%d",iParam);
+      qDebug("node_acq: <Comm> Conveying **non-hardware** trigger to amplifier(s).. TCode:%d",iParam);
       acqThread->sendTrigger(iParam);
       client->write("**Non-hardware** trigger conveyed to amps.\n");
      } else {
-      qDebug() << "hnode_acqd: ERROR!!! <Comm> **Non-hardware** trigger is not between designated interval (256,65535).";
+      qDebug() << "node_acq: ERROR!!! <Comm> **Non-hardware** trigger is not between designated interval (256,65535).";
       client->write("Error! **Non-hardware** Trigger should be between (256,65535). Trigger not conveyed.\n");
      }
     }
     //else {
-    // qDebug("hnode_acqd: <Comm> Unknown command received..");
+    // qDebug("node_acq: <Comm> Unknown command received..");
     // client->write("Unknown command..\n");
     //}
    }
@@ -257,11 +258,11 @@ class AcqDaemon : public QObject {
      //for (int i=strmClients.size()-1;i>=0;--i) { QTcpSocket *client=strmClients.at(i);
      // if (client->state()!=QAbstractSocket::ConnectedState) { strmClients.removeAt(i); client->deleteLater(); }
      //}
-     qDebug() << "hnode_acqd: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
+     qDebug() << "node_acq: <EEGData> client from" << client->peerAddress().toString() << "disconnected.";
      strmClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "hnode_acqd: <EEGData> client connected from" << client->peerAddress().toString();
+    qInfo() << "node_acq: <EEGData> client connected from" << client->peerAddress().toString();
    }
   }
 
@@ -275,11 +276,11 @@ class AcqDaemon : public QObject {
     
     cmodClients.append(client);
     connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "hnode_acqd: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
+     qDebug() << "node_acq: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
      cmodClients.removeAll(client);
      client->deleteLater();
     });
-    qInfo() << "hnode_acqd: <CMData> client connected from" << client->peerAddress().toString();
+    qInfo() << "node_acq: <CMData> client connected from" << client->peerAddress().toString();
    }
   }
 
