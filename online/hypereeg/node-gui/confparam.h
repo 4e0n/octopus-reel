@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ class ConfParam : public QObject {
  public:
   ConfParam() {
    eegSweepRefreshRate=EEG_SCROLL_REFRESH_RATE; eegSweepUpdating=0;
-   eegSweepMode=quitPending=ctrlRecordingActive=false; ctrlNotchActive=true;
+   eegSweepMode=quitPending=ctrlRecordingActive=false; ctrlNotchActive=false;
    tcpBufHead=tcpBufTail=0; recCounter=0; audWaveH=100;
   };
 
@@ -126,13 +126,13 @@ class ConfParam : public QObject {
 
   QVector<QColor> rgbPalette;
 
-  QString ipAddr; quint32 commPort,strmPort,cmodPort; // Uplink
-  QString svrIpAddr; quint32 svrCommPort,svrStrmPort,svrCmodPort; // Downlink
-  QTcpSocket *commSocket,*strmSocket,*cmodSocket; // Upstream
+  QString ipAddr; quint32 commPort,strmPort; // Uplink
+  QString svrIpAddr; quint32 svrCommPort,svrStrmPort; // Downlink
+  QTcpSocket *commSocket,*strmSocket; // Upstream
 
   QMutex mutex; QVector<ChnInfo> chns; QVector<QThread*> threads;
 
-  bool eegSweepMode; unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegSweepDivider; QWaitCondition eegSweepWait;
+  bool eegSweepMode; unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegSweepDivider,eegBand; QWaitCondition eegSweepWait;
   //std::atomic<unsigned int> eegSweepUpdating;
   unsigned int eegSweepUpdating; QVector<bool> eegSweepPending;
 
@@ -195,15 +195,28 @@ class ConfParam : public QObject {
 
 
      // Handle spatial interpolation
-     for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-      float avg;
-      if (chns[chnIdx].chnViewMode[ampIdx]==2) {
-       avg=0.; for (int idx=0;idx<chns[chnIdx].interElec.size();idx++) avg+=tcpS.amp[ampIdx].data[ chns[chnIdx].interElec[idx] ];
-       tcpS.amp[ampIdx].data[chnIdx]=avg;
-       avg=0.; for (int idx=0;idx<chns[chnIdx].interElec.size();idx++) avg+=tcpS.amp[ampIdx].dataF[ chns[chnIdx].interElec[idx] ];
-       tcpS.amp[ampIdx].dataF[chnIdx]=avg;
-      } else if (chns[chnIdx].chnViewMode[ampIdx]==0) {
-       tcpS.amp[ampIdx].data[chnIdx]=0.; tcpS.amp[ampIdx].dataF[chnIdx]=0.;
+     for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
+      std::vector<float>* basePtr;
+      switch (eegBand) {
+       default:
+       case 0: basePtr=&(tcpS.amp[ampIdx].dataBP); break;
+       case 1: basePtr=&(tcpS.amp[ampIdx].dataD); break;
+       case 2: basePtr=&(tcpS.amp[ampIdx].dataT); break;
+       case 3: basePtr=&(tcpS.amp[ampIdx].dataA); break;
+       case 4: basePtr=&(tcpS.amp[ampIdx].dataB); break;
+       case 5: basePtr=&(tcpS.amp[ampIdx].dataG); break;
+      }
+      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+       float avg;
+       if (chns[chnIdx].chnViewMode[ampIdx]==2) {
+        avg=0.; for (int idx=0;idx<chns[chnIdx].interElec.size();idx++) avg+=(*basePtr)[ chns[chnIdx].interElec[idx] ]; //tcpS.amp[ampIdx].dataBP[ chns[chnIdx].interElec[idx] ];
+        (*basePtr)[chnIdx]=avg; // tcpS.amp[ampIdx].dataBP[chnIdx]=avg;
+        //avg=0.; for (int idx=0;idx<chns[chnIdx].interElec.size();idx++) avg+=tcpS.amp[ampIdx].dataN[ chns[chnIdx].interElec[idx] ];
+        //tcpS.amp[ampIdx].dataN[chnIdx]=avg;
+       } else if (chns[chnIdx].chnViewMode[ampIdx]==0) {
+        (*basePtr)[chnIdx]=0.; //tcpS.amp[ampIdx].dataBP[chnIdx]=0.;
+        //tcpS.amp[ampIdx].dataN[chnIdx]=0.;
+       }
       }
      }
 
@@ -222,7 +235,7 @@ class ConfParam : public QObject {
      if (ctrlRecordingActive) { // .. to disk ..
       hegStream << tcpS.offset << " ";
       for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-       for (int chnIdx=0;chnIdx<chns.size();chnIdx++) hegStream << tcpS.amp[ampIdx].dataF[chnIdx]*1e6 << " ";
+       for (int chnIdx=0;chnIdx<chns.size();chnIdx++) hegStream << tcpS.amp[ampIdx].dataBP[chnIdx]*1e6 << " ";
       }
       hegStream << tcpS.trigger << "\n";
       recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
@@ -244,7 +257,6 @@ class ConfParam : public QObject {
       scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
       if (quitPending) {
        if (strmSocket && strmSocket->isOpen()) strmSocket->disconnectFromHost();
-       if (cmodSocket && cmodSocket->isOpen()) cmodSocket->disconnectFromHost();
       } 
       eegSweepUpdating=ampCount; { for (auto& s:eegSweepPending) s=true; } eegSweepWait.wakeAll();
      }

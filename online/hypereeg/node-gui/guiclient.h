@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -58,13 +58,9 @@ class GUIClient: public QObject {
    conf.strmSocket=new QTcpSocket(this);
    conf.strmSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
    conf.strmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
-   conf.cmodSocket=new QTcpSocket(this);
-   conf.cmodSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-   conf.cmodSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
    // Downstream (we're server)
    connect(&commServer,&QTcpServer::newConnection,this,&GUIClient::onNewCommClient);
    connect(&strmServer,&QTcpServer::newConnection,this,&GUIClient::onNewStrmClient);
-   connect(&cmodServer,&QTcpServer::newConnection,this,&GUIClient::onNewCmodClient);
   }
 
   bool initialize() { //QString commResponse; QStringList sList,sList2;
@@ -72,7 +68,7 @@ class GUIClient: public QObject {
     if (!cfp.parse(&conf)) {
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "node_gui: <ServerIP> is" << conf.ipAddr;
-     qInfo() << "node_gui: <Comm> listening on ports (comm,strm,cmod):" << conf.commPort << conf.strmPort << conf.cmodPort;
+     qInfo() << "node_gui: <Comm> listening on ports (comm,strm):" << conf.commPort << conf.strmPort;
      qInfo() << "node_gui: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
      qInfo() << "node_gui: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
 
@@ -90,7 +86,6 @@ class GUIClient: public QObject {
 
      // Setup data socket -- only safe after handshake and receiving crucial info about streaming
      conf.strmSocket->connectToHost(conf.ipAddr,conf.strmPort); conf.strmSocket->waitForConnected();
-     conf.cmodSocket->connectToHost(conf.ipAddr,conf.cmodPort); conf.cmodSocket->waitForConnected();
 
      if (!commServer.listen(QHostAddress::Any,conf.svrCommPort)) {
       qCritical() << "node_gui: Cannot start TCP server on <Comm> port:" << conf.svrCommPort;
@@ -103,12 +98,6 @@ class GUIClient: public QObject {
       return true;
      }
      qInfo() << "node_gui: <EEGStream> listening on port" << conf.svrStrmPort;
-
-     if (!cmodServer.listen(QHostAddress::Any,conf.svrCmodPort)) {
-      qCritical() << "node_gui: Cannot start TCP server on <CMStream> port:" << conf.svrCmodPort;
-      return true;
-     }
-     qInfo() << "node_gui: <CMStream> listening on port" << conf.svrCmodPort;
 
      return false;
     } else {
@@ -219,28 +208,14 @@ class GUIClient: public QObject {
    }
   }
 
-  void onNewCmodClient() {
-   while (cmodServer.hasPendingConnections()) {
-    QTcpSocket *client=cmodServer.nextPendingConnection(); cmodClients.append(client);
-    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-    client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 64*1024);
-    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "node_gui: <CMStream> client from" << client->peerAddress().toString() << "disconnected.";
-     cmodClients.removeAll(client);
-     client->deleteLater();
-    });
-    qInfo() << "node_gui: <CMStream> client connected from" << client->peerAddress().toString();
-   }
-  }
-
   void drainAndBroadcast() {
 //   TcpSample eegSample(conf.ampCount,conf.physChnCount);
 //   TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
 //   //TcpCMArray cm2(conf.ampCount,conf.physChnCount);
 //   while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
 //    //qDebug() << "Daemon: ampCount:" << tcpSample.amp.size() 
-//    //     << " ChCount:" << tcpSample.amp[0].dataF.size() 
-//    //     << " FirstVal:" << tcpSample.amp[0].dataF[0];
+//    //     << " ChCount:" << tcpSample.amp[0].dataN.size() 
+//    //     << " FirstVal:" << tcpSample.amp[0].dataN[0];
 //    for (QTcpSocket *client:strmClients) {
 //     if (client->state()==QAbstractSocket::ConnectedState) {
 //      QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
@@ -269,7 +244,7 @@ class GUIClient: public QObject {
   }
 
  private:
-  QTcpServer commServer,strmServer,cmodServer;
-  QVector<QTcpSocket*> strmClients,cmodClients;
+  QTcpServer commServer,strmServer;
+  QVector<QTcpSocket*> strmClients;
   ControlWindow *controlWindow; QVector<AmpWindow*> ampWindows;
 };

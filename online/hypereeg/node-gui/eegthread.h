@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -95,26 +95,35 @@ class EEGThread : public QThread {
 
   void mean(unsigned int startIdx,std::vector<float>* mu,std::vector<float>* sigma) {
    const unsigned tcpBufTail=conf->tcpBufTail; const unsigned scrUpdateSmp=conf->scrUpdateSamples;
-   const float invSmp=1.0f/float(scrUpdateSmp); const bool useNotch=conf->ctrlNotchActive;
+   const float invSmp=1.0f/float(scrUpdateSmp); //const bool useNotch=conf->ctrlNotchActive;
    PARFOR(chnIndex,0,int(chnCount)) {
     double sum=0.0,sumSq=0.0;
-    if (useNotch) {
+//    if (useNotch) {
+//     SIMD_REDUCE2(sum,sumSq)
+//     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
+//      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
+//      const float x=s.amp[ampNo].dataN[chnIndex];
+//      if (s.trigger>0) trigger=s.trigger;
+//      sum+=x; sumSq+=double(x)*double(x);
+//     }
+//    } else {
      SIMD_REDUCE2(sum,sumSq)
      for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
       const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-      const float x=s.amp[ampNo].dataF[chnIndex];
+      float x;
+      switch (conf->eegBand) {
+       default:
+       case 0: x=s.amp[ampNo].dataBP[chnIndex]; break;
+       case 1: x=s.amp[ampNo].dataD[chnIndex]; break;
+       case 2: x=s.amp[ampNo].dataT[chnIndex]; break;
+       case 3: x=s.amp[ampNo].dataA[chnIndex]; break;
+       case 4: x=s.amp[ampNo].dataB[chnIndex]; break;
+       case 5: x=s.amp[ampNo].dataG[chnIndex]; break;
+      }
       if (s.trigger>0) trigger=s.trigger;
       sum+=x; sumSq+=double(x)*double(x);
      }
-    } else {
-     SIMD_REDUCE2(sum,sumSq)
-     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
-      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-      const float x=s.amp[ampNo].data[chnIndex];
-      if (s.trigger>0) trigger=s.trigger;
-      sum+=x; sumSq+=double(x)*double(x);
-     }
-    }
+//    }
     const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
     (*mu)[chnIndex]=float(m); (*sigma)[chnIndex]=float(std::sqrt(v));
    }

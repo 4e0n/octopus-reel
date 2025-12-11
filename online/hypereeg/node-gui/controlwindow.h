@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -112,14 +112,25 @@ class ControlWindow : public QMainWindow {
    synthTrig2Button->setGeometry(730,mainTabWidget->height()-54,60,20);
    connect(synthTrig2Button,SIGNAL(clicked()),this,SLOT(slotSynthTrig2()));
 
-   toggleNotchButton=new QPushButton("Notch",cntWidget);
-   toggleNotchButton->setGeometry(880,mainTabWidget->height()-54,60,20);
-   toggleNotchButton->setCheckable(true); toggleNotchButton->setChecked(true);
-   connect(toggleNotchButton,SIGNAL(clicked()),this,SLOT(slotToggleNotch()));
+   QPushButton *dummyButton;
+
+   eegBandBG=new QButtonGroup();
+   eegBandBG->setExclusive(true);
+   for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(mainTabWidget->width()-760+bandIdx*70,mainTabWidget->height()-54,70,20);
+    eegBandBG->addButton(dummyButton,bandIdx);
+   }
+   eegBandBG->button(0)->setText("2-40Hz");
+   eegBandBG->button(1)->setText("Delta");
+   eegBandBG->button(2)->setText("Theta");
+   eegBandBG->button(3)->setText("Alpha");
+   eegBandBG->button(4)->setText("Beta");
+   eegBandBG->button(5)->setText("Gamma"); eegBandBG->button(0)->setChecked(true);
+   connect(eegBandBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGBand(int)));
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
-   QPushButton *dummyButton;
    scrSpeedBG=new QButtonGroup();
    scrSpeedBG->setExclusive(true);
    for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG Scroll speed/resolution
@@ -132,7 +143,6 @@ class ControlWindow : public QMainWindow {
    scrSpeedBG->button(2)->setText("4");
    scrSpeedBG->button(3)->setText("2");
    scrSpeedBG->button(4)->setText("1"); scrSpeedBG->button(0)->setChecked(true);
-
    connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
@@ -153,7 +163,7 @@ class ControlWindow : public QMainWindow {
 
   void slotAbout() {
    QMessageBox::about(this,"About Octopus-ReEL HyperEEG Streamer GUI Client Node",
-                           "(c) 2007-2025 Barkin Ilhan (barkin@unrlabs.org)\n"
+                           "(c) 2007-2026 Barkin Ilhan (barkin@unrlabs.org)\n"
                            "This is free software coming with\n"
                            "ABSOLUTELY NO WARRANTY; You are welcome\n"
                            "to extend/redistribute it under conditions of GPL v3.\n");
@@ -164,10 +174,7 @@ class ControlWindow : public QMainWindow {
 
    if (conf->strmSocket->state() != QAbstractSocket::UnconnectedState)
     conf->strmSocket->waitForDisconnected(1000); // timeout in ms
-   if (conf->cmodSocket->state() != QAbstractSocket::UnconnectedState)
-    conf->cmodSocket->waitForDisconnected(1000); // timeout in ms
    //while (conf->strmSocket->state() != QAbstractSocket::UnconnectedState);
-   //while (conf->cmodSocket->state() != QAbstractSocket::UnconnectedState);
 
    for (auto& thread:conf->threads) { thread->wait(); delete thread; }
    
@@ -209,20 +216,21 @@ class ControlWindow : public QMainWindow {
   void slotSynthTrig1() { conf->commandToDaemon(CMD_ACQD_S_TRIG_1); }
   void slotSynthTrig2() { conf->commandToDaemon(CMD_ACQD_S_TRIG_2); }
 
-  void slotToggleNotch() {
-   {
-    QMutexLocker locker(&conf->mutex);
-    conf->ctrlNotchActive ? conf->ctrlNotchActive=false : conf->ctrlNotchActive=true;
-   }
-  }
+//  void slotToggleNotch() {
+//   {
+//    QMutexLocker locker(&conf->mutex);
+//    conf->ctrlNotchActive ? conf->ctrlNotchActive=false : conf->ctrlNotchActive=true;
+//   }
+//  }
 
   void slotScrollSpeed(int x) { conf->eegSweepDivider=conf->eegSweepCoeff[x]; }
+  void slotEEGBand(int x) { conf->eegBand=x; }
 
  private:
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
   QPushButton *manualSyncButton,*manualTrigButton,*synthTrig1Button,*synthTrig2Button;
-  QPushButton *toggleRecordingButton,*toggleNotchButton;
-  QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
+  QPushButton *toggleRecordingButton;
+  QButtonGroup *eegBandBG,*scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };

@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -37,16 +37,20 @@ using namespace eesynth;
 #endif
 
 // [0.1-100Hz] Band-pass
-//const std::vector<double> b_01_100={0.06734199, 0.         ,-0.13468398, 0.        ,0.06734199};
-//const std::vector<double> a_01_100={1.        ,-3.14315078, 3.69970174,-1.96971135,0.41316049};
+const std::vector<double> b_01_100={0.06734199, 0.         ,-0.13468398, 0.        ,0.06734199};
+const std::vector<double> a_01_100={1.        ,-3.14315078, 3.69970174,-1.96971135,0.41316049};
 
 // [1-40Hz] Band-pass
 const std::vector<double> b_1_40={0.01274959, 0.       ,-0.02549918, 0.        ,0.01274959};
 const std::vector<double> a_1_40={1.        ,-3.6532502, 5.01411673,-3.06801391,0.7071495 };
 
 // [2-40Hz] Band-pass
-//const std::vector<double> b_2_40={0.01215196, 0.        ,-0.02430392, 0.        ,0.01215196};
-//const std::vector<double> a_2_40={1.        ,-3.65903703, 5.03244992,-3.08686268,0.71345829};
+const std::vector<double> b_2_40={0.01215196, 0.        ,-0.02430392, 0.        ,0.01215196};
+const std::vector<double> a_2_40={1.        ,-3.65903703, 5.03244992,-3.08686268,0.71345829};
+
+// Notch@50Hz (Q=30)
+const std::vector<double> b_notch={0.99479124,-1.89220538,0.99479124};
+const std::vector<double> a_notch={1.        ,-1.89220538,0.98958248};
 
 // Delta (2-4)
 const std::vector<double> b_delta={3.91302054e-05, 0.00000000e+00,-7.82604108e-05, 0.00000000e+00,3.91302054e-05};
@@ -68,17 +72,12 @@ const std::vector<double> a_beta={1.        ,-3.84577528, 5.57661047,-3.61363652
 const std::vector<double> b_gamma={0.00134871, 0.        ,-0.00269742, 0.        ,0.00134871};
 const std::vector<double> a_gamma={1.        ,-3.80766385, 5.52048605,-3.60983953,0.89885899};
 
-// Notch@50Hz (Q=30)
-const std::vector<double> b_notch={0.99479124,-1.89220538,0.99479124};
-const std::vector<double> a_notch={1.        ,-1.89220538,0.98958248};
-
 struct EEAmp {
  unsigned int id=0;
  amplifier *amp=nullptr;
  std::vector<channel> chnList;
  // IIR filter states and others.. for each channel of the amplifier
- std::vector<IIRFilter> bpFilterList,notchFilterList,
-	                deltaFilterList,thetaFilterList,alphaFilterList,betaFilterList,gammaFilterList;
+ std::vector<IIRFilter> filterListBP,filterListN,filterListD,filterListT,filterListA,filterListB,filterListG;
  buffer buf; stream *str=nullptr; // EEbuf and EEStream
  unsigned int t=0,smpCount=0;     // data count int buffer
  unsigned int baseSmpIdx=0;       // Base Sample Index: is subtracted from all upcoming smpIdx's
@@ -100,16 +99,14 @@ struct EEAmp {
   cBufIdx=0;
 
   // Initialize filters
-  bpFilterList.reserve(chnCount); notchFilterList.reserve(chnCount);
-
-  deltaFilterList.reserve(chnCount); thetaFilterList.reserve(chnCount);
-  alphaFilterList.reserve(chnCount); betaFilterList.reserve(chnCount);
-  gammaFilterList.reserve(chnCount);
+  filterListBP.reserve(chnCount); filterListN.reserve(chnCount);
+  filterListD.reserve(chnCount); filterListT.reserve(chnCount);
+  filterListA.reserve(chnCount); filterListB.reserve(chnCount); filterListG.reserve(chnCount);
 
   for (size_t chnIdx=0;chnIdx<chnCount;chnIdx++) {
-   bpFilterList.emplace_back(b_1_40,a_1_40); notchFilterList.emplace_back(b_notch,a_notch);
-   deltaFilterList.emplace_back(b_delta,a_delta); thetaFilterList.emplace_back(b_theta,a_theta);
-   alphaFilterList.emplace_back(b_alpha,a_alpha); betaFilterList.emplace_back(b_beta,a_beta); gammaFilterList.emplace_back(b_gamma,a_gamma);
+   filterListBP.emplace_back(b_2_40,a_2_40); filterListN.emplace_back(b_notch,a_notch);
+   filterListD.emplace_back(b_delta,a_delta); filterListT.emplace_back(b_theta,a_theta);
+   filterListA.emplace_back(b_alpha,a_alpha); filterListB.emplace_back(b_beta,a_beta); filterListG.emplace_back(b_gamma,a_gamma);
   }
  }
 

@@ -1,5 +1,5 @@
 # Octopus-ReEL - Realtime Encephalography Laboratory Network
-#       Copyright (C) 2007-2025 Barkin Ilhan
+#       Copyright (C) 2007-2026 Barkin Ilhan
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -77,15 +77,13 @@ class ConfigParser {
       opts=sect.split("=");
       if (opts[0].trimmed()=="IN") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==4) {
+       if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->ipAddr=acqHostInfo.addresses().first().toString();
         conf->commPort=opts2[1].toInt();
         conf->strmPort=opts2[2].toInt();
-        conf->cmodPort=opts2[3].toInt();
         if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
-            (!(conf->strmPort >= 65000 && conf->strmPort < 65500)) ||
-            (!(conf->cmodPort >= 65000 && conf->cmodPort < 65500))) {
+            (!(conf->strmPort >= 65000 && conf->strmPort < 65500))) {
          qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) hostname/IP/port settings!";
          return true;
         }
@@ -93,18 +91,16 @@ class ConfigParser {
         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) count of NET|IN params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->ipAddr << conf->commPort << conf->strmPort << conf->cmodPort;
+       qDebug() << "node_gui:" << conf->ipAddr << conf->commPort << conf->strmPort;
       } else if (opts[0].trimmed()=="OUT") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==4) {
+       if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->svrIpAddr=acqHostInfo.addresses().first().toString();
         conf->svrCommPort=opts2[1].toInt();
         conf->svrStrmPort=opts2[2].toInt();
-        conf->svrCmodPort=opts2[3].toInt();
         if ((!(conf->svrCommPort >= 65000 && conf->svrCommPort < 65500)) || // Simple port validation
-            (!(conf->svrStrmPort >= 65000 && conf->svrStrmPort < 65500)) ||
-            (!(conf->svrCmodPort >= 65000 && conf->svrCmodPort < 65500))) {
+            (!(conf->svrStrmPort >= 65000 && conf->svrStrmPort < 65500))) {
          qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) hostname/IP/port settings!";
          return true;
         }
@@ -112,7 +108,7 @@ class ConfigParser {
         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) count of NET|OUT params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort << conf->svrCmodPort;
+       qDebug() << "node_gui:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort;
       } else {
        qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
        return true;
@@ -172,6 +168,8 @@ class ConfigParser {
     // # of data to wait for, to be available for screen plot/sweeper
     conf->scrAvailableSamples=conf->eegSweepFrameTimeMs*(conf->sampleRate/1000); // 20ms -> 20 sample
 
+    conf->eegBand=0;
+ 
     // CHANNELS
 
     commResponse=conf->commandToDaemon(CMD_ACQD_GETCHAN);

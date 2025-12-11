@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "../common/sample.h"
 #include "../common/tcpsample.h"
-#include "../common/tcpcmarray.h"
 #include "../common/tcp_commands.h"
 #include "confparam.h"
 #include "configparser.h"
@@ -48,7 +47,6 @@ class AcqDaemon : public QObject {
   explicit AcqDaemon(QObject *parent=nullptr) : QObject(parent) {
    connect(&commServer,&QTcpServer::newConnection,this,&AcqDaemon::onNewCommClient);
    connect(&strmServer,&QTcpServer::newConnection,this,&AcqDaemon::onNewStrmClient);
-   connect(&cmodServer,&QTcpServer::newConnection,this,&AcqDaemon::onNewCmodClient);
   }
 
   bool initialize() {
@@ -78,7 +76,7 @@ class AcqDaemon : public QObject {
      qInfo() << "---------------------------------------------------------------";
      qInfo() << "node_acq: ---> Datahandling Info <---";
      qInfo() << "node_acq: Connected # of amplifier(s):" << conf.ampCount;
-     qInfo() << "node_acq: Sample Rate->" << conf.eegRate << "sps, CM Rate->" << conf.cmRate << "sps";
+     qInfo() << "node_acq: Sample Rate->" << conf.eegRate << "sps";
      qInfo() << "node_acq: TCP Ringbuffer allocated for" << conf.tcpBufSize << "seconds.";
      qInfo() << "node_acq: EEG data fetched every" << conf.eegProbeMsecs << "ms.";
      qInfo("node_acq: Per-amp Physical Channel#: %d (%d+%d)",conf.physChnCount,conf.refChnCount,conf.bipChnCount);
@@ -100,12 +98,6 @@ class AcqDaemon : public QObject {
       return true;
      }
      qInfo() << "node_acq: <EEGData> listening on port" << conf.strmPort;
-
-     if (!cmodServer.listen(QHostAddress::Any,conf.cmodPort)) {
-      qCritical() << "node_acq: Cannot start TCP server on <CMData> port:" << conf.cmodPort;
-      return true;
-     }
-     qInfo() << "node_acq: <CMData> listening on port" << conf.cmodPort;
 
      acqThread=new AcqThread(&conf,this);
      connect(acqThread,&AcqThread::sendData,this,&AcqDaemon::drainAndBroadcast);
@@ -147,7 +139,6 @@ class AcqDaemon : public QObject {
     if (cmd==CMD_ACQD_ACQINFO) {
      qDebug("node_acq: <Comm> Sending Amplifier(s) Info..");
      client->write("-> EEG Samplerate: "+QString::number(conf.eegRate).toUtf8()+"sps\n");
-     client->write("-> CM Samplerate: "+QString::number(conf.cmRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf.refChnCount).toUtf8()+"\n");
      client->write("-> Bipolar channel(s)#: "+QString::number(conf.bipChnCount).toUtf8()+"\n");
      client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf.physChnCount).toUtf8()+"\n");
@@ -169,7 +160,6 @@ class AcqDaemon : public QObject {
      qDebug("node_acq: <Comm> Sending Config Parameters..");
      client->write(QString::number(conf.ampCount).toUtf8()+","+ \
                    QString::number(conf.eegRate).toUtf8()+","+ \
-                   QString::number(conf.cmRate).toUtf8()+","+ \
                    QString::number(conf.refChnCount).toUtf8()+","+ \
                    QString::number(conf.bipChnCount).toUtf8()+","+ \
                    QString::number(conf.refGain).toUtf8()+","+ \
@@ -266,26 +256,8 @@ class AcqDaemon : public QObject {
    }
   }
 
-  void onNewCmodClient() {
-   while (cmodServer.hasPendingConnections()) {
-    QTcpSocket *client=cmodServer.nextPendingConnection();
-    
-    client->setSocketOption(QAbstractSocket::LowDelayOption, 1);   // TCP_NODELAY
-    // optional: smaller buffers to avoid deep OS queues
-    client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption, 64*1024);
-    
-    cmodClients.append(client);
-    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "node_acq: <CMData> client from" << client->peerAddress().toString() << "disconnected.";
-     cmodClients.removeAll(client);
-     client->deleteLater();
-    });
-    qInfo() << "node_acq: <CMData> client connected from" << client->peerAddress().toString();
-   }
-  }
-
   void drainAndBroadcast() {
-   TcpSample eegSample(conf.ampCount,conf.physChnCount); TcpCMArray cmArray(conf.ampCount,conf.physChnCount);
+   TcpSample eegSample(conf.ampCount,conf.physChnCount);
 
    while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
     for (QTcpSocket *client:strmClients) {
@@ -299,22 +271,10 @@ class AcqDaemon : public QObject {
     }
    }
 
-   while (acqThread->popCMArray(&cmArray)) { QByteArray payLoad=cmArray.serialize();
-    for (QTcpSocket *client:cmodClients) {
-     if (client->state()==QAbstractSocket::ConnectedState) {
-      QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
-      quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
-      sizeStream << msgLength;
-      client->write(payLoad);
-      client->flush(); // write actual serialized block
-     }
-    }
-   }
-
   }
 
  private:
-  QTcpServer commServer,strmServer,cmodServer;
-  QVector<QTcpSocket*> strmClients,cmodClients;
+  QTcpServer commServer,strmServer;
+  QVector<QTcpSocket*> strmClients;
   AcqThread *acqThread; QVector<ChnInfo> chnInfo;
 };

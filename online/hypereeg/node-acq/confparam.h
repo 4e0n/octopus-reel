@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -27,9 +27,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 
 struct ConfParam {
- unsigned int ampCount,eegRate,cmRate,tcpBufSize,eegProbeMsecs;
+ unsigned int ampCount,eegRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort,cmodPort;
+ QString ipAddr; unsigned int commPort,strmPort;
  unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
  unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
  unsigned int totalChnCount; // refChnCount+bipChnCount+2

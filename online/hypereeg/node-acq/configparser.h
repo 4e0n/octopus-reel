@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -90,12 +90,6 @@ class ConfigParser {
         qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: EEG Samplerate not among {500,1000}!";
         return true;
        }
-      } else if (opts[0].trimmed()=="CMRATE") {
-       conf->cmRate=opts[1].toInt();
-       if (!(conf->cmRate == 1 || conf->cmRate == 2)) {
-        qDebug() << "node_acq: <ConfigParser> <AMP> ERROR: CommonMode Samplerate not among {1,10}!";
-        return true;
-       }
       } else if (opts[0].trimmed()=="EEGPROBEMS") {
        conf->eegProbeMsecs=opts[1].toInt();
        if (!(conf->eegProbeMsecs >= 20 && conf->eegProbeMsecs <= 1000)) {
@@ -130,15 +124,13 @@ class ConfigParser {
       opts=sect.split("=");
       if (opts[0].trimmed()=="OUT") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==4) {
+       if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->ipAddr=acqHostInfo.addresses().first().toString();
         conf->commPort=opts2[1].toInt();
 	conf->strmPort=opts2[2].toInt();
-	conf->cmodPort=opts2[3].toInt();
         if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
-            (!(conf->strmPort >= 65000 && conf->strmPort < 65500)) ||
-            (!(conf->cmodPort >= 65000 && conf->cmodPort < 65500))) {
+            (!(conf->strmPort >= 65000 && conf->strmPort < 65500))) {
          qDebug() << "node_acq: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
