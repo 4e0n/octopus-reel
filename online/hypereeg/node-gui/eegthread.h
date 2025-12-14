@@ -35,16 +35,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/sample.h"
 #include "../common/octo_omp.h"
 
-// Compute one envelope value from 48 normalized samples in [-1,1]
-inline float audioEnvFrom48_RMS(const float *a48) {
+// Compute one envelope value from N(=48) normalized samples in [-1,1]
+inline float audioEnvFromN_RMS(const float *audN) {
  double acc=0.0;
- for (int i=0;i<48;++i) acc+=double(a48[i])*double(a48[i]);
+ for (int i=0;i<48;++i) acc+=double(audN[i])*double(audN[i]);
  return float(std::sqrt(acc/48.0));
 }
 
-inline float audioEnvFrom48_MAV(const float *a48) {
+inline float audioEnvFromN_MAV(const float *audN) {
  double acc=0.0;
- for (int i=0;i<48;++i) acc+=std::abs(double(a48[i]));
+ for (int i=0;i<48;++i) acc+=std::abs(double(audN[i]));
  return float(acc/48.0);
 }
 
@@ -86,7 +86,7 @@ class EEGThread : public QThread {
    SIMD_REDUCE2(sum,sumSq)
    for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
     const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-    const float x=audioEnvFrom48_RMS(s.audio48);
+    const float x=audioEnvFromN_RMS(s.audioN);
     sum+=x; sumSq+=double(x)*double(x);
    }
    const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);

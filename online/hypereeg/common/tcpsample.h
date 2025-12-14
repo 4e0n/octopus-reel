@@ -28,11 +28,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include "sample.h"
 
+const int AUDIO_N=48;
+
 struct TcpSample {
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
  quint64 offset=0,timestampMs=0; // wall-clock at creation
  std::vector<Sample> amp;
- float audio48[48];
+ float audioN[AUDIO_N];
  unsigned int trigger=0;
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
@@ -48,7 +50,7 @@ struct TcpSample {
   out << static_cast<quint64>(offset) << static_cast<quint64>(timestampMs);
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
   for (const Sample& s:amp) { s.serialize(out); }
-  for (size_t audIndex=0;audIndex<48;audIndex++) { out << static_cast<float>(audio48[audIndex]); }
+  for (size_t audIndex=0;audIndex<AUDIO_N;audIndex++) { out << static_cast<float>(audioN[audIndex]); }
   return ba;
  }
 
@@ -62,9 +64,9 @@ struct TcpSample {
   for (Sample &s:amp) { s.init(chnCount);
    if (!s.deserialize(in,chnCount)) { qDebug() << "<TCPSample> Sample desrialization error!!"; return false; }
   }
-  for (size_t audIndex=0;audIndex<48;audIndex++) { float v=0.f;
+  for (size_t audIndex=0;audIndex<AUDIO_N;audIndex++) { float v=0.f;
    in >> v;
-   audio48[audIndex]=v;
+   audioN[audIndex]=v;
   }
   return true;
  }

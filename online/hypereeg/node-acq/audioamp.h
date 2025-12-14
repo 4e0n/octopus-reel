@@ -145,7 +145,7 @@ struct AudioAmp {
   if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
  }
 
- unsigned fetch48(float* dst48,int wait_ms=10) {
+ unsigned fetchN(float* dstN,int wait_ms=10) {
   constexpr unsigned OUT=48;
   constexpr unsigned SAFETY_MARGIN=96;
   constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
@@ -307,7 +307,7 @@ struct AudioAmp {
   static uint64_t lastSnapNs=0;
 
   if (prodNow<needAbs) {
-   std::fill(dst48,dst48+OUT,0.0f);
+   std::fill(dstN,dstN+OUT,0.0f);
    underruns.fetch_add(1,std::memory_order_relaxed);
 
    if (++underrunsRow>=UNDERRUN_ARM) {
@@ -315,7 +315,7 @@ struct AudioAmp {
     rs_srcPos=double(snap);
     underrunsRow=0;
     lastSnapNs=now_ns();
-    qWarning() << "[AcqThread] Recovered from audio underrun (hard snap).";
+    qWarning() << "[AcqThread-AudioAmp] Recovered from audio underrun (hard snap).";
    }
    return UINT_MAX;
   }
@@ -328,7 +328,7 @@ struct AudioAmp {
     const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)) : 0ULL;
     rs_srcPos=double(snap);
     lastSnapNs=now_ns();
-    qWarning() << "[AcqThread] Producer stall detected; realigned.";
+    qWarning() << "[AcqThread-AudioAmp] Producer stall detected; realigned.";
    }
   }
 
@@ -343,7 +343,7 @@ struct AudioAmp {
     const uint64_t now=now_ns();
     if (now-lastSnapNs>400'000'000ULL) {
      lastSnapNs=now;
-     qWarning() << "[AcqThread] Reader far behind; soft-clamped to tail.";
+     qWarning() << "[AcqThread-AudioAmp] Reader far behind; soft-clamped to tail.";
     }
    }
   }
@@ -367,7 +367,7 @@ struct AudioAmp {
 
    const float L0=i16_to_f32(sampleChan(i0,0));
    const float L1=i16_to_f32(sampleChan(i0+1,0));
-   dst48[n]=L0+float(f)*(L1-L0);
+   dstN[n]=L0+float(f)*(L1-L0);
 
    if (trigOff==UINT_MAX) {
     const int16_t r=sampleChan(i0,1);

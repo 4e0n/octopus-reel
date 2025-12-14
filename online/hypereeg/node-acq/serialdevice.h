@@ -98,6 +98,7 @@ class SerialDevice {
            ident.find("sig=OCTO-EEG-42") != std::string::npos) {
         break; // READY
        } else {
+        qDebug() << "Not our board.";
         // Not our board; consider closing and trying next tty
         // close(device); return NotFound;
        }

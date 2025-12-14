@@ -52,7 +52,6 @@ class AmpWindow : public QMainWindow {
    QMenu *modelMenu=new QMenu("&Model",menuBar); QMenu *viewMenu=new QMenu("&View",menuBar);
    menuBar->addMenu(modelMenu); menuBar->addMenu(viewMenu);
 
-
    // *** TABS & TABWIDGETS ***
    //
    int tabW=conf->guiAmpW; int tabH=conf->guiAmpH-menuBar->height();
@@ -111,6 +110,22 @@ class AmpWindow : public QMainWindow {
    conf->eegAmpX[ampNo]=conf->eegAmpRange[0]; //(1000000.0/100.0);
    connect(eegAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGAmp(int)));
 
+   // *** Bands' power and related stats
+   conf->bandMult[ampNo]=1.0;
+   bandsWidget=new QWidget(mainTabWidget); bandsWidget->setGeometry(2,2,tabW-4,tabH-4); 
+   bandMultLabel=new QLabel("Multiplier:"+dummyString.setNum(conf->bandMult[ampNo])+":",bandsWidget);
+   bandMultLabel->setGeometry(2,conf->gl3DFrameH+10,120,30); 
+   QSlider *bandMultSlider=new QSlider(Qt::Horizontal,bandsWidget);
+   bandMultSlider->setGeometry(122,tabH-35,tabW*2/3-102,30); 
+   bandMultSlider->setRange(1,500); // in mm because of int - divide by ten
+   bandMultSlider->setSingleStep(1);
+   bandMultSlider->setPageStep(10); // step in uV2s..
+   bandMultSlider->setSliderPosition((int)(conf->bandMult[ampNo]));
+   bandMultSlider->setEnabled(true);
+   //connect(bandMultSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetBandsMultiplier(int)));
+
+
+
    // *** ERP OpenGL View
    conf->gl3DFrameW=(tabW-4)*2/3-2; conf->gl3DFrameH=tabH-30-60;
    headWidget=new QWidget(mainTabWidget); headWidget->setGeometry(2,2,tabW-4,tabH-4); 
@@ -168,6 +183,7 @@ class AmpWindow : public QMainWindow {
 
    mainTabWidget->addTab(chnWidget,"Channels");
    mainTabWidget->addTab(eegWidget,"Continuous EEG");
+   mainTabWidget->addTab(bandsWidget,"Band Powers");
    mainTabWidget->addTab(headWidget,"Head Model");
    mainTabWidget->show();
 
@@ -263,11 +279,11 @@ class AmpWindow : public QMainWindow {
   EEGFrame *eegFrame; GL3DWidget *gl3DWidget; GLLegendFrame *glLegendFrame;
   QMenuBar *menuBar;
   QAction *frameToggleAction,*gridToggleAction, *scalpToggleAction,*skullToggleAction,*brainToggleAction,*gizmoToggleAction,*electrodesToggleAction;
-  QTabWidget *mainTabWidget; QWidget *eegWidget,*chnWidget,*headWidget;
+  QTabWidget *mainTabWidget; QWidget *eegWidget,*chnWidget,*headWidget,*bandsWidget;
   QButtonGroup *eegAmpBG,*erpAmpBG,*chnBG;
 
   QListWidget *gizmoList,*electrodeList;
-  QLabel *cModeLabel,*paramRLabel; QSlider *cModeSlider,*paramRSlider;
+  QLabel *cModeLabel,*paramRLabel,*bandMultLabel; QSlider *cModeSlider,*paramRSlider;
   QPushButton *clrAvgsButton;
   //QStatusBar *statusBar;
 };
