@@ -147,6 +147,7 @@ class AcqDaemon : public QObject {
      client->write("-> EEG Probe interval (ms): "+QString::number(conf.eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQD_AMPSYNC) {
      qDebug("node_acq: <Comm> Conveying SYNC to amplifier(s)..");
+     conf.syncOngoing=true; conf.syncPerformed=false;
      acqThread->sendTrigger(TRIG_AMPSYNC);
      client->write("SYNC conveyed to amps.\n");
     } else if (cmd==CMD_ACQD_STATUS) {

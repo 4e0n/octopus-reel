@@ -36,5 +36,5 @@ struct ConfParam {
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
  unsigned int eegSamplesInTick;
  QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw;
+ bool dumpRaw,syncOngoing,syncPerformed;
 };

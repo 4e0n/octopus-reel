@@ -60,7 +60,7 @@ class AcqThread : public QThread {
  Q_OBJECT
  public:
   AcqThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
-   conf=c; nonHWTrig=0; syncOngoing=syncPerformed=false;
+   conf=c; nonHWTrig=0; conf->syncOngoing=conf->syncPerformed=false;
 
    serDev.init();
 
@@ -114,7 +114,7 @@ class AcqThread : public QThread {
      dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
 
-     if (syncOngoing) {
+     if (conf->syncOngoing) {
       if (dst.trigger!=0) {
        if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
         qInfo("node_acq: <AmpSync> SYNC received by @AMP#%u -- %u",(unsigned)ampIdx+1,(unsigned)dst.offset);
@@ -210,7 +210,7 @@ class AcqThread : public QThread {
    fetchEegData(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
-   syncOngoing=true; sendTrigger(TRIG_AMPSYNC);
+   conf->syncOngoing=true; sendTrigger(TRIG_AMPSYNC);
    qInfo() << "node_acq: <AmpSync> SYNC sent..";
 
    while (true) {
@@ -236,7 +236,7 @@ class AcqThread : public QThread {
      for (int trigIdx=0;trigIdx<ampTrigOffset.size();trigIdx++) qDebug(" AMP#%d -> %d",trigIdx+1,ampTrigOffset[trigIdx]);
      qInfo() << "node_acq: <AmpSync> SUCCESS. Offsets are now being synced on-the-fly to the earliest amp at TCPsample package level.";
 //     }
-     syncOngoing=false; syncPerformed=true; syncTrigRecvd=0; // Ready for future SYNCing to update ampTrigOffset[i] values
+     conf->syncOngoing=false; conf->syncPerformed=true; syncTrigRecvd=0; // Ready for future SYNCing to update ampTrigOffset[i] values
     }
 
     // ===================================================================================================================
@@ -271,12 +271,22 @@ class AcqThread : public QThread {
      // chkTrigOffset=0;
      //}
 
-     if (syncPerformed) {
-      for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) {
-       if (tcpEEG.amp[ampIdx].trigger!=tcpEEG.amp[0].trigger) {
+     if (conf->syncPerformed) {
+      bool trigErrorFlag=false;
+      unsigned int trig=tcpEEG.amp[0].trigger;
+      if (trig!=0) {
+       for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) {
+        if (trig!=tcpEEG.amp[ampIdx].trigger) {
+	 trigErrorFlag=true;
+         break;
+        }
+       }
+       if (trigErrorFlag) {
+        conf->syncPerformed=false;
         qDebug() << "node_acq: ERROR!!! <AmpSync> That's bad. Some offset lag(s) exist between amps..";
-	syncPerformed=false;
-        break;
+       } else {
+        tcpEEG.trigger=trig;
+        qDebug() << "node_acq: <AmpSync> Good. All triggers in amps coincide.";
        }
       }
      }
@@ -346,7 +356,7 @@ class AcqThread : public QThread {
   void sendData();
  
  private:
-  ConfParam *conf; bool syncOngoing,syncPerformed;
+  ConfParam *conf;
 
   TcpSample tcpEEG; Sample smp;
   QVector<TcpSample> tcpEEGBuffer;

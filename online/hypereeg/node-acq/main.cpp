@@ -25,7 +25,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  * this code was before together with the GUI window, showing on-the-fly,
  * the common mode noise levels.
  * Now it is separated into two parts. The acquisition daemon acquiring
- * from multiple (USB) EEG amps, and stereo audio@48Ksps from the the
+ * from multiple (USB) EEG amps, and stereo audio@48Ksps from the
  * alsa2-default audio input device, in a syncronized fashion.
  *
  * The second separated part, HyperEEG-CM-GUI (multiple other types of clients
