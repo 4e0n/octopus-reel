@@ -35,6 +35,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cstring>
 #include <cstdio>
 
+#include <QString>
 #include <QDebug>
 
 static constexpr unsigned AUDIO_SAMPLE_RATE=48000;
@@ -80,6 +81,63 @@ struct AudioAmp {
  // PI state
  double lagInt=0.0;
 
+
+
+static bool alsa_set_capture_level(const char* card, long percent)
+{
+    percent = std::clamp(percent, 0L, 100L);
+
+    snd_mixer_t* mix = nullptr;
+    if (snd_mixer_open(&mix, 0) < 0) return false;
+
+    // Attach to card, e.g. "hw:CODEC"
+    QString hw = QString("hw:%1").arg(card);
+    if (snd_mixer_attach(mix, hw.toUtf8().constData()) < 0) { snd_mixer_close(mix); return false; }
+    if (snd_mixer_selem_register(mix, nullptr, nullptr) < 0) { snd_mixer_close(mix); return false; }
+    if (snd_mixer_load(mix) < 0) { snd_mixer_close(mix); return false; }
+
+    auto try_elem = [&](const char* name)->snd_mixer_elem_t* {
+        snd_mixer_selem_id_t* sid;
+        snd_mixer_selem_id_alloca(&sid);
+        snd_mixer_selem_id_set_index(sid, 0);
+        snd_mixer_selem_id_set_name(sid, name);
+        return snd_mixer_find_selem(mix, sid);
+    };
+
+    const char* candidates[] = {"Capture", "Mic", "Line", "PCM", "ADC"};
+    snd_mixer_elem_t* elem = nullptr;
+    for (auto* n : candidates) { elem = try_elem(n); if (elem) break; }
+
+    if (!elem) {
+        qWarning() << "[AudioAmp] No capture mixer element found on" << hw;
+        snd_mixer_close(mix);
+        return false;
+    }
+
+    long vmin=0, vmax=0;
+    if (snd_mixer_selem_get_capture_volume_range(elem, &vmin, &vmax) == 0 && vmax > vmin) {
+        long v = vmin + (vmax - vmin) * percent / 100;
+        snd_mixer_selem_set_capture_volume_all(elem, v);
+        qInfo() << "[AudioAmp] Set capture volume" << percent << "% (" << v << "in" << vmin << ".." << vmax << ")";
+    }
+
+    // If there is a capture switch, enable it
+    if (snd_mixer_selem_has_capture_switch(elem)) {
+        snd_mixer_selem_set_capture_switch_all(elem, 1);
+        qInfo() << "[AudioAmp] Enabled capture switch for element";
+    }
+
+    snd_mixer_close(mix);
+    return true;
+}
+
+
+
+
+
+
+
+
  void init() {
   bufSizeFrames=AUDIO_CBUF_SECONDS*AUDIO_SAMPLE_RATE;
   audioRing.resize(size_t(bufSizeFrames)*AUDIO_NUM_CHANNELS);
@@ -87,8 +145,10 @@ struct AudioAmp {
  }
 
  bool initAlsa() {
-  int rc=snd_pcm_open(&handle,"default",SND_PCM_STREAM_CAPTURE,0);
+  int rc=snd_pcm_open(&handle,"octopus_uca202",SND_PCM_STREAM_CAPTURE,0);
   if (rc<0) { qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc); return false; }
+
+alsa_set_capture_level("CODEC",80);
 
   snd_pcm_hw_params_t* hw=nullptr;
   snd_pcm_hw_params_alloca(&hw);
@@ -107,22 +167,30 @@ struct AudioAmp {
    if (rc<0) qWarning() << "[AudioAmp] set_rate_near failed:" << snd_strerror(rc);
   }
 
-  snd_pcm_uframes_t period=48;
-  snd_pcm_uframes_t bufsize=period*4;
+  snd_pcm_uframes_t period=256; // 48
+  snd_pcm_uframes_t bufsize=period*8; // *4
 
   rc=snd_pcm_hw_params_set_period_size(handle,hw,period,0);
-  if (rc<0) { rc=snd_pcm_hw_params_set_period_size_near(handle,hw,&period,nullptr); bufsize=period*4; }
+  if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
+  bufsize=period*8;
   rc=snd_pcm_hw_params_set_buffer_size(handle,hw,bufsize);
-  if (rc<0) { rc=snd_pcm_hw_params_set_buffer_size_near(handle,hw,&bufsize); }
+  if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
 
   rc=snd_pcm_hw_params(handle,hw);
   if (rc<0) { qWarning() << "[AudioAmp] hw_params commit failed:" << snd_strerror(rc); return false; }
+
+  snd_pcm_uframes_t per2=0, buf2=0;
+  snd_pcm_hw_params_get_period_size(hw, &per2, nullptr);
+  snd_pcm_hw_params_get_buffer_size(hw, &buf2);
+  qInfo() << "[AudioAmp] ALSA period=" << per2 << "frames ("
+          << (1000.0*double(per2)/AUDIO_SAMPLE_RATE) << "ms) buffer="
+          << buf2 << "frames (" << (1000.0*double(buf2)/AUDIO_SAMPLE_RATE) << "ms)";
 
   snd_pcm_sw_params_t* sw=nullptr;
   snd_pcm_sw_params_malloc(&sw);
   snd_pcm_sw_params_current(handle,sw);
   snd_pcm_sw_params_set_avail_min(handle,sw,period);
-  snd_pcm_sw_params_set_start_threshold(handle,sw,1);
+  snd_pcm_sw_params_set_start_threshold(handle,sw,period);
   rc=snd_pcm_sw_params(handle,sw);
   snd_pcm_sw_params_free(sw);
   if (rc<0) { qWarning() << "[AudioAmp] sw_params commit failed:" << snd_strerror(rc); return false; }
@@ -149,8 +217,7 @@ struct AudioAmp {
   constexpr unsigned OUT=48;
   constexpr unsigned SAFETY_MARGIN=96;
   constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
-  constexpr int UNDERRUN_ARM=3;
-  constexpr int STALL_ARM=3;
+//  constexpr int UNDERRUN_ARM=3;
 
   // ---- Servo tuning ----
   constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion
@@ -182,11 +249,14 @@ struct AudioAmp {
    rs_inited=true;
   }
 
+  // ---- persistent state for fetchN() ----
+  static uint64_t lastSnapNs = 0;
+
   // ---------- PLL + PI every ~200ms ----------
   static uint64_t pll_ns_prev=now_ns();
   static uint64_t pll_prod_prev=0;
 //  static uint64_t pll_updates=0;
-  static uint64_t pll_lastLog=now_ns();
+//  static uint64_t pll_lastLog=now_ns();
 
   // bias loop state (slow recentring of stepCorr toward 1)
   static uint64_t bias_ns_prev=now_ns();
@@ -296,39 +366,32 @@ struct AudioAmp {
 
   uint64_t prodNow=audioFrameCounter.load(std::memory_order_acquire);
 
-  // Producer stall tracking
-  static uint64_t lastProdSeen=0;
-  static int stallCount=0;
-  if (prodNow==lastProdSeen) ++stallCount; else stallCount=0;
-  lastProdSeen=prodNow;
+  // Producer stall tracking (time-based, not call-count)
+  static uint64_t lastProdSeen = 0;
+  static uint64_t lastProdNs   = 0;
 
-  // ----- Shortage handling -----
-  static int underrunsRow=0;
-  static uint64_t lastSnapNs=0;
-
-  if (prodNow<needAbs) {
-   std::fill(dstN,dstN+OUT,0.0f);
-   underruns.fetch_add(1,std::memory_order_relaxed);
-
-   if (++underrunsRow>=UNDERRUN_ARM) {
-    const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)) : 0ULL;
-    rs_srcPos=double(snap);
-    underrunsRow=0;
-    lastSnapNs=now_ns();
-    qWarning() << "[AcqThread-AudioAmp] Recovered from audio underrun (hard snap).";
-   }
-   return UINT_MAX;
+  const uint64_t now = now_ns();
+  if (lastProdSeen == 0) {
+   lastProdSeen = prodNow;
+   lastProdNs   = now;
   }
 
-  // Soft realign if producer stalled and we’re too close to the tail
-  if (stallCount>=STALL_ARM) {
-   stallCount=0;
-   const uint64_t i0=uint64_t(std::floor(rs_srcPos));
-   if (prodNow<=i0+OUT+1) {
-    const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)) : 0ULL;
-    rs_srcPos=double(snap);
-    lastSnapNs=now_ns();
-    qWarning() << "[AcqThread-AudioAmp] Producer stall detected; realigned.";
+  if (prodNow != lastProdSeen) {
+   lastProdSeen = prodNow;
+   lastProdNs   = now;
+  }
+
+  constexpr uint64_t STALL_NS = 20'000'000ULL; // 20 ms: real stall threshold
+  const bool stalled = (now - lastProdNs) > STALL_NS;
+
+  // Soft realign only if stalled AND we're dangerously close to producer tail
+  if (stalled) {
+   const uint64_t i0 = uint64_t(std::floor(rs_srcPos));
+   if (prodNow <= i0 + OUT + 1) {
+    const uint64_t snap = (prodNow > (LAG_SOFT_CLAMP + 1)) ? (prodNow - (LAG_SOFT_CLAMP + 1)) : 0ULL;
+    rs_srcPos = double(snap);
+    lastSnapNs = now;
+    qWarning() << "[AcqThread-AudioAmp] Producer stall (>20ms) detected; realigned.";
    }
   }
 
@@ -369,6 +432,10 @@ struct AudioAmp {
    const float L1=i16_to_f32(sampleChan(i0+1,0));
    dstN[n]=L0+float(f)*(L1-L0);
 
+   float swGain=20.0f;
+   dstN[n] *= swGain;
+   dstN[n] = std::clamp(dstN[n], -1.0f, 1.0f);
+
    if (trigOff==UINT_MAX) {
     const int16_t r=sampleChan(i0,1);
     if (!trigUp && r >= int16_t(trigHigh)) {
@@ -385,7 +452,6 @@ struct AudioAmp {
   }
 
   rs_srcPos=pos;
-  underrunsRow=0;
   return trigOff;
  }
 
@@ -420,7 +486,7 @@ private:
    audioFrameCounter.fetch_add(r,std::memory_order_relaxed);
    bufHead.store((head+r)%bufSizeFrames,std::memory_order_release);
 
-   { std::lock_guard<std::mutex> lk(cvMx); cvAvail.notify_all(); }
+  cvAvail.notify_all();
 
 //   uint64_t nowTick=audioFrameCounter.load(std::memory_order_relaxed);
 //   if (nowTick/48000!=lastPrint/48000) {
