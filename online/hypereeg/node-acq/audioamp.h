@@ -145,10 +145,11 @@ static bool alsa_set_capture_level(const char* card, long percent)
  }
 
  bool initAlsa() {
-  int rc=snd_pcm_open(&handle,"octopus_uca202",SND_PCM_STREAM_CAPTURE,0);
+//  int rc=snd_pcm_open(&handle,"octopus_uca202",SND_PCM_STREAM_CAPTURE,0);
+  int rc=snd_pcm_open(&handle,"default",SND_PCM_STREAM_CAPTURE,0);
   if (rc<0) { qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc); return false; }
 
-alsa_set_capture_level("CODEC",80);
+//alsa_set_capture_level("CODEC",80);
 
   snd_pcm_hw_params_t* hw=nullptr;
   snd_pcm_hw_params_alloca(&hw);

@@ -60,7 +60,9 @@ class AcqThread : public QThread {
  Q_OBJECT
  public:
   AcqThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
-   conf=c; nonHWTrig=0; conf->syncOngoing=conf->syncPerformed=false;
+   conf=c; nonHWTrig=0;
+
+   conf->syncOngoing=conf->syncPerformed=false;
 
    serDev.init();
 
@@ -99,12 +101,15 @@ class AcqThread : public QThread {
      auto &delta=ee.filterListD[chnIdx]; auto &theta=ee.filterListT[chnIdx];
      auto &alpha=ee.filterListA[chnIdx]; auto &beta=ee.filterListB[chnIdx]; auto &gamma=ee.filterListG[chnIdx];
      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
-      float x=ee.buf.getSample(chnIdx,smpIdx); float xBP=bp.filterSample(x); float xN=notch.filterSample(x);
-      float c=std::abs(x*x-xN*xN)*1e10f;
+      float xR=ee.buf.getSample(chnIdx,smpIdx); // Raw data
+      //float x=xR; // no pre-notch applied
+      float x=notch.filterSample(xR); // pre-notch applied
+      float xBP=bp.filterSample(x);
+      //float c=std::abs(x*x-xN*xN)*1e10f;
       float xD=delta.filterSample(x); float xT=theta.filterSample(x);
       float xA=alpha.filterSample(x); float xB=beta.filterSample(x); float xG=gamma.filterSample(x);
       auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
-      dst.dataR[chnIdx]=x; dst.dataBP[chnIdx]=xBP; dst.dataN[chnIdx]=xN;
+      dst.dataR[chnIdx]=xR; dst.dataBP[chnIdx]=xBP; //dst.dataN[chnIdx]=xN;
       dst.dataD[chnIdx]=xD; dst.dataT[chnIdx]=xT;
       dst.dataA[chnIdx]=xA; dst.dataB[chnIdx]=xB; dst.dataG[chnIdx]=xG;
      }
@@ -113,7 +118,7 @@ class AcqThread : public QThread {
      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
      dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
-
+#ifdef EEMAGINE
      if (conf->syncOngoing) {
       if (dst.trigger!=0) {
        if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
@@ -125,7 +130,7 @@ class AcqThread : public QThread {
        }
       }
      }
-
+#endif
     }
     // -----
     ee.cBufIdx+=ee.smpCount; // advance head once per block
@@ -183,7 +188,9 @@ class AcqThread : public QThread {
     ampIdx++;
    }
    cBufPivotList.resize(eeAmps.size());
+#ifdef EEMAGINE
    syncTrigRecvd=0;
+#endif
 
    // ----- List unsorted vs. sorted
    { std::size_t ampIdx=0;
@@ -210,7 +217,7 @@ class AcqThread : public QThread {
    fetchEegData(); // The first round of acquisition - to preadjust certain things
 
    // Send SYNC
-   conf->syncOngoing=true; sendTrigger(TRIG_AMPSYNC);
+   sendTrigger(TRIG_AMPSYNC);
    qInfo() << "node_acq: <AmpSync> SYNC sent..";
 
    while (true) {
@@ -218,6 +225,7 @@ class AcqThread : public QThread {
     if (nonHWTrig==TRIG_AMPSYNC) { nonHWTrig=0; // Manual TRIG_AMPSYNC put within fetchEegData0() ?
      for (EEAmp& e:eeAmps) (e.amp)->setTrigger(TRIG_AMPSYNC); // We set it here for all amps
                                                               // It will be received later for inter-amp syncronization
+     syncTrigRecvd=eeAmps.size();
     }
 #endif
     fetchEegData();
@@ -277,7 +285,7 @@ class AcqThread : public QThread {
       if (trig!=0) {
        for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) {
         if (trig!=tcpEEG.amp[ampIdx].trigger) {
-	 trigErrorFlag=true;
+         trigErrorFlag=true;
          break;
         }
        }
@@ -303,6 +311,7 @@ class AcqThread : public QThread {
      tcpEEG.offset=counter0; counter0++;
 
      tcpEEGBuffer[(tcpEEGBufHead+tcpDataIdx)%tcpEEGBufSize]=tcpEEG; // Push to Circular Buffer
+     tcpEEG.trigger=0.; // Reset trigger in any case
 
      //if (counter0%1000==0) qDebug("BUFFER(mod1000) SENT! tcpEEG.offset-> %lld - Magic: %x",tcpEEG.offset,tcpEEG.MAGIC);
 
@@ -340,6 +349,7 @@ class AcqThread : public QThread {
   }
 
   void sendTrigger(unsigned int t) {
+   conf->syncOngoing=true;
    if (t<256) { // also including TRIG_AMPSYNC=255
 #ifdef EEMAGINE
     unsigned char trig=(unsigned char)t;

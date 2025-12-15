@@ -210,9 +210,9 @@ class EEGThread : public QThread {
 
      if (trigger) { trigger=0;
       sweepPainter.setPen(Qt::blue);
-      for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-       sweepPainter.drawLine(wX[colIdx]-1,0,wX[colIdx]-1,conf->sweepFrameH);
-      }
+      //for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+      // sweepPainter.drawLine(wX[colIdx]-1,0,wX[colIdx]-1,conf->sweepFrameH);
+      //}
      }
 
      for (int colIdx=0;colIdx<wX.size();colIdx++) {

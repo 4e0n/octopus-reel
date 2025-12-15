@@ -51,7 +51,7 @@ class ConfParam : public QObject {
   ConfParam() {
    eegSweepRefreshRate=EEG_SCROLL_REFRESH_RATE; eegSweepUpdating=0;
    eegSweepMode=quitPending=ctrlRecordingActive=false; ctrlNotchActive=false;
-   tcpBufHead=tcpBufTail=0; recCounter=0; audWaveH=100; cumIdx=0;
+   tcpBufHead=tcpBufTail=0; recCounter=0; audWaveH=100; //cumIdx=0;
   };
 
   void initMultiAmp(int ampC=0) {
@@ -191,26 +191,26 @@ class ConfParam : public QObject {
     if ((quint32)buffer.size()<4+blockSize) break; // Wait for more data
     QByteArray block=buffer.mid(4,blockSize);
     // Deserialize into TcpSample
-    TcpSample tcpS,tcpS1000;
+    TcpSample tcpS; //,tcpS1000;
     if (tcpS.deserialize(block,chnCount)) {
 
-     if (cumIdx>=1000) tcpS1000=tcpBuffer[(tcpBufHead+tcpBufSize-1000)%tcpBufSize];
+     //if (cumIdx>=1000) tcpS1000=tcpBuffer[(tcpBufHead+tcpBufSize-1000)%tcpBufSize];
 
      // Handle spatial interpolation
      for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
       std::vector<float> *basePtr,
-                         *basePtr0,*basePtr1,*basePtr2,*basePtr3,*basePtr4,*basePtr5,
-                         *basePtr0P,*basePtr1P,*basePtr2P,*basePtr3P,*basePtr4P,*basePtr5P,
-                         *sumPtr0,*sumPtr1,*sumPtr2,*sumPtr3,*sumPtr4,*sumPtr5;
+                         *basePtr0,*basePtr1,*basePtr2,*basePtr3,*basePtr4,*basePtr5;
+                         //*basePtr0P,*basePtr1P,*basePtr2P,*basePtr3P,*basePtr4P,*basePtr5P,
+                         //*sumPtr0,*sumPtr1,*sumPtr2,*sumPtr3,*sumPtr4,*sumPtr5;
       basePtr0=&(tcpS.amp[ampIdx].dataBP);
       basePtr1=&(tcpS.amp[ampIdx].dataD); basePtr2=&(tcpS.amp[ampIdx].dataT);
       basePtr3=&(tcpS.amp[ampIdx].dataA); basePtr4=&(tcpS.amp[ampIdx].dataB); basePtr5=&(tcpS.amp[ampIdx].dataG);
-      basePtr0P=&(tcpS1000.amp[ampIdx].dataBP);
-      basePtr1P=&(tcpS1000.amp[ampIdx].dataD); basePtr2=&(tcpS.amp[ampIdx].dataT);
-      basePtr3P=&(tcpS1000.amp[ampIdx].dataA); basePtr4=&(tcpS.amp[ampIdx].dataB); basePtr5=&(tcpS.amp[ampIdx].dataG);
-      sumPtr0=&(tcpS.amp[ampIdx].sumBP);
-      sumPtr1=&(tcpS.amp[ampIdx].sumD); sumPtr2=&(tcpS.amp[ampIdx].sumT);
-      sumPtr3=&(tcpS.amp[ampIdx].sumA); sumPtr4=&(tcpS.amp[ampIdx].sumB); sumPtr5=&(tcpS.amp[ampIdx].sumG);
+      //basePtr0P=&(tcpS1000.amp[ampIdx].dataBP);
+      //basePtr1P=&(tcpS1000.amp[ampIdx].dataD); basePtr2=&(tcpS.amp[ampIdx].dataT);
+      //basePtr3P=&(tcpS1000.amp[ampIdx].dataA); basePtr4=&(tcpS.amp[ampIdx].dataB); basePtr5=&(tcpS.amp[ampIdx].dataG);
+      //sumPtr0=&(tcpS.amp[ampIdx].sumBP);
+      //sumPtr1=&(tcpS.amp[ampIdx].sumD); sumPtr2=&(tcpS.amp[ampIdx].sumT);
+      //sumPtr3=&(tcpS.amp[ampIdx].sumA); sumPtr4=&(tcpS.amp[ampIdx].sumB); sumPtr5=&(tcpS.amp[ampIdx].sumG);
       switch (eegBand) {
        default:
        case 0: basePtr=basePtr0; break;
@@ -242,12 +242,12 @@ class ConfParam : public QObject {
         (*basePtr)[chnIdx]=0.;
        }
  
-       (*sumPtr0)[chnIdx]+=(*basePtr0)[chnIdx];
-       (*sumPtr1)[chnIdx]+=(*basePtr1)[chnIdx];
-       (*sumPtr2)[chnIdx]+=(*basePtr2)[chnIdx];
-       (*sumPtr3)[chnIdx]+=(*basePtr3)[chnIdx];
-       (*sumPtr4)[chnIdx]+=(*basePtr4)[chnIdx];
-       (*sumPtr5)[chnIdx]+=(*basePtr5)[chnIdx];
+       //(*sumPtr0)[chnIdx]+=(*basePtr0)[chnIdx];
+       //(*sumPtr1)[chnIdx]+=(*basePtr1)[chnIdx];
+       //(*sumPtr2)[chnIdx]+=(*basePtr2)[chnIdx];
+       //(*sumPtr3)[chnIdx]+=(*basePtr3)[chnIdx];
+       //(*sumPtr4)[chnIdx]+=(*basePtr4)[chnIdx];
+       //(*sumPtr5)[chnIdx]+=(*basePtr5)[chnIdx];
 //       if (cumIdx>=1000) {
 //        (*sumPtr0)[chnIdx]-=(*basePtr0P)[chnIdx];
 //        (*sumPtr1)[chnIdx]-=(*basePtr1P)[chnIdx];
@@ -259,7 +259,7 @@ class ConfParam : public QObject {
 
       }
      }
-     cumIdx++;
+     //cumIdx++;
 
 //     if (tcpS.offset%1000==0) qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
 
@@ -318,5 +318,5 @@ class ConfParam : public QObject {
    if (s<10) rSec="0"; else rSec=""; rSec+=dummyString.setNum(s);
    timeLabel->setText("Rec.Time: "+rHour+":"+rMin+":"+rSec);
   }
-  quint64 cumIdx;
+  //quint64 cumIdx;
 };

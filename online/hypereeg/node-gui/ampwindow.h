@@ -114,7 +114,7 @@ class AmpWindow : public QMainWindow {
    conf->bandMult[ampNo]=1.0;
    bandsWidget=new QWidget(mainTabWidget); bandsWidget->setGeometry(2,2,tabW-4,tabH-4); 
    bandMultLabel=new QLabel("Multiplier:"+dummyString.setNum(conf->bandMult[ampNo])+":",bandsWidget);
-   bandMultLabel->setGeometry(2,conf->gl3DFrameH+10,120,30); 
+   bandMultLabel->setGeometry(2,tabH-35,120,30); 
    QSlider *bandMultSlider=new QSlider(Qt::Horizontal,bandsWidget);
    bandMultSlider->setGeometry(122,tabH-35,tabW*2/3-102,30); 
    bandMultSlider->setRange(1,500); // in mm because of int - divide by ten
