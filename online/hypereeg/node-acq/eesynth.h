@@ -25,7 +25,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
    the class hierarchy and namespace of Eemagine to a simulated environment called "Eesynth"
    which transparently and synthetically generated synthetic EEG data over the same system
    calls and functions. One can enable it by commenting out the EEMAGINE line definition
-   in ../acqglobals.h (which is the main header with global definitions; either simulated or real).
+   in ../common/globals.h (which is the main header with global definitions; either simulated or real).
    
    Due to copyright reasons, the respective Eemagine library isn't included in that project.
 
@@ -47,82 +47,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "../common/globals.h"
 
+#include "feeder.h"
+
 namespace eesynth {
-
-#ifdef PARAMETRIC_SYNTH
-
-// Synthetic waveform of the amps - same on all channels
-const double SYNTH_DC= 0.001000f;  // DC level -> 1mV
-const double SYNTH_A1= 0.000050f;  // Wave 1 Amplitude -> 50uVp
-const double SYNTH_F1= 1.000000f;  // Wave 1 Frequency -> 1Hz
-const double SYNTH_P1= 2.*M_PI/7.; // Wave 1 Phase -> (1/7)/2pi radian
-const double SYNTH_A2= 0.000025f;  // Wave 2 Amplitude -> 25uVp
-const double SYNTH_F2=49.500000f;  // Wave 2 Frequency -> 48Hz
-const double SYNTH_P2= 2.*M_PI/9.; // Wave 2 Phase -> (1/9)/2pi radian
-
-#else
-
-// Very small inline feeder that reads /opt/octopus/heeg.raw on demand.
-// File format per sample: u64 offset, float32[ch= numAmps*chansPerAmp], float32 trigger.
-struct Feeder {
- std::ifstream f;
- std::streampos dataStart;
- unsigned numAmps=0,chansPerAmp=0,totalCh=0,N=100;
- std::vector<float> batch,trig;        // [N][totalCh],[N]
- std::vector<unsigned long long> offs; // [N]
- unsigned left=0;                      // streams left to serve in this cycle
-
- bool openOnce(const char* path="/opt/octopus/data/raweeg/synth-eeg.raw",unsigned fs=1000) {
-  if (f.is_open()) return true;
-  f.open(path, std::ios::binary); if (!f) return false;
-  // Mandatory signature
-  static constexpr char kSig[] = "OCTOPUS_HEEG"; // Mandatory signature (fixed 12 bytes, no \0)
-  static constexpr std::size_t kSigLen=sizeof(kSig)-1; // 12
-  char sigBuf[kSigLen]={}; if (!f.read(sigBuf,std::streamsize(kSigLen))) return false;
-
-  // TEMPORARY: peek an extra byte to swallow the stray '\0' from today's files
-//  char maybeNul=0; f.read(&maybeNul,1); if (maybeNul!='\0') { // not a stray NUL, rewind by one
-//                                                                f.seekg(-1, std::ios::cur); }
-  // END TEMPORARY (remove after re-dumping files without \0)
-
-  if (std::memcmp(sigBuf,kSig,kSigLen)!=0) return false; // Not our file format
-  // Header: uint32_t numAmps, uint32_t chansPerAmp (little-endian on x86)
-  uint32_t amps=0,chn=0;
-  if (!f.read(reinterpret_cast<char*>(&amps),4)) return false;
-  if (!f.read(reinterpret_cast<char*>(&chn),4)) return false;
-  if (amps==0 || chn==0 || amps>8 || chn>256) return false; // Basic sanity checks
-  numAmps=amps; chansPerAmp=chn; totalCh=numAmps*chansPerAmp;
-  N=fs/10; if (N==0) N=100; // 100 ms worth
-  batch.resize(static_cast<std::size_t>(N)*totalCh);
-  trig.resize(N); offs.resize(N);
-  dataStart=f.tellg(); // start of sample payload after header
-  left=0;
-  return true;
- }
-
- void readBlock() {
-  const size_t frameBytes=size_t(totalCh)*sizeof(float);
-  for (unsigned sc=0;sc<N;++sc) {
-   if (!f.read((char*)&offs[sc],sizeof(unsigned long long))) rewindToStart();
-   if (!f.read((char*)&batch[size_t(sc)*totalCh],frameBytes)) rewindToStart();
-   if (!f.read((char*)&trig[sc],sizeof(float))) rewindToStart();
-  }
- }
-
- void rewindToStart() {
-  f.clear(); f.seekg(dataStart); // after rewinding, retry the read at caller's next attempt
- }
-};
-
-inline Feeder& feeder(){ static Feeder F; return F; }
 
 // internal amp-id assignment for stream objects (no public API change)
 // auto amp-id (0,1,2,...) for stream instances (no API change)
 inline unsigned& _amp_id_counter() { static unsigned c=0; return c; }
 inline unsigned alloc_amp_id() { return _amp_id_counter()++; }
 inline void reset_amp_ids() { _amp_id_counter()=0; }
-
-#endif
 
 // ========== Master playback ==========
 // Reads ONE shared file, prepares the next 100-sample batch once,
@@ -198,9 +131,7 @@ class stream {
     t=0.0f; dt=1./(double)(smpRate);
     trigger=counter=0.;
    }
-#ifndef PARAMETRIC_SYNTH
    ampId_=eesynth::alloc_amp_id();
-#endif
    // Open file
   }
   ~stream() {
@@ -216,41 +147,7 @@ class stream {
     return b;
    }
 
-#ifdef PARAMETRIC_SYNTH
-   // ===== original sine path (unchanged) =====
-   b.setCounts(chnCount,smpCount);
-
-   const unsigned N=smpCount;
-   const unsigned eegCh=(chnCount>=2) ? chnCount-2:chnCount;
-   // capture start-of-block state
-   const double t0=t;
-   const double counter0=counter;
-   //for (unsigned int sc=0;sc<smpCount;sc++,t+=dt,counter+=1.) {
-   PARFOR(sc,0,int(N)) {
-    const double tt=t0+double(sc)*dt;
-    const double cval=counter0+double(sc);
-
-    // contiguous write: channel-major within a fixed sample row
-    for (unsigned int cc=0;cc<eegCh;cc++) {
-     const float sample=SYNTH_DC + SYNTH_A1*cos(2.0*M_PI*SYNTH_F1*t+SYNTH_P1)
-                                 + SYNTH_A2*cos(2.0*M_PI*SYNTH_F2*t+SYNTH_P2);
-     b.setSample(cc,sc,sample);
-    }
-
-    // meta channels
-    //b.setSample(chnCount-2,sc,trigger); trigger=0.; b.setSample(chnCount-1,sc,counter);
-    const double trigOut=(sc==0) ? trigger:0.0; // one-shot on first sample
-    b.setSample(chnCount-2,sc,trigOut); b.setSample(chnCount-1,sc,cval);
-   }
-
-   // advance once
-   t=t0+dt*double(N);
-   counter=counter0+double(N);
-   trigger=0.0;
-
-   return b;
-#else
-   eesynth::Feeder& F=eesynth::feeder(); // Embedded file playback
+   Feeder& F=feeder(); // Embedded file playback
    const unsigned fs=(dt>0.0) ? unsigned(1.0/dt+0.5):1000u; // derive fs from dt if possible; fallback to 1000 Hz
 
    if (!F.openOnce("/opt/octopus/data/raweeg/synth-eeg.raw",fs)) { // If no file, output zeros
@@ -307,7 +204,6 @@ class stream {
    if (F.left>0) --F.left; // mark this stream as served in this cycle
 
    return b;
-#endif
   }
 
   void setTrigger(unsigned int t) { trigger=(double)t; };
@@ -315,9 +211,7 @@ class stream {
   bool impMode; double trigger,counter;
   unsigned int chnCount,smpCount; double t=0.0,dt=0.0;
  private:
-#ifndef PARAMETRIC_SYNTH
   unsigned int ampId_=0; // Which amplifier this stream represents
-#endif
 };
 
 class amplifier {

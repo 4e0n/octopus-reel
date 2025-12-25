@@ -151,9 +151,9 @@ class ConfigParser {
     sList=commResponse.split(",");
 
     conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
-    conf->sampleRate=sList[1].toInt();    // SAMPLERATE
+    conf->eegRate=sList[1].toInt();       // EEG SAMPLERATE
 
-    conf->tcpBufSize*=conf->sampleRate;       // TCPBUFSIZE (in SAMPLE#)
+    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
     conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
     conf->tcpBuffer.resize(conf->tcpBufSize);
 
@@ -161,12 +161,13 @@ class ConfigParser {
     conf->bipChnCount=sList[3].toInt();
     conf->refGain=sList[4].toFloat();
     conf->bipGain=sList[5].toFloat();
-    conf->eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with sampleRate
+    conf->eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with eegRate
+    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
 
     conf->eegSweepDivider=conf->eegSweepCoeff[0];
-    conf->eegSweepFrameTimeMs=conf->sampleRate/conf->eegSweepRefreshRate; // (1000sps/50Hz)=20ms=20samples
+    conf->eegSweepFrameTimeMs=conf->eegRate/conf->eegSweepRefreshRate; // (1000sps/50Hz)=20ms=20samples
     // # of data to wait for, to be available for screen plot/sweeper
-    conf->scrAvailableSamples=conf->eegSweepFrameTimeMs*(conf->sampleRate/1000); // 20ms -> 20 sample
+    conf->scrAvailableSamples=conf->eegSweepFrameTimeMs*(conf->eegRate/1000); // 20ms -> 20 sample
 
     conf->eegBand=0;
  

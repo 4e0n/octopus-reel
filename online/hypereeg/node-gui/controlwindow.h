@@ -193,11 +193,11 @@ class ControlWindow : public QMainWindow {
      return;
     } conf->hegStream.setDevice(&conf->hegFile);
 
-//    conf->hegStream << (int)(OCTOPUS_VER);		// Version
-    conf->hegStream << conf->ampCount << "\n";		// Amplifier Count
-    conf->hegStream << conf->sampleRate << "\n";	// Sample rate
-    conf->hegStream << conf->chns.size() << "\n";	// Sample rate
-//    conf->hegStream << cntRecChns.size();	// Channel count
+//    conf->hegStream << (int)(OCTOPUS_VER);      // Version
+    conf->hegStream << conf->ampCount << "\n";    // Amplifier Count
+    conf->hegStream << conf->eegRate << "\n";     // Sample rate
+    conf->hegStream << conf->chns.size() << "\n"; // Sample rate
+//    conf->hegStream << cntRecChns.size();       // Channel count
 
     for (int i=0;i<conf->chns.size();i++) // Channel names - Cstyle
      conf->hegStream << conf->chns[i].chnName << " "; //.toLatin1().data();

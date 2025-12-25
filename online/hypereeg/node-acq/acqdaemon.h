@@ -29,6 +29,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QString>
 #include <QIntValidator>
 #include <QDateTime>
+//#include <chrono>
+//#include <algorithm>
+//#include <limits>
 #include "../common/globals.h"
 #include "../common/sample.h"
 #include "../common/tcpsample.h"
@@ -36,6 +39,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "configparser.h"
 #include "acqthread.h"
+#include "tcpthread.h"
 
 const int HYPEREEG_ACQ_DAEMON_VER=200;
 
@@ -99,9 +103,14 @@ class AcqDaemon : public QObject {
      }
      qInfo() << "node_acq: <EEGData> listening on port" << conf.strmPort;
 
+     conf.tcpEEGBufSize=conf.tcpBufSize*conf.eegRate;
+     conf.tcpEEGBuffer=QVector<TcpSample>(conf.tcpEEGBufSize,TcpSample(conf.ampCount,conf.physChnCount));
+
      acqThread=new AcqThread(&conf,this);
-     connect(acqThread,&AcqThread::sendData,this,&AcqDaemon::drainAndBroadcast);
+     tcpThread=new TcpThread(&conf,this);
+     connect(tcpThread,&TcpThread::sendPacketSignal,this,&AcqDaemon::sendPacket,Qt::QueuedConnection);
      acqThread->start(QThread::HighestPriority);
+     tcpThread->start(QThread::HighestPriority);
 
      return false;
     }
@@ -114,10 +123,7 @@ class AcqDaemon : public QObject {
 
   ConfParam conf;
 
- signals:
-  void sendData();
-
- private slots:
+ public slots:
   void onNewCommClient() {
    while (commServer.hasPendingConnections()) {
     QTcpSocket *client=commServer.nextPendingConnection();
@@ -200,7 +206,7 @@ class AcqDaemon : public QObject {
      conf.hEEGStream.setByteOrder(QDataStream::LittleEndian);
      conf.hEEGStream.setFloatingPointPrecision(QDataStream::SinglePrecision); // 32-bit
      conf.hEEGStream.writeRawData(dumpSign,sizeof(dumpSign)-1); // write signature *without* length or NUL
-     conf.hEEGStream << quint32(conf.ampCount) << quint32(conf.physChnCount);
+     conf.hEEGStream << quint32(conf.ampCount) << quint32(conf.physChnCount);// << quint32(conf.audioCount);
      conf.dumpRaw=true;
      client->write("node_acq: Raw EEG dumping started.\n");
     } else if (cmd==CMD_ACQD_DUMPRAWOFF) {
@@ -241,6 +247,7 @@ class AcqDaemon : public QObject {
     QTcpSocket *client=strmServer.nextPendingConnection();
     
     client->setSocketOption(QAbstractSocket::LowDelayOption, 1);   // TCP_NODELAY
+    client->setSocketOption(QAbstractSocket::KeepAliveOption,1);
     // optional: smaller buffers to avoid deep OS queues
     client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption, 64*1024);
     
@@ -257,25 +264,21 @@ class AcqDaemon : public QObject {
    }
   }
 
-  void drainAndBroadcast() {
-   TcpSample eegSample(conf.ampCount,conf.physChnCount);
-
-   while (acqThread->popEEGSample(&eegSample)) { QByteArray payLoad=eegSample.serialize();
-    for (QTcpSocket *client:strmClients) {
-     if (client->state()==QAbstractSocket::ConnectedState) {
-      QDataStream sizeStream(client); sizeStream.setByteOrder(QDataStream::LittleEndian);
-      quint32 msgLength=static_cast<quint32>(payLoad.size()); // write message length first
-      sizeStream << msgLength;
-      client->write(payLoad);
-      client->flush(); // write actual serialized block
-     }
-    }
+  void sendPacket(const QByteArray &packet){
+   for (QTcpSocket *client:strmClients) {
+    if (!client) continue;
+    if (client->state()!=QAbstractSocket::ConnectedState) continue;
+    client->write(packet);
+    //client->flush(); // write actual serialized block
    }
-
   }
 
  private:
   QTcpServer commServer,strmServer;
   QVector<QTcpSocket*> strmClients;
-  AcqThread *acqThread; QVector<ChnInfo> chnInfo;
+  AcqThread *acqThread;
+  TcpThread *tcpThread;
+  QVector<ChnInfo> chnInfo;
 };
+ 
+ 

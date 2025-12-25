@@ -23,9 +23,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-//#define EEMAGINE
-
-//#define PARAMETRIC_SYNTH
+#define EEMAGINE
+#define AUDIODEV
 
 #define HACQ_VERBOSE
 

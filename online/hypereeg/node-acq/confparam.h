@@ -25,6 +25,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QFile>
 #include <QDataStream>
+#include <QTcpSocket>
+#include <QMutex>
+#include "../common/tcpsample.h"
 
 struct ConfParam {
  unsigned int ampCount,eegRate,tcpBufSize,eegProbeMsecs;
@@ -37,4 +40,9 @@ struct ConfParam {
  unsigned int eegSamplesInTick;
  QFile hEEGFile; QDataStream hEEGStream;
  bool dumpRaw,syncOngoing,syncPerformed;
+ QVector<QTcpSocket*> strmClients;
+ QMutex mutex;
+ quint64 tcpEEGBufHead,tcpEEGBufTail;
+ unsigned int tcpEEGBufSize;
+ QVector<TcpSample> tcpEEGBuffer;
 };

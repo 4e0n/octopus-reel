@@ -159,7 +159,7 @@ class ConfParam : public QObject {
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSample> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
   int cntPastSize,cntPastIndex;
 
-  unsigned int ampCount,sampleRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs; float refGain,bipGain;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick; float refGain,bipGain;
 
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
   int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
@@ -279,7 +279,7 @@ class ConfParam : public QObject {
        for (int chnIdx=0;chnIdx<chns.size();chnIdx++) hegStream << tcpS.amp[ampIdx].dataBP[chnIdx]*1e6 << " ";
       }
       hegStream << tcpS.trigger << "\n";
-      recCounter++; if (!(recCounter%sampleRate)) updateRecTime();
+      recCounter++; if (!(recCounter%eegRate)) updateRecTime();
      }
      
      tcpBufHead++;
@@ -311,7 +311,7 @@ class ConfParam : public QObject {
    }
   }
  private:
-  void updateRecTime() { int s,m,h; QString dummyString; s=recCounter/sampleRate; //m=s/60; h=m/60;
+  void updateRecTime() { int s,m,h; QString dummyString; s=recCounter/eegRate; //m=s/60; h=m/60;
    h=s/3600; s%=3600; m=s/60; s%=60;
    if (h<10) rHour="0"; else rHour=""; rHour+=dummyString.setNum(h);
    if (m<10) rMin="0"; else rMin=""; rMin+=dummyString.setNum(m);

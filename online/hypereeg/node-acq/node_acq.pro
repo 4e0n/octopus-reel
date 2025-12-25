@@ -33,6 +33,7 @@ QMAKE_CXXFLAGS += -fopenmp #-O1 -g
 # Input
 HEADERS += acqdaemon.h \
            acqthread.h \
+           tcpthread.h \
 	   configparser.h \
 	   confparam.h \
 	   chninfo.h \
