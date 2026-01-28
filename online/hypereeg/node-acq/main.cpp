@@ -21,30 +21,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* This is the HyperEEG Acq (Daemon) Node.. in other words the "master node"
- * this code was before together with the GUI window, showing on-the-fly,
- * the common mode noise levels.
- * Now it is separated into two parts. The acquisition daemon acquiring
- * from multiple (USB) EEG amps, and stereo audio@48Ksps from the
- * alsa2-default audio input device, in a syncronized fashion.
- *
- * The second separated part, HyperEEG-CM-GUI (multiple other types of clients
- * connect the same way) can now connect to this daemon over TCP via and an
- * established socket set (IP:commandPort:eegStreamPort:cmStreamPort) to
- * visualize CM-noise levels, which normally/practically is assumed to run
- * on the same computer, for being visible to the EEG technician-experimenter
- * to adjust any problematic electrode connections during a session of real-time
- * observation for EEG-derived sophisticated variables computed and visualized
- * under determined conditions such as speech, or music.
+/* This is the HyperEEG "Acquisition Daemon" Node.. a.k.a. the "Master Node".
+ * It acquires from multiple (USB) EEG amps, and stereo audio@48Ksps from the
+ * alsa2 audio input device designated within the Octopus HyperEEG box,
+ * in a syncronized fashion, synchronizes them altogether and streams to any
+ * numer of connected clients via IP:commandPort:streamPort.
+ * The settings are fetched by defaults from ~/.octopus-reel/hypereeg.conf
+ * which is the common/single config file for all types of HyperEEG clients.
  */
 
 #include <QCoreApplication>
 #include "../common/globals.h"
-
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
 #endif
-
 #include "acqdaemon.h"
 
 int main(int argc,char *argv[]) {
@@ -54,7 +44,7 @@ int main(int argc,char *argv[]) {
  omp_diag();
 
  if (acqDaemon.initialize()) {
-  qCritical("node_acq: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
+  qCritical("node-acq: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
   return 1;
  }
 
@@ -62,7 +52,6 @@ int main(int argc,char *argv[]) {
 }
 
 /*
-#include <QCoreApplication>
 #include <QSocketNotifier>
 #include <csignal>
 #include <atomic>

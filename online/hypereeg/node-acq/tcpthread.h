@@ -39,9 +39,9 @@ class TcpThread : public QThread {
   TcpThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
    conf=c;
    tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
-   tcpEEGBufSize=conf->tcpEEGBufSize; tcpEEGBuffer=&conf->tcpEEGBuffer;
+   tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer;
    eegChunk.resize(conf->eegSamplesInTick);
-   conf->tcpEEGBufTail=0;
+   conf->tcpBufTail=0;
   }
 
   void run() override {
@@ -49,10 +49,10 @@ class TcpThread : public QThread {
    const quint64 slack=2*N; // keep tail ~2*N behind head when backlog exists
    const quint64 wakeMs=conf->eegProbeMsecs;
 
-   while (!(conf->tcpEEGBufHead-conf->tcpEEGBufTail)) msleep(1); // Wait/ensure for at least one available sample
+   while (!(conf->tcpBufHead-conf->tcpBufTail)) msleep(1); // Wait/ensure for at least one available sample
 
    // determine fixed serialized size once
-   TcpSample tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpEEGBuffer)[conf->tcpEEGBufTail%tcpEEGBufSize];
+   TcpSample tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
    const int sz=tmp.serialize().size();
 
    QByteArray packet; packet.reserve(4+N*sz);
@@ -62,7 +62,7 @@ class TcpThread : public QThread {
    while(!isInterruptionRequested()) { quint64 avail;
     {
      QMutexLocker locker(&conf->mutex);
-     avail=conf->tcpEEGBufHead-conf->tcpEEGBufTail;
+     avail=conf->tcpBufHead-conf->tcpBufTail;
     }
     if (avail<slack) { msleep(1); continue; } // Not following from distant enough
 
@@ -72,22 +72,22 @@ class TcpThread : public QThread {
     // Copy N samples, advance tail
     {
      QMutexLocker locker(&conf->mutex);
-     if ((conf->tcpEEGBufHead-conf->tcpEEGBufTail)<(quint64)N) continue;
-     const quint64 tail=conf->tcpEEGBufTail;
-     for (int i=0;i<N;++i) eegChunk[i]=(*tcpEEGBuffer)[(tail+i)%tcpEEGBufSize];
+     if ((conf->tcpBufHead-conf->tcpBufTail)<(quint64)N) continue;
+     const quint64 tail=conf->tcpBufTail;
+     for (int i=0;i<N;++i) eegChunk[i]=(*tcpBuffer)[(tail+i)%tcpBufSize];
 
 //static qint64 t1=0;
 //qint64 noww=QDateTime::currentMSecsSinceEpoch();
 //if (noww-t1>1000) { t1=noww;
-//  qDebug() << "[CONS] head" << conf->tcpEEGBufHead
+//  qDebug() << "[CONS] head" << conf->tcpBufHead
 //           << "tail0" << tail
-//           << "avail" << (conf->tcpEEGBufHead - conf->tcpEEGBufTail)
+//           << "avail" << (conf->tcpEEGHead - conf->tcpBufTail)
 //           << "off0"  << eegChunk[0].offset
 //           << "eeg0"  << eegChunk[0].amp[0].dataBP[0]
 //           << "aud0"  << eegChunk[0].audioN[0];
 //}
 
-     conf->tcpEEGBufTail+=N;
+     conf->tcpBufTail+=N;
     }
 
 //static qint64 t1=0;
@@ -99,27 +99,16 @@ class TcpThread : public QThread {
 //           << "aud0" << s.audioN[0];
 //}
 
-//    packet.clear(); const quint32 payloadLen=N*sz;
-//    packet.append(char((payloadLen    )&0xFF));
-//    packet.append(char((payloadLen>> 8)&0xFF));
-//    packet.append(char((payloadLen>>16)&0xFF));
-//    packet.append(char((payloadLen>>24)&0xFF));
-
-//    for (int i=0;i<N;++i) packet.append(eegChunk[i].serialize());
-
-//    emit sendPacketSignal(packet);
-
-
     for (int i=0;i<N;i++) {
      const QByteArray one=eegChunk[i].serialize();
      const quint32 L=(quint32)one.size();
 
      QByteArray packet;
      packet.reserve(4+one.size());
-     packet.append(char((L    )&0xFF));
-     packet.append(char((L>> 8)&0xFF));
-     packet.append(char((L>>16)&0xFF));
-     packet.append(char((L>>24)&0xFF));
+     packet.append(char((L    )&0xff));
+     packet.append(char((L>> 8)&0xff));
+     packet.append(char((L>>16)&0xff));
+     packet.append(char((L>>24)&0xff));
      packet.append(one);
      emit sendPacketSignal(packet);
     }
@@ -143,8 +132,8 @@ class TcpThread : public QThread {
 //    }
 
     // ---- Send to all connected clients ----
-    // IMPORTANT: if sockets live in another thread, you must not write them directly here.
-    // If you currently write from this thread and it "works", keep it for now; later we’ll
+    // IMPORTANT: if sockets live in another thread, we must not write them directly here.
+    // If we currently write from this thread and it "works", keep it for now; later we’ll
     // move sending to the socket-owning thread via queued invokeMethod.
 //    for (QTcpSocket* client : conf->strmClients) {
 //     if (!client) continue;
@@ -159,7 +148,7 @@ class TcpThread : public QThread {
   ConfParam *conf;
 
   TcpSample tcpEEG;
-  QVector<TcpSample> *tcpEEGBuffer; unsigned int tcpEEGBufSize;
+  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
 
   std::vector<TcpSample> eegChunk;
 };

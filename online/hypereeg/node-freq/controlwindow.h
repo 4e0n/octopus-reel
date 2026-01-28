@@ -69,48 +69,16 @@ class ControlWindow : public QMainWindow {
    menuBar->addMenu(sysMenu);
 
    // System Menu
-   rebootAction=new QAction("&Reboot Servers",this);
-   shutdownAction=new QAction("&Shutdown Servers",this);
    aboutAction=new QAction("&About..",this);
    quitAction=new QAction("&Quit",this);
-   rebootAction->setStatusTip("Reboot node_acqd via hwd server");
-   shutdownAction->setStatusTip("Shutdown ACQuisition host computer");
    aboutAction->setStatusTip("About HyperStream GUI..");
    quitAction->setStatusTip("Quit HyperStream GUI");
-   //connect(rebootAction,&QAction::triggered,this,[=](){ctrlStatusBar->setText("Status: Quit Action");});
-   connect(rebootAction,SIGNAL(triggered()),this,SLOT(slotReboot()));
-   connect(shutdownAction,SIGNAL(triggered()),this,SLOT(slotShutdown()));
    connect(aboutAction,SIGNAL(triggered()),this,SLOT(slotAbout()));
    connect(quitAction,SIGNAL(triggered()),this,SLOT(slotQuit()));
-   sysMenu->addAction(rebootAction);
-   sysMenu->addAction(shutdownAction); sysMenu->addSeparator();
    sysMenu->addAction(aboutAction); sysMenu->addSeparator();
    sysMenu->addAction(quitAction);
 
    // *** BUTTONS AT THE TOP ***
-
-   toggleRecordingButton=new QPushButton("RECORD",cntWidget);
-   toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,100,20);
-   toggleRecordingButton->setCheckable(true);
-   connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
-
-   conf->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
-   conf->timeLabel->setGeometry(110,mainTabWidget->height()-52,190,20);
-
-   manualSyncButton=new QPushButton("SYNC",cntWidget);
-   manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
-   connect(manualSyncButton,SIGNAL(clicked()),this,SLOT(slotManualSync()));
-
-   manualTrigButton=new QPushButton("PING",cntWidget);
-   manualTrigButton->setGeometry(550,mainTabWidget->height()-54,60,20);
-   connect(manualTrigButton,SIGNAL(clicked()),this,SLOT(slotManualTrig()));
-
-   synthTrig1Button=new QPushButton("TRIG(1)",cntWidget);
-   synthTrig1Button->setGeometry(640,mainTabWidget->height()-54,60,20);
-   connect(synthTrig1Button,SIGNAL(clicked()),this,SLOT(slotSynthTrig1()));
-   synthTrig2Button=new QPushButton("TRIG(2)",cntWidget);
-   synthTrig2Button->setGeometry(730,mainTabWidget->height()-54,60,20);
-   connect(synthTrig2Button,SIGNAL(clicked()),this,SLOT(slotSynthTrig2()));
 
    QPushButton *dummyButton;
 
@@ -158,9 +126,6 @@ class ControlWindow : public QMainWindow {
 
   // *** MENUS ***
 
-  void slotReboot() {}
-  void slotShutdown() {}
-
   void slotAbout() {
    QMessageBox::about(this,"About Octopus-ReEL HyperEEG Streamer GUI Client Node",
                            "(c) 2007-2026 Barkin Ilhan (barkin@unrlabs.org)\n"
@@ -172,56 +137,13 @@ class ControlWindow : public QMainWindow {
   void slotQuit() {
    { QMutexLocker locker(&conf->mutex); conf->quitPending=true; }
 
-   if (conf->strmSocket->state() != QAbstractSocket::UnconnectedState)
-    conf->strmSocket->waitForDisconnected(1000); // timeout in ms
-   //while (conf->strmSocket->state() != QAbstractSocket::UnconnectedState);
+   if (conf->acqStrmSocket->state() != QAbstractSocket::UnconnectedState)
+    conf->acqStrmSocket->waitForDisconnected(1000); // timeout in ms
 
    for (auto& thread:conf->threads) { thread->wait(); delete thread; }
    
    QApplication::quit();
   }
-
-  void slotToggleRecording() {
-   QDateTime currentDT(QDateTime::currentDateTime());
-   if (!conf->ctrlRecordingActive) {
-    // Generate filename using current date and time
-    // add current data and time to base: trial-20071228-123012-332.heg
-    QString cntFN="trial-"+currentDT.toString("yyyyMMdd-hhmmss-zzz");
-    conf->hegFile.setFileName(cntFN+".heg");
-    if (!conf->hegFile.open(QIODevice::WriteOnly)) {
-     qDebug() << "node_gui: <ToggleRecording> <ERROR> Cannot open .occ file for writing!";
-     return;
-    } conf->hegStream.setDevice(&conf->hegFile);
-
-//    conf->hegStream << (int)(OCTOPUS_VER);      // Version
-    conf->hegStream << conf->ampCount << "\n";    // Amplifier Count
-    conf->hegStream << conf->eegRate << "\n";     // Sample rate
-    conf->hegStream << conf->chns.size() << "\n"; // Sample rate
-//    conf->hegStream << cntRecChns.size();       // Channel count
-
-    for (int i=0;i<conf->chns.size();i++) // Channel names - Cstyle
-     conf->hegStream << conf->chns[i].chnName << " "; //.toLatin1().data();
-    conf->hegStream << "\n";	// Sample rate
-
-    conf->timeLabel->setText("Rec.Time: 00:00:00");
-    conf->recCounter=0; conf->ctrlRecordingActive=true;
-   } else { conf->ctrlRecordingActive=false;
-    //if (stimulation) slotToggleStimulation();
-    conf->hegStream.setDevice(0); conf->hegFile.close();
-   }
-  }
-
-  void slotManualSync() { conf->commandToDaemon(CMD_ACQD_AMPSYNC); }
-  void slotManualTrig() { conf->commandToDaemon(CMD_ACQD_S_TRIG_1000); }
-  void slotSynthTrig1() { conf->commandToDaemon(CMD_ACQD_S_TRIG_1); }
-  void slotSynthTrig2() { conf->commandToDaemon(CMD_ACQD_S_TRIG_2); }
-
-//  void slotToggleNotch() {
-//   {
-//    QMutexLocker locker(&conf->mutex);
-//    conf->ctrlNotchActive ? conf->ctrlNotchActive=false : conf->ctrlNotchActive=true;
-//   }
-//  }
 
   void slotScrollSpeed(int x) { conf->eegSweepDivider=conf->eegSweepCoeff[x]; }
   void slotEEGBand(int x) { conf->eegBand=x; }
@@ -230,7 +152,5 @@ class ControlWindow : public QMainWindow {
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
-  QPushButton *manualSyncButton,*manualTrigButton,*synthTrig1Button,*synthTrig2Button;
-  QPushButton *toggleRecordingButton;
   QButtonGroup *eegBandBG,*scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };

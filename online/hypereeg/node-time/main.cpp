@@ -21,13 +21,28 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
+/* This is the HyperEEG "Time Domain GUI" Node.
+ * Its main purpose is to handle a graphic view including OpenGL widgets,
+ * for the EEG streaming over TCP from another producer node. In most
+ * native configurations, this node would be the node-acq itself.
+ */
+
 #include <QApplication>
-#include "../common/globals.h"
+#include <QSurfaceFormat>
 #include "guiclient.h"
 
 int main(int argc,char* argv[]) {
+ QSurfaceFormat fmt;
+ fmt.setRenderableType(QSurfaceFormat::OpenGL);
+ fmt.setProfile(QSurfaceFormat::NoProfile);  // important for GL 2.1
+ fmt.setVersion(2,1);
+ fmt.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+ fmt.setSwapInterval(0);
+ QSurfaceFormat::setDefaultFormat(fmt);
+
  QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
-// QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+ //QApplication::setAttribute(Qt::AA_UseOpenGLES);
+ //QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
  QApplication app(argc,argv);
  GUIClient guiClient;
@@ -35,7 +50,7 @@ int main(int argc,char* argv[]) {
  omp_diag();
 
  if (guiClient.initialize()) {
-  qCritical("node_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Stream GUI Client.");
+  qCritical("node-time: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Time Domain GUI Client.");
   return 1;
  }
 

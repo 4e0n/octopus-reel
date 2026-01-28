@@ -1,0 +1,1 @@
+const int HYPEREEG_ACQ_DAEMON_VER=200;

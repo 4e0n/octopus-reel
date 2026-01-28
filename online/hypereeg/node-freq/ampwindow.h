@@ -37,6 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "eegframe.h"
 #include "gl3dwidget.h"
 #include "gllegendframe.h"
+#include "../common/tcp_commands.h"
 
 class AmpWindow : public QMainWindow {
  Q_OBJECT
@@ -62,35 +63,35 @@ class AmpWindow : public QMainWindow {
    tabH-=60; // mainTabWidget->height()
 
    // *** Channels & Interpolation
-   chnWidget=new QWidget(mainTabWidget); chnWidget->setGeometry(2,2,tabW-4,tabH-4); 
-   unsigned int chnIdx,topoX,topoY,a,y,sz; QString chnName; int tXmax=0,tYmax=0;
-   for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
-    tXmax<conf->chns[chnIdx].topoX ? tXmax=conf->chns[chnIdx].topoX : tXmax;
-    tYmax<conf->chns[chnIdx].topoY ? tYmax=conf->chns[chnIdx].topoY : tYmax;
-   }
-   float cf=(float)(tXmax)/((float)(tXmax)+1.); // Aspect ratio multiplier
-   a=tabH/(float)tXmax; sz=a*((float)(5.)/6.); // guiCellSize
-   QRect mRect(0,0,sz*cf,sz*cf); QRegion mRegion(mRect,QRegion::Ellipse);
-   int xOff=tabW/2-a*(tXmax/2)*cf-a*cf/2.; // Leftmost vertical line
-   chnBG=new QButtonGroup(); chnBG->setExclusive(false);
-   for (int btnIdx=0;btnIdx<conf->chns.size();btnIdx++) { // Chns Interpolation
-    chnIdx=conf->chns[btnIdx].physChn; chnName=conf->chns[btnIdx].chnName;
-    topoX=conf->chns[btnIdx].topoX; topoY=conf->chns[btnIdx].topoY;
-    y=(a/2)*cf;
-    if (topoY>1) y+=a/2;
-    if (topoY>10) y+=a/2;
-    QRect cr(xOff+a*(topoX-1)*cf,y+a*(topoY-1)*cf,sz*cf,sz*cf);
-    dummyButton=new QPushButton(chnWidget); dummyButton->setCheckable(true);
-    dummyButton->setText(QString::number(chnIdx)+"\n"+chnName);
-    dummyButton->setGeometry(cr); dummyButton->setMask(mRegion);
-    dummyButton->setStyleSheet("QPushButton { background-color: white; }"
-                               "QPushButton { color: black; }"
-                               "QPushButton:checked { background-color: yellow; }"
-                               "QPushButton:checked { color: black; }");
-    dummyButton->setChecked((bool)conf->chns[btnIdx].chnViewMode[ampNo]);
-    chnBG->addButton(dummyButton,btnIdx);
-   }
-   connect(chnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotChnInter(int)));
+//   chnWidget=new QWidget(mainTabWidget); chnWidget->setGeometry(2,2,tabW-4,tabH-4); 
+//   unsigned int chnIdx,topoX,topoY,tXmax=0,tYmax=0,a,y,sz; QString chnName; //unsigned int tXmax=0,tYmax=0;
+//   for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
+//    tXmax<conf->chns[chnIdx].topoX ? tXmax=conf->chns[chnIdx].topoX : tXmax;
+//    tYmax<conf->chns[chnIdx].topoY ? tYmax=conf->chns[chnIdx].topoY : tYmax;
+//   }
+//   float cf=(float)(tXmax)/((float)(tXmax)+1.); // Aspect ratio multiplier
+//   a=tabH/(float)tXmax; sz=a*((float)(5.)/6.); // guiCellSize
+//   QRect mRect(0,0,sz*cf,sz*cf); QRegion mRegion(mRect,QRegion::Ellipse);
+//   int xOff=tabW/2-a*(tXmax/2)*cf-a*cf/2.; // Leftmost vertical line
+//   chnBG=new QButtonGroup(); chnBG->setExclusive(false);
+//   for (int btnIdx=0;btnIdx<conf->chns.size();btnIdx++) { // Chns Interpolation
+//    chnIdx=conf->chns[btnIdx].physChn; chnName=conf->chns[btnIdx].chnName;
+//    topoX=conf->chns[btnIdx].topoX; topoY=conf->chns[btnIdx].topoY;
+//    y=(a/2)*cf;
+//    if (topoY>1) y+=a/2;
+//    if (topoY>10) y+=a/2;
+//    QRect cr(xOff+a*(topoX-1)*cf,y+a*(topoY-1)*cf,sz*cf,sz*cf);
+//    dummyButton=new QPushButton(chnWidget); dummyButton->setCheckable(true);
+//    dummyButton->setText(QString::number(chnIdx)+"\n"+chnName);
+//    dummyButton->setGeometry(cr); dummyButton->setMask(mRegion);
+//    dummyButton->setStyleSheet("QPushButton { background-color: white; }"
+//                               "QPushButton { color: black; }"
+//                               "QPushButton:checked { background-color: yellow; }"
+//                               "QPushButton:checked { color: black; }");
+//    dummyButton->setChecked((bool)conf->chns[btnIdx].interMode[ampNo]);
+//    chnBG->addButton(dummyButton,btnIdx);
+//   }
+//   connect(chnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotChnInter(int)));
 
    // *** EEG Streaming
    conf->sweepFrameW=tabW-4; conf->sweepFrameH=tabH-20;
@@ -109,22 +110,6 @@ class AmpWindow : public QMainWindow {
    eegAmpBG->button(0)->setChecked(true);
    conf->eegAmpX[ampNo]=conf->eegAmpRange[0]; //(1000000.0/100.0);
    connect(eegAmpBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGAmp(int)));
-
-   // *** Bands' power and related stats
-   conf->bandMult[ampNo]=1.0;
-   bandsWidget=new QWidget(mainTabWidget); bandsWidget->setGeometry(2,2,tabW-4,tabH-4); 
-   bandMultLabel=new QLabel("Multiplier:"+dummyString.setNum(conf->bandMult[ampNo])+":",bandsWidget);
-   bandMultLabel->setGeometry(2,tabH-35,120,30); 
-   QSlider *bandMultSlider=new QSlider(Qt::Horizontal,bandsWidget);
-   bandMultSlider->setGeometry(122,tabH-35,tabW*2/3-102,30); 
-   bandMultSlider->setRange(1,500); // in mm because of int - divide by ten
-   bandMultSlider->setSingleStep(1);
-   bandMultSlider->setPageStep(10); // step in uV2s..
-   bandMultSlider->setSliderPosition((int)(conf->bandMult[ampNo]));
-   bandMultSlider->setEnabled(true);
-   //connect(bandMultSlider,SIGNAL(valueChanged(int)),this,SLOT(slotSetBandsMultiplier(int)));
-
-
 
    // *** ERP OpenGL View
    conf->gl3DFrameW=(tabW-4)*2/3-2; conf->gl3DFrameH=tabH-30-60;
@@ -181,9 +166,8 @@ class AmpWindow : public QMainWindow {
    connect(clrAvgsButton,SIGNAL(clicked()),this,SLOT(slotClrAvgs()));
    // Add all tab widgets
 
-   mainTabWidget->addTab(chnWidget,"Channels");
-   mainTabWidget->addTab(eegWidget,"Continuous EEG");
-   mainTabWidget->addTab(bandsWidget,"Band Powers");
+//   mainTabWidget->addTab(chnWidget,"Channels");
+   mainTabWidget->addTab(eegWidget,"TimeDomain EEG");
    mainTabWidget->addTab(headWidget,"Head Model");
    mainTabWidget->show();
 
@@ -240,23 +224,37 @@ class AmpWindow : public QMainWindow {
  public slots:
   void slotEEGAmp(int x) { conf->eegAmpX[ampNo]=conf->eegAmpRange[x]; }
 
-  void slotChnInter(int x) { QPushButton *b=(QPushButton *)chnBG->button(x);
-   conf->chns[x].chnViewMode[ampNo]++; conf->chns[x].chnViewMode[ampNo]%=3; // 0-> View disabled 1-> Normal View 2-> Sp.Interpolation
-   if (conf->chns[x].chnViewMode[ampNo]==0) {
-    b->setStyleSheet("QPushButton { background-color: white; }"
-                     "QPushButton { color: black; }");
-    b->setChecked(false);
-   } else if (conf->chns[x].chnViewMode[ampNo]==1) {
-    b->setStyleSheet("QPushButton:checked { background-color: yellow; }"
-                     "QPushButton:checked { color: black; }");
-    b->setChecked(true);
-   } else if (conf->chns[x].chnViewMode[ampNo]==2) {
-    b->setStyleSheet("QPushButton:checked { background-color: red; }"
-                     "QPushButton:checked { color: white; }");
-    b->setChecked(true);
-   }
-//   qDebug() << "Amp:" << ampNo << "- ChnIdx:" << conf->chns[x].physChn << conf->chns[x].chnViewMode[ampNo];
-  }
+//  void slotChnInter(int x) { //QPushButton *b=(QPushButton *)chnBG->button(x);
+//   conf->chns[x].interMode[ampNo]++; conf->chns[x].interMode[ampNo]%=3; // 0-> View disabled 1-> Normal View 2-> Sp.Interpolation
+//
+//   QString cmd=CMD_ACQ_COMPCHAN+"=";
+//   cmd.append(QString::number(ampNo+1)+",");
+//   cmd.append(QString::number(conf->chns[x].type)+",");
+//   cmd.append(QString::number(conf->chns[x].physChn)+",");
+//   cmd.append(QString::number(conf->chns[x].interMode[ampNo]));
+//   QString commResponse=conf->commandToDaemon(conf->acqCommSocket,cmd.toUtf8());
+//   QStringList sList=commResponse.split(",");
+//   //qDebug() << commResponse;
+//   // Imprint commResponse to current state
+//   for (int idx=0;idx<conf->chns.size();idx++) {
+//    conf->chns[idx].interMode[ampNo]=sList[idx].toInt();
+//
+//    QPushButton *b=(QPushButton *)chnBG->button(idx);
+//    if (conf->chns[idx].interMode[ampNo]==0) {
+//     b->setStyleSheet("QPushButton { background-color: white; }"
+//                      "QPushButton { color: black; }");
+//     b->setChecked(false);
+//    } else if (conf->chns[idx].interMode[ampNo]==1) {
+//     b->setStyleSheet("QPushButton:checked { background-color: yellow; }"
+//                      "QPushButton:checked { color: black; }");
+//     b->setChecked(true);
+//    } else if (conf->chns[idx].interMode[ampNo]==2) {
+//     b->setStyleSheet("QPushButton:checked { background-color: red; }"
+//                      "QPushButton:checked { color: white; }");
+//     b->setChecked(true);
+//    }
+//   }
+//  }
 
   void slotERPAmp(int x) { conf->erpAmpX[ampNo]=conf->erpAmpRange[x]; }
 
@@ -279,11 +277,12 @@ class AmpWindow : public QMainWindow {
   EEGFrame *eegFrame; GL3DWidget *gl3DWidget; GLLegendFrame *glLegendFrame;
   QMenuBar *menuBar;
   QAction *frameToggleAction,*gridToggleAction, *scalpToggleAction,*skullToggleAction,*brainToggleAction,*gizmoToggleAction,*electrodesToggleAction;
-  QTabWidget *mainTabWidget; QWidget *eegWidget,*chnWidget,*headWidget,*bandsWidget;
+  QTabWidget *mainTabWidget; QWidget *eegWidget,*headWidget;
+//  QWidget *chnWidget;
   QButtonGroup *eegAmpBG,*erpAmpBG,*chnBG;
 
   QListWidget *gizmoList,*electrodeList;
-  QLabel *cModeLabel,*paramRLabel,*bandMultLabel; QSlider *cModeSlider,*paramRSlider;
+  QLabel *cModeLabel,*paramRLabel; QSlider *cModeSlider,*paramRSlider;
   QPushButton *clrAvgsButton;
   //QStatusBar *statusBar;
 };

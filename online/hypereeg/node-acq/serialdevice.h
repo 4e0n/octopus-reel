@@ -22,6 +22,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 // Simple serial port definition for use in our Polhemus digitizer class.
+// Then modified to be used to handle SparkFun Pro Micro in HyperEEG box.
 
 #pragma once
 

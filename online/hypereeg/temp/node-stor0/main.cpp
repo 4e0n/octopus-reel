@@ -21,23 +21,26 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#pragma once
+/* This is the HyperEEG Stor (Daemon) Node.. Its duty is to be connect
+ * to node-acq on startup like the other client nodes for EEG stream,
+ * and according to the command its given by other clients, it can
+ * record, organize, etc. the streaming EEG data in .eeg/.vmrk format.
+ */
 
-//#define EEMAGINE
-#define AUDIODEV
+#include <QCoreApplication>
+#include "../common/globals.h"
+#include "stordaemon.h"
 
-#define HACQ_VERBOSE
+int main(int argc,char *argv[]) {
+ QCoreApplication app(argc,argv);
+ StorDaemon storDaemon;
 
-#define OCTO_OMP
-#include "octo_omp.h"
+ omp_diag();
 
-const unsigned int EE_MAX_AMPCOUNT=8;
-const unsigned int REF_CHN_MAXCOUNT=64;
-const unsigned int BIP_CHN_MAXCOUNT=24;
-const unsigned int TRIG_AMPSYNC=0xFF;
+ if (storDaemon.initialize()) {
+  qCritical("node_stor: <FatalError> Failed to initialize Octopus-ReEL EEG Stor daemon node.");
+  return 1;
+ }
 
-const QString optPath="/opt/octopus/";
-const QString dataPath=optPath+"data/";
-const QString synthDataPath=dataPath+"raweeg/synth-eeg.raw";
-
-const QString confPath="~/.octopus-reel/";
+ return app.exec();
+}

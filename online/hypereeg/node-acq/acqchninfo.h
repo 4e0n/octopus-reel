@@ -23,12 +23,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-struct ChnInfo {
- unsigned int physChn;
- QString chnName;
- float topoTheta,topoPhi;
- unsigned int topoX,topoY;
- bool isBipolar;
- unsigned int chnViewMode;
- QVector<unsigned int> interElec;
+struct AcqChnInfo {
+ unsigned int physChn; QString chnName;
+ unsigned int type; // 0:ref,1:bipolar,2:meta;
+ float topoTheta,topoPhi; unsigned int topoX,topoY;
+ QVector<unsigned int> interMode; // for each amp
+ QVector<unsigned int> interElec; // Neighboring electrodes
+
+ // Involved channels
+ // Operation (avg,gfp,difference, etc.)
 };

@@ -20,32 +20,29 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-gui
+TARGET = node-acq
 INCLUDEPATH += .
-LIBS += -lGLU -lX11
+QT += widgets network
+#LIBS += -leego-SDK
+LIBS += -lasound
 LIBS += -fopenmp
-QT += core gui widgets network multimedia opengl
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 #QMAKE_CXXFLAGS += -DOCTO_OMP=1
-QMAKE_CXXFLAGS += -fopenmp
+QMAKE_CXXFLAGS += -fopenmp #-O1 -g
 
 # Input
-HEADERS += guiclient.h \
-           controlwindow.h \
-           ampwindow.h \
-           eegframe.h \
-           eegthread.h \
-           gl3dwidget.h \
-	   gllegendframe.h \
-           configparser.h \
-           confparam.h \
-           chninfo.h \
-           headmodel.h \
-           ../common/tcp_commands.h \
-           ../../../common/event.h \
-           ../../../common/vec3.h \
-           ../../../common/coord3d.h
+HEADERS += acqdaemon.h \
+           acqthread.h \
+           tcpthread.h \
+	   configparser.h \
+	   confparam.h \
+	   acqchninfo.h \
+	   eesynth.h \
+           eeamp.h \
+           audioamp.h \
+	   serialdevice.h \
+           ../common/globals.h \
+	   ../common/sample.h \
+           ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

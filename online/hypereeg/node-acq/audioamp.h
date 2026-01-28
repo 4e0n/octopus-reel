@@ -38,8 +38,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QString>
 #include <QDebug>
 
+//static constexpr auto AUDIO_DEV_NAME="octopus_uca202";
+static constexpr auto AUDIO_DEV_NAME="default";
+
 static constexpr unsigned AUDIO_SAMPLE_RATE=48000;
-static constexpr unsigned AUDIO_NUM_CHANNELS=2;
+static constexpr unsigned AUDIO_NUM_CHANNELS=2;    // L: Audio, R: Analog Trigger
 static constexpr unsigned AUDIO_CBUF_SECONDS=10;
 
 static inline uint64_t now_ns() {
@@ -48,452 +51,434 @@ static inline uint64_t now_ns() {
 }
 
 struct AudioAmp {
- // ring & counters
- std::atomic<uint64_t> audioFrameCounter{0};
- std::atomic<bool> run{false};
+  // ring & counters
+  std::atomic<uint64_t> audioFrameCounter{0};
+  std::atomic<bool> run{false};
 
- std::vector<int16_t> audioRing;
- unsigned bufSizeFrames=0;
- std::atomic<unsigned> bufHead{0};
+  std::vector<int16_t> audioRing;
+  unsigned bufSizeFrames=0;
+  std::atomic<unsigned> bufHead{0};
 
- std::mutex cvMx;
- std::condition_variable cvAvail;
+  std::mutex cvMx;
+  std::condition_variable cvAvail;
 
- snd_pcm_t* handle=nullptr;
- std::thread th;
+  snd_pcm_t* handle=nullptr;
+  std::thread th;
 
- std::atomic<uint64_t> underruns{0};
+  std::atomic<uint64_t> underruns{0};
 
- // Trigger (RIGHT channel)
- float trigHigh=8000.f;
- float trigLow=4000.f;
- unsigned trigMinGap=2400; // 50 ms @ 48 kHz
- uint64_t lastTrigFrame=0;
+  // Trigger (RIGHT channel)
+  float trigHigh=8000.f;
+  float trigLow=4000.f;
+  unsigned trigMinGap=2400; // 50 ms @ 48 kHz
+  uint64_t lastTrigFrame=0;
 
- // Resampler / PLL / Servo
- bool rs_inited=false;
- double rs_srcPos=0.0;    // fractional read position (input frames)
- double rs_stepEst=1.0;   // Fs_in / 48k (smoothed)
- double rs_stepCorr=1.0;  // servo correction
- double rs_stepBias=0.0;  // slow bias (centers stepCorr≈1)
- uint64_t rs_lastProd=0;
+  // Resampler / PLL / Servo
+  bool rs_inited=false;
+  double rs_srcPos=0.0;   // fractional read position (input frames)
+  double rs_stepEst=1.0;  // Fs_in / 48k (smoothed)
+  double rs_stepCorr=1.0; // servo correction
+  double rs_stepBias=0.0; // slow bias (centers stepCorr≈1)
+  uint64_t rs_lastProd=0;
 
- // PI state
- double lagInt=0.0;
+  // PI state
+  double lagInt=0.0;
 
+  static bool alsa_set_capture_level(const char* card,long percent) {
+   percent=std::clamp(percent,0L,100L);
 
+   snd_mixer_t* mix=nullptr;
+   if (snd_mixer_open(&mix,0)<0) return false;
 
-static bool alsa_set_capture_level(const char* card, long percent)
-{
-    percent = std::clamp(percent, 0L, 100L);
+   // Attach to card, e.g. "hw:CODEC"
+   QString hw=QString("hw:%1").arg(card);
+   if (snd_mixer_attach(mix,hw.toUtf8().constData())<0) { snd_mixer_close(mix); return false; }
+   if (snd_mixer_selem_register(mix,nullptr,nullptr)<0) { snd_mixer_close(mix); return false; }
+   if (snd_mixer_load(mix)<0) { snd_mixer_close(mix); return false; }
 
-    snd_mixer_t* mix = nullptr;
-    if (snd_mixer_open(&mix, 0) < 0) return false;
+   auto try_elem=[&](const char* name)->snd_mixer_elem_t* {
+    snd_mixer_selem_id_t* sid;
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid,0);
+    snd_mixer_selem_id_set_name(sid,name);
+    return snd_mixer_find_selem(mix,sid);
+   };
 
-    // Attach to card, e.g. "hw:CODEC"
-    QString hw = QString("hw:%1").arg(card);
-    if (snd_mixer_attach(mix, hw.toUtf8().constData()) < 0) { snd_mixer_close(mix); return false; }
-    if (snd_mixer_selem_register(mix, nullptr, nullptr) < 0) { snd_mixer_close(mix); return false; }
-    if (snd_mixer_load(mix) < 0) { snd_mixer_close(mix); return false; }
+   const char* candidates[]={"Capture","Mic","Line","PCM","ADC"};
+   snd_mixer_elem_t* elem=nullptr;
+   for (auto* n:candidates) { elem=try_elem(n); if (elem) break; }
 
-    auto try_elem = [&](const char* name)->snd_mixer_elem_t* {
-        snd_mixer_selem_id_t* sid;
-        snd_mixer_selem_id_alloca(&sid);
-        snd_mixer_selem_id_set_index(sid, 0);
-        snd_mixer_selem_id_set_name(sid, name);
-        return snd_mixer_find_selem(mix, sid);
-    };
-
-    const char* candidates[] = {"Capture", "Mic", "Line", "PCM", "ADC"};
-    snd_mixer_elem_t* elem = nullptr;
-    for (auto* n : candidates) { elem = try_elem(n); if (elem) break; }
-
-    if (!elem) {
-        qWarning() << "[AudioAmp] No capture mixer element found on" << hw;
-        snd_mixer_close(mix);
-        return false;
-    }
-
-    long vmin=0, vmax=0;
-    if (snd_mixer_selem_get_capture_volume_range(elem, &vmin, &vmax) == 0 && vmax > vmin) {
-        long v = vmin + (vmax - vmin) * percent / 100;
-        snd_mixer_selem_set_capture_volume_all(elem, v);
-        qInfo() << "[AudioAmp] Set capture volume" << percent << "% (" << v << "in" << vmin << ".." << vmax << ")";
-    }
-
-    // If there is a capture switch, enable it
-    if (snd_mixer_selem_has_capture_switch(elem)) {
-        snd_mixer_selem_set_capture_switch_all(elem, 1);
-        qInfo() << "[AudioAmp] Enabled capture switch for element";
-    }
-
+   if (!elem) {
+    qWarning() << "[AudioAmp] No capture mixer element found on" << hw;
     snd_mixer_close(mix);
-    return true;
-}
+    return false;
+   }
 
+   long vmin=0, vmax=0;
+   if (snd_mixer_selem_get_capture_volume_range(elem,&vmin,&vmax)==0 && vmax>vmin) {
+    long v=vmin+(vmax-vmin)*percent/100;
+    snd_mixer_selem_set_capture_volume_all(elem,v);
+    qInfo() << "[AudioAmp] Set capture volume" << percent << "% (" << v << "in" << vmin << ".." << vmax << ")";
+   }
 
+   // If there is a capture switch, enable it
+   if (snd_mixer_selem_has_capture_switch(elem)) {
+    snd_mixer_selem_set_capture_switch_all(elem,1);
+    qInfo() << "[AudioAmp] Enabled capture switch for element";
+   }
 
+   snd_mixer_close(mix);
+   return true;
+  }
 
+  void init() {
+   bufSizeFrames=AUDIO_CBUF_SECONDS*AUDIO_SAMPLE_RATE;
+   audioRing.resize(size_t(bufSizeFrames)*AUDIO_NUM_CHANNELS);
+   bufHead.store(0,std::memory_order_relaxed);
+  }
 
-
-
-
- void init() {
-  bufSizeFrames=AUDIO_CBUF_SECONDS*AUDIO_SAMPLE_RATE;
-  audioRing.resize(size_t(bufSizeFrames)*AUDIO_NUM_CHANNELS);
-  bufHead.store(0,std::memory_order_relaxed);
- }
-
- bool initAlsa() {
-//  int rc=snd_pcm_open(&handle,"octopus_uca202",SND_PCM_STREAM_CAPTURE,0);
-  int rc=snd_pcm_open(&handle,"default",SND_PCM_STREAM_CAPTURE,0);
-  if (rc<0) { qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc); return false; }
+  bool initAlsa() {
+   int rc=snd_pcm_open(&handle,AUDIO_DEV_NAME,SND_PCM_STREAM_CAPTURE,0);
+   if (rc<0) { qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc); return false; }
 
 //alsa_set_capture_level("CODEC",80);
 
-  snd_pcm_hw_params_t* hw=nullptr;
-  snd_pcm_hw_params_alloca(&hw);
-  snd_pcm_hw_params_any(handle,hw);
+   snd_pcm_hw_params_t* hw=nullptr;
+   snd_pcm_hw_params_alloca(&hw);
+   snd_pcm_hw_params_any(handle,hw);
 
-  snd_pcm_hw_params_set_access(handle,hw,SND_PCM_ACCESS_RW_INTERLEAVED);
-  snd_pcm_hw_params_set_format(handle,hw,SND_PCM_FORMAT_S16_LE);
-  snd_pcm_hw_params_set_channels(handle,hw,AUDIO_NUM_CHANNELS);
+   snd_pcm_hw_params_set_access(handle,hw,SND_PCM_ACCESS_RW_INTERLEAVED);
+   snd_pcm_hw_params_set_format(handle,hw,SND_PCM_FORMAT_S16_LE);
+   snd_pcm_hw_params_set_channels(handle,hw,AUDIO_NUM_CHANNELS);
 
-  snd_pcm_hw_params_set_rate_resample(handle,hw,0);
-  unsigned rate=AUDIO_SAMPLE_RATE;
-  rc=snd_pcm_hw_params_set_rate(handle,hw,rate,0);
-  if (rc<0) {
-   qWarning() << "[AudioAmp] set_rate exact failed, trying near:" << snd_strerror(rc);
-   rc=snd_pcm_hw_params_set_rate_near(handle,hw,&rate, nullptr);
-   if (rc<0) qWarning() << "[AudioAmp] set_rate_near failed:" << snd_strerror(rc);
-  }
-
-  snd_pcm_uframes_t period=256; // 48
-  snd_pcm_uframes_t bufsize=period*8; // *4
-
-  rc=snd_pcm_hw_params_set_period_size(handle,hw,period,0);
-  if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
-  bufsize=period*8;
-  rc=snd_pcm_hw_params_set_buffer_size(handle,hw,bufsize);
-  if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
-
-  rc=snd_pcm_hw_params(handle,hw);
-  if (rc<0) { qWarning() << "[AudioAmp] hw_params commit failed:" << snd_strerror(rc); return false; }
-
-  snd_pcm_uframes_t per2=0, buf2=0;
-  snd_pcm_hw_params_get_period_size(hw, &per2, nullptr);
-  snd_pcm_hw_params_get_buffer_size(hw, &buf2);
-  qInfo() << "[AudioAmp] ALSA period=" << per2 << "frames ("
-          << (1000.0*double(per2)/AUDIO_SAMPLE_RATE) << "ms) buffer="
-          << buf2 << "frames (" << (1000.0*double(buf2)/AUDIO_SAMPLE_RATE) << "ms)";
-
-  snd_pcm_sw_params_t* sw=nullptr;
-  snd_pcm_sw_params_malloc(&sw);
-  snd_pcm_sw_params_current(handle,sw);
-  snd_pcm_sw_params_set_avail_min(handle,sw,period);
-  snd_pcm_sw_params_set_start_threshold(handle,sw,period);
-  rc=snd_pcm_sw_params(handle,sw);
-  snd_pcm_sw_params_free(sw);
-  if (rc<0) { qWarning() << "[AudioAmp] sw_params commit failed:" << snd_strerror(rc); return false; }
-
-  rc=snd_pcm_prepare(handle);
-  if (rc<0) { qWarning() << "[AudioAmp] prepare failed:" << snd_strerror(rc); return false; }
-
-  return true;
- }
-
- void start() {
-  if (!handle) return;
-  run.store(true,std::memory_order_release);
-  th=std::thread([this]{ captureLoop(); });
- }
-
- void stop() {
-  run.store(false,std::memory_order_release);
-  if (th.joinable()) th.join();
-  if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
- }
-
- unsigned fetchN(float* dstN,int wait_ms=10) {
-  constexpr unsigned OUT=48;
-  constexpr unsigned SAFETY_MARGIN=96;
-  constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
-//  constexpr int UNDERRUN_ARM=3;
-
-  // ---- Servo tuning ----
-  constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion
-  constexpr double LAG_DEADBAND=12.0;         // ±12 frames
-
-  // PI (very small)
-  constexpr double Kp=2.5e-5;
-  constexpr double Ki=2.5e-7;
-
-  // back-calculation anti-windup gain (how strongly to back off Int at clamp)
-  constexpr double Kaw=8.0e-6;
-
-  // Integral bleed
-  constexpr double I_DECAY=0.001;
-
-  // base correction window and slew
-  constexpr double BASE_MIN=0.990; // ±1%
-  constexpr double BASE_MAX=1.010;
-  constexpr double SLEW_PER_FETCH=0.0015; // ±0.15% per 48 samples
-
-  // Init on first call
-  if (!rs_inited) {
-   rs_lastProd=audioFrameCounter.load(std::memory_order_acquire);
-   rs_srcPos=double(rs_lastProd);
-   rs_stepEst=1.0;
-   rs_stepCorr=1.0;
-   rs_stepBias=0.0;
-   lagInt=0.0;
-   rs_inited=true;
-  }
-
-  // ---- persistent state for fetchN() ----
-  static uint64_t lastSnapNs = 0;
-
-  // ---------- PLL + PI every ~200ms ----------
-  static uint64_t pll_ns_prev=now_ns();
-  static uint64_t pll_prod_prev=0;
-//  static uint64_t pll_updates=0;
-//  static uint64_t pll_lastLog=now_ns();
-
-  // bias loop state (slow recentring of stepCorr toward 1)
-  static uint64_t bias_ns_prev=now_ns();
-  static double clampLean=0.0;  // low-pass of (are we leaning into clamp?)
-
-  {
-   const uint64_t now=now_ns();
-   const uint64_t prod=audioFrameCounter.load(std::memory_order_acquire);
-   const uint64_t dNs=now-pll_ns_prev;
-
-   if (pll_prod_prev==0) pll_prod_prev=prod;
-
-   if (dNs>=200'000'000ULL) {
-    const uint64_t dF=prod-pll_prod_prev;
-    if (dF>0) {
-     const double fs_meas=double(dF)/(double(dNs)*1e-9);
-     const double step_new=fs_meas/48000.0;
-     // PLL smoothing (moderately slow)
-     const double alpha=0.05;
-     rs_stepEst=(1.0-alpha)*rs_stepEst+alpha*step_new;
-     // Lag computation
-     const uint64_t i0=uint64_t(std::floor(rs_srcPos));
-     const uint64_t lag=(prod>i0) ? (prod-i0) : 0ULL;
-     double lagErr=double(lag)-TARGET_LAG_FRAMES;
-
-     // Deadband
-     if (std::abs(lagErr)<LAG_DEADBAND) lagErr=0.0;
-
-     // Adaptive correction window
-     double cmin=BASE_MIN;
-     double cmax=BASE_MAX;
-     const double absLagBlocks=std::abs(lagErr)/double(OUT);
-     if (absLagBlocks>6.0) { cmin=0.950; cmax=1.050; }
-     else if (absLagBlocks>2.0) { cmin=0.970; cmax=1.030; }
-
-     // PI raw target
-     lagInt=(1.0-I_DECAY)*lagInt+lagErr;
-     double corrTarget=1.0+(Kp*lagErr+Ki*lagInt);
-
-     // Slew-limit corr relative to previous
-     const double prevCorr=rs_stepCorr;
-     double corrSlew=std::clamp(corrTarget,prevCorr-SLEW_PER_FETCH,prevCorr+SLEW_PER_FETCH);
-
-     // Clamp to window and apply back-calculation anti-windup
-     double corrClamped=std::clamp(corrSlew,cmin,cmax);
-     if (corrClamped!=corrSlew) {
-      // Back-calculation: drive integral so that (Kp*e + Ki*I) matches clamp
-      const double awErr=(corrSlew-corrClamped); // signed excess
-      lagInt-=(Kaw/std::max(Ki,1e-12))*awErr;  // push Int toward feasible value
-     }
-     rs_stepCorr=corrClamped;
-
-     // ---- Slow bias loop (recenter toward corr=1.0) ----
-     // If we're persistently at/near clamp, nudge rs_stepBias so that
-     // rs_stepEst += rs_stepBias and corr comes back to ~1.
-     {
-      const double nearMin=(rs_stepCorr<(cmin+0.001)) ?  1.0 : 0.0;
-      const double nearMax=(rs_stepCorr>(cmax-0.001)) ? -1.0 : 0.0;
-      const double lean=nearMin+nearMax; // +1 means want more corr headroom upward, -1 means downward
-      const double beta=0.02; // LPF for lean indicator
-      clampLean=(1.0-beta)*clampLean+beta*lean;
-
-      // every ~1s, apply tiny bias if leaning
-      if (now-bias_ns_prev>=1'000'000'000ULL) {
-       // bias step ~2e-5 per second at full lean => 0.002 after 100s
-       const double biasStep=2.0e-5*clampLean;
-       // limit total bias to something sane (±1%)
-       rs_stepBias=std::clamp(rs_stepBias+biasStep,-0.010,0.010);
-       bias_ns_prev=now;
-      }
-     }
-
-     // Debug ~1 Hz
-//     ++pll_updates;
-//     if (now-pll_lastLog >= 1'000'000'000ULL) {
-//      const double callHz=double(pll_updates)/(double(now-pll_lastLog)*1e-9);
-//      qInfo() << "[PLL]"
-//              << "fs_meas="   << QString::number(fs_meas,'f',1)
-//              << " stepEst="  << QString::number(rs_stepEst,'f',6)
-//              << " callHz="   << QString::number(callHz,'f',1)
-//              << " stepBias=" << QString::number(rs_stepBias,'f',6)
-//              << " stepCorr=" << QString::number(rs_stepCorr,'f',6)
-//              << " stepUse="  << QString::number((rs_stepEst+rs_stepBias)*rs_stepCorr,'f',6);
-//      pll_updates=0;
-//      pll_lastLog=now;
-//     }
-    }
-    pll_ns_prev=now;
-    pll_prod_prev=prod;
+   snd_pcm_hw_params_set_rate_resample(handle,hw,0);
+   unsigned rate=AUDIO_SAMPLE_RATE;
+   rc=snd_pcm_hw_params_set_rate(handle,hw,rate,0);
+   if (rc<0) {
+    qWarning() << "[AudioAmp] set_rate exact failed, trying near:" << snd_strerror(rc);
+    rc=snd_pcm_hw_params_set_rate_near(handle,hw,&rate,nullptr);
+    if (rc<0) qWarning() << "[AudioAmp] set_rate_near failed:" << snd_strerror(rc);
    }
+
+   snd_pcm_uframes_t period=256; // 48
+   snd_pcm_uframes_t bufsize=period*8; // *4
+
+   rc=snd_pcm_hw_params_set_period_size(handle,hw,period,0);
+   if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
+   bufsize=period*8;
+   rc=snd_pcm_hw_params_set_buffer_size(handle,hw,bufsize);
+   if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
+
+   rc=snd_pcm_hw_params(handle,hw);
+   if (rc<0) { qWarning() << "[AudioAmp] hw_params commit failed:" << snd_strerror(rc); return false; }
+
+   snd_pcm_uframes_t per2=0,buf2=0;
+   snd_pcm_hw_params_get_period_size(hw,&per2,nullptr);
+   snd_pcm_hw_params_get_buffer_size(hw,&buf2);
+   qInfo() << "[AudioAmp] ALSA period=" << per2 << "frames ("
+           << (1000.0*double(per2)/AUDIO_SAMPLE_RATE) << "ms) buffer="
+           << buf2 << "frames (" << (1000.0*double(buf2)/AUDIO_SAMPLE_RATE) << "ms)";
+
+   snd_pcm_sw_params_t* sw=nullptr;
+   snd_pcm_sw_params_malloc(&sw);
+   snd_pcm_sw_params_current(handle,sw);
+   snd_pcm_sw_params_set_avail_min(handle,sw,period);
+   snd_pcm_sw_params_set_start_threshold(handle,sw,period);
+   rc=snd_pcm_sw_params(handle,sw);
+   snd_pcm_sw_params_free(sw);
+   if (rc<0) { qWarning() << "[AudioAmp] sw_params commit failed:" << snd_strerror(rc); return false; }
+
+   rc=snd_pcm_prepare(handle);
+   if (rc<0) { qWarning() << "[AudioAmp] prepare failed:" << snd_strerror(rc); return false; }
+
+   return true;
   }
 
-  const double stepUse=(rs_stepEst+rs_stepBias)*rs_stepCorr;
-
-  // ----- Ensure enough input for interpolation -----
-  const double needEndPos=std::floor(rs_srcPos+stepUse*(OUT-1))+1.0;
-  const uint64_t needAbs=(needEndPos<0.0) ? 0ULL : uint64_t(needEndPos);
-
-  auto have_enough=[&]{
-   return audioFrameCounter.load(std::memory_order_acquire)>=needAbs;
-  };
-
-  if (!have_enough()&&wait_ms > 0) {
-   std::unique_lock<std::mutex> lk(cvMx);
-   cvAvail.wait_for(lk,std::chrono::milliseconds(wait_ms),have_enough);
+  void start() {
+   if (!handle) return;
+   run.store(true,std::memory_order_release);
+   th=std::thread([this]{ captureLoop(); });
   }
 
-  uint64_t prodNow=audioFrameCounter.load(std::memory_order_acquire);
-
-  // Producer stall tracking (time-based, not call-count)
-  static uint64_t lastProdSeen = 0;
-  static uint64_t lastProdNs   = 0;
-
-  const uint64_t now = now_ns();
-  if (lastProdSeen == 0) {
-   lastProdSeen = prodNow;
-   lastProdNs   = now;
+  void stop() {
+   run.store(false,std::memory_order_release);
+   if (th.joinable()) th.join();
+   if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
   }
 
-  if (prodNow != lastProdSeen) {
-   lastProdSeen = prodNow;
-   lastProdNs   = now;
-  }
+  unsigned fetchN(float* dstN,int wait_ms=10) {
+   constexpr unsigned OUT=48;
+   constexpr unsigned SAFETY_MARGIN=96;
+   constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
+//   constexpr int UNDERRUN_ARM=3;
 
-  constexpr uint64_t STALL_NS = 20'000'000ULL; // 20 ms: real stall threshold
-  const bool stalled = (now - lastProdNs) > STALL_NS;
+   // ---- Servo tuning ----
+   constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion
+   constexpr double LAG_DEADBAND=12.0;         // ±12 frames
 
-  // Soft realign only if stalled AND we're dangerously close to producer tail
-  if (stalled) {
-   const uint64_t i0 = uint64_t(std::floor(rs_srcPos));
-   if (prodNow <= i0 + OUT + 1) {
-    const uint64_t snap = (prodNow > (LAG_SOFT_CLAMP + 1)) ? (prodNow - (LAG_SOFT_CLAMP + 1)) : 0ULL;
-    rs_srcPos = double(snap);
-    lastSnapNs = now;
-    qWarning() << "[AcqThread-AudioAmp] Producer stall (>20ms) detected; realigned.";
+   // PI (very small)
+   constexpr double Kp=2.5e-5;
+   constexpr double Ki=2.5e-7;
+
+   // back-calculation anti-windup gain (how strongly to back off Int at clamp)
+   constexpr double Kaw=8.0e-6;
+
+   // Integral bleed
+   constexpr double I_DECAY=0.001;
+
+   // base correction window and slew
+   constexpr double BASE_MIN=0.990; // ±1%
+   constexpr double BASE_MAX=1.010;
+   constexpr double SLEW_PER_FETCH=0.0015; // ±0.15% per 48 samples
+
+   // Init on first call
+   if (!rs_inited) {
+    rs_lastProd=audioFrameCounter.load(std::memory_order_acquire);
+    rs_srcPos=double(rs_lastProd);
+    rs_stepEst=1.0;
+    rs_stepCorr=1.0;
+    rs_stepBias=0.0;
+    lagInt=0.0;
+    rs_inited=true;
    }
-  }
 
-  // Safety clamp if far behind (approaching overwrite)
-  {
-   const uint64_t i0=uint64_t(std::floor(rs_srcPos));
-   const uint64_t lag=prodNow-i0;
-   const uint64_t maxSafeLag=(bufSizeFrames>SAFETY_MARGIN) ? (bufSizeFrames-SAFETY_MARGIN) : 0U;
-   if (lag > maxSafeLag) {
-    const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)) : 0ULL;
-    rs_srcPos=double(snap);
+   // ---- persistent state for fetchN() ----
+   static uint64_t lastSnapNs=0;
+
+   // ---------- PLL + PI every ~200ms ----------
+   static uint64_t pll_ns_prev=now_ns();
+   static uint64_t pll_prod_prev=0;
+//   static uint64_t pll_updates=0;
+//   static uint64_t pll_lastLog=now_ns();
+
+   // bias loop state (slow recentring of stepCorr toward 1)
+   static uint64_t bias_ns_prev=now_ns();
+   static double clampLean=0.0;  // low-pass of (are we leaning into clamp?)
+
+   {
     const uint64_t now=now_ns();
-    if (now-lastSnapNs>400'000'000ULL) {
-     lastSnapNs=now;
-     qWarning() << "[AcqThread-AudioAmp] Reader far behind; soft-clamped to tail.";
-    }
-   }
-  }
+    const uint64_t prod=audioFrameCounter.load(std::memory_order_acquire);
+    const uint64_t dNs=now-pll_ns_prev;
 
-  // ----- Fractional read (LEFT) + trigger (RIGHT) -----
-  auto i16_to_f32=[](int16_t s)->float {
-   return (s==INT16_MIN) ? -1.0f : float(s) / 32767.0f;
-  };
-  auto sampleChan=[&](uint64_t i,int ch)->int16_t {
-   const size_t idx=(i%bufSizeFrames)*AUDIO_NUM_CHANNELS+ch;
-   return audioRing[idx];
-  };
+    if (pll_prod_prev==0) pll_prod_prev=prod;
 
-  unsigned trigOff=UINT_MAX;
-  bool trigUp=false;
+    if (dNs>=200'000'000ULL) {
+     const uint64_t dF=prod-pll_prod_prev;
+     if (dF>0) {
+      const double fs_meas=double(dF)/(double(dNs)*1e-9);
+      const double step_new=fs_meas/48000.0;
+      // PLL smoothing (moderately slow)
+      const double alpha=0.05;
+      rs_stepEst=(1.0-alpha)*rs_stepEst+alpha*step_new;
+      // Lag computation
+      const uint64_t i0=uint64_t(std::floor(rs_srcPos));
+      const uint64_t lag=(prod>i0) ? (prod-i0) : 0ULL;
+      double lagErr=double(lag)-TARGET_LAG_FRAMES;
 
-  double pos=rs_srcPos;
-  for (unsigned n=0;n<OUT;++n,pos+=stepUse) {
-   const uint64_t i0=uint64_t(std::floor(pos));
-   const double f=pos-double(i0);
+      // Deadband
+      if (std::abs(lagErr)<LAG_DEADBAND) lagErr=0.0;
 
-   const float L0=i16_to_f32(sampleChan(i0,0));
-   const float L1=i16_to_f32(sampleChan(i0+1,0));
-   dstN[n]=L0+float(f)*(L1-L0);
+      // Adaptive correction window
+      double cmin=BASE_MIN;
+      double cmax=BASE_MAX;
+      const double absLagBlocks=std::abs(lagErr)/double(OUT);
+      if (absLagBlocks>6.0) { cmin=0.950; cmax=1.050; }
+      else if (absLagBlocks>2.0) { cmin=0.970; cmax=1.030; }
 
-   float swGain=20.0f;
-   dstN[n] *= swGain;
-   dstN[n] = std::clamp(dstN[n], -1.0f, 1.0f);
+      // PI raw target
+      lagInt=(1.0-I_DECAY)*lagInt+lagErr;
+      double corrTarget=1.0+(Kp*lagErr+Ki*lagInt);
 
-   if (trigOff==UINT_MAX) {
-    const int16_t r=sampleChan(i0,1);
-    if (!trigUp && r >= int16_t(trigHigh)) {
-     const uint64_t absPos=i0;
-     if (absPos-lastTrigFrame >= trigMinGap) {
-      trigOff=n;
-      lastTrigFrame=absPos;
+      // Slew-limit corr relative to previous
+      const double prevCorr=rs_stepCorr;
+      double corrSlew=std::clamp(corrTarget,prevCorr-SLEW_PER_FETCH,prevCorr+SLEW_PER_FETCH);
+
+      // Clamp to window and apply back-calculation anti-windup
+      double corrClamped=std::clamp(corrSlew,cmin,cmax);
+      if (corrClamped!=corrSlew) {
+       // Back-calculation: drive integral so that (Kp*e + Ki*I) matches clamp
+       const double awErr=(corrSlew-corrClamped); // signed excess
+       lagInt-=(Kaw/std::max(Ki,1e-12))*awErr;  // push Int toward feasible value
+      }
+      rs_stepCorr=corrClamped;
+
+      // ---- Slow bias loop (recenter toward corr=1.0) ----
+      // If we're persistently at/near clamp, nudge rs_stepBias so that
+      // rs_stepEst += rs_stepBias and corr comes back to ~1.
+      {
+       const double nearMin=(rs_stepCorr<(cmin+0.001)) ?  1.0:0.0;
+       const double nearMax=(rs_stepCorr>(cmax-0.001)) ? -1.0:0.0;
+       const double lean=nearMin+nearMax; // +1 means want more corr headroom upward, -1 means downward
+       const double beta=0.02; // LPF for lean indicator
+       clampLean=(1.0-beta)*clampLean+beta*lean;
+
+       // every ~1s, apply tiny bias if leaning
+       if (now-bias_ns_prev>=1'000'000'000ULL) {
+        // bias step ~2e-5 per second at full lean => 0.002 after 100s
+        const double biasStep=2.0e-5*clampLean;
+        // limit total bias to something sane (±1%)
+        rs_stepBias=std::clamp(rs_stepBias+biasStep,-0.010,0.010);
+        bias_ns_prev=now;
+       }
+      }
+
+      // Debug ~1 Hz
+//      ++pll_updates;
+//      if (now-pll_lastLog >= 1'000'000'000ULL) {
+//       const double callHz=double(pll_updates)/(double(now-pll_lastLog)*1e-9);
+//       qInfo() << "[PLL]"
+//               << "fs_meas="   << QString::number(fs_meas,'f',1)
+//               << " stepEst="  << QString::number(rs_stepEst,'f',6)
+//               << " callHz="   << QString::number(callHz,'f',1)
+//               << " stepBias=" << QString::number(rs_stepBias,'f',6)
+//               << " stepCorr=" << QString::number(rs_stepCorr,'f',6)
+//               << " stepUse="  << QString::number((rs_stepEst+rs_stepBias)*rs_stepCorr,'f',6);
+//       pll_updates=0;
+//       pll_lastLog=now;
+//      }
      }
-     trigUp=true;
-    } else if (trigUp && r <= int16_t(trigLow)) {
-     trigUp=false;
+     pll_ns_prev=now;
+     pll_prod_prev=prod;
     }
    }
+
+   const double stepUse=(rs_stepEst+rs_stepBias)*rs_stepCorr;
+
+   // ----- Ensure enough input for interpolation -----
+   const double needEndPos=std::floor(rs_srcPos+stepUse*(OUT-1))+1.0;
+   const uint64_t needAbs=(needEndPos<0.0) ? 0ULL : uint64_t(needEndPos);
+
+   auto have_enough=[&]{
+    return audioFrameCounter.load(std::memory_order_acquire)>=needAbs;
+   };
+
+   if (!have_enough() && wait_ms>0) {
+    std::unique_lock<std::mutex> lk(cvMx);
+    cvAvail.wait_for(lk,std::chrono::milliseconds(wait_ms),have_enough);
+   }
+
+   uint64_t prodNow=audioFrameCounter.load(std::memory_order_acquire);
+
+   // Producer stall tracking (time-based, not call-count)
+   static uint64_t lastProdSeen=0;
+   static uint64_t lastProdNs  =0;
+
+   const uint64_t now=now_ns();
+   if (lastProdSeen==0) { lastProdSeen=prodNow; lastProdNs=now; }
+   if (prodNow!=lastProdSeen) { lastProdSeen=prodNow; lastProdNs=now; }
+
+   constexpr uint64_t STALL_NS=20'000'000ULL; // 20 ms: real stall threshold
+   const bool stalled=(now-lastProdNs)>STALL_NS;
+
+   // Soft realign only if stalled AND we're dangerously close to producer tail
+   if (stalled) {
+    const uint64_t i0=uint64_t(std::floor(rs_srcPos));
+    if (prodNow <= i0+OUT+1) {
+     const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)):0ULL;
+     rs_srcPos=double(snap);
+     lastSnapNs=now;
+     qWarning() << "[AcqThread-AudioAmp] Producer stall (>20ms) detected; realigned.";
+    }
+   }
+
+   // Safety clamp if far behind (approaching overwrite)
+   {
+    const uint64_t i0=uint64_t(std::floor(rs_srcPos));
+    const uint64_t lag=prodNow-i0;
+    const uint64_t maxSafeLag=(bufSizeFrames>SAFETY_MARGIN) ? (bufSizeFrames-SAFETY_MARGIN):0U;
+    if (lag>maxSafeLag) {
+     const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)):0ULL;
+     rs_srcPos=double(snap);
+     const uint64_t now=now_ns();
+     if (now-lastSnapNs>400'000'000ULL) {
+      lastSnapNs=now;
+      qWarning() << "[AcqThread-AudioAmp] Reader far behind; soft-clamped to tail.";
+     }
+    }
+   }
+
+   // ----- Fractional read (LEFT) + trigger (RIGHT) -----
+   auto i16_to_f32=[](int16_t s)->float {
+    return (s==INT16_MIN) ? -1.0f:float(s)/32767.0f;
+   };
+   auto sampleChan=[&](uint64_t i,int ch)->int16_t {
+    const size_t idx=(i%bufSizeFrames)*AUDIO_NUM_CHANNELS+ch;
+    return audioRing[idx];
+   };
+
+   unsigned trigOff=UINT_MAX;
+   bool trigUp=false;
+
+   double pos=rs_srcPos;
+   for (unsigned n=0;n<OUT;++n,pos+=stepUse) {
+    const uint64_t i0=uint64_t(std::floor(pos));
+    const double f=pos-double(i0);
+
+    const float L0=i16_to_f32(sampleChan(i0,0));
+    const float L1=i16_to_f32(sampleChan(i0+1,0));
+    dstN[n]=L0+float(f)*(L1-L0);
+
+    float swGain=20.0f;
+    dstN[n]*=swGain;
+    dstN[n]=std::clamp(dstN[n],-1.0f,1.0f);
+
+    if (trigOff==UINT_MAX) {
+     const int16_t r=sampleChan(i0,1);
+     if (!trigUp && r>=int16_t(trigHigh)) {
+      const uint64_t absPos=i0;
+      if (absPos-lastTrigFrame>=trigMinGap) {
+       trigOff=n;
+       lastTrigFrame=absPos;
+      }
+      trigUp=true;
+     } else if (trigUp && r<=int16_t(trigLow)) {
+      trigUp=false;
+     }
+    }
+   }
+
+   rs_srcPos=pos;
+   return trigOff;
   }
 
-  rs_srcPos=pos;
-  return trigOff;
- }
-
-private:
- void captureLoop() {
+ private:
+  void captureLoop() {
 #ifdef __linux__
-  struct sched_param sp{30};
-  pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+   struct sched_param sp{30};
+   pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
 #endif
-  snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
-  snd_pcm_hw_params_current(handle,p);
-  snd_pcm_uframes_t period=0; snd_pcm_hw_params_get_period_size(p,&period,0);
+   snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
+   snd_pcm_hw_params_current(handle,p);
+   snd_pcm_uframes_t period=0; snd_pcm_hw_params_get_period_size(p,&period,0);
 
-  std::vector<int16_t> buf(size_t(period)*AUDIO_NUM_CHANNELS);
+   std::vector<int16_t> buf(size_t(period)*AUDIO_NUM_CHANNELS);
 
 //  uint64_t lastPrint=0;
-  while (run.load(std::memory_order_acquire)) {
-   int r=snd_pcm_readi(handle,buf.data(),period);
-   if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
-   if (r<0) { std::fprintf(stderr,"[AudioAmp] read: %s\n",snd_strerror(r)); continue; }
+   while (run.load(std::memory_order_acquire)) {
+    int r=snd_pcm_readi(handle,buf.data(),period);
+    if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
+    if (r<0) { std::fprintf(stderr,"[AudioAmp] read: %s\n",snd_strerror(r)); continue; }
 
-   unsigned head=bufHead.load(std::memory_order_relaxed);
-   unsigned spaceToEnd=bufSizeFrames-head;
-   unsigned first=std::min<unsigned>(r,spaceToEnd);
+    unsigned head=bufHead.load(std::memory_order_relaxed);
+    unsigned spaceToEnd=bufSizeFrames-head;
+    unsigned first=std::min<unsigned>(r,spaceToEnd);
 
-   std::memcpy(&audioRing[size_t(head)*AUDIO_NUM_CHANNELS],buf.data(),size_t(first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
+    std::memcpy(&audioRing[size_t(head)*AUDIO_NUM_CHANNELS],buf.data(),size_t(first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
 
-   if (r>(int)first) {
-    std::memcpy(&audioRing[0],buf.data()+size_t(first)*AUDIO_NUM_CHANNELS,size_t(r-first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
-   }
+    if (r>(int)first) {
+     std::memcpy(&audioRing[0],buf.data()+size_t(first)*AUDIO_NUM_CHANNELS,size_t(r-first)*AUDIO_NUM_CHANNELS*sizeof(int16_t));
+    }
 
-   audioFrameCounter.fetch_add(r,std::memory_order_relaxed);
-   bufHead.store((head+r)%bufSizeFrames,std::memory_order_release);
+    audioFrameCounter.fetch_add(r,std::memory_order_relaxed);
+    bufHead.store((head+r)%bufSizeFrames,std::memory_order_release);
 
-  cvAvail.notify_all();
+    cvAvail.notify_all();
 
 //   uint64_t nowTick=audioFrameCounter.load(std::memory_order_relaxed);
 //   if (nowTick/48000!=lastPrint/48000) {
 //    qInfo() << "[AudioAmp] prod=" << nowTick << "cons=0";
 //   }
 //   lastPrint=nowTick;
+   }
   }
- }
 };

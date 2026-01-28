@@ -83,7 +83,7 @@ class GL3DWidget : public QGLWidget {
 
  public slots:
   void glUpdateSlot() { updateGL(); }
-  void glUpdateParamSlot(int a) {
+  void glUpdateParamSlot(unsigned int a) {
    if (a==ampNo) {
     if (conf->glGizmoLoaded) { glDeleteLists(gizmo,6); gizmo=makeGizmo(); }
     glDeleteLists(parametric,4); parametric=makeParametric();
@@ -138,7 +138,7 @@ class GL3DWidget : public QGLWidget {
 //       gluPerspective(CAMERA_FOV, 1.0, 0.5, 300.0);  // safe placeholder
 //   glMatrixMode(GL_MODELVIEW);
    connect(conf,SIGNAL(glUpdate()),this,SLOT(glUpdateSlot())); 
-   connect(conf,SIGNAL(glUpdateParam(int)),this,SLOT(glUpdateParamSlot(int))); 
+   connect(conf,SIGNAL(glUpdateParam(unsigned int)),this,SLOT(glUpdateParamSlot(unsigned int))); 
   }
 /*
   void paintGL() override {
@@ -408,7 +408,7 @@ class GL3DWidget : public QGLWidget {
       else qglColor(QColor(0,0,255,96)); // Hilite (red) vs. Red or blue - default cap color
       for (int triIdx=0;triIdx<conf->glGizmo[gizIdx].tri.size();triIdx++) { v0=v1=v2=0;
        for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
-        if (!conf->chns[chnIdx].isBipolar) {
+        if (conf->chns[chnIdx].type==0) {
          if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][0]) v0=chnIdx;
          if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][1]) v1=chnIdx;
          if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][2]) v2=chnIdx;

@@ -27,13 +27,45 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include <QTcpSocket>
 #include <QMutex>
+#include "acqchninfo.h"
 #include "../common/tcpsample.h"
 
 struct ConfParam {
+ ConfParam() {}
+/*
+ void generateElecLists() {
+  {
+   QMutexLocker locker(&chnInterMutex);
+   // Truncate the lists
+   //qDebug() << interList.size() << offList.size();
+   for (int ampIdx=0;ampIdx<interList.size();ampIdx++) interList[ampIdx].resize(0);
+   for (int ampIdx=0;ampIdx<offList.size();ampIdx++) offList[ampIdx].resize(0);
+   for (int chnIdx=0;chnIdx<chnInfo.size();chnIdx++) {
+    if (chnInfo[chnIdx].type==0) {
+     for (int ampIdx=0;ampIdx<chnInfo[chnIdx].interMode.size();ampIdx++) {
+      int m=chnInfo[chnIdx].interMode[ampIdx];
+//      qDebug() << m << chnIdx << chnInfo[chnIdx].physChn;
+      if (m==0) offList[ampIdx].append(chnIdx);
+      else if (m==2) interList[ampIdx].append(chnIdx);
+     }
+    }
+   }
+  }
+//  for (int chnIdx=0;chnIdx<chnInfo.size();chnIdx++) {
+//   if (chnInfo[chnIdx].type==0) {
+//    printf("%d %d ",chnInfo[chnIdx].interMode[0],chnInfo[chnIdx].interMode[1]);
+//   } else {
+//    printf("- - ");
+//   }
+//  }
+//  printf("\n");
+  qDebug() << "Electrode interpolation and switch-off lists are (re)generated.";
+ }
+*/
  unsigned int ampCount,eegRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
- QString ipAddr; unsigned int commPort,strmPort;
- unsigned int refChnCount,bipChnCount,physChnCount; // refChnCount+bipChnCount
+ QString acqIpAddr; unsigned int acqCommPort,acqStrmPort;
+ unsigned int refChnCount,bipChnCount,physChnCount,metaChnCount; // refChnCount+bipChnCount
  unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
  unsigned int totalChnCount; // refChnCount+bipChnCount+2
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
@@ -41,8 +73,9 @@ struct ConfParam {
  QFile hEEGFile; QDataStream hEEGStream;
  bool dumpRaw,syncOngoing,syncPerformed;
  QVector<QTcpSocket*> strmClients;
- QMutex mutex;
- quint64 tcpEEGBufHead,tcpEEGBufTail;
- unsigned int tcpEEGBufSize;
- QVector<TcpSample> tcpEEGBuffer;
+ QMutex mutex,chnInterMutex;
+ quint64 tcpBufHead,tcpBufTail;
+ QVector<TcpSample> tcpBuffer;
+ QVector<AcqChnInfo> chnInfo;
+// QVector<QVector<unsigned int>> interList,offList; // List of interpolated and switched-off electrodes for all amps
 };

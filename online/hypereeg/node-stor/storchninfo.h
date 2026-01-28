@@ -23,21 +23,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-//#define EEMAGINE
-#define AUDIODEV
-
-#define HACQ_VERBOSE
-
-#define OCTO_OMP
-#include "octo_omp.h"
-
-const unsigned int EE_MAX_AMPCOUNT=8;
-const unsigned int REF_CHN_MAXCOUNT=64;
-const unsigned int BIP_CHN_MAXCOUNT=24;
-const unsigned int TRIG_AMPSYNC=0xFF;
-
-const QString optPath="/opt/octopus/";
-const QString dataPath=optPath+"data/";
-const QString synthDataPath=dataPath+"raweeg/synth-eeg.raw";
-
-const QString confPath="~/.octopus-reel/";
+struct StorChnInfo {
+ StorChnInfo() {}
+ unsigned int physChn; QString chnName;
+ unsigned int type; // 0:ref,1:bipolar,2:meta
+ float topoTheta,topoPhi; unsigned int topoX,topoY;
+};

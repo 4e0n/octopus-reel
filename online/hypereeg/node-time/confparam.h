@@ -35,7 +35,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QLabel>
 #include <QDateTime>
 
-#include "chninfo.h"
+#include "guichninfo.h"
 #include "headmodel.h"
 #include "../common/tcpsample.h"
 
@@ -56,15 +56,14 @@ class ConfParam : public QObject {
 
   void initMultiAmp(int ampC=0) {
    ampCount=ampC; eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
-   bandMult.resize(ampCount);
   };
 
-  QString commandToDaemon(const QString &command, int timeoutMs=1000) { // Upstream command
-   if (!commSocket || commSocket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
-   commSocket->write(command.toUtf8()+"\n");
-   if (!commSocket->waitForBytesWritten(timeoutMs)) return QString(); // timeout or write error
-   if (!commSocket->waitForReadyRead(timeoutMs)) return QString(); // timeout or no response
-   return QString::fromUtf8(commSocket->readAll()).trimmed();
+  QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) { // Upstream command
+   if (!socket || socket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
+   socket->write(command.toUtf8()+"\n");
+   if (!socket->waitForBytesWritten(timeoutMs)) return QString(); // timeout or write error
+   if (!socket->waitForReadyRead(timeoutMs)) return QString(); // timeout or no response
+   return QString::fromUtf8(socket->readAll()).trimmed();
   }
 
   void loadGizmo(QString fn) {
@@ -104,7 +103,7 @@ class ConfParam : public QObject {
         t[0]=opts2[j*3+0].toInt()-1; t[1]=opts2[j*3+1].toInt()-1; t[2]=opts2[j*3+2].toInt()-1; glGizmo[k].tri.append(t);
        }
       } else { gError=true;
-       qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
+       qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
       }
      } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%2==0) {
@@ -113,10 +112,10 @@ class ConfParam : public QObject {
 	glGizmo[k].lin.append(ll);
        }
       } else { gError=true;
-       qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
+       qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
       }
      }
-    } else { gError=true; qDebug() << "node_gui: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
+    } else { gError=true; qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
    } if (!gError) glGizmoLoaded=true;
   }
 
@@ -127,11 +126,12 @@ class ConfParam : public QObject {
 
   QVector<QColor> rgbPalette;
 
-  QString ipAddr; quint32 commPort,strmPort; // Uplink
-  QString svrIpAddr; quint32 svrCommPort,svrStrmPort; // Downlink
-  QTcpSocket *commSocket,*strmSocket; // Upstream
+  QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
+  QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
-  QMutex mutex; QVector<ChnInfo> chns; QVector<QThread*> threads;
+  QString timeIpAddr; quint32 timeCommPort,timeStrmPort; // We're server
+
+  QMutex mutex; QVector<GUIChnInfo> chns; QVector<QThread*> threads;
 
   bool eegSweepMode; unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegSweepDivider,eegBand; QWaitCondition eegSweepWait;
   //std::atomic<unsigned int> eegSweepUpdating;
@@ -141,7 +141,7 @@ class ConfParam : public QObject {
 
   const int eegSweepCoeff[5]={10,5,4,2,1};
 
-  QVector<float> eegAmpX,erpAmpX,bandMult;
+  QVector<float> eegAmpX,erpAmpX;
   const float eegAmpRange[6]={(1e6/1000.0),
                               (1e6/ 500.0),
                               (1e6/ 200.0),
@@ -171,7 +171,7 @@ class ConfParam : public QObject {
 
   unsigned int scrAvailableSamples,scrUpdateSamples;
 
-  QFile hegFile; QTextStream hegStream; quint64 recCounter; QString rHour,rMin,rSec; QLabel *timeLabel;
+  quint64 recCounter; QString rHour,rMin,rSec; QLabel *timeLabel;
 
   QVector<HeadModel> headModel; bool glGizmoLoaded; QVector<Gizmo> glGizmo;
   QVector<bool> glFrameOn,glGridOn,glScalpOn,glSkullOn,glBrainOn,glGizmoOn,glElectrodesOn;
@@ -182,7 +182,7 @@ class ConfParam : public QObject {
 
  public slots:
   void onStrmDataReady() {
-   static QByteArray buffer; buffer.append(strmSocket->readAll());
+   static QByteArray buffer; buffer.append(acqStrmSocket->readAll());
    //qDebug() << "[Client] Incoming data size:" << buffer.size();
    while (buffer.size()>=4) {
     QDataStream sizeStream(buffer); sizeStream.setByteOrder(QDataStream::LittleEndian);
@@ -193,95 +193,15 @@ class ConfParam : public QObject {
     // Deserialize into TcpSample
     TcpSample tcpS; //,tcpS1000;
     if (tcpS.deserialize(block,chnCount)) {
-
-     //if (cumIdx>=1000) tcpS1000=tcpBuffer[(tcpBufHead+tcpBufSize-1000)%tcpBufSize];
-
-     // Handle spatial interpolation
-     for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-      std::vector<float> *basePtr,
-                         *basePtr0,*basePtr1,*basePtr2,*basePtr3,*basePtr4,*basePtr5;
-                         //*basePtr0P,*basePtr1P,*basePtr2P,*basePtr3P,*basePtr4P,*basePtr5P,
-                         //*sumPtr0,*sumPtr1,*sumPtr2,*sumPtr3,*sumPtr4,*sumPtr5;
-      basePtr0=&(tcpS.amp[ampIdx].dataBP);
-      basePtr1=&(tcpS.amp[ampIdx].dataD); basePtr2=&(tcpS.amp[ampIdx].dataT);
-      basePtr3=&(tcpS.amp[ampIdx].dataA); basePtr4=&(tcpS.amp[ampIdx].dataB); basePtr5=&(tcpS.amp[ampIdx].dataG);
-      //basePtr0P=&(tcpS1000.amp[ampIdx].dataBP);
-      //basePtr1P=&(tcpS1000.amp[ampIdx].dataD); basePtr2=&(tcpS.amp[ampIdx].dataT);
-      //basePtr3P=&(tcpS1000.amp[ampIdx].dataA); basePtr4=&(tcpS.amp[ampIdx].dataB); basePtr5=&(tcpS.amp[ampIdx].dataG);
-      //sumPtr0=&(tcpS.amp[ampIdx].sumBP);
-      //sumPtr1=&(tcpS.amp[ampIdx].sumD); sumPtr2=&(tcpS.amp[ampIdx].sumT);
-      //sumPtr3=&(tcpS.amp[ampIdx].sumA); sumPtr4=&(tcpS.amp[ampIdx].sumB); sumPtr5=&(tcpS.amp[ampIdx].sumG);
-      switch (eegBand) {
-       default:
-       case 0: basePtr=basePtr0; break;
-       case 1: basePtr=basePtr1; break;
-       case 2: basePtr=basePtr2; break;
-       case 3: basePtr=basePtr3; break;
-       case 4: basePtr=basePtr4; break;
-       case 5: basePtr=basePtr5; break;
-      }
-      for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-       float a0,a1,a2,a3,a4,a5;
-       if (chns[chnIdx].chnViewMode[ampIdx]==2) { a0=a1=a2=a3=a4=a5=0.;
-        int eSz=chns[chnIdx].interElec.size();
-        for (int idx=0;idx<eSz;idx++) {
-         a0+=(*basePtr0)[ chns[chnIdx].interElec[idx] ];
-         a1+=(*basePtr1)[ chns[chnIdx].interElec[idx] ];
-         a2+=(*basePtr2)[ chns[chnIdx].interElec[idx] ];
-         a3+=(*basePtr3)[ chns[chnIdx].interElec[idx] ];
-         a4+=(*basePtr4)[ chns[chnIdx].interElec[idx] ];
-         a5+=(*basePtr5)[ chns[chnIdx].interElec[idx] ];
-        }
-        (*basePtr0)[chnIdx]=a0/(float)(eSz);
-        (*basePtr1)[chnIdx]=a1/(float)(eSz);
-        (*basePtr2)[chnIdx]=a2/(float)(eSz);
-        (*basePtr3)[chnIdx]=a3/(float)(eSz);
-        (*basePtr4)[chnIdx]=a4/(float)(eSz);
-        (*basePtr5)[chnIdx]=a5/(float)(eSz);
-       } else if (chns[chnIdx].chnViewMode[ampIdx]==0) {
-        (*basePtr)[chnIdx]=0.;
-       }
- 
-       //(*sumPtr0)[chnIdx]+=(*basePtr0)[chnIdx];
-       //(*sumPtr1)[chnIdx]+=(*basePtr1)[chnIdx];
-       //(*sumPtr2)[chnIdx]+=(*basePtr2)[chnIdx];
-       //(*sumPtr3)[chnIdx]+=(*basePtr3)[chnIdx];
-       //(*sumPtr4)[chnIdx]+=(*basePtr4)[chnIdx];
-       //(*sumPtr5)[chnIdx]+=(*basePtr5)[chnIdx];
-//       if (cumIdx>=1000) {
-//        (*sumPtr0)[chnIdx]-=(*basePtr0P)[chnIdx];
-//        (*sumPtr1)[chnIdx]-=(*basePtr1P)[chnIdx];
-//        (*sumPtr2)[chnIdx]-=(*basePtr2P)[chnIdx];
-//        (*sumPtr3)[chnIdx]-=(*basePtr3P)[chnIdx];
-//        (*sumPtr4)[chnIdx]-=(*basePtr4P)[chnIdx];
-//        (*sumPtr5)[chnIdx]-=(*basePtr5P)[chnIdx];
-//       }
-
-      }
-     }
-     //cumIdx++;
-
-//     if (tcpS.offset%1000==0) qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
-
 //     if (tcpS.offset%1000==0) {
+//      qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
 //      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
 //      qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";
 //     }
-
-     //if (tcpS.trigger) qDebug() << "Trigger arrived!";
+//     if (tcpS.trigger) qDebug() << "Trigger arrived!";
  
      // Push the deserialized tcpSample to circular buffer
      tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
-     
-     if (ctrlRecordingActive) { // .. to disk ..
-      hegStream << tcpS.offset << " ";
-      for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-       for (int chnIdx=0;chnIdx<chns.size();chnIdx++) hegStream << tcpS.amp[ampIdx].dataBP[chnIdx]*1e6 << " ";
-      }
-      hegStream << tcpS.trigger << "\n";
-      recCounter++; if (!(recCounter%eegRate)) updateRecTime();
-     }
-     
      tcpBufHead++;
     } else {
      qWarning() << "Failed to deserialize TcpSample block.";
@@ -297,7 +217,7 @@ class ConfParam : public QObject {
       // 10:5Hz(100) 5:10Hz(200) 4:20Hz(250) 2:25Hz(500) 1:50Hz(1000)
       scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
       if (quitPending) {
-       if (strmSocket && strmSocket->isOpen()) strmSocket->disconnectFromHost();
+       if (acqStrmSocket && acqStrmSocket->isOpen()) acqStrmSocket->disconnectFromHost();
       } 
       eegSweepUpdating=ampCount; { for (auto& s:eegSweepPending) s=true; } eegSweepWait.wakeAll();
      }
@@ -318,5 +238,4 @@ class ConfParam : public QObject {
    if (s<10) rSec="0"; else rSec=""; rSec+=dummyString.setNum(s);
    timeLabel->setText("Rec.Time: "+rHour+":"+rMin+":"+rSec);
   }
-  //quint64 cumIdx;
 };

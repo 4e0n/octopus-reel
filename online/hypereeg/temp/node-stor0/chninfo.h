@@ -28,17 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 class ChnInfo {
  public:
-  ChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
-
-//  void resetEvents() { // Zero all epoch data for all event types.
-//   for (int ampIdx=0;ampIdx<conf->ampCount;ampIdx++)
-//    for (int evtIdx=0;evtIdx<conf->eventCodes.size();evtIdx++)
-//     for (int smpIdx=0;smpIdx<conf->avgSmpCount;smpIdx++) avgData[ampIdx][evtIdx][smpIdx]=0.;
-//  }
-
-//  void setEvents(int eventCount,int dataCount) {
-//   avgData.resize(eventCount); for (int i=0;i<avgData.size();i++) avgData[i].resize(dataCount);
-//  }
+  ChnInfo() { param.x=1.0; }
 
   unsigned int physChn; QString chnName;
   int topoX,topoY; bool isBipolar;
@@ -47,12 +37,6 @@ class ChnInfo {
   float rejLev;
   Vec3 real,realS; // Realistic coords - if set externally.
   Coord3D param;
-
-  QVector<QVector<QVector<float>>> avgData;
-  float cmLevel; QColor cmColor; // Instantly computed line noise level..
-
-  QVector<unsigned int> chnViewMode; // for each amp - 2 is disabled
-  QVector<unsigned int> interElec;   // Neighboring electrodes
 
   // Continuous and Average visibility and recording flags exist as strings
   // in the constructor, which is how they are read from the config file..

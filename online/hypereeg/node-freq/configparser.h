@@ -30,32 +30,43 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "headmodel.h"
 
 const int MAX_LINE_SIZE=160; // chars
+const QString NODE_TEXT="FREQ";
 
 class ConfigParser {
  public:
   ConfigParser(QString cp) { cfgPath=cp; cfgFile.setFileName(cfgPath); }
 
-  bool parse(ConfParam *conf) {
-   QTextStream cfgStream; QString commResponse;
-   QStringList cfgLines,opts,opts2,sList,sList2,netSection,chnSection;
-
+  bool parse(ConfParam *conf) { QString commResponse; QStringList sList,sList2;
+   QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
    QStringList bufSection,pltSection,evtSection,guiSection,headSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "node_gui: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qDebug() << "node-freq: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
-
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
      cfgLine=cfgStream.readLine(MAX_LINE_SIZE); // Should not start with #, should contain "|"
      if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
 
-    // Separate AMP, NET, CHN, GUI parameter lines
-    for (auto& cl:cfgLines) {
-     opts=cl.split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
+    int idx1=-1,idx2=cfgLines.size()-1;
+    for (int idx=0;idx<cfgLines.size();idx++) { opts=cfgLines[idx].split("|");
+     if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
+    }
+    if (idx1<0) {
+     qDebug() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     return true;
+    }
+    idx1++;
+    for (int idx=idx1;idx<cfgLines.size();idx++) { opts=cfgLines[idx].split("|");
+     if (opts[0].trimmed()=="NODE") { idx2=idx; break; }
+    }
+
+    // Separate section parameter lines
+    for (int idx=idx1;idx<idx2;idx++) {
+     opts=cfgLines[idx].split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
      else if (opts[0].trimmed()=="PLT") pltSection.append(opts[1]);
@@ -64,7 +75,7 @@ class ConfigParser {
      else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else if (opts[0].trimmed()=="HEAD") headSection.append(opts[1]);
      else {
-      qDebug() << "node_gui: <ConfigParser> ERROR: Unknown section in config file!";
+      qDebug() << "node-freq: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -75,47 +86,60 @@ class ConfigParser {
     if (netSection.size()>0) {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
-      if (opts[0].trimmed()=="IN") {
+      if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->ipAddr=acqHostInfo.addresses().first().toString();
-        conf->commPort=opts2[1].toInt();
-        conf->strmPort=opts2[2].toInt();
-        if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
-            (!(conf->strmPort >= 65000 && conf->strmPort < 65500))) {
-         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) hostname/IP/port settings!";
+        conf->acqIpAddr=acqHostInfo.addresses().first().toString();
+        conf->acqCommPort=opts2[1].toInt();
+        conf->acqStrmPort=opts2[2].toInt();
+        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65500)) || // Simple port validation
+            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65500))) {
+         qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (uplink) count of NET|IN params!";
+        qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid (serving) count of STRM|IN params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->ipAddr << conf->commPort << conf->strmPort;
-      } else if (opts[0].trimmed()=="OUT") {
+       qDebug() << "node-freq:" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
+      } else if (opts[0].trimmed()=="FREQ") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->svrIpAddr=acqHostInfo.addresses().first().toString();
-        conf->svrCommPort=opts2[1].toInt();
-        conf->svrStrmPort=opts2[2].toInt();
-        if ((!(conf->svrCommPort >= 65000 && conf->svrCommPort < 65500)) || // Simple port validation
-            (!(conf->svrStrmPort >= 65000 && conf->svrStrmPort < 65500))) {
-         qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) hostname/IP/port settings!";
+        conf->freqIpAddr=acqHostInfo.addresses().first().toString();
+        conf->freqCommPort=opts2[1].toInt();
+        conf->freqStrmPort=opts2[2].toInt();
+        if ((!(conf->freqCommPort >= 65000 && conf->freqCommPort < 65500)) || // Simple port validation
+            (!(conf->freqStrmPort >= 65000 && conf->freqStrmPort < 65500))) {
+         qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid (downlink) count of NET|OUT params!";
+        qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid count of STRM|OUT params!";
         return true;
        }
-       qDebug() << "node_gui:" << conf->svrIpAddr << conf->svrCommPort << conf->svrStrmPort;
-      } else {
-       qDebug() << "node_gui: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
-       return true;
+//      } else if (opts[0].trimmed()=="STOR") {
+//       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
+//       if (opts2.size()==2) {
+//        QHostInfo storHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+//        conf->storIpAddr=storHostInfo.addresses().first().toString();
+//        conf->storCommPort=opts2[1].toInt();
+//        if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65500))) { // Simple port validation
+//         qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
+//         return true;
+//        }
+//       } else {
+//        qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid count of STRM|OUT params!";
+//        return true;
+//       }
+//      } else {
+//       qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: Invalid hostname/IP(v4) address!";
+//       return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <NET> ERROR: No parameters in section!";
+     qDebug() << "node-freq: <ConfigParser> <STRM> ERROR: No parameters in section!";
      return true;
     }
 
@@ -126,28 +150,28 @@ class ConfigParser {
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
        if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
-        qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
+        qDebug() << "node-freq: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: Invalid section command!";
+       qDebug() << "node-freq: <ConfigParser> <BUF> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <BUF> ERROR: No parameters in section!";
+     qDebug() << "node-freq: <ConfigParser> <BUF> ERROR: No parameters in section!";
      return true;
     }
 
     // ------------------------------------------------------------------
 
-    // Setup command socket
-    conf->commSocket->connectToHost(conf->ipAddr,conf->commPort); conf->commSocket->waitForConnected();
+    // Setup ACQ command socket
+    conf->acqCommSocket->connectToHost(conf->acqIpAddr,conf->acqCommPort); conf->acqCommSocket->waitForConnected();
 
-    // Get more crucial info from master node
-    commResponse=conf->commandToDaemon(CMD_ACQD_GETCONF);
-    if (!commResponse.isEmpty()) qDebug() << "node_gui: <ConfigParser> Daemon replied:" << commResponse;
-    else qDebug() << "node_gui: <ConfigParser> (Timeout) No response from master node!";
+    // Get crucial info from the "acquisition" node we connect to
+    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
+    if (!commResponse.isEmpty()) qDebug() << "node-freq: <ConfigParser> Acquisition Daemon replied:" << commResponse;
+    else qDebug() << "node-freq: <ConfigParser> (TIMEOUT) No response from Acquisition Node!";
     sList=commResponse.split(",");
 
     conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
@@ -161,7 +185,7 @@ class ConfigParser {
     conf->bipChnCount=sList[3].toInt();
     conf->refGain=sList[4].toFloat();
     conf->bipGain=sList[5].toFloat();
-    conf->eegProbeMsecs=sList[6].toInt(); // This determines the maximum data feed rate together with eegRate
+    conf->eegProbeMsecs=sList[6].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
 
     conf->eegSweepDivider=conf->eegSweepCoeff[0];
@@ -173,10 +197,10 @@ class ConfigParser {
  
     // CHANNELS
 
-    commResponse=conf->commandToDaemon(CMD_ACQD_GETCHAN);
-    if (!commResponse.isEmpty()) qDebug() << "node_gui: <Config> Daemon replied:" << commResponse;
-    else qDebug() << "node_gui: <Config> No response or timeout.";
-    sList=commResponse.split("\n"); ChnInfo chn;
+    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
+    if (!commResponse.isEmpty()) qDebug() << "node-freq: <Config> Daemon replied:" << commResponse;
+    else qDebug() << "node-freq: <Config> No response or timeout.";
+    sList=commResponse.split("\n"); GUIChnInfo chn;
 
     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
      sList2=sList[chnIdx].split(",");
@@ -184,17 +208,15 @@ class ConfigParser {
      //chn.topoTheta=sList2[2].toFloat(); chn.topoPhi=sList2[3].toFloat();
      chn.param.x=1.0; chn.param.y=sList2[2].toFloat(); chn.param.z=sList2[3].toFloat();
      chn.topoX=sList2[4].toInt(); chn.topoY=sList2[5].toInt();
-     chn.isBipolar=(bool)sList2[6].toInt();
-     chn.chnViewMode.resize(conf->ampCount);
-     for (int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) chn.chnViewMode[ampIdx]=(unsigned int)sList2[7].toInt();
-     chn.interElec.resize(0); for (int idx=0;idx<sList2[8].toInt();idx++) chn.interElec.append(sList2[8+idx].toInt());
+     chn.type=(bool)sList2[6].toInt();
+     chn.interMode.resize(0); for (unsigned int idx=0;idx<conf->ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
      conf->chns.append(chn);
     }
     conf->chnCount=conf->chns.size();
 
     //for (int idx=0;idx<conf->chns.size();idx++) {
     // QString x="";
-    // for (int j=0;j<conf->chns[idx].interElec.size();j++) x.append(QString::number(conf->chns[idx].interElec[j])+",");
+    // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chns[idx].interMode[j])+",");
     // qDebug() << x.toUtf8();
     //}
 
@@ -207,7 +229,7 @@ class ConfigParser {
      conf->s1[idx].resize(conf->chnCount); conf->s1s[idx].resize(conf->chnCount);
     }
 
-    for (auto& chn:conf->chns) qDebug() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.isBipolar;
+    for (auto& chn:conf->chns) qDebug() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.type;
 
     // Initialize GUI/sweeping related variables
     conf->eegSweepPending.resize(conf->ampCount);
@@ -226,6 +248,15 @@ class ConfigParser {
      conf->glScalpOn[ampIdx]=conf->glSkullOn[ampIdx]=conf->glBrainOn[ampIdx]=true;
     }
 
+
+    // Setup STOR command socket
+//    conf->storCommSocket->connectToHost(conf->storIpAddr,conf->storCommPort); conf->storCommSocket->waitForConnected();
+
+    // Get crucial info from the "storage" node we connect to
+//    commResponse=conf->commandToDaemon(conf->storCommSocket,CMD_STOR_STATUS);
+//    if (!commResponse.isEmpty()) qDebug() << "node-freq: <ConfigParser> Storage Daemon replied:" << commResponse;
+//    else qDebug() << "node-freq: <ConfigParser> (TIMEOUT) No response from Storage Node!";
+
     // ------------------------------------------------------------------
 
     // PLT - Color palette entries
@@ -238,22 +269,22 @@ class ConfigParser {
        if (opts2.size()==4) {
         colR=opts2[0].toInt(); colG=opts2[1].toInt(); colB=opts2[2].toInt(); colA=opts2[3].toInt();
         if (!(colR>=0 && colR<256) || !(colG>=0 && colG<256) || !(colB>=0 && colB<256) || !(colA>=0 && colA<256)) {
-         qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid RGBcolor parameter!";
+         qDebug() << "node-freq: <ConfigParser> <PLT> ERROR: Invalid RGBcolor parameter!";
 	 return true;
         } else { // Add to the list of recognized colors.
 	 conf->rgbPalette.append(QColor(colR,colG,colB,colA));
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid count of RGBcolor parameters!";
+        qDebug() << "node-freq: <ConfigParser> <PLT> ERROR: Invalid count of RGBcolor parameters!";
 	return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: Invalid section command!";
+       qDebug() << "node-freq: <ConfigParser> <PLT> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <PLT> ERROR: No parameters in section!";
+     qDebug() << "node-freq: <ConfigParser> <PLT> ERROR: No parameters in section!";
      return true;
     }
 
@@ -271,11 +302,11 @@ class ConfigParser {
         if (!(conf->erpRejBwd>=-2000 && conf->erpRejBwd<=2000 && conf->erpAvgBwd>=-2000 && conf->erpAvgBwd<=2000 &&
               conf->erpAvgFwd>=-2000 && conf->erpAvgFwd<=2000 && conf->erpRejFwd>=-2000 && conf->erpRejFwd<=2000) ||
             conf->erpRejBwd>conf->erpAvgBwd || conf->erpAvgBwd>conf->erpAvgFwd || conf->erpAvgFwd>conf->erpRejFwd) {
-         qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid INTERVAL parameter!";
+         qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: Invalid INTERVAL parameter!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid count of INTERVAL parameters!";
+        qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: Invalid count of INTERVAL parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="ADD") {
@@ -284,22 +315,22 @@ class ConfigParser {
        if (opts2.size()==3) {
         if (!(evtNo>0 && evtNo<256) || (evtName.size()>100) || // max 100 chars for name should be more than enough?
             !(evtColIdx>=0 && evtColIdx<conf->rgbPalette.size())) { // should be within range of present color entries
-         qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid EventNo parameter!";
+         qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: Invalid EventNo parameter!";
          return true;
         } else { // Add to the list of pre-recognized events.
 	 conf->events.append(Event(evtNo,evtName,evtColIdx));
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid count of STIM parameters!";
+        qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: Invalid count of STIM parameters!";
         return true;
        }
       } else {
-       qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: Invalid section command!";
+       qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <EVT> ERROR: No parameters in section!";
+     qDebug() << "node-freq: <ConfigParser> <EVT> ERROR: No parameters in section!";
      return true;
     }
 
@@ -322,11 +353,11 @@ class ConfigParser {
          //}
 
         } else {
-         qDebug() << "node_gui: <ConfigParser> <HEAD> <GIZMO> ERROR: filename error!";
+         qDebug() << "node-freq: <ConfigParser> <HEAD> <GIZMO> ERROR: filename error!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <HEAD> <GIZMO> ERROR: while parsing parameters!";
+        qDebug() << "node-freq: <ConfigParser> <HEAD> <GIZMO> ERROR: while parsing parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="SCALP" || opts[0].trimmed()=="SKULL" || opts[0].trimmed()=="BRAIN") {
@@ -334,7 +365,7 @@ class ConfigParser {
        if (opts2.size()==2) {
         int headNo=opts2[0].toInt()-1; 
         if (!(headNo>=0 && headNo<(int)conf->ampCount)) { // ampCount should be determined by now.
-         qDebug() << "node_gui: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: head# overflow!";
+         qDebug() << "node-freq: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: head# overflow!";
          return true;
         } else {
          if (opts[0].trimmed()=="SCALP") {
@@ -344,7 +375,7 @@ class ConfigParser {
          } else if (opts[0].trimmed()=="BRAIN") {
           conf->headModel[headNo].loadBrain(opts2[1].trimmed());
          } else {
-          qDebug() << "node_gui: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: while parsing parameters!";
+          qDebug() << "node-freq: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: while parsing parameters!";
           return true;
          }
         }
@@ -366,11 +397,11 @@ class ConfigParser {
             (!(conf->guiCtrlY >= -3000 && conf->guiCtrlY <= 3000)) ||
             (!(conf->guiCtrlW >=   400 && conf->guiCtrlW <= 2000)) ||
             (!(conf->guiCtrlH >=    60 && conf->guiCtrlH <= 1800))) {
-         qDebug() << "node_gui: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
+         qDebug() << "node-freq: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
          return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        qDebug() << "node-freq: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
         return true;
        }
       } else if (opts[0].trimmed()=="STRM") {
@@ -382,17 +413,17 @@ class ConfigParser {
             (!(conf->guiAmpY >= -3000 && conf->guiAmpY <= 3000)) ||
             (!(conf->guiAmpW >=   400 && conf->guiAmpW <= 4000)) ||
             (!(conf->guiAmpH >=   800 && conf->guiAmpH <= 4000))) {
-         qDebug() << "node_gui: <ConfigParser> <GUI> <STRM> ERROR: Window size settings not in appropriate range!";
+         qDebug() << "node-freq: <ConfigParser> <GUI> <STRM> ERROR: Window size settings not in appropriate range!";
 	 return true;
         }
        } else {
-        qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        qDebug() << "node-freq: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
 	return true;
        }
       }
      }
     } else {
-     qDebug() << "node_gui: <ConfigParser> <GUI> ERROR: No parameters in section!";
+     qDebug() << "node-freq: <ConfigParser> <GUI> ERROR: No parameters in section!";
      return true;
     }
 

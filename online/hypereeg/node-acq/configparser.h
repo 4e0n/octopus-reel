@@ -26,35 +26,45 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QHostInfo>
 #include <QFile>
 #include "confparam.h"
-#include "chninfo.h"
 
 const int MAX_LINE_SIZE=160; // chars
+const QString NODE_TEXT="ACQ";
 
 class ConfigParser {
  public:
   ConfigParser(QString cp) { cfgPath=cp; cfgFile.setFileName(cfgPath); }
 
-  bool parse(ConfParam *conf,QVector<ChnInfo> *chnTopo) {
-   QTextStream cfgStream;
-   QStringList cfgLines,opts,opts2,netSection,chnSection;
-
-   QStringList ampSection; ChnInfo dummyChnInfo;
+  bool parse(ConfParam *conf) { QVector<AcqChnInfo> *chnInfo=&(conf->chnInfo);
+   QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
+   QStringList ampSection; AcqChnInfo dummyChnInfo;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "node_acq: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
-
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
      cfgLine=cfgStream.readLine(MAX_LINE_SIZE); // Should not start with #, should contain "|"
      if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
 
-    // Separate AMP, NET, CHN, GUI parameter lines
-    for (const auto& cl:cfgLines) {
-     opts=cl.split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
+    int idx1=-1,idx2=cfgLines.size()-1;
+    for (int idx=0;idx<cfgLines.size();idx++) { opts=cfgLines[idx].split("|");
+     if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
+    }
+    if (idx1<0) {
+     qDebug() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     return true;
+    }
+    idx1++;
+    for (int idx=idx1;idx<cfgLines.size();idx++) { opts=cfgLines[idx].split("|");
+     if (opts[0].trimmed()=="NODE") { idx2=idx; break; }
+    }
+
+    // Separate section parameter lines
+    for (int idx=idx1;idx<idx2;idx++) {
+     opts=cfgLines[idx].split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="AMP") ampSection.append(opts[1]);
      else if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]);
@@ -122,15 +132,15 @@ class ConfigParser {
     if (netSection.size()>0) {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
-      if (opts[0].trimmed()=="OUT") {
+      if (opts[0].trimmed()=="ACQ") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->ipAddr=acqHostInfo.addresses().first().toString();
-        conf->commPort=opts2[1].toInt();
-	conf->strmPort=opts2[2].toInt();
-        if ((!(conf->commPort >= 65000 && conf->commPort < 65500)) || // Simple port validation
-            (!(conf->strmPort >= 65000 && conf->strmPort < 65500))) {
+        conf->acqIpAddr=acqHostInfo.addresses().first().toString();
+        conf->acqCommPort=opts2[1].toInt();
+	conf->acqStrmPort=opts2[2].toInt();
+        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65500)) || // Simple port validation
+            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65500))) {
          qDebug() << "node_acq: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
@@ -149,17 +159,17 @@ class ConfigParser {
     }
 
     // CHN section
-    bool bipChn; conf->refChnCount=conf->bipChnCount=0;
+    conf->refChnCount=conf->bipChnCount=conf->metaChnCount=0;
     if (chnSection.size()>0) {
      for (const auto& sect:chnSection) {
       opts=sect.split("=");
       if (opts[0].trimmed()=="APPEND") {
        opts=opts[1].split(">");
        opts2=opts[0].split(",");
-       if (opts2.size()==8) {
-        opts2[0]=opts2[0].trimmed(); // Ref vs. Bip
+       if (opts2.size()==7) {
+        opts2[0]=opts2[0].trimmed(); // Ref vs. Bip vs. Meta
         opts2[2]=opts2[2].trimmed(); // Channel name
-        if ((opts2[0].size()!=1) || !(opts2[0]=="R" || opts2[0]=="B") || // Ref or Bip
+        if ((opts2[0].size()!=1) || !(opts2[0]=="R" || opts2[0]=="B" || opts2[0]=="M") ||
             (!((unsigned)opts2[1].toInt()>0  && (unsigned)opts2[1].toInt()<=512)) || // Channel#
             (!(opts2[2].size()>0 && opts2[2].size()<=3)) || // Channel name must be 1 to 3 chars..
             (!((float)opts2[3].toFloat()>=0. && (float)opts2[3].toFloat()<360.)) || // TopoThetaPhi - Theta
@@ -169,31 +179,39 @@ class ConfigParser {
          qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid parameter!";
 	 return true;
         } else { // Set and append new channel..
-         opts2[0]=="B" ? bipChn=true : bipChn=false;
-	 dummyChnInfo.physChn=opts2[1].toInt();         // Physical channel
-	 dummyChnInfo.chnName=opts2[2];                 // Channel name
-	 dummyChnInfo.topoTheta=opts2[3].toFloat();     // TopoThetaPhi - Theta
-	 dummyChnInfo.topoPhi=opts2[4].toFloat();       // TopoThetaPhi - Phi
-	 dummyChnInfo.topoX=opts2[5].toInt();           // TopoXY - X
-	 dummyChnInfo.topoY=opts2[6].toInt();           // TopoXY - Y
-	 dummyChnInfo.chnViewMode=opts2[7].toInt();     // Channel View Mode - 0: Off 1: On 2: Spatial Interpolation
-         dummyChnInfo.isBipolar=bipChn;                 // Is bipolar?
-         if (bipChn) conf->bipChnCount++; else conf->refChnCount++;
+	 dummyChnInfo.physChn=opts2[1].toInt();          // Physical channel
+	 dummyChnInfo.chnName=opts2[2];                  // Channel name
+	 dummyChnInfo.topoTheta=opts2[3].toFloat();      // TopoThetaPhi - Theta
+	 dummyChnInfo.topoPhi=opts2[4].toFloat();        // TopoThetaPhi - Phi
+	 dummyChnInfo.topoX=opts2[5].toInt();            // TopoXY - X
+	 dummyChnInfo.topoY=opts2[6].toInt();            // TopoXY - Y
+	 if (opts2[0]=="R") {
+          dummyChnInfo.type=0; conf->refChnCount++;  // referential
+	 } else if (opts2[0]=="B") {
+          dummyChnInfo.type=1; conf->bipChnCount++;  // bipolar
+	 } else if (opts2[0]=="M") {
+          dummyChnInfo.type=2; conf->metaChnCount++; // meta
+         } else {
+          qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid channel type in APPEND parameters!";
+	  return true;
+         }
+	 dummyChnInfo.interMode.resize(conf->ampCount);
+	 for (unsigned int idx=0;idx<conf->ampCount;idx++) dummyChnInfo.interMode[idx]=1;
         }
        } else {
-        qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid count of APPEND parameters!";
+        qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid count of parameters in APPEND line!";
 	return true;
        }
        opts2=opts[1].split(","); // Interpolation electrodes
        if (opts2.size()>=1 && opts2.size()<=4) {
         dummyChnInfo.interElec.resize(0);
         if (opts2[0].toInt()==0) {
-         if (!dummyChnInfo.isBipolar) dummyChnInfo.interElec.append(dummyChnInfo.physChn-1);
+         if (dummyChnInfo.type==0) dummyChnInfo.interElec.append(dummyChnInfo.physChn-1);
 	 else dummyChnInfo.interElec.append(0);
 	} else {
 	 for (int idx=0;idx<opts2.size();idx++) dummyChnInfo.interElec.append(opts2[idx].toInt()-1);
 	}
-        chnTopo->append(dummyChnInfo); // add channel to info table
+        chnInfo->append(dummyChnInfo); // add channel to info table
        } else {
         qDebug() << "node_acq: <ConfigParser> <CHN> ERROR: Invalid count of APPEND (chn interpolation) parameters!";
 	return true;
@@ -205,7 +223,7 @@ class ConfigParser {
      return true;
     }
 
-    //for (const auto& ct:chnTopo) qDebug() << ct.physChn << ct.chnName << ct.topoX << ct.topoY;
+    //for (const auto& ci:chnInfo) qDebug() << ci.physChn << ci.chnName << ci.topoX << ci.topoY;
 
    } // File open
    return false;
