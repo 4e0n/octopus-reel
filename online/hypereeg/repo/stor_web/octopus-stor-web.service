@@ -1,0 +1,14 @@
+[Unit]
+Description=Octopus Storage Server ZIP download web helper
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/octopus-stor-web.py
+Restart=always
+RestartSec=2
+User=octopus
+Group=octopus
+
+[Install]
+WantedBy=multi-user.target
