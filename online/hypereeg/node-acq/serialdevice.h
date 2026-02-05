@@ -33,26 +33,25 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <poll.h>
 #include <cerrno>
 
+#include <QDebug>
+
 class SerialDevice {
  public:
   SerialDevice() {};
-  void init() {
+  bool init() {
    devName="/dev/ttyACM0";
    baudRate=B115200;
-   if (open()<0) {
-    qDebug() << "There has been an error during Serial device initialization.";
-   } else {
-    qDebug() << "Serial device successfully opened/initialized.";
-   }
+   if (open()<0) return true;
+   return false;
   }
 
   int open() {
    device=::open(devName.toLatin1().data(),O_RDWR|O_NOCTTY|O_NONBLOCK|O_CLOEXEC);
-   if (device<0) { qDebug() << "Cannot open sync device!"; return -1; }
+   if (device<0) { qCritical() << "node-acq: <SerialDevice><Open> Cannot open device!"; return -1; }
 
    ioctl(device,TIOCEXCL); // Optional: take exclusive access so ModemManager/others can’t reopen
 
-   if (tcgetattr(device,&oldtio)!=0) { qDebug() << "Cannot get/save tio attributes!"; return -1; }
+   if (tcgetattr(device,&oldtio)!=0) { qCritical() << "node-acq: <SerialDevice><Open> Cannot get/save tio attributes!"; return -1; }
    bzero(&newtio,sizeof(newtio)); // New empty one..
    cfmakeraw(&newtio); // Fetch, make raw, and lock in 8N1+noflowctrl+nohup-on-close
    cfsetispeed(&newtio,baudRate); cfsetospeed(&newtio,baudRate);
@@ -99,18 +98,18 @@ class SerialDevice {
            ident.find("sig=OCTO-EEG-42") != std::string::npos) {
         break; // READY
        } else {
-        qDebug() << "Not our board.";
-        // Not our board; consider closing and trying next tty
-        // close(device); return NotFound;
+        qCritical() << "node-acq: <SerialDevice><Open> Device is different than ours.";
+        // Not our device; consider closing and trying next tty
+        close(); return -1;
        }
       }
      }
     }
     // else timeout slice; loop continues
    }
-   // fd stays O_NONBLOCK; that’s fine for our write+optional-ACK pattern.
+   // fd stays O_NONBLOCK; fine for write+optional-ACK pattern.
    sleep(1);
-   return 1;
+   return 0;
   }
 
   void close() {

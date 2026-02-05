@@ -32,86 +32,243 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QCoreApplication>
 #include "../common/globals.h"
+
 #ifdef EEMAGINE
 #include <eemagine/sdk/wrapper.cc>
+#define _UNICODE
+#define EEGO_SDK_BIND_DYNAMIC
+#include <eemagine/sdk/factory.h>
+#include <eemagine/sdk/amplifier.h>
 #endif
+
+#include <QString>
+#include <QFile>
+#ifdef AUDIODEV
+#include "audioamp.h"
+#endif
+#include "serialdevice.h"
+#include <vector>
+#include "confparam.h"
 #include "acqdaemon.h"
 
+#include <QtGlobal>
+#include <QDateTime>
+#include <cstdio>
+
+//const QString cfgPathX=confPath+"hypereeg.conf";
+const QString cfgPathEtc="/etc/octopus/hypereeg.conf";
+
+static void qtMessageHandler(QtMsgType type,const QMessageLogContext&,const QString& msg) {
+ const char* level="INFO";
+ switch (type) {
+  case QtDebugMsg:    level="DEBUG"; break;
+  case QtInfoMsg:     level="INFO";  break;
+  case QtWarningMsg:  level="WARN";  break;
+  case QtCriticalMsg: level="ERROR"; break;
+  case QtFatalMsg:    level="FATAL"; break;
+ }
+ const QByteArray timestamp=QDateTime::currentDateTime().toString(Qt::ISODateWithMs).toUtf8();
+ fprintf(stderr,"%s [%s] %s\n",timestamp.constData(),level,msg.toUtf8().constData());
+ if (type==QtFatalMsg) { abort(); }
+}
+
+bool eegamps_check(std::vector<amplifier*> *eeAmps,unsigned int ampCount) {
+ if (eeAmps->size()<ampCount) return true;
+ return false;
+}
+
+#ifdef AUDIODEV
+bool audio_check(AudioAmp *audioAmp) {
+ audioAmp->init();
+ if (!audioAmp->initAlsa()) return true;
+ return false;
+}
+#endif
+
+bool conf_init(ConfParam *conf) { QString cfgPath;
+// if (cfgPathX=="~") cfgPath=QDir::homePath();
+// if (cfgPathX.startsWith("~/")) cfgPath=QDir::homePath()+cfgPathX.mid(1);
+ cfgPath=cfgPathEtc;
+ if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
+  if (!cfp.parse(conf)) {
+   // Constants or calculated global settings upon the ones read from config file
+   conf->refChnMaxCount=REF_CHN_MAXCOUNT; conf->bipChnMaxCount=BIP_CHN_MAXCOUNT;
+   conf->physChnCount=conf->refChnCount+conf->bipChnCount; conf->totalChnCount=conf->physChnCount+2;
+   conf->totalCount=conf->ampCount*conf->totalChnCount;
+   conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+   conf->dumpRaw=false;
+//   conf->interList.resize(conf->ampCount);
+//   conf->offList.resize(conf->ampCount);
+//   conf->generateElecLists();
+   // --------------------------------------------------------------------------------
+   if (!conf->commServer.listen(QHostAddress::Any,conf->acqCommPort)) {
+    qCritical() << "Cannot start TCP server on <Comm> port:" << conf->acqCommPort;
+    return true;
+   }
+   qInfo() << "<Comm> listening on port" << conf->acqCommPort;
+   if (!conf->strmServer.listen(QHostAddress::Any,conf->acqStrmPort)) {
+    qCritical() << "Cannot start TCP server on <Strm> port:" << conf->acqStrmPort;
+    return true;
+   }
+   // --------------------------------------------------------------------------------
+   conf->tcpBufSize*=conf->eegRate;
+   conf->tcpBuffer=QVector<TcpSample>(conf->tcpBufSize,TcpSample(conf->ampCount,conf->physChnCount));
+
+   return false;
+  } else {
+   qCritical() << "The config file" << cfgPath << "is corrupt!";
+   return true;
+  }
+ } else {
+  qCritical() << "The config file" << cfgPath << "does not exist!";
+  return true;
+ }
+}
+
+void conf_info(ConfParam *conf) {
+//#ifdef HACQ_VERBOSE
+   qInfo() << "===============================================================";
+   qInfo() << "Detailed channels info:";
+   qInfo() << "-----------------------";
+   QString interElec;
+   for (const auto& ch:conf->chnInfo) {
+    interElec=""; for (int i=0;i<ch.interElec.size();i++) interElec.append(QString::number(ch.interElec[i])+" ");
+    qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] ChnType=%d, Inter=%s",ch.physChn,qUtf8Printable(ch.chnName),
+                                                                    ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.type,
+                                                                    interElec.toUtf8().constData());
+   }
+//#endif
+   qInfo() << "===============================================================";
+   qInfo() << "Acquisition Parameters Summary:";
+   qInfo() << "-------------------------------";
+   qInfo() << "Connected # of amplifier(s):" << conf->ampCount;
+   qInfo() << "Sample Rate->" << conf->eegRate << "sps";
+   qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
+   qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
+   qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
+   qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
+   qInfo() << "Total Channel# from all amps:" << conf->totalCount;
+   qInfo() << "Referential channels gain:" << conf->refGain;
+   qInfo() << "Bipolar channels gain:" << conf->bipGain;
+   qInfo() << "===============================================================";
+   qInfo() << "Networking Summary:";
+   qInfo() << "-----------------------------";
+   qInfo() << "<ServerIP> is" << conf->acqIpAddr;
+   qInfo() << "<Strm> listening on port" << conf->acqStrmPort;
+}
+
 int main(int argc,char *argv[]) {
+ AudioAmp audioAmp; SerialDevice serDev; ConfParam conf;
+ 
+ qInstallMessageHandler(qtMessageHandler);
+ setvbuf(stdout,nullptr,_IOLBF,0); // Avoid buffering
+ setvbuf(stderr,nullptr,_IONBF,0);
+ 
  QCoreApplication app(argc,argv);
- AcqDaemon acqDaemon;
 
+ qInfo() << "===============================================================";
  omp_diag();
+ qInfo() << "===============================================================";
 
- if (acqDaemon.initialize()) {
-  qCritical("node-acq: <FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
+ if (conf_init(&conf)) {
+  qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
   return 1;
  }
 
+#ifdef EEMAGINE
+ using namespace eemagine::sdk;
+ std::vector<amplifier*> eeAmps,eeAmpsSorted; factory eeFact("libeego-SDK.so"); eeAmps=eeFact.getAmplifiers();
+#else
+ using namespace eesynth;
+ std::vector<amplifier*> eeAmps,eeAmpsSorted; factory eeFact(conf.ampCount); eeAmps=eeFact.getAmplifiers();
+#endif
+
+ qInfo() << "===============================================================";
+ qInfo() << "Hardware connection status...";
+ qInfo() << "-----------------------------";
+
+#ifdef AUDIODEV
+ qInfo() << "Audio Device...";
+ qInfo() << "---------------";
+ if (audio_check(&audioAmp)) {
+  qCritical() << "<Audio> AudioAmp ALSA init FAILURE!";
+  return 1;
+ }
+ qInfo() << "<Audio> AudioAmp ALSA initialized successfully.";
+ qInfo() << "---------------------------------------------------------------";
+#endif
+
+ qInfo() << "EEG Amplifiers...";
+ qInfo() << "-----------------";
+ if (eegamps_check(&eeAmps,conf.ampCount)) {
+  qCritical() << "<AmpProbe> At least one  of the amplifiers is offline!";
+  return 1;
+ }
+
+ qInfo() << "<AmpProbe> Amplifiers are initialized successfully.";
+
+ // Sort amplifiers for their serial numbers
+ qInfo() << "Sorting according to their IDs...";
+ std::vector<unsigned int> sUnsorted,sSorted;
+ for (auto& ee:eeAmps) sUnsorted.push_back(stoi(ee->getSerialNumber()));
+ sSorted=sUnsorted; std::sort(sSorted.begin(),sSorted.end());
+ for (auto& sNo:sSorted) { std::size_t ampIdx=0;
+  for (auto& sNoU:sUnsorted) {
+   if (sNo==sNoU) eeAmpsSorted.push_back(eeAmps[ampIdx]);
+   ampIdx++;
+  }
+ }
+ qInfo() << "Before:";
+ for (auto& ee:eeAmps) qInfo() << stoi(ee->getSerialNumber());
+ qInfo() << "After:";
+ for (auto& ee:eeAmpsSorted) qInfo() << stoi(ee->getSerialNumber());
+
+// On/off check -- no need for synthetic amp. We know that they're always on.
+#ifdef  EEMAGINE
+ qInfo() << "---------------------------------------------------------------";
+ qInfo() << "<AmpProbe> Checking amplifiers on/off status...";
+
+ // Check whether the amplifiers are on and ready to stream.;
+ int ampIdx=0; std::vector<bool> ampStatus;
+ for (auto& amp:eeAmpsSorted) {
+  try {
+   stream *test=amp->OpenImpedanceStream(); delete test; ampStatus.push_back(true);
+   qInfo() << "<AmpProbe> EEG Amplifier" << ampIdx << "is on for streaming.";
+  } catch (const exceptions::incorrectValue& ex) {
+   ampStatus.push_back(false);
+   qWarning() << "<AmpProbe> EEG Amplifier" << ampIdx << "is connected but not switched on!";
+  }
+  ampIdx++;
+ }
+
+ for (int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
+  if (!ampStatus[ampIdx]) {
+   qWarning() << "Exiting...";
+   return 1;
+  }
+ }
+
+ qInfo() << "---------------------------------------------------------------";
+#endif
+
+// We're not checking HyperSync if we're not on real EEG amps.
+#ifdef EEMAGINE
+ qInfo() << "HyperSync Serial Device...";
+ qInfo() << "--------------------------";
+ if (serDev.init()) {
+  qCritical() << "<HyperSync> Device init FAILURE!";
+  return 1;
+ }
+ qInfo() << "<HyperSync> Device initialized successfully.";
+#endif
+ 
+ conf_info(&conf);
+
+ qInfo() << "====================== Thread Runtime =========================";
+ qInfo() << "===============================================================";
+
+ // Passing a nullptr for serDev if not on real EEG amps
+ AcqDaemon acqDaemon(nullptr,&conf,&eeAmpsSorted,&audioAmp,&serDev);
+
  return app.exec();
 }
-
-/*
-#include <QSocketNotifier>
-#include <csignal>
-#include <atomic>
-#include <unistd.h>   // pipe(), read(), write()
-#include "audioamp.h" // your AudioAmp
-
-static int sigPipeFd[2] = {-1, -1};
-static std::atomic<bool> g_stop{false};
-
-// POSIX signal handler: write 1 byte to the pipe (async-signal-safe)
-extern "C" void on_unix_signal(int) {
-    g_stop.store(true, std::memory_order_relaxed);
-    char ch = 1;
-    ::write(sigPipeFd[1], &ch, 1);  // ignore EAGAIN
-}
-
-static void setup_unix_signal_handlers() {
-    ::pipe(sigPipeFd);
-    // make pipe non-blocking if you like
-    struct sigaction sa{};
-    sa.sa_handler = on_unix_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT,  &sa, nullptr);
-    sigaction(SIGTERM, &sa, nullptr);
-}
-
-int main(int argc, char** argv) {
-    QCoreApplication app(argc, argv);
-
-    // 1) Install SIGINT/SIGTERM handlers
-    setup_unix_signal_handlers();
-
-    // 2) Your objects
-    AudioAmp audio;
-    audio.init();                 // alloc ring, reset state
-    if (audio.initAlsa()) {
-        audio.start();
-    }
-
-    // 3) Ensure cleanup on normal quit as well
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&](){
-        audio.stop();             // calls snd_pcm_drop/close inside
-    });
-
-    // 4) QSocketNotifier watches the read end of the pipe.
-    QSocketNotifier sn(sigPipeFd[0], QSocketNotifier::Read, &app);
-    QObject::connect(&sn, &QSocketNotifier::activated, [&](int){
-        // drain the pipe
-        char buf[64];
-        while (::read(sigPipeFd[0], buf, sizeof(buf)) > 0) {}
-        // request graceful shutdown
-        if (g_stop.load(std::memory_order_relaxed)) {
-            // stop audio (safe: we're on the Qt main thread)
-            audio.stop();
-            app.quit();
-        }
-    });
-
-    // 5) Run Qt event loop
-    return app.exec();
-}
-*/

@@ -1,0 +1,32 @@
+[Unit]
+Description=Octopus node-stor (HyperEEG storage daemon)
+Wants=network-online.target
+After=network-online.target
+
+# If /opt is on a separate mount in your setup, keep this:
+RequiresMountsFor=/opt
+
+[Service]
+Type=simple
+User=octopus
+Group=octopus
+WorkingDirectory=/opt/octopus
+
+# Ensure base directory exists (node-stor will create the timestamp subdir itself)
+ExecStartPre=/usr/bin/install -d -o octopus -g octopus -m 0775 /opt/octopus/stor/heeg
+
+# Start command (adjust args as you use them)
+ExecStart=/opt/octopus/bin/node-stor --config /etc/octopus/node-stor.conf
+
+Restart=always
+RestartSec=30s
+StartLimitIntervalSec=0
+
+KillSignal=SIGTERM
+TimeoutStopSec=60s
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

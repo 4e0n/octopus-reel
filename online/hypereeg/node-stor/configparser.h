@@ -40,7 +40,7 @@ class ConfigParser {
    QStringList bufSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "node-stor: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qCritical() << "<ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
@@ -55,7 +55,7 @@ class ConfigParser {
      if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
     }
     if (idx1<0) {
-     qDebug() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     qCritical() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
      return true;
     }
     idx1++;
@@ -69,7 +69,7 @@ class ConfigParser {
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
      else {
-      qDebug() << "node-stor: <ConfigParser> ERROR: Unknown section in config file!";
+      qCritical() << "<ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -89,14 +89,14 @@ class ConfigParser {
         conf->acqStrmPort=opts2[2].toInt();
         if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65500)) || // Simple port validation
             (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65500))) {
-         qDebug() << "node-stor: <ConfigParser> <NET> ERROR: Invalid (serving) hostname/IP/port settings!";
+         qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node-stor: <ConfigParser> <NET> ERROR: Invalid (serving) count of NET|IN params!";
+        qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) count of NET|IN params!";
         return true;
        }
-       qDebug() << "node-stor:" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
+       qInfo() << "<Comm>" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
       } else if (opts[0].trimmed()=="STOR") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==2) {
@@ -104,20 +104,20 @@ class ConfigParser {
         conf->storIpAddr=acqHostInfo.addresses().first().toString();
         conf->storCommPort=opts2[1].toInt();
         if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65500))) { // Simple port validation
-         qDebug() << "node-stor: <ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
+         qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
        } else {
-        qDebug() << "node-stor: <ConfigParser> <NET> ERROR: Invalid count of NET|OUT params!";
+        qCritical() << "<ConfigParser> <NET> ERROR: Invalid count of NET|OUT params!";
         return true;
        }
       } else {
-       qDebug() << "node-stor: <ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
+       qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
        return true;
       }
      }
     } else {
-     qDebug() << "node-stor: <ConfigParser> <NET> ERROR: No parameters in section!";
+     qCritical() << "<ConfigParser> <NET> ERROR: No parameters in section!";
      return true;
     }
 
@@ -128,16 +128,16 @@ class ConfigParser {
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
        if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
-        qDebug() << "node-stor: <ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
+        qCritical() << "<ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
        }
       } else {
-       qDebug() << "node-stor: <ConfigParser> <BUF> ERROR: Invalid section command!";
+       qCritical() << "<ConfigParser> <BUF> ERROR: Invalid section command!";
        return true;
       }
      }
     } else {
-     qDebug() << "node-stor: <ConfigParser> <BUF> ERROR: No parameters in section!";
+     qCritical() << "<ConfigParser> <BUF> ERROR: No parameters in section!";
      return true;
     }
 
@@ -148,8 +148,8 @@ class ConfigParser {
 
     // Get crucial info from the "master" node we connect to
     commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
-    if (!commResponse.isEmpty()) qDebug() << "node-stor: <ConfigParser> Daemon replied:" << commResponse;
-    else qDebug() << "node-stor: <ConfigParser> (TIMEOUT) No response from master node!";
+    if (!commResponse.isEmpty()) qCritical() << "<ConfigParser> Daemon replied:" << commResponse;
+    else qCritical() << "<ConfigParser> (TIMEOUT) No response from master node!";
     sList=commResponse.split(",");
 
     conf->ampCount=sList[0].toInt(); // (ACTUAL) AMPCOUNT
@@ -168,8 +168,8 @@ class ConfigParser {
     // CHANNELS
 
     commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
-    if (!commResponse.isEmpty()) qDebug() << "node-stor: <Config> Daemon replied:" << commResponse;
-    else qDebug() << "node-stor: <Config> No response or timeout.";
+    if (!commResponse.isEmpty()) qCritical() << "<Config> Daemon replied:" << commResponse;
+    else qCritical() << "<Config> No response or timeout.";
     sList=commResponse.split("\n"); StorChnInfo chn;
 
     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
@@ -183,10 +183,10 @@ class ConfigParser {
     //for (int idx=0;idx<conf->chns.size();idx++) {
     // QString x="";
     // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chns[idx].interMode[j])+",");
-    // qDebug() << x.toUtf8();
+    // qCritical() << x.toUtf8();
     //}
 
-    for (auto& chn:conf->chns) qDebug() << chn.physChn << chn.chnName << chn.type;
+    for (auto& chn:conf->chns) qCritical() << chn.physChn << chn.chnName << chn.type;
 
 
    } // File open

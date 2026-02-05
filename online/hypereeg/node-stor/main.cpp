@@ -29,16 +29,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QApplication>
 #include <QSurfaceFormat>
+#include <sys/stat.h>
 #include "stordaemon.h"
 
 int main(int argc,char* argv[]) {
  QCoreApplication app(argc,argv);
  StorDaemon storDaemon;
 
+ umask(0002);
+
  omp_diag();
 
  if (storDaemon.initialize()) {
-  qCritical("node-stor: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition File recording/storage daemon.");
+  qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition File recording/storage daemon.");
   return 1;
  }
 

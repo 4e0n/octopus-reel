@@ -1,0 +1,33 @@
+[Unit]
+Description=Octopus node-acq (EEG acquisition)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=octopus
+Group=octopus
+UMask=0002
+WorkingDirectory=/var/lib/octopus
+
+# Give USB Audio a moment to settle during boot
+ExecStartPre=/bin/sleep 15
+
+ExecStart=/opt/octopus/bin/node-acq
+
+# Restart policy: retry forever, calmly
+Restart=always
+RestartSec=120
+StartLimitIntervalSec=0
+
+# Clean shutdown handling
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

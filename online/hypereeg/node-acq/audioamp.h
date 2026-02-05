@@ -109,7 +109,7 @@ struct AudioAmp {
    for (auto* n:candidates) { elem=try_elem(n); if (elem) break; }
 
    if (!elem) {
-    qWarning() << "[AudioAmp] No capture mixer element found on" << hw;
+    qWarning() << "<AudioAmp> No capture mixer element found on" << hw;
     snd_mixer_close(mix);
     return false;
    }
@@ -118,13 +118,13 @@ struct AudioAmp {
    if (snd_mixer_selem_get_capture_volume_range(elem,&vmin,&vmax)==0 && vmax>vmin) {
     long v=vmin+(vmax-vmin)*percent/100;
     snd_mixer_selem_set_capture_volume_all(elem,v);
-    qInfo() << "[AudioAmp] Set capture volume" << percent << "% (" << v << "in" << vmin << ".." << vmax << ")";
+    qInfo() << "<AudioAmp> Set capture volume" << percent << "% (" << v << "in" << vmin << ".." << vmax << ")";
    }
 
    // If there is a capture switch, enable it
    if (snd_mixer_selem_has_capture_switch(elem)) {
     snd_mixer_selem_set_capture_switch_all(elem,1);
-    qInfo() << "[AudioAmp] Enabled capture switch for element";
+    qInfo() << "<AudioAmp> Enabled capture switch for element";
    }
 
    snd_mixer_close(mix);
@@ -139,7 +139,7 @@ struct AudioAmp {
 
   bool initAlsa() {
    int rc=snd_pcm_open(&handle,AUDIO_DEV_NAME,SND_PCM_STREAM_CAPTURE,0);
-   if (rc<0) { qWarning() << "[AudioAmp] ALSA open failed:" << snd_strerror(rc); return false; }
+   if (rc<0) { qWarning() << "<AudioAmp> ALSA open failed:" << snd_strerror(rc); return false; }
 
 //alsa_set_capture_level("CODEC",80);
 
@@ -155,27 +155,27 @@ struct AudioAmp {
    unsigned rate=AUDIO_SAMPLE_RATE;
    rc=snd_pcm_hw_params_set_rate(handle,hw,rate,0);
    if (rc<0) {
-    qWarning() << "[AudioAmp] set_rate exact failed, trying near:" << snd_strerror(rc);
+    qWarning() << "<AudioAmp> set_rate exact failed, trying near:" << snd_strerror(rc);
     rc=snd_pcm_hw_params_set_rate_near(handle,hw,&rate,nullptr);
-    if (rc<0) qWarning() << "[AudioAmp] set_rate_near failed:" << snd_strerror(rc);
+    if (rc<0) qWarning() << "<AudioAmp> set_rate_near failed:" << snd_strerror(rc);
    }
 
    snd_pcm_uframes_t period=256; // 48
    snd_pcm_uframes_t bufsize=period*8; // *4
 
    rc=snd_pcm_hw_params_set_period_size(handle,hw,period,0);
-   if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
+   if (rc<0) { qWarning() << "<AudioAmp> set_period_size_near failed:" << snd_strerror(rc); }
    bufsize=period*8;
    rc=snd_pcm_hw_params_set_buffer_size(handle,hw,bufsize);
-   if (rc<0) { qWarning() << "[AudioAmp] set_period_size_near failed:" << snd_strerror(rc); }
+   if (rc<0) { qWarning() << "<AudioAmp> set_period_size_near failed:" << snd_strerror(rc); }
 
    rc=snd_pcm_hw_params(handle,hw);
-   if (rc<0) { qWarning() << "[AudioAmp] hw_params commit failed:" << snd_strerror(rc); return false; }
+   if (rc<0) { qWarning() << "<AudioAmp> hw_params commit failed:" << snd_strerror(rc); return false; }
 
    snd_pcm_uframes_t per2=0,buf2=0;
    snd_pcm_hw_params_get_period_size(hw,&per2,nullptr);
    snd_pcm_hw_params_get_buffer_size(hw,&buf2);
-   qInfo() << "[AudioAmp] ALSA period=" << per2 << "frames ("
+   qInfo() << "<AudioAmp> ALSA period=" << per2 << "frames ("
            << (1000.0*double(per2)/AUDIO_SAMPLE_RATE) << "ms) buffer="
            << buf2 << "frames (" << (1000.0*double(buf2)/AUDIO_SAMPLE_RATE) << "ms)";
 
@@ -186,15 +186,16 @@ struct AudioAmp {
    snd_pcm_sw_params_set_start_threshold(handle,sw,period);
    rc=snd_pcm_sw_params(handle,sw);
    snd_pcm_sw_params_free(sw);
-   if (rc<0) { qWarning() << "[AudioAmp] sw_params commit failed:" << snd_strerror(rc); return false; }
+   if (rc<0) { qWarning() << "<AudioAmp> sw_params commit failed:" << snd_strerror(rc); return false; }
 
    rc=snd_pcm_prepare(handle);
-   if (rc<0) { qWarning() << "[AudioAmp] prepare failed:" << snd_strerror(rc); return false; }
+   if (rc<0) { qWarning() << "<AudioAmp> prepare failed:" << snd_strerror(rc); return false; }
 
    return true;
   }
 
   void start() {
+   qInfo() << "<AudioAmp> Starting audio acquisition...";
    if (!handle) return;
    run.store(true,std::memory_order_release);
    th=std::thread([this]{ captureLoop(); });
@@ -377,7 +378,7 @@ struct AudioAmp {
      const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)):0ULL;
      rs_srcPos=double(snap);
      lastSnapNs=now;
-     qWarning() << "[AcqThread-AudioAmp] Producer stall (>20ms) detected; realigned.";
+     qWarning() << "<AcqThread_AudioAmp> Producer stall (>20ms) detected; realigned.";
     }
    }
 
@@ -392,7 +393,7 @@ struct AudioAmp {
      const uint64_t now=now_ns();
      if (now-lastSnapNs>400'000'000ULL) {
       lastSnapNs=now;
-      qWarning() << "[AcqThread-AudioAmp] Reader far behind; soft-clamped to tail.";
+      qWarning() << "<AcqThread_AudioAmp> Reader far behind; soft-clamped to tail.";
      }
     }
    }
@@ -476,7 +477,7 @@ struct AudioAmp {
 
 //   uint64_t nowTick=audioFrameCounter.load(std::memory_order_relaxed);
 //   if (nowTick/48000!=lastPrint/48000) {
-//    qInfo() << "[AudioAmp] prod=" << nowTick << "cons=0";
+//    qInfo() << "<AudioAmp> prod=" << nowTick << "cons=0";
 //   }
 //   lastPrint=nowTick;
    }

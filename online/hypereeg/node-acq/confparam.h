@@ -25,8 +25,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QFile>
 #include <QDataStream>
+#include <QTcpServer>
 #include <QTcpSocket>
 #include <QMutex>
+#include <vector>
 #include "acqchninfo.h"
 #include "../common/tcpsample.h"
 
@@ -78,4 +80,5 @@ struct ConfParam {
  QVector<TcpSample> tcpBuffer;
  QVector<AcqChnInfo> chnInfo;
 // QVector<QVector<unsigned int>> interList,offList; // List of interpolated and switched-off electrodes for all amps
+ QTcpServer commServer,strmServer;
 };

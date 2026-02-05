@@ -100,7 +100,7 @@ class ConfParam : public QObject {
        const qint64 nowB = QDateTime::currentMSecsSinceEpoch();
        if (nowB - lastBlockLogMs >= 1000) {
         lastBlockLogMs = nowB;
-        qCritical() << "STOR[ALARM] RING FULL: producer blocked!"
+        qCritical() << "<Producer> STOR[ALARM] RING FULL: producer blocked!"
                     << "head=" << tcpBufHead
                     << "tail=" << tcpBufTail
                     << "used=" << (tcpBufHead - tcpBufTail)
@@ -138,7 +138,7 @@ class ConfParam : public QObject {
       const quint64 maxA=maxAvail;
       maxAvail=0;
       qInfo().noquote()
-        << QString("STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")
+        << QString("<Producer> STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")
             .arg(sps)
             .arg(prodSamples)
             .arg(prodBlocked)
@@ -152,7 +152,7 @@ class ConfParam : public QObject {
     } else {
       prodDeserializeFail++;
       if ((prodDeserializeFail%100)==1)
-        qWarning() << "STOR[PROD] deserialize failed. count=" << prodDeserializeFail;
+        qWarning() << "<Producer> STOR[PROD] deserialize failed. count=" << prodDeserializeFail;
     }
 
     buffer.remove(0, 4 + blockSize);

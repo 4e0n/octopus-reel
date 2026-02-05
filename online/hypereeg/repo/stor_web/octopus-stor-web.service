@@ -9,6 +9,7 @@ Restart=always
 RestartSec=2
 User=octopus
 Group=octopus
+Umask=0002
 
 [Install]
 WantedBy=multi-user.target

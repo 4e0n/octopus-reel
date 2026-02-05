@@ -113,7 +113,7 @@ struct EEAmp {
  stream* OpenEegStream(int sampling_rate,double reference_range,double bipolar_range,const std::vector<channel>& channel_list) {
 #ifndef EEMAGINE
  //qDebug() << "/opt/eeg"+QString::number(id+1)+".raw";
- amp->setEEGFeed(("/opt/eeg"+QString::number(id+1)).toStdString());
+ //amp->setEEGFeed(("/opt/eeg"+QString::number(id+1)).toStdString());
 #endif
   return amp->OpenEegStream(sampling_rate,reference_range,bipolar_range,channel_list);
  }

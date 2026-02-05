@@ -117,30 +117,6 @@ class TcpThread : public QThread {
    }
   }
 
-
-    // Record RAW EEG to files..
-//    if (conf->dumpRaw) {
-//     const unsigned int chnCount=conf->physChnCount;
-//     for (int i=0;i<N;++i) {
-//      tcpEEG=eegChunk[i];
-//      for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
-//       if (ampIdx==0) conf->hEEGStream << tcpEEG.offset;
-//       for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) conf->hEEGStream << tcpEEG.amp[ampIdx].dataBP[chnIdx];
-//       if (ampIdx==conf->ampCount-1) conf->hEEGStream << tcpEEG.trigger;
-//      }
-//     }
-//    }
-
-    // ---- Send to all connected clients ----
-    // IMPORTANT: if sockets live in another thread, we must not write them directly here.
-    // If we currently write from this thread and it "works", keep it for now; later we’ll
-    // move sending to the socket-owning thread via queued invokeMethod.
-//    for (QTcpSocket* client : conf->strmClients) {
-//     if (!client) continue;
-//     if (client->state() != QAbstractSocket::ConnectedState) continue;
-//     client->write(packet); // no flush
-//    }
-
  signals:
   void sendPacketSignal(const QByteArray &packet);
 

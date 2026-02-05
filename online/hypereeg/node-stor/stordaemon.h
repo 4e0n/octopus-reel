@@ -67,15 +67,15 @@ class StorDaemon: public QObject {
      conf.tcpBuffer=QVector<TcpSample>(conf.tcpBufSize,TcpSample(conf.ampCount,conf.chnCount));
 
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "node-stor: <ServerIP> is" << conf.acqIpAddr;
-     qInfo() << "node-stor: <Comm> listening on ports (comm,strm):" << conf.acqCommPort << conf.acqStrmPort;
+     qInfo() << "<ServerIP> is" << conf.acqIpAddr;
+     qInfo() << "<Comm> listening on ports (comm,strm):" << conf.acqCommPort << conf.acqStrmPort;
 
      // ---------------------------------------------------------------------------------------------------------------
      if (!storCommServer.listen(QHostAddress::Any,conf.storCommPort)) {
-      qCritical() << "node-stor: Cannot start TCP server on <Comm> port:" << conf.storCommPort;
+      qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf.storCommPort;
       return true;
      }
-     qInfo() << "node-stor: <Comm> listening on port" << conf.storCommPort;
+     qInfo() << "<Comm> listening on port" << conf.storCommPort;
      // ---------------------------------------------------------------------------------------------------------------
 
      // Setup data socket -- only safe after handshake and receiving crucial info about streaming
@@ -90,11 +90,11 @@ class StorDaemon: public QObject {
 
      return false;
     } else {
-     qWarning() << "node-stor: The config file" << cfgPath << "is corrupt!";
+     qWarning() << "<Config> The config file" << cfgPath << "is corrupt!";
      return true;
     }
    } else {
-    qWarning() << "node-stor: The config file" << cfgPath << "does not exist!";
+    qWarning() << "<Config> The config file" << cfgPath << "does not exist!";
     return true;
    }
   }
@@ -112,20 +112,20 @@ class StorDaemon: public QObject {
      handleCommand(QString::fromUtf8(cmd),client);
     });
     connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
-    qInfo() << "node-stor: <Comm> Client connected from" << client->peerAddress().toString();
+    qInfo() << "<Comm> Client connected from" << client->peerAddress().toString();
    }
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
    QStringList sList;
-   qInfo() << "node-stor: <Comm> Received command:" << cmd;
+   qInfo() << "<Comm> Received command:" << cmd;
    if (!cmd.contains("=")) {
     sList.append(cmd);
     if (cmd==CMD_STOR_STATUS) {
-     qDebug("node-stor: <Comm> Sending Storage Daemon status..");
+     qInfo() << "<Comm> Sending Storage Daemon status..";
      client->write("node-stor: Storage server ready.\n");
     } else if (cmd==CMD_STOR_REC_ON) {
-     qDebug("node-stor: <Comm> Recording on..");
+     qInfo() << "<Comm> Recording on..";
 
      const QString tStamp=QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
 //     const QString base="/opt/octopus/data/" + tStamp;
@@ -135,7 +135,7 @@ class StorDaemon: public QObject {
 
      QDir dir;
      if (!dir.mkpath(recDir)) {
-      qCritical() << "node-stor: cannot create directory:" << recDir;
+      qCritical() << "<Storage> cannot create directory:" << recDir;
       return; // or handle error
      }
 
@@ -144,7 +144,7 @@ class StorDaemon: public QObject {
      recThread->requestStartRecording(base); // direct call OK (it sets atomic flag)
      client->write("node-stor: RECSTART accepted.\n");
     } else if (cmd==CMD_STOR_REC_OFF) {
-     qDebug("node-stor: <Comm> Recording off..");
+     qInfo() << "<Comm> Recording off..";
      recThread->requestStopRecording();
      client->write("node-stor: RECSTOP accepted.\n");
     }

@@ -290,9 +290,9 @@ class amplifier {
   //std::vector<double> getReferenceRangesAvailable() const=0;
   //std::vector<double> getBipolarRangesAvailable() const=0;
 
-  void setEEGFeed(std::string fn) {
-   eegFeedName=fn;
-  }
+  //void setEEGFeed(std::string fn) {
+  // eegFeedName=fn;
+  //}
 
   stream* OpenEegStream(int sampling_rate,double reference_range,double bipolar_range,const std::vector<channel>& channel_list) {
    impedanceMode=false; smpRate=sampling_rate; refRange=reference_range; bipRange=bipolar_range; chnList=channel_list;
@@ -312,7 +312,7 @@ class amplifier {
   std::string serialNumber; bool impedanceMode,eegStreamOpen; unsigned int syncTrigOffset;
   unsigned int smpRate; float refRange,bipRange; std::vector<channel> chnList;
   stream *str; unsigned int synthTrigger;
-  std::string eegFeedName;
+  //std::string eegFeedName;
 };
 
 class factory { // Creates any number of virtual amplifiers identical to EE.

@@ -40,12 +40,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <errno.h>
 #include <math.h>  // lrintf
 
-// Forward decls (include your real headers before this file is used)
-// struct Sample;
-// struct TcpSample;
-
 struct BrainVisionMeta {
-  QStringList channelNames;     // size = nChBV (EEG + optional derived channels)
+  QStringList channelNames;     // size=nChBV (EEG+optional derived channels)
   double sampleRateHz=1000.0;   // e.g. 1000
   QString unit="uV";
   double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
@@ -53,8 +49,8 @@ struct BrainVisionMeta {
 
 struct WavMeta {
   int sampleRate=48000;
-  int numChannels=1;            // mono by default
-  // Write PCM 16-bit LE
+  int numChannels=1;            // mono audio
+  // PCM 16-bit LE
 };
 
 class BVWav {
@@ -64,7 +60,7 @@ public:
 
   bool isOpen() const { return m_open; }
   uint64_t bvFramesWritten() const { return m_bvFramesWritten; }
-  uint64_t wavFramesWritten() const { return m_wavFramesWritten; } // audio frames (at 48k)
+  uint64_t wavFramesWritten() const { return m_wavFramesWritten; } // audioframes (at 48k)
 
   // filenameBase: full path without extension (base.vhdr, base.vmrk, base.eeg, base.wav)
   bool setup(const QString& filenameBase,const BrainVisionMeta& bvMeta,
@@ -124,7 +120,7 @@ public:
    if (!bvFrameInterleaved) return setErr(err,"BV frame pointer null.");
    if (!audio48_i16) return setErr(err,"audio48 pointer null.");
 
-   // 1) BrainVision: write one frame = nChBV float32
+   // 1) BrainVision: write one frame=nChBVxfloat32
    {
     const int64_t nBytes=int64_t(m_nChBV)*int64_t(sizeof(float));
     if (!writeAll(m_fdEeg,bvFrameInterleaved,size_t(nBytes),err,"write .eeg failed")) return false;
@@ -207,32 +203,7 @@ public:
    }
 
    const size_t N=chunk.size();
-
-   // ---- build BV buffer ----
    std::vector<float> bvBuf;
-
-//   bvBuf.resize(N*(size_t)m_nChBV);
-
-//   size_t k=0;
-//   for (size_t i=0;i<N;++i) {
-//    const TcpSample& t=chunk[i];
-
-//    if (t.amp.size()<ampCount) {
-//     return setErr(err,QString("BV: TcpSample amp.size()=%1 < ampCount=%2 at i=%3")
-//                        .arg((qulonglong)t.amp.size()).arg((qulonglong)ampCount).arg((qulonglong)i));
-//    }
-
-//    for (size_t a=0;a<ampCount;++a) {
-//     const Sample& s=t.amp[a];
-//     if (s.dataBP.size()<chnCount) {
-//      return setErr(err,QString("BV: Sample.dataBP.size()=%1 < chnCount=%2 at i=%3 amp=%4")
-//                         .arg((qulonglong)s.dataBP.size()).arg((qulonglong)chnCount)
-//                         .arg((qulonglong)i).arg((qulonglong)a));
-//     }
-//     for (size_t c=0;c<chnCount;++c) {
-//      bvBuf[k++]=s.dataBP[c];
-//     }
-
    bvBuf.resize(N*nChBV_expected);
 
    size_t k=0;
@@ -416,7 +387,6 @@ public:
                       "\r\n"
                       "[Marker Infos]\r\n"
                       "Mk1=New Segment,,1,1,0\r\n";
-
    m_markerCount=1;
    const QByteArray utf8=hdr.toUtf8();
    return writeAll(m_fdVmrk,utf8.constData(),size_t(utf8.size()),err,"write .vmrk header failed");
