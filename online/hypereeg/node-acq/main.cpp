@@ -26,8 +26,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  * alsa2 audio input device designated within the Octopus HyperEEG box,
  * in a syncronized fashion, synchronizes them altogether and streams to any
  * numer of connected clients via IP:commandPort:streamPort.
- * The settings are fetched by defaults from ~/.octopus-reel/hypereeg.conf
- * which is the common/single config file for all types of HyperEEG clients.
+ * In command line mode, the settings are fetched from ~/.octopus-reel/hypereeg.conf
+ * and in system service mode it is /etc/octopus/hypereeg.conf
+ * The config file is a common one with separate sections for different types of nodes.
  */
 
 #include <QCoreApplication>

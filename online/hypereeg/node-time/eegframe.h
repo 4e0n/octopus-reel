@@ -38,8 +38,11 @@ class EEGFrame : public QFrame {
    sweepBuffer=QImage(conf->sweepFrameW,conf->sweepFrameH,QImage::Format_RGB32);
 
    chnCount=conf->chns.size();
-   colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
-   chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   //colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
+   //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   chnPerCol=66;
+   colCount=std::ceil((float)(chnCount)/(float)(chnPerCol));
+
    chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }

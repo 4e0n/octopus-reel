@@ -137,17 +137,17 @@ class ConfParam : public QObject {
 
       const quint64 maxA=maxAvail;
       maxAvail=0;
-      qInfo().noquote()
-        << QString("<Producer> STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")
-            .arg(sps)
-            .arg(prodSamples)
-            .arg(prodBlocked)
-            .arg(headSnap)
-            .arg(tailSnap)
-            .arg(availSnap)
-            .arg((qulonglong)tcpS.offset)
-            .arg(QString::number(tcpS.MAGIC,16))
-            .arg(maxA);
+//      qInfo().noquote()
+//        << QString("<Producer> STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")
+//            .arg(sps)
+//            .arg(prodSamples)
+//            .arg(prodBlocked)
+//            .arg(headSnap)
+//            .arg(tailSnap)
+//            .arg(availSnap)
+//            .arg((qulonglong)tcpS.offset)
+//            .arg(QString::number(tcpS.MAGIC,16))
+//            .arg(maxA);
      }
     } else {
       prodDeserializeFail++;

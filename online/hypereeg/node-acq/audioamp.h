@@ -38,12 +38,17 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QString>
 #include <QDebug>
 
-//static constexpr auto AUDIO_DEV_NAME="octopus_uca202";
+#ifdef EEMAGINE
+static constexpr auto AUDIO_DEV_NAME="octopus_uca202";
+#else
 static constexpr auto AUDIO_DEV_NAME="default";
+#endif
 
 static constexpr unsigned AUDIO_SAMPLE_RATE=48000;
 static constexpr unsigned AUDIO_NUM_CHANNELS=2;    // L: Audio, R: Analog Trigger
 static constexpr unsigned AUDIO_CBUF_SECONDS=10;
+
+const float SWGAIN=2.0f; // Software Audio Gain (multiplier)
 
 static inline uint64_t now_ns() {
  using namespace std::chrono;
@@ -419,7 +424,7 @@ struct AudioAmp {
     const float L1=i16_to_f32(sampleChan(i0+1,0));
     dstN[n]=L0+float(f)*(L1-L0);
 
-    float swGain=20.0f;
+    float swGain=SWGAIN;
     dstN[n]*=swGain;
     dstN[n]=std::clamp(dstN[n],-1.0f,1.0f);
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import unquote
 
-BASE = Path("/opt/octopus/data/stor").resolve()
+BASE = Path("/opt/octopus/stor/heeg").resolve()
 ZIP_CMD = shutil.which("zip") or "/usr/bin/zip"
 HOST = "0.0.0.0"
 PORT = 8081

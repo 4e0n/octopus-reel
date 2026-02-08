@@ -5,26 +5,32 @@ After=network-online.target
 
 # If /opt is on a separate mount in your setup, keep this:
 RequiresMountsFor=/opt
+#After=local-fs.target
 
 [Service]
 Type=simple
 User=octopus
 Group=octopus
-WorkingDirectory=/opt/octopus
+
+# If we ever rely on relative paths
+#WorkingDirectory=/opt/octopus
 
 # Ensure base directory exists (node-stor will create the timestamp subdir itself)
-ExecStartPre=/usr/bin/install -d -o octopus -g octopus -m 0775 /opt/octopus/stor/heeg
+#ExecStartPre=/usr/bin/install -d -o octopus -g octopus -m 0775 /opt/octopus/stor/heeg
 
 # Start command (adjust args as you use them)
-ExecStart=/opt/octopus/bin/node-stor --config /etc/octopus/node-stor.conf
+ExecStart=/opt/octopus/bin/node-stor
 
+# Retry policy - keep trying forever every 30 seconds
 Restart=always
 RestartSec=30s
 StartLimitIntervalSec=0
 
+# Clean stop
 KillSignal=SIGTERM
 TimeoutStopSec=60s
 
+# journald logging
 StandardOutput=journal
 StandardError=journal
 

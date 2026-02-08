@@ -55,8 +55,11 @@ class EEGThread : public QThread {
    conf=c; ampNo=a; sweepBuffer=sb; trigger=0; threadActive=true;
 
    chnCount=conf->chns.size();
-   colCount=std::ceil((float)chnCount/(float)(33.));
-   chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   //colCount=std::ceil((float)chnCount/(float)(33.));
+   //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   chnPerCol=66;
+   colCount=std::ceil((float)(chnCount)/(float)(chnPerCol));
+
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); wX.append(colIdx*ww+1); }
    for (unsigned int colIdx=0;colIdx<colCount-1;colIdx++) wn.append((colIdx+1)*ww-1);
