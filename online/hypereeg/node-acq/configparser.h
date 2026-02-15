@@ -137,10 +137,9 @@ class ConfigParser {
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->acqIpAddr=acqHostInfo.addresses().first().toString();
-        conf->acqCommPort=opts2[1].toInt();
-	conf->acqStrmPort=opts2[2].toInt();
-        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65500)) || // Simple port validation
-            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65500))) {
+        conf->acqCommPort=opts2[1].toInt(); conf->acqStrmPort=opts2[2].toInt();
+        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
+            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
          qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }

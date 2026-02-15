@@ -30,14 +30,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cmath>
 #include "confparam.h"
 #include "../common/globals.h"
-#include "../common/tcpsample.h"
+#include "../common/tcpsample_pp.h"
 
 class TcpThread : public QThread {
  Q_OBJECT
  public:
   TcpThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
    conf=c;
-   tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
+   tcpEEG=TcpSamplePP(conf->ampCount,conf->physChnCount);
    tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer;
    eegChunk.resize(conf->eegSamplesInTick);
    conf->tcpBufTail=0;
@@ -51,7 +51,7 @@ class TcpThread : public QThread {
    while (!(conf->tcpBufHead-conf->tcpBufTail)) msleep(1); // Wait/ensure for at least one available sample
 
    // determine fixed serialized size once
-   TcpSample tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
+   TcpSamplePP tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
    const int sz=tmp.serialize().size();
 
    QByteArray packet; packet.reserve(4+N*sz);
@@ -82,7 +82,7 @@ class TcpThread : public QThread {
 //           << "tail0" << tail
 //           << "avail" << (conf->tcpEEGHead - conf->tcpBufTail)
 //           << "off0"  << eegChunk[0].offset
-//           << "eeg0"  << eegChunk[0].amp[0].data[0]
+//           << "eeg0"  << eegChunk[0].amp[0].dataBP[0]
 //           << "aud0"  << eegChunk[0].audioN[0];
 //}
 
@@ -94,7 +94,7 @@ class TcpThread : public QThread {
 //if (noww-t1>1000) { t1=noww;
 //  const auto &s = eegChunk[0];
 //  qDebug() << "[CONS] off" << s.offset << "mag" << QString::number(s.MAGIC,16)
-//           << "eeg0" << s.amp[0].data[0]
+//           << "eeg0" << s.amp[0].dataBP[0]
 //           << "aud0" << s.audioN[0];
 //}
 
@@ -122,8 +122,8 @@ class TcpThread : public QThread {
  private:
   ConfParam *conf;
 
-  TcpSample tcpEEG;
-  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
+  TcpSamplePP tcpEEG;
+  QVector<TcpSamplePP> *tcpBuffer; unsigned int tcpBufSize;
 
-  std::vector<TcpSample> eegChunk;
+  std::vector<TcpSamplePP> eegChunk;
 };

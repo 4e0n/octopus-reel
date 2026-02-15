@@ -23,22 +23,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <vector>
-#include <QDataStream>
+struct PPChnInfo {
+ unsigned int physChn; QString chnName;
+ unsigned int type; // 0:ref,1:bipolar,2:meta;
+ float topoTheta,topoPhi; unsigned int topoX,topoY;
+ QVector<unsigned int> interMode; // for each amp
+ QVector<unsigned int> interElec; // Neighboring electrodes
 
-struct Sample {
- std::vector<float> data; // Raw (non-filtered) amplifier data.
- unsigned int trigger=0,offset=0;
-
- void init(size_t chnCount) { trigger=0; offset=0; data.assign(chnCount,0.0f); }
-
- Sample(size_t chnCount=0) { init(chnCount); }
- 
- void serialize(QDataStream &out) const { for (float f:data) out<<f; }
-
- bool deserialize(QDataStream &in,size_t chnCount) {
-  data.resize(chnCount);
-  for (float &f:data) in>>f;
-  return true;
- }
+ // Involved channels
+ // Operation (avg,gfp,difference, etc.)
 };

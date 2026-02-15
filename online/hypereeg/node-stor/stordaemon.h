@@ -35,76 +35,98 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/tcp_commands.h"
-#include "confparam.h"
-#include "configparser.h"
+//#include "confparam.h"
 #include "recthread.h"
 
-const QString cfgPathX=confPath+"hypereeg.conf";
 const QString RECROOTDIR="/opt/octopus/stor/heeg";
 
 class StorDaemon: public QObject {
  Q_OBJECT
  public:
-  explicit StorDaemon(QObject *parent=nullptr) : QObject(parent) {
-   // We're client
-   conf.acqCommSocket=new QTcpSocket(this);
-   conf.acqCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-   conf.acqStrmSocket=new QTcpSocket(this);
-   conf.acqStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-   // We're server
-   connect(&storCommServer,&QTcpServer::newConnection,this,&StorDaemon::onNewCommClient);
-  }
+  explicit StorDaemon(QObject *parent=nullptr,ConfParam *c=nullptr) : QObject(parent) { conf=c; }
 
-  bool initialize() { QString cfgPath;
-   if (cfgPathX=="~") cfgPath=QDir::homePath();
-   if (cfgPathX.startsWith("~/")) cfgPath=QDir::homePath()+cfgPathX.mid(1);
-   if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
-    if (!cfp.parse(&conf)) {
+  bool start() { QString commResponse; QStringList sList,sList2;
 
-     // Constants or calculated global settings upon the ones read from config file
-     conf.tcpBuffer=QVector<TcpSample>(conf.tcpBufSize,TcpSample(conf.ampCount,conf.chnCount));
+   // We're client of node-acq
+   conf->acqCommSocket=new QTcpSocket(this);
+   conf->acqCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf->acqCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf->acqStrmSocket=new QTcpSocket(this);
+   conf->acqStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf->acqStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
 
-     qInfo() << "---------------------------------------------------------------";
-     qInfo() << "<ServerIP> is" << conf.acqIpAddr;
-     qInfo() << "<Comm> listening on ports (comm,strm):" << conf.acqCommPort << conf.acqStrmPort;
+   conf->acqCommSocket->connectToHost(conf->acqIpAddr,conf->acqCommPort); conf->acqCommSocket->waitForConnected();
 
-     // ---------------------------------------------------------------------------------------------------------------
-     if (!storCommServer.listen(QHostAddress::Any,conf.storCommPort)) {
-      qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf.storCommPort;
-      return true;
-     }
-     qInfo() << "<Comm> listening on port" << conf.storCommPort;
-     // ---------------------------------------------------------------------------------------------------------------
 
-     // Setup data socket -- only safe after handshake and receiving crucial info about streaming
-     connect(conf.acqStrmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady); // TCP handler for instream
+   // Get crucial info from the "master" node we connect to
+   commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
+   if (!commResponse.isEmpty()) qInfo() << "<GetConfFromAcqDaemon> Reply:" << commResponse;
+   else qCritical() << "<GetConfFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
+   sList=commResponse.split(",");
+   conf->ampCount=sList[0].toInt(); // (ACTUAL) AMPCOUNT
+   conf->eegRate=sList[1].toInt();  // EEG SAMPLERATE
+   conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
+   conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
+   conf->refChnCount=sList[2].toInt();
+   conf->bipChnCount=sList[3].toInt();
+   //conf->physChnCount=sList[4].toInt();
+   //conf->totalChnCount=sList[5].toInt();
+   //conf->totalCount=sList[6].toInt();
+   conf->refGain=sList[7].toFloat();
+   conf->bipGain=sList[8].toFloat();
+   conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
 
-     // Connect for streaming data -- only safe after handshake and receiving crucial info about streaming
-     conf.acqStrmSocket->connectToHost(conf.acqIpAddr,conf.acqStrmPort); conf.acqStrmSocket->waitForConnected();
+   // CHANNELS
+   commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
+   if (!commResponse.isEmpty()) qInfo() << "<GetChannelListFromAcqDaemon> ChannelList received."; // << commResponse;
+   else qCritical() << "<GetChannelListFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
+   sList=commResponse.split("\n"); StorChnInfo chn;
 
-     // Threads should be here
-     recThread=new RecThread(&conf,this);
-     recThread->start(QThread::HighestPriority);
+   for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
+    sList2=sList[chnIdx].split(",");
+    chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
+    chn.type=(bool)sList2[6].toInt();
+    conf->chns.append(chn);
+   }
+   conf->chnCount=conf->chns.size();
 
-     return false;
-    } else {
-     qWarning() << "<Config> The config file" << cfgPath << "is corrupt!";
-     return true;
-    }
-   } else {
-    qWarning() << "<Config> The config file" << cfgPath << "does not exist!";
+   // Constants or calculated global settings upon the ones read from config file
+   conf->tcpBuffer=QVector<TcpSample>(conf->tcpBufSize,TcpSample(conf->ampCount,conf->chnCount));
+
+   if (!conf->storCommServer.listen(QHostAddress::Any,conf->storCommPort)) {
+    qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf->storCommPort;
     return true;
    }
+
+   //for (int idx=0;idx<conf->chns.size();idx++) {
+   // QString x="";
+   // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chns[idx].interMode[j])+",");
+   // qCritical() << x.toUtf8();
+   //}
+
+   // We're server
+   connect(&(conf->storCommServer),&QTcpServer::newConnection,this,&StorDaemon::onNewCommClient);
+
+   // Setup data socket -- only safe after handshake and receiving crucial info about streaming
+   connect(conf->acqStrmSocket,&QTcpSocket::readyRead,conf,&ConfParam::onStrmDataReady); // TCP handler for instream
+
+   // Connect for streaming data -- only safe after handshake and receiving crucial info about streaming
+   conf->acqStrmSocket->connectToHost(conf->acqIpAddr,conf->acqStrmPort); conf->acqStrmSocket->waitForConnected();
+
+   // Threads should be here
+   recThread=new RecThread(conf,this);
+   recThread->start(QThread::HighestPriority);
+
+   return false;
   }
 
-  ConfParam conf;
+  ConfParam *conf;
 
  private slots:
   void onNewCommClient() {
-   while (storCommServer.hasPendingConnections()) {
-    QTcpSocket *client=storCommServer.nextPendingConnection();
+   while (conf->storCommServer.hasPendingConnections()) {
+    QTcpSocket *client=conf->storCommServer.nextPendingConnection();
     //client->setSocketOption(QAbstractSocket::LowDelayOption,1);
     //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
     connect(client,&QTcpSocket::readyRead,this,[this,client]() {
@@ -152,5 +174,5 @@ class StorDaemon: public QObject {
   }
 
  private:
-  QTcpServer storCommServer; RecThread *recThread;
+  RecThread *recThread;
 };

@@ -33,6 +33,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include <QVector>
 #include <QDateTime>
+#include <QTcpServer>
 #include "storchninfo.h"
 #include "../common/tcpsample.h"
 
@@ -66,6 +67,8 @@ class ConfParam : public QObject {
 
   QFile hEEGFile; QDataStream hEEGStream; QString rHour,rMin,rSec;
 
+  QTcpServer storCommServer;
+
  public slots:
   void onStrmDataReady() {
    static quint64 prodBlocks=0;
@@ -74,7 +77,7 @@ class ConfParam : public QObject {
    static quint64 prodBlocked=0;
    static qint64 lastBlockLogMs=0;
    static qint64 lastLogMs=0;
-   static quint64 lastSamples=0;
+   //static quint64 lastSamples=0;
    static QByteArray buffer;
    static quint64 maxAvail=0;
    buffer.append(acqStrmSocket->readAll());
@@ -123,19 +126,20 @@ class ConfParam : public QObject {
 
      const qint64 now=QDateTime::currentMSecsSinceEpoch();
      if (now-lastLogMs >= 1000) {
-      const quint64 sps=prodSamples-lastSamples;
-      lastSamples=prodSamples;
+//      const quint64 sps=prodSamples-lastSamples;
+      //lastSamples=prodSamples;
       lastLogMs=now;
 
-      quint64 headSnap=0,tailSnap=0,availSnap=0;
-      {
-       QMutexLocker locker(&mutex);
-       headSnap=tcpBufHead;
-       tailSnap=tcpBufTail;
-       availSnap=headSnap-tailSnap;
-      }
+      //quint64 headSnap=0,tailSnap;
+      //availSnap=0;
+      //{
+      // QMutexLocker locker(&mutex);
+      // headSnap=tcpBufHead;
+      // tailSnap=tcpBufTail;
+      // availSnap=headSnap-tailSnap;
+      //}
 
-      const quint64 maxA=maxAvail;
+      //const quint64 maxA=maxAvail;
       maxAvail=0;
 //      qInfo().noquote()
 //        << QString("<Producer> STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")

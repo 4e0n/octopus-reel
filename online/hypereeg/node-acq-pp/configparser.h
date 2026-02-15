@@ -30,7 +30,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/tcp_commands.h"
 
 const int MAX_LINE_SIZE=160; // chars
-const QString NODE_TEXT="STOR";
+const QString NODE_TEXT="ACQPP";
 
 class ConfigParser {
  public:
@@ -87,8 +87,7 @@ class ConfigParser {
        if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->acqIpAddr=acqHostInfo.addresses().first().toString();
-        conf->acqCommPort=opts2[1].toInt();
-        conf->acqStrmPort=opts2[2].toInt();
+        conf->acqCommPort=opts2[1].toInt(); conf->acqStrmPort=opts2[2].toInt();
         if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
             (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
          qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) hostname/IP/port settings!";
@@ -98,13 +97,14 @@ class ConfigParser {
         qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) count of NET|IN params!";
         return true;
        }
-      } else if (opts[0].trimmed()=="STOR") {
+      } else if (opts[0].trimmed()=="ACQPP") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==2) {
+       if (opts2.size()==3) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->storIpAddr=acqHostInfo.addresses().first().toString();
-        conf->storCommPort=opts2[1].toInt();
-        if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65999))) { // Simple port validation
+        conf->acqppIpAddr=acqHostInfo.addresses().first().toString();
+        conf->acqppCommPort=opts2[1].toInt(); conf->acqppStrmPort=opts2[2].toInt();
+        if ((!(conf->acqppCommPort >= 65000 && conf->acqppCommPort < 65999)) || // Simple port validation
+            (!(conf->acqppStrmPort >= 65000 && conf->acqppStrmPort < 65999))) {
          qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }

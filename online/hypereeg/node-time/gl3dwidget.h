@@ -318,7 +318,7 @@ class GL3DWidget : public QGLWidget {
   }
 
   void electrodeAvg(int chn,int idx,float r,float th,float ph,float eR) { float elecR,zPt,c,m;
-   QVector<QVector<float>> *evts=&(conf->chns[chn].avgData[ampNo]); //int sz=data->size();
+   QVector<QVector<float>> *evts=&(conf->chnInfo[chn].avgData[ampNo]); //int sz=data->size();
 //   QColor evtColor=conf->acqEvents[idx]->color;
    //qDebug() << chn << idx << r << th << ph << eR << sz;
    //    for (int t=0;t<sz;t++)
@@ -385,13 +385,13 @@ class GL3DWidget : public QGLWidget {
    GLuint list=glGenLists(4);
    glNewList(list,GL_COMPILE);
     glEnable(GL_BLEND);
-    for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
+    for (int chnIdx=0;chnIdx<conf->chnInfo.size();chnIdx++) {
      r=ELECTRODE_RADIUS; h=ELECTRODE_HEIGHT;
      if (chnIdx==conf->headModel[ampNo].currentElectrode) { r=r*3; qglColor(QColor(255,255,255,144)); } // Hilite
-     else qglColor(conf->chns[chnIdx].cmColor);
+     else qglColor(conf->chnInfo[chnIdx].cmColor);
      //if (ampNo==0)
-     // qDebug() << conf->headModel[ampNo].scalpParamR << conf->chns[chnIdx].param.y << conf->chns[chnIdx].param.z << r << h;
-     electrode(conf->headModel[ampNo].scalpParamR,conf->chns[chnIdx].param.y,conf->chns[chnIdx].param.z,r,h); // theta,phi
+     // qDebug() << conf->headModel[ampNo].scalpParamR << conf->chnInfo[chnIdx].param.y << conf->chnInfo[chnIdx].param.z << r << h;
+     electrode(conf->headModel[ampNo].scalpParamR,conf->chnInfo[chnIdx].param.y,conf->chnInfo[chnIdx].param.z,r,h); // theta,phi
     } glDisable(GL_BLEND);
    glEndList(); return list;
   }
@@ -407,26 +407,26 @@ class GL3DWidget : public QGLWidget {
       if (gizIdx==conf->headModel[ampNo].currentGizmo) qglColor(QColor(255,0,0,96));
       else qglColor(QColor(0,0,255,96)); // Hilite (red) vs. Red or blue - default cap color
       for (int triIdx=0;triIdx<conf->glGizmo[gizIdx].tri.size();triIdx++) { v0=v1=v2=0;
-       for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
-        if (conf->chns[chnIdx].type==0) {
-         if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][0]) v0=chnIdx;
-         if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][1]) v1=chnIdx;
-         if (conf->chns[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][2]) v2=chnIdx;
+       for (int chnIdx=0;chnIdx<conf->chnInfo.size();chnIdx++) {
+        if (conf->chnInfo[chnIdx].type==0) {
+         if (conf->chnInfo[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][0]) v0=chnIdx;
+         if (conf->chnInfo[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][1]) v1=chnIdx;
+         if (conf->chnInfo[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][2]) v2=chnIdx;
 	}
        }
        //qDebug() << gizIdx << "(" << v0 << "," << v1 << "," << v2 << ")";
        if (conf->headModel[ampNo].gizmoOnReal) {
         // Realistic Head
-        v0c0S=conf->chns[v0].real[0]; v0c1S=conf->chns[v0].real[1]; v0c2S=conf->chns[v0].real[2];
-        v1c0S=conf->chns[v1].real[0]; v1c1S=conf->chns[v1].real[1]; v1c2S=conf->chns[v1].real[2];
-        v2c0S=conf->chns[v2].real[0]; v2c1S=conf->chns[v2].real[1]; v2c2S=conf->chns[v2].real[2];
+        v0c0S=conf->chnInfo[v0].real[0]; v0c1S=conf->chnInfo[v0].real[1]; v0c2S=conf->chnInfo[v0].real[2];
+        v1c0S=conf->chnInfo[v1].real[0]; v1c1S=conf->chnInfo[v1].real[1]; v1c2S=conf->chnInfo[v1].real[2];
+        v2c0S=conf->chnInfo[v2].real[0]; v2c1S=conf->chnInfo[v2].real[1]; v2c2S=conf->chnInfo[v2].real[2];
         glVertex3f(v0c0S,v0c1S,v0c2S); glVertex3f(v1c0S,v1c1S,v1c2S); glVertex3f(v2c0S,v2c1S,v2c2S);
        } else {
         // Parametric Head
         v0c0S=v1c0S=v2c0S=conf->headModel[ampNo].scalpParamR;
-        v0c1S=conf->chns[v0].param.y; v0c2S=conf->chns[v0].param.z; // theta,phi
-        v1c1S=conf->chns[v1].param.y; v1c2S=conf->chns[v1].param.z;
-        v2c1S=conf->chns[v2].param.y; v2c2S=conf->chns[v2].param.z;
+        v0c1S=conf->chnInfo[v0].param.y; v0c2S=conf->chnInfo[v0].param.z; // theta,phi
+        v1c1S=conf->chnInfo[v1].param.y; v1c2S=conf->chnInfo[v1].param.z;
+        v2c1S=conf->chnInfo[v2].param.y; v2c2S=conf->chnInfo[v2].param.z;
         v0c0C=v0c0S*cos(2.*M_PI*v0c2S/360.)*sin(2.*M_PI*v0c1S/360.);
         v0c1C=v0c0S*sin(2.*M_PI*v0c2S/360.)*sin(2.*M_PI*v0c1S/360.); v0c2C=v0c0S*cos(2.*M_PI*v0c1S/360.);
         v1c0C=v1c0S*cos(2.*M_PI*v1c2S/360.)*sin(2.*M_PI*v1c1S/360.);

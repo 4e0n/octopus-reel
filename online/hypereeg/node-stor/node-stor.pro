@@ -37,9 +37,7 @@ HEADERS += stordaemon.h \
            configparser.h \
            confparam.h \
            storchninfo.h \
+           ../common/messagehandler.h \
            ../common/tcp_commands.h
-#           ../../../common/event.h \
-#           ../../../common/vec3.h \
-#           ../../../common/coord3d.h
 SOURCES += main.cpp
 CONFIG += c++17

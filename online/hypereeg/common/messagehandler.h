@@ -23,22 +23,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <vector>
-#include <QDataStream>
-
-struct Sample {
- std::vector<float> data; // Raw (non-filtered) amplifier data.
- unsigned int trigger=0,offset=0;
-
- void init(size_t chnCount) { trigger=0; offset=0; data.assign(chnCount,0.0f); }
-
- Sample(size_t chnCount=0) { init(chnCount); }
- 
- void serialize(QDataStream &out) const { for (float f:data) out<<f; }
-
- bool deserialize(QDataStream &in,size_t chnCount) {
-  data.resize(chnCount);
-  for (float &f:data) in>>f;
-  return true;
+static void qtMessageHandler(QtMsgType type,const QMessageLogContext&,const QString& msg) {
+ const char* level="INFO";
+ switch (type) {
+  case QtDebugMsg:    level="DEBUG"; break;
+  case QtInfoMsg:     level="INFO";  break;
+  case QtWarningMsg:  level="WARN";  break;
+  case QtCriticalMsg: level="ERROR"; break;
+  case QtFatalMsg:    level="FATAL"; break;
  }
-};
+ const QByteArray timestamp=QDateTime::currentDateTime().toString(Qt::ISODateWithMs).toUtf8();
+ fprintf(stderr,"%s [%s] %s\n",timestamp.constData(),level,msg.toUtf8().constData());
+ if (type==QtFatalMsg) { abort(); }
+}

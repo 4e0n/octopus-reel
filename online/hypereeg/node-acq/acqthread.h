@@ -52,10 +52,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/tcpsample.h"
 #include "serialdevice.h"
 #include "eeamp.h"
-
-#ifdef AUDIODEV
 #include "audioamp.h"
-#endif
 
 const int CBUF_SIZE_IN_SECS=10;
 
@@ -101,53 +98,9 @@ class AcqThread : public QThread {
     // First compute for raw and notch filtered version separately
     #pragma omp parallel for schedule(static) if(eegCh>=8)
     for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-     auto &notch=ee.filterListN[chnIdx];
-     for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
-      float xR=ee.buf.getSample(chnIdx,smpIdx); // Raw data
-      //float xN=xR; // no pre-notch applied
-      float xN=notch.filterSample(xR); // pre-notch applied
-      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
-      dst.dataR[chnIdx]=xR; dst.dataN[chnIdx]=xN;
-     }
-    }
-
-    // Retouch it for interpolated and switched-off electrodes,
-    // As the interpolated channels are potentially sparse in number, this part, currently traversing all,
-    // will be converted to a specific/to-the-point list of interpolated channels.
-    {
-     QMutexLocker locker(&conf->chnInterMutex);
-     for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
-       auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
-       // Interpolation
-       float xN=dst.dataN[chnIdx];
-       unsigned int interMode=conf->chnInfo[chnIdx].interMode[ee.id];
-       if (interMode==2) { xN=0.;
-        int eSz=conf->chnInfo[chnIdx].interElec.size();
-        for (int idx=0;idx<eSz;idx++) xN+=dst.dataN[ conf->chnInfo[chnIdx].interElec[idx] ];
-        dst.dataN[chnIdx]=xN/(float)(eSz);
-       } else if (interMode==0) {
-        xN=0.; dst.dataN[chnIdx]=xN;
-       }
-      }
-     }
-    }
-
-    // Then compute 2-40 Hz and delta,theta,alpha,beta,gamma bands from the notch filtered version
-    #pragma omp parallel for schedule(static) if(eegCh>=8)
-    for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-     auto &bp=ee.filterListBP[chnIdx];
-     auto &delta=ee.filterListD[chnIdx]; auto &theta=ee.filterListT[chnIdx];
-     auto &alpha=ee.filterListA[chnIdx]; auto &beta=ee.filterListB[chnIdx]; auto &gamma=ee.filterListG[chnIdx];
      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
       auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
-      float xN=dst.dataN[chnIdx]; float xBP=bp.filterSample(xN);
-      //float c=std::abs(x*x-xN*xN)*1e10f;
-      float xD=delta.filterSample(xN); float xT=theta.filterSample(xN);
-      float xA=alpha.filterSample(xN); float xB=beta.filterSample(xN); float xG=gamma.filterSample(xN);
-      dst.dataBP[chnIdx]=xBP;
-      dst.dataD[chnIdx]=xD; dst.dataT[chnIdx]=xT;
-      dst.dataA[chnIdx]=xA; dst.dataB[chnIdx]=xB; dst.dataG[chnIdx]=xG;
+      dst.data[chnIdx]=ee.buf.getSample(chnIdx,smpIdx); // Raw data
      }
     }
 
@@ -188,9 +141,7 @@ class AcqThread : public QThread {
 
    // --- Initial setup ---
 
-#ifdef AUDIODEV
    audioAmp->start();
-#endif
 
    // Construct main EE structure
    quint64 rMask,bMask; // Create channel selection masks -- subsequent channels assumed..
@@ -258,7 +209,7 @@ class AcqThread : public QThread {
     }
 
     quint64 tcpDataSize=cBufPivot-cBufPivotPrev;
-#ifdef AUDIODEV
+
     audioN.resize(tcpDataSize);
     for (quint64 tcpDataIdx=0;tcpDataIdx<tcpDataSize;tcpDataIdx++) {
      audioN[tcpDataIdx].resize(AUDIO_N);
@@ -269,7 +220,6 @@ class AcqThread : public QThread {
      // sample.audioTrigger = -1;
      //}
     }
-#endif
 
     // ===================================================================================================================
 
@@ -320,9 +270,7 @@ class AcqThread : public QThread {
 //       }
 //      }
 
-#ifdef AUDIODEV
       for (int smpIdx=0;smpIdx<AUDIO_N;smpIdx++) tcpEEG.audioN[smpIdx]=audioN[tcpDataIdx][smpIdx];
-#endif
 
       tcpEEG.offset=counter0; counter0++;
 
@@ -349,7 +297,7 @@ class AcqThread : public QThread {
       //if (now-t0>1000) { t0=now;
       // const auto &s = tcpEEG;
       // qInfo() << "[PROD] off" << s.offset << "mag" << QString::number(s.MAGIC,16)
-      //         << "eeg0" << s.amp[0].dataBP[0]
+      //         << "eeg0" << s.amp[0].data[0]
       //         << "aud0" << s.audioN[0];
       //}
 
@@ -358,8 +306,6 @@ class AcqThread : public QThread {
     }
 
     cBufPivotPrev=cBufPivot;
-
-    //chnCount=conf->physChnCount;
 
 #ifndef EEMAGINE
     msleep(conf->eegProbeMsecs);
@@ -404,8 +350,6 @@ class AcqThread : public QThread {
 
   // --- Hardware pointers -- coming from the sky
   std::vector<amplifier*> *eeAmpsOrig;
-#ifdef AUDIODEV
   AudioAmp *audioAmp;
-#endif
   SerialDevice *serDev;
 };

@@ -64,31 +64,42 @@ class AmpWindow : public QMainWindow {
 
    // *** Channels & Interpolation
    chnWidget=new QWidget(mainTabWidget); chnWidget->setGeometry(2,2,tabW-4,tabH-4); 
-   unsigned int chnIdx,topoX,topoY,tXmax=0,tYmax=0,a,y,sz; QString chnName; //unsigned int tXmax=0,tYmax=0;
-   for (int chnIdx=0;chnIdx<conf->chns.size();chnIdx++) {
-    tXmax<conf->chns[chnIdx].topoX ? tXmax=conf->chns[chnIdx].topoX : tXmax;
-    tYmax<conf->chns[chnIdx].topoY ? tYmax=conf->chns[chnIdx].topoY : tYmax;
+
+   float w=(float)(chnWidget->width()); float h=(float)(chnWidget->height());
+
+   unsigned tXmax=0,tYmax=0;
+   for (int chnIdx=0;chnIdx<conf->chnInfo.size();chnIdx++) {
+    tXmax<conf->chnInfo[chnIdx].topoX ? tXmax=conf->chnInfo[chnIdx].topoX : tXmax;
+    tYmax<conf->chnInfo[chnIdx].topoY ? tYmax=conf->chnInfo[chnIdx].topoY : tYmax;
    }
+
+   float aspect=0.95f; float cellSize=w/(float)(tXmax); int buttonSize=(int)(aspect*cellSize);
+   unsigned int sz=(unsigned int)(cellSize*aspect); // guiCellSize
    float cf=(float)(tXmax)/((float)(tXmax)+1.); // Aspect ratio multiplier
-   a=tabH/(float)tXmax; sz=a*((float)(5.)/6.); // guiCellSize
    QRect mRect(0,0,sz*cf,sz*cf); QRegion mRegion(mRect,QRegion::Ellipse);
-   int xOff=tabW/2-a*(tXmax/2)*cf-a*cf/2.; // Leftmost vertical line
+
+   QString chnName; unsigned int chnIdx=0,topoX=0,topoY=0,yOffset=0;
    chnBG=new QButtonGroup(); chnBG->setExclusive(false);
-   for (int btnIdx=0;btnIdx<conf->chns.size();btnIdx++) { // Chns Interpolation
-    chnIdx=conf->chns[btnIdx].physChn; chnName=conf->chns[btnIdx].chnName;
-    topoX=conf->chns[btnIdx].topoX; topoY=conf->chns[btnIdx].topoY;
-    y=(a/2)*cf;
-    if (topoY>1) y+=a/2;
-    if (topoY>10) y+=a/2;
-    QRect cr(xOff+a*(topoX-1)*cf,y+a*(topoY-1)*cf,sz*cf,sz*cf);
+   for (int btnIdx=0;btnIdx<conf->chnInfo.size();btnIdx++) {
+    chnIdx=conf->chnInfo[btnIdx].physChn; chnName=conf->chnInfo[btnIdx].chnName;
+    topoX=conf->chnInfo[btnIdx].topoX; topoY=conf->chnInfo[btnIdx].topoY;
+    yOffset=(cellSize/2)*cf;
+    if (topoY>1) yOffset+=cellSize/2;
+    if (topoY>10) yOffset+=cellSize/2;
+    QRect cr(cellSize/2-buttonSize/2+cellSize*(topoX-1),
+             cellSize/2-buttonSize/2+cellSize*(topoY-1)+yOffset,buttonSize,buttonSize);
     dummyButton=new QPushButton(chnWidget); dummyButton->setCheckable(true);
     dummyButton->setText(QString::number(chnIdx)+"\n"+chnName);
+    QFont f=dummyButton->font(); f.setPointSize(qMax(8,buttonSize/5)); // tune
+    f.setBold(true); dummyButton->setFont(f);
+    dummyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    dummyButton->setFocusPolicy(Qt::NoFocus);
     dummyButton->setGeometry(cr); dummyButton->setMask(mRegion);
-    dummyButton->setStyleSheet("QPushButton { background-color: white; }"
-                               "QPushButton { color: black; }"
-                               "QPushButton:checked { background-color: yellow; }"
-                               "QPushButton:checked { color: black; }");
-    dummyButton->setChecked((bool)conf->chns[btnIdx].interMode[ampNo]);
+    dummyButton->setStyleSheet("QPushButton { background-color: white; color: black;"
+                               " padding: 0px; margin: 0px; text-align: center; }"
+                               "QPushButton:checked { background-color: yellow;"
+                               " color: black; }");
+    dummyButton->setChecked((bool)conf->chnInfo[btnIdx].interMode[ampNo]);
     chnBG->addButton(dummyButton,btnIdx);
    }
    connect(chnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotChnInter(int)));
@@ -225,30 +236,30 @@ class AmpWindow : public QMainWindow {
   void slotEEGAmp(int x) { conf->eegAmpX[ampNo]=conf->eegAmpRange[x]; }
 
   void slotChnInter(int x) { //QPushButton *b=(QPushButton *)chnBG->button(x);
-   conf->chns[x].interMode[ampNo]++; conf->chns[x].interMode[ampNo]%=3; // 0-> View disabled 1-> Normal View 2-> Sp.Interpolation
+   conf->chnInfo[x].interMode[ampNo]++; conf->chnInfo[x].interMode[ampNo]%=3; // 0-> View disabled 1-> Normal View 2-> Sp.Interpolation
 
    QString cmd=CMD_ACQ_COMPCHAN+"=";
    cmd.append(QString::number(ampNo+1)+",");
-   cmd.append(QString::number(conf->chns[x].type)+",");
-   cmd.append(QString::number(conf->chns[x].physChn)+",");
-   cmd.append(QString::number(conf->chns[x].interMode[ampNo]));
+   cmd.append(QString::number(conf->chnInfo[x].type)+",");
+   cmd.append(QString::number(conf->chnInfo[x].physChn)+",");
+   cmd.append(QString::number(conf->chnInfo[x].interMode[ampNo]));
    QString commResponse=conf->commandToDaemon(conf->acqCommSocket,cmd.toUtf8());
    QStringList sList=commResponse.split(",");
    //qDebug() << commResponse;
    // Imprint commResponse to current state
-   for (int idx=0;idx<conf->chns.size();idx++) {
-    conf->chns[idx].interMode[ampNo]=sList[idx].toInt();
+   for (int idx=0;idx<conf->chnInfo.size();idx++) {
+    conf->chnInfo[idx].interMode[ampNo]=sList[idx].toInt();
 
     QPushButton *b=(QPushButton *)chnBG->button(idx);
-    if (conf->chns[idx].interMode[ampNo]==0) {
+    if (conf->chnInfo[idx].interMode[ampNo]==0) {
      b->setStyleSheet("QPushButton { background-color: white; }"
                       "QPushButton { color: black; }");
      b->setChecked(false);
-    } else if (conf->chns[idx].interMode[ampNo]==1) {
+    } else if (conf->chnInfo[idx].interMode[ampNo]==1) {
      b->setStyleSheet("QPushButton:checked { background-color: yellow; }"
                       "QPushButton:checked { color: black; }");
      b->setChecked(true);
-    } else if (conf->chns[idx].interMode[ampNo]==2) {
+    } else if (conf->chnInfo[idx].interMode[ampNo]==2) {
      b->setStyleSheet("QPushButton:checked { background-color: red; }"
                       "QPushButton:checked { color: white; }");
      b->setChecked(true);

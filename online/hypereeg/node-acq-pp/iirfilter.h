@@ -22,23 +22,29 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 #pragma once
-
 #include <vector>
-#include <QDataStream>
 
-struct Sample {
- std::vector<float> data; // Raw (non-filtered) amplifier data.
- unsigned int trigger=0,offset=0;
+// Direct Form II Transposed Single-Sample IIR Filter Class
+class IIRFilter {
+public:
+ IIRFilter(const std::vector<double>& bCoeffs,const std::vector<double>& aCoeffs)
+           : b(bCoeffs),a(aCoeffs),order(aCoeffs.size()-1),w(order,0.0f) {}
+ double filterSample(double x) {
+  double wn=x;
+  for (size_t i=0;i<order;++i) wn-=a[i+1]*w[i];
+  wn/=a[0];
 
- void init(size_t chnCount) { trigger=0; offset=0; data.assign(chnCount,0.0f); }
+  double yn=b[0]*wn;
+  for (size_t i=0;i<order;++i) yn+=b[i+1]*w[i];
 
- Sample(size_t chnCount=0) { init(chnCount); }
- 
- void serialize(QDataStream &out) const { for (float f:data) out<<f; }
+  for (size_t i=order-1;i>0;--i) w[i]=w[i-1];
+  w[0]=wn;
 
- bool deserialize(QDataStream &in,size_t chnCount) {
-  data.resize(chnCount);
-  for (float &f:data) in>>f;
-  return true;
+  return yn;
  }
+
+private:
+ std::vector<double> b,a;
+ size_t order;
+ std::vector<double> w;
 };

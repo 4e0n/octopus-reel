@@ -54,7 +54,7 @@ class EEGThread : public QThread {
   explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,QObject *parent=nullptr) : QThread(parent) {
    conf=c; ampNo=a; sweepBuffer=sb; trigger=0; threadActive=true;
 
-   chnCount=conf->chns.size();
+   chnCount=conf->chnInfo.size();
    //colCount=std::ceil((float)chnCount/(float)(33.));
    //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
    chnPerCol=66;
@@ -117,11 +117,11 @@ class EEGThread : public QThread {
       switch (conf->eegBand) {
        default:
        case 0: x=s.amp[ampNo].dataBP[chnIndex]; break;
-       case 1: x=s.amp[ampNo].dataD[chnIndex]; break;
-       case 2: x=s.amp[ampNo].dataT[chnIndex]; break;
-       case 3: x=s.amp[ampNo].dataA[chnIndex]; break;
-       case 4: x=s.amp[ampNo].dataB[chnIndex]; break;
-       case 5: x=s.amp[ampNo].dataG[chnIndex]; break;
+       //case 1: x=s.amp[ampNo].dataD[chnIndex]; break;
+       //case 2: x=s.amp[ampNo].dataT[chnIndex]; break;
+       //case 3: x=s.amp[ampNo].dataA[chnIndex]; break;
+       //case 4: x=s.amp[ampNo].dataB[chnIndex]; break;
+       //case 5: x=s.amp[ampNo].dataG[chnIndex]; break;
       }
       if (s.trigger>0) trigger=s.trigger;
       sum+=x; sumSq+=double(x)*double(x);
@@ -139,19 +139,6 @@ class EEGThread : public QThread {
    sweepPainter.begin(sweepBuffer);
     sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    if (conf->eegSweepMode) { // Scroll contents left by scrUpdateCount pixels
-     //for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-     // sweepBuffer->scroll(-scrUpdateCount,0,sweepBuffer->rect()); // Scroll contents left by scrUpdateCount pixels
-     // wX[colIdx]=wn[colIdx]-scrUpdateCount; // Draw new segment on right
-     //}
-    } else { // SweepMode: draw on moving cursor
-     //for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-     // //if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen
-//
-//
-//     }
-;   }
-
     for (unsigned int smpIdx=0;smpIdx<scrUpdateCount-1;smpIdx++) {
      std::vector<float> s0(chnCount); std::vector<float> s0s(chnCount);
      std::vector<float> s1(chnCount); std::vector<float> s1s(chnCount);
@@ -159,7 +146,7 @@ class EEGThread : public QThread {
      mean((smpIdx+0)*scrUpdateSmp,&s0,&s0s); mean((smpIdx+1)*scrUpdateSmp,&s1,&s1s);
      meanf((smpIdx+0)*scrUpdateSmp,&sA0,&sA0s); meanf((smpIdx+1)*scrUpdateSmp,&sA1,&sA1s);
 
-     TcpSample tcpS=(*tcpBuffer)[(conf->tcpBufTail+smpIdx)%conf->tcpBufSize];
+     TcpSamplePP tcpS=(*tcpBuffer)[(conf->tcpBufTail+smpIdx)%conf->tcpBufSize];
 
 //     if (tcpS.offset%1000==0) {
 //      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
@@ -303,7 +290,7 @@ class EEGThread : public QThread {
  private:
   ConfParam *conf; unsigned int ampNo; QImage *sweepBuffer; QVector<int> w0,wn,wX;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
-  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize,scrAvailSmp;
+  QVector<TcpSamplePP> *tcpBuffer; unsigned int tcpBufSize,scrAvailSmp;
   bool threadActive;
 
   QFont chnFont,evtFont; QImage rBuffer,rBufferC; QTransform rTransform;

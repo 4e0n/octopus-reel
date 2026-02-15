@@ -30,7 +30,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QVector>
 #include "../common/version.h"
 #include "../common/globals.h"
-#include "../common/tcpsample.h"
+#include "../common/tcpsample_pp.h"
 #include "../common/tcp_commands.h"
 #include "confparam.h"
 #include "configparser.h"
@@ -58,8 +58,8 @@ class GUIClient: public QObject {
    conf.storCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
    conf.storCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
    // Downstream (we're server)
-   connect(&commServer,&QTcpServer::newConnection,this,&GUIClient::onNewCommClient);
-   connect(&strmServer,&QTcpServer::newConnection,this,&GUIClient::onNewStrmClient);
+   //connect(&commServer,&QTcpServer::newConnection,this,&GUIClient::onNewCommClient);
+   //connect(&strmServer,&QTcpServer::newConnection,this,&GUIClient::onNewStrmClient);
   }
 
   bool initialize() { QString cfgPath;
@@ -78,16 +78,16 @@ class GUIClient: public QObject {
      qInfo() << "node-time: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
 
      // ---------------------------------------------------------------------------------------------------------------
-     if (!commServer.listen(QHostAddress::Any,conf.timeCommPort)) {
-      qCritical() << "node-time: Cannot start TCP server on <Comm> port:" << conf.timeCommPort;
-      return true;
-     }
-     qInfo() << "node-time: <Comm> listening on port" << conf.timeCommPort;
-     if (!strmServer.listen(QHostAddress::Any,conf.timeStrmPort)) {
-      qCritical() << "node-time: Cannot start TCP server on <Strm> port:" << conf.timeStrmPort;
-      return true;
-     }
-     qInfo() << "node-time: <Strm> listening on port" << conf.timeStrmPort;
+     //if (!commServer.listen(QHostAddress::Any,conf.timeCommPort)) {
+     // qCritical() << "node-time: Cannot start TCP server on <Comm> port:" << conf.timeCommPort;
+     // return true;
+     //}
+     //qInfo() << "node-time: <Comm> listening on port" << conf.timeCommPort;
+     //if (!strmServer.listen(QHostAddress::Any,conf.timeStrmPort)) {
+     // qCritical() << "node-time: Cannot start TCP server on <Strm> port:" << conf.timeStrmPort;
+     // return true;
+     //}
+     //qInfo() << "node-time: <Strm> listening on port" << conf.timeStrmPort;
      // ---------------------------------------------------------------------------------------------------------------
 
      controlWindow=new ControlWindow(&conf); controlWindow->show(); // Control Window
@@ -114,45 +114,45 @@ class GUIClient: public QObject {
 
   ConfParam conf;
 
- private slots:
-  void onNewCommClient() {
-   while (commServer.hasPendingConnections()) {
-    QTcpSocket *client=commServer.nextPendingConnection();
-    //client->setSocketOption(QAbstractSocket::LowDelayOption,1);
-    //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-    connect(client,&QTcpSocket::readyRead,this,[this,client]() {
-     QByteArray cmd=client->readAll().trimmed();
-     handleCommand(QString::fromUtf8(cmd),client);
-    });
-    connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
-    qInfo() << "node-time: <Comm> Client connected from" << client->peerAddress().toString();
-   }
-  }
+// private slots:
+//  void onNewCommClient() {
+//   while (commServer.hasPendingConnections()) {
+//    QTcpSocket *client=commServer.nextPendingConnection();
+//    //client->setSocketOption(QAbstractSocket::LowDelayOption,1);
+//    //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+//    connect(client,&QTcpSocket::readyRead,this,[this,client]() {
+//     QByteArray cmd=client->readAll().trimmed();
+//     handleCommand(QString::fromUtf8(cmd),client);
+//    });
+//    connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
+//    qInfo() << "node-time: <Comm> Client connected from" << client->peerAddress().toString();
+//   }
+//  }
 
-  void handleCommand(const QString &cmd,QTcpSocket *client) {
-  }
+//  void handleCommand(const QString &cmd,QTcpSocket *client) {
+//  }
 
-  void onNewStrmClient() {
-   while (strmServer.hasPendingConnections()) {
-    QTcpSocket *client=strmServer.nextPendingConnection();
+//  void onNewStrmClient() {
+//   while (strmServer.hasPendingConnections()) {
+//    QTcpSocket *client=strmServer.nextPendingConnection();
     
-    client->setSocketOption(QAbstractSocket::LowDelayOption,1); // TCP_NODELAY
-    client->setSocketOption(QAbstractSocket::KeepAliveOption,1);
-    // optional: smaller buffers to avoid deep OS queues
-    client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption,64*1024);
+//    client->setSocketOption(QAbstractSocket::LowDelayOption,1); // TCP_NODELAY
+//    client->setSocketOption(QAbstractSocket::KeepAliveOption,1);
+//    // optional: smaller buffers to avoid deep OS queues
+//    client->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption,64*1024);
 
-    strmClients.append(client);
-    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-     qDebug() << "node-time: <Strm> client from" << client->peerAddress().toString() << "disconnected.";
-     strmClients.removeAll(client);
-     client->deleteLater();
-    });
-    qInfo() << "node-time: <Strm> client connected from" << client->peerAddress().toString();
-   }
-  }
+//    strmClients.append(client);
+//    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
+//     qDebug() << "node-time: <Strm> client from" << client->peerAddress().toString() << "disconnected.";
+//     strmClients.removeAll(client);
+//     client->deleteLater();
+//    });
+//    qInfo() << "node-time: <Strm> client connected from" << client->peerAddress().toString();
+//   }
+//  }
 
  private:
-  QTcpServer commServer,strmServer;
-  QVector<QTcpSocket*> strmClients;
+//  QTcpServer commServer,strmServer;
+//  QVector<QTcpSocket*> strmClients;
   ControlWindow *controlWindow; QVector<AmpWindow*> ampWindows;
 };

@@ -26,9 +26,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  * alsa2 audio input device designated within the Octopus HyperEEG box,
  * in a syncronized fashion, synchronizes them altogether and streams to any
  * numer of connected clients via IP:commandPort:streamPort.
- * In command line mode, the settings are fetched from ~/.octopus-reel/hypereeg.conf
- * and in system service mode it is /etc/octopus/hypereeg.conf
- * The config file is a common one with separate sections for different types of nodes.
+ * As it is meant to be a persistent system service, it assumes the settings
+ * at /etc/octopus/hypereeg.conf
+ * FYI, The config file is a common one with separate sections for different
+ * types of nodes, for multiple nodes running on the same system.
  */
 
 #include <QCoreApplication>
@@ -44,52 +45,31 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QString>
 #include <QFile>
-#ifdef AUDIODEV
-#include "audioamp.h"
-#endif
-#include "serialdevice.h"
-#include <vector>
-#include "confparam.h"
-#include "acqdaemon.h"
-
 #include <QtGlobal>
 #include <QDateTime>
 #include <cstdio>
+#include <vector>
+#include "configparser.h"
+#include "audioamp.h"
+#include "serialdevice.h"
+#include "confparam.h"
+#include "acqdaemon.h"
+#include "../common/messagehandler.h"
 
-//const QString cfgPathX=confPath+"hypereeg.conf";
-const QString cfgPathEtc="/etc/octopus/hypereeg.conf";
-
-static void qtMessageHandler(QtMsgType type,const QMessageLogContext&,const QString& msg) {
- const char* level="INFO";
- switch (type) {
-  case QtDebugMsg:    level="DEBUG"; break;
-  case QtInfoMsg:     level="INFO";  break;
-  case QtWarningMsg:  level="WARN";  break;
-  case QtCriticalMsg: level="ERROR"; break;
-  case QtFatalMsg:    level="FATAL"; break;
- }
- const QByteArray timestamp=QDateTime::currentDateTime().toString(Qt::ISODateWithMs).toUtf8();
- fprintf(stderr,"%s [%s] %s\n",timestamp.constData(),level,msg.toUtf8().constData());
- if (type==QtFatalMsg) { abort(); }
-}
+const QString CFGPATH="/etc/octopus/hypereeg.conf";
 
 bool eegamps_check(std::vector<amplifier*> *eeAmps,unsigned int ampCount) {
  if (eeAmps->size()<ampCount) return true;
  return false;
 }
 
-#ifdef AUDIODEV
 bool audio_check(AudioAmp *audioAmp) {
  audioAmp->init();
  if (!audioAmp->initAlsa()) return true;
  return false;
 }
-#endif
 
-bool conf_init(ConfParam *conf) { QString cfgPath;
-// if (cfgPathX=="~") cfgPath=QDir::homePath();
-// if (cfgPathX.startsWith("~/")) cfgPath=QDir::homePath()+cfgPathX.mid(1);
- cfgPath=cfgPathEtc;
+bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
  if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
   if (!cfp.parse(conf)) {
    // Constants or calculated global settings upon the ones read from config file
@@ -98,16 +78,13 @@ bool conf_init(ConfParam *conf) { QString cfgPath;
    conf->totalCount=conf->ampCount*conf->totalChnCount;
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
    conf->dumpRaw=false;
-//   conf->interList.resize(conf->ampCount);
-//   conf->offList.resize(conf->ampCount);
-//   conf->generateElecLists();
    // --------------------------------------------------------------------------------
-   if (!conf->commServer.listen(QHostAddress::Any,conf->acqCommPort)) {
+   if (!conf->acqCommServer.listen(QHostAddress::Any,conf->acqCommPort)) {
     qCritical() << "Cannot start TCP server on <Comm> port:" << conf->acqCommPort;
     return true;
    }
    qInfo() << "<Comm> listening on port" << conf->acqCommPort;
-   if (!conf->strmServer.listen(QHostAddress::Any,conf->acqStrmPort)) {
+   if (!conf->acqStrmServer.listen(QHostAddress::Any,conf->acqStrmPort)) {
     qCritical() << "Cannot start TCP server on <Strm> port:" << conf->acqStrmPort;
     return true;
    }
@@ -127,35 +104,33 @@ bool conf_init(ConfParam *conf) { QString cfgPath;
 }
 
 void conf_info(ConfParam *conf) {
-//#ifdef HACQ_VERBOSE
-   qInfo() << "===============================================================";
-   qInfo() << "Detailed channels info:";
-   qInfo() << "-----------------------";
-   QString interElec;
-   for (const auto& ch:conf->chnInfo) {
-    interElec=""; for (int i=0;i<ch.interElec.size();i++) interElec.append(QString::number(ch.interElec[i])+" ");
-    qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] ChnType=%d, Inter=%s",ch.physChn,qUtf8Printable(ch.chnName),
-                                                                    ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.type,
-                                                                    interElec.toUtf8().constData());
-   }
-//#endif
-   qInfo() << "===============================================================";
-   qInfo() << "Acquisition Parameters Summary:";
-   qInfo() << "-------------------------------";
-   qInfo() << "Connected # of amplifier(s):" << conf->ampCount;
-   qInfo() << "Sample Rate->" << conf->eegRate << "sps";
-   qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
-   qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
-   qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
-   qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
-   qInfo() << "Total Channel# from all amps:" << conf->totalCount;
-   qInfo() << "Referential channels gain:" << conf->refGain;
-   qInfo() << "Bipolar channels gain:" << conf->bipGain;
-   qInfo() << "===============================================================";
-   qInfo() << "Networking Summary:";
-   qInfo() << "-----------------------------";
-   qInfo() << "<ServerIP> is" << conf->acqIpAddr;
-   qInfo() << "<Strm> listening on port" << conf->acqStrmPort;
+ qInfo() << "===============================================================";
+ qInfo() << "Detailed channels info:";
+ qInfo() << "-----------------------";
+ QString interElec;
+ for (const auto& ch:conf->chnInfo) {
+  interElec=""; for (int i=0;i<ch.interElec.size();i++) interElec.append(QString::number(ch.interElec[i])+" ");
+  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] ChnType=%d, Inter=%s",ch.physChn,qUtf8Printable(ch.chnName),
+                                                                  ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.type,
+                                                                  interElec.toUtf8().constData());
+ }
+ qInfo() << "===============================================================";
+ qInfo() << "Acquisition Parameters Summary:";
+ qInfo() << "-------------------------------";
+ qInfo() << "Connected # of amplifier(s):" << conf->ampCount;
+ qInfo() << "Sample Rate->" << conf->eegRate << "sps";
+ qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
+ qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
+ qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
+ qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
+ qInfo() << "Total Channel# from all amps:" << conf->totalCount;
+ qInfo() << "Referential channels gain:" << conf->refGain;
+ qInfo() << "Bipolar channels gain:" << conf->bipGain;
+ qInfo() << "===============================================================";
+ qInfo() << "Networking Summary:";
+ qInfo() << "-----------------------------";
+ qInfo() << "<ServerIP> is" << conf->acqIpAddr;
+ qInfo() << "<Strm> listening on port" << conf->acqStrmPort;
 }
 
 int main(int argc,char *argv[]) {
@@ -188,7 +163,6 @@ int main(int argc,char *argv[]) {
  qInfo() << "Hardware connection status...";
  qInfo() << "-----------------------------";
 
-#ifdef AUDIODEV
  qInfo() << "Audio Device...";
  qInfo() << "---------------";
  if (audio_check(&audioAmp)) {
@@ -197,7 +171,6 @@ int main(int argc,char *argv[]) {
  }
  qInfo() << "<Audio> AudioAmp ALSA initialized successfully.";
  qInfo() << "---------------------------------------------------------------";
-#endif
 
  qInfo() << "EEG Amplifiers...";
  qInfo() << "-----------------";

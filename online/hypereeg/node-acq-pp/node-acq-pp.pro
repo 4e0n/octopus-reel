@@ -20,31 +20,25 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-acq
+TARGET = node-acq-pp
 INCLUDEPATH += .
-QT += widgets network
-#LIBS += -leego-SDK
-LIBS += -lasound
+#LIBS += -lGLU -lX11
 LIBS += -fopenmp
+QT += core network
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 #QMAKE_CXXFLAGS += -DOCTO_OMP=1
-QMAKE_CXXFLAGS += -fopenmp #-O1 -g
+QMAKE_CXXFLAGS += -fopenmp
 
 # Input
-HEADERS += acqdaemon.h \
-           acqthread.h \
-           tcpthread.h \
-	   configparser.h \
-	   confparam.h \
-	   acqchninfo.h \
-	   eesynth.h \
-           eeamp.h \
-           audioamp.h \
-	   serialdevice.h \
-           ../common/globals.h \
-	   ../common/sample.h \
-	   ../common/tcpsample.h \
-	   ../common/messagehandler.h \
+HEADERS += ppdaemon.h \
+	   tcpthread.h \
+	   compthread.h \
+           configparser.h \
+           confparam.h \
+           ppchninfo.h \
+           ../common/messagehandler.h \
            ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

@@ -37,7 +37,7 @@ class EEGFrame : public QFrame {
    conf=c; ampNo=a; sweepSched=false;
    sweepBuffer=QImage(conf->sweepFrameW,conf->sweepFrameH,QImage::Format_RGB32);
 
-   chnCount=conf->chns.size();
+   chnCount=conf->chnInfo.size();
    //colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
    //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
    chnPerCol=66;
@@ -51,8 +51,8 @@ class EEGFrame : public QFrame {
    else if (chnCount>96) chnFont=QFont("Helvetica",12);
    chnTextCache.clear(); chnTextCache.reserve(chnCount);
    for (unsigned int i=0;i<chnCount;i++) {
-    int chnNo=conf->chns[i].physChn;
-    const QString& chnName=conf->chns[i].chnName;
+    int chnNo=conf->chnInfo[i].physChn;
+    const QString& chnName=conf->chnInfo[i].chnName;
     QString label=QString::number(chnNo)+" "+chnName;
     QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
     staticLabel.setTextWidth(-1);  // No width constraint

@@ -34,36 +34,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 struct ConfParam {
  ConfParam() {}
-/*
- void generateElecLists() {
-  {
-   QMutexLocker locker(&chnInterMutex);
-   // Truncate the lists
-   //qDebug() << interList.size() << offList.size();
-   for (int ampIdx=0;ampIdx<interList.size();ampIdx++) interList[ampIdx].resize(0);
-   for (int ampIdx=0;ampIdx<offList.size();ampIdx++) offList[ampIdx].resize(0);
-   for (int chnIdx=0;chnIdx<chnInfo.size();chnIdx++) {
-    if (chnInfo[chnIdx].type==0) {
-     for (int ampIdx=0;ampIdx<chnInfo[chnIdx].interMode.size();ampIdx++) {
-      int m=chnInfo[chnIdx].interMode[ampIdx];
-//      qDebug() << m << chnIdx << chnInfo[chnIdx].physChn;
-      if (m==0) offList[ampIdx].append(chnIdx);
-      else if (m==2) interList[ampIdx].append(chnIdx);
-     }
-    }
-   }
-  }
-//  for (int chnIdx=0;chnIdx<chnInfo.size();chnIdx++) {
-//   if (chnInfo[chnIdx].type==0) {
-//    printf("%d %d ",chnInfo[chnIdx].interMode[0],chnInfo[chnIdx].interMode[1]);
-//   } else {
-//    printf("- - ");
-//   }
-//  }
-//  printf("\n");
-  qDebug() << "Electrode interpolation and switch-off lists are (re)generated.";
- }
-*/
  unsigned int ampCount,eegRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
  QString acqIpAddr; unsigned int acqCommPort,acqStrmPort;
@@ -79,6 +49,5 @@ struct ConfParam {
  quint64 tcpBufHead,tcpBufTail;
  QVector<TcpSample> tcpBuffer;
  QVector<AcqChnInfo> chnInfo;
-// QVector<QVector<unsigned int>> interList,offList; // List of interpolated and switched-off electrodes for all amps
- QTcpServer commServer,strmServer;
+ QTcpServer acqCommServer,acqStrmServer;
 };

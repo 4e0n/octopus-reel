@@ -93,8 +93,8 @@ class ConfigParser {
         conf->acqIpAddr=acqHostInfo.addresses().first().toString();
         conf->acqCommPort=opts2[1].toInt();
         conf->acqStrmPort=opts2[2].toInt();
-        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65500)) || // Simple port validation
-            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65500))) {
+        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
+            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
          qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
@@ -103,29 +103,29 @@ class ConfigParser {
         return true;
        }
        qDebug() << "node-time:" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
-      } else if (opts[0].trimmed()=="TIME") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==3) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->timeIpAddr=acqHostInfo.addresses().first().toString();
-        conf->timeCommPort=opts2[1].toInt();
-        conf->timeStrmPort=opts2[2].toInt();
-        if ((!(conf->timeCommPort >= 65000 && conf->timeCommPort < 65500)) || // Simple port validation
-            (!(conf->timeStrmPort >= 65000 && conf->timeStrmPort < 65500))) {
-         qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
-         return true;
-        }
-       } else {
-        qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid count of STRM|OUT params!";
-        return true;
-       }
+      //} else if (opts[0].trimmed()=="TIME") {
+      // opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
+      // if (opts2.size()==3) {
+      //  QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+      //  conf->timeIpAddr=acqHostInfo.addresses().first().toString();
+      //  conf->timeCommPort=opts2[1].toInt();
+      //  conf->timeStrmPort=opts2[2].toInt();
+      //  if ((!(conf->timeCommPort >= 65000 && conf->timeCommPort < 65999)) || // Simple port validation
+      //      (!(conf->timeStrmPort >= 65000 && conf->timeStrmPort < 65999))) {
+      //   qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
+      //   return true;
+      //  }
+      // } else {
+      //  qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid count of STRM|OUT params!";
+      //  return true;
+      // }
       } else if (opts[0].trimmed()=="STOR") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==2) {
         QHostInfo storHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->storIpAddr=storHostInfo.addresses().first().toString();
         conf->storCommPort=opts2[1].toInt();
-        if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65500))) { // Simple port validation
+        if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65999))) { // Simple port validation
          qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }
@@ -170,22 +170,22 @@ class ConfigParser {
 
     // Get crucial info from the "acquisition" node we connect to
     commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
-    if (!commResponse.isEmpty()) qDebug() << "node-time: <ConfigParser> Acquisition Daemon replied:" << commResponse;
-    else qDebug() << "node-time: <ConfigParser> (TIMEOUT) No response from Acquisition Node!";
+    if (!commResponse.isEmpty()) qInfo() << "node-time: <GetConfFromAcqDaemon> Reply:" << commResponse;
+    else qCritical() << "node-time: <ConfigParser> (TIMEOUT) No response from Acquisition Node!";
     sList=commResponse.split(",");
-
     conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
     conf->eegRate=sList[1].toInt();       // EEG SAMPLERATE
-
-    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
+    conf->tcpBufSize*=conf->eegRate;
     conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
     conf->tcpBuffer.resize(conf->tcpBufSize);
-
     conf->refChnCount=sList[2].toInt();
     conf->bipChnCount=sList[3].toInt();
-    conf->refGain=sList[4].toFloat();
-    conf->bipGain=sList[5].toFloat();
-    conf->eegProbeMsecs=sList[6].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+    //conf->physChnCount=sList[4].toInt();
+    //conf->totalChnCount=sList[5].toInt();
+    //conf->totalCount=sList[6].toInt();
+    conf->refGain=sList[7].toFloat();
+    conf->bipGain=sList[8].toFloat();
+    conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
 
     conf->eegSweepDivider=conf->eegSweepCoeff[0];
@@ -194,29 +194,32 @@ class ConfigParser {
     conf->scrAvailableSamples=conf->eegSweepFrameTimeMs*(conf->eegRate/1000); // 20ms -> 20 sample
 
     conf->eegBand=0;
- 
+
+
     // CHANNELS
 
     commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
-    if (!commResponse.isEmpty()) qDebug() << "node-time: <Config> Daemon replied:" << commResponse;
-    else qDebug() << "node-time: <Config> No response or timeout.";
+    if (!commResponse.isEmpty()) qInfo() << "node-time: <GetChannelListFromDaemon> ChannelList received."; // << commResponse;
+    else qCritical() << "node-time: <GetChannelListFromDaemon> (TIMEOUT) No response from Node!";
     sList=commResponse.split("\n"); GUIChnInfo chn;
 
+    chn.interMode.resize(conf->ampCount);
     for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
      sList2=sList[chnIdx].split(",");
      chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
      //chn.topoTheta=sList2[2].toFloat(); chn.topoPhi=sList2[3].toFloat();
      chn.param.x=1.0; chn.param.y=sList2[2].toFloat(); chn.param.z=sList2[3].toFloat();
      chn.topoX=sList2[4].toInt(); chn.topoY=sList2[5].toInt();
-     chn.type=(bool)sList2[6].toInt();
-     chn.interMode.resize(0); for (unsigned int idx=0;idx<conf->ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
-     conf->chns.append(chn);
+     chn.type=sList2[6].toInt();
+     for (unsigned int imIdx=0;imIdx<conf->ampCount;imIdx++) chn.interMode[imIdx]=sList2[7+imIdx].toInt();
+     //chn.interMode.resize(0); for (unsigned int idx=0;idx<conf->ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
+     conf->chnInfo.append(chn);
     }
-    conf->chnCount=conf->chns.size();
+    conf->chnCount=conf->chnInfo.size();
 
-    //for (int idx=0;idx<conf->chns.size();idx++) {
+    //for (int idx=0;idx<conf->chnInfo.size();idx++) {
     // QString x="";
-    // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chns[idx].interMode[j])+",");
+    // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
     // qDebug() << x.toUtf8();
     //}
 
@@ -229,7 +232,7 @@ class ConfigParser {
      conf->s1[idx].resize(conf->chnCount); conf->s1s[idx].resize(conf->chnCount);
     }
 
-    for (auto& chn:conf->chns) qDebug() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.type;
+    for (auto& chn:conf->chnInfo) qDebug() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.type;
 
     // Initialize GUI/sweeping related variables
     conf->eegSweepPending.resize(conf->ampCount);

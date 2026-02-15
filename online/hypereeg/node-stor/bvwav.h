@@ -185,7 +185,7 @@ public:
 
   // Preferred API for RecThread (N=100)
   // Write N TcpSamples in two big writes:
-  //  .eeg: N frames of float32 multiplexed (amp-major, channel-minor) using Sample::dataBP
+  //  .eeg: N frames of float32 multiplexed (amp-major, channel-minor) using Sample::data
   //  .wav: N*48 frames of PCM16, currently mono only (numChannels must be 1)
   bool writeChunk_FromTcpSamples(const std::vector<TcpSample>& chunk,size_t ampCount,size_t chnCount,QString* err=nullptr) {
    if (!m_open) return setErr(err, "writeChunk called while not open.");
@@ -214,7 +214,7 @@ public:
     for (size_t a=0;a<ampCount;++a) {
      const Sample& s=t.amp[a];
      for (size_t c=0;c<chnCount;++c) {
-      bvBuf[k++]=s.dataBP[c];
+      bvBuf[k++]=s.data[c];
      }
     }
 

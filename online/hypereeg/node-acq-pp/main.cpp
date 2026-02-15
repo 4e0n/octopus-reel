@@ -21,10 +21,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* This is the HyperEEG "File recording/storage operations" Node.
- * Its main purpose is to record the EEG+audio data broadcast by
- * the node-acq to disk. Starting and stopping of recording is held
- * by proper commands from node-time.
+/* This is the generic "Compute Node".
+ * Its mainly a buffer streaming in the EEG+Audio data, process it
+ * (by default does nothing) and stream out.
+ * It is mainly a skeleton to be cloned and modified for generating
+ * custom compute nodes.
  */
 
 #include <QCoreApplication>
@@ -36,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "confparam.h"
 #include "configparser.h"
-#include "stordaemon.h"
+#include "ppdaemon.h"
 #include "../common/messagehandler.h"
 
 const QString CFGPATH="/etc/octopus/hypereeg.conf";
@@ -59,13 +60,13 @@ void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
  qInfo() << "Channels Info:";
  qInfo() << "--------------";
- for (auto& chn:conf->chns) qInfo() << chn.physChn << chn.chnName << chn.type;
+ for (auto& chn:conf->chnInfo) qInfo() << chn.physChn << chn.chnName << chn.type;
  qInfo() << "===============================================================";
  qInfo() << "Networking Summary:";
  qInfo() << "-------------------";
  qInfo() << "<ServerIP> is" << conf->acqIpAddr;
  qInfo() << "<Comm> downstreaming on ports (comm,strm):" << conf->acqCommPort << conf->acqStrmPort;
- qInfo() << "<Comm> listening on port(comm)" << conf->storCommPort;
+ qInfo() << "<Comm> listening on port(comm,strm):" << conf->acqppCommPort << conf->acqppStrmPort;
 }
 
 int main(int argc,char* argv[]) {
@@ -84,14 +85,14 @@ int main(int argc,char* argv[]) {
  qInfo() << "===============================================================";
 
  if (conf_init_pre(&conf)) {
-  qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG data storage daemon node.");
+  qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG data compute node.");
   return 1;
  }
 
- StorDaemon storDaemon(nullptr,&conf);
+ PPDaemon ppDaemon(nullptr,&conf);
 
- if (storDaemon.start()) {
-  qCritical("<FatalError> Failed to start Octopus-ReEL EEG data storage daemon node.");
+ if (ppDaemon.start()) {
+  qCritical("<FatalError> Failed to start Octopus-ReEL EEG data compute node.");
   return 1;
  }
 

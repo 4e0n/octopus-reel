@@ -216,7 +216,6 @@ struct AudioAmp {
    constexpr unsigned OUT=48;
    constexpr unsigned SAFETY_MARGIN=96;
    constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
-//   constexpr int UNDERRUN_ARM=3;
 
    // ---- Servo tuning ----
    constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion

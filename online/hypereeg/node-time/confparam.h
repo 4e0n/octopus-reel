@@ -37,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "guichninfo.h"
 #include "headmodel.h"
-#include "../common/tcpsample.h"
+#include "../common/tcpsample_pp.h"
 
 #include "../../../common/event.h"
 #include "../../../common/coord3d.h"
@@ -129,9 +129,9 @@ class ConfParam : public QObject {
   QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
-  QString timeIpAddr; quint32 timeCommPort,timeStrmPort; // We're server
+  //QString timeIpAddr; quint32 timeCommPort,timeStrmPort; // We're server
 
-  QMutex mutex; QVector<GUIChnInfo> chns; QVector<QThread*> threads;
+  QMutex mutex; QVector<GUIChnInfo> chnInfo; QVector<QThread*> threads;
 
   bool eegSweepMode; unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegSweepDivider,eegBand; QWaitCondition eegSweepWait;
   //std::atomic<unsigned int> eegSweepUpdating;
@@ -156,7 +156,7 @@ class ConfParam : public QObject {
                               (1e6/  20.0)};
 
   //std::atomic<quint64> tcpBufHead,tcpBufTail;
-  quint64 tcpBufHead,tcpBufTail; QVector<TcpSample> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
+  quint64 tcpBufHead,tcpBufTail; QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
   int cntPastSize,cntPastIndex;
 
   unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick; float refGain,bipGain;
@@ -176,6 +176,8 @@ class ConfParam : public QObject {
   QVector<HeadModel> headModel; bool glGizmoLoaded; QVector<Gizmo> glGizmo;
   QVector<bool> glFrameOn,glGridOn,glScalpOn,glSkullOn,glBrainOn,glGizmoOn,glElectrodesOn;
 
+  bool usePixmap=false;
+
  signals:
   void glUpdate();
   void glUpdateParam(int);
@@ -190,8 +192,8 @@ class ConfParam : public QObject {
     //qDebug() << "[Client] Expected blockSize:" << blockSize;
     if ((quint32)buffer.size()<4+blockSize) break; // Wait for more data
     QByteArray block=buffer.mid(4,blockSize);
-    // Deserialize into TcpSample
-    TcpSample tcpS; //,tcpS1000;
+    // Deserialize into TcpSamplePP
+    TcpSamplePP tcpS;
     if (tcpS.deserialize(block,chnCount)) {
 //     if (tcpS.offset%1000==0) {
 //      qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
@@ -204,7 +206,7 @@ class ConfParam : public QObject {
      tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
      tcpBufHead++;
     } else {
-     qWarning() << "Failed to deserialize TcpSample block.";
+     qWarning() << "Failed to deserialize TcpSamplePP block.";
     }
 
     {

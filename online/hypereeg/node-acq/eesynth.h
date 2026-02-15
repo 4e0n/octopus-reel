@@ -47,7 +47,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include "../common/globals.h"
 
-// Very small inline feeder that reads /opt/octopus/data/heeg.raw on demand.
+// Very small inline feeder that reads /opt/octopus/data/raweeg/synth-eeg.raw on demand.
 // File format per sample: u64 offset, float32[ch= numAmps*chansPerAmp], float32 trigger.
 struct Feeder {
  std::ifstream f;
@@ -209,7 +209,6 @@ class stream {
 
     const double counter0=counter;
     PARFOR(sc,0,int(N)) {
-    //for (unsigned sc=0;sc<N;++sc) {
      for (unsigned cc=0;cc<eegCh;++cc) b.setSample(cc,sc,0.0);
      b.setSample(chnCount-2,sc,0.0);
      b.setSample(chnCount-1,sc,counter0+double(sc));
@@ -230,7 +229,6 @@ class stream {
    if (F.chansPerAmp < eegCh || (ampId_+1)*F.chansPerAmp>F.totalCh) {
     const double counter0=counter;
     PARFOR(sc,0,int(N)) {
-    //for (unsigned sc=0;sc<N;++sc) {
      for (unsigned cc=0;cc<eegCh;++cc) b.setSample(cc,sc,0.0);
      b.setSample(chnCount-2,sc,0.0);
      b.setSample(chnCount-1,sc,counter0+double(sc));
@@ -239,7 +237,6 @@ class stream {
     const unsigned base=ampId_*F.chansPerAmp;
     double trigOnce=trigger;   // capture one-shot; we’ll consume it on the first sample
     PARFOR(sc,0,int(N)) {
-    //for (unsigned sc=0;sc<N;++sc) {
      const float* src=&F.batch[size_t(sc)*F.totalCh+base];
      // contiguous copy of EEG channels for sample sc
      for (unsigned cc=0;cc<eegCh;++cc) b.setSample(cc,sc,double(src[cc]));
@@ -312,7 +309,6 @@ class amplifier {
   std::string serialNumber; bool impedanceMode,eegStreamOpen; unsigned int syncTrigOffset;
   unsigned int smpRate; float refRange,bipRange; std::vector<channel> chnList;
   stream *str; unsigned int synthTrigger;
-  //std::string eegFeedName;
 };
 
 class factory { // Creates any number of virtual amplifiers identical to EE.
