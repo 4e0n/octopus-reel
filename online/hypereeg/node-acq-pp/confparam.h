@@ -91,8 +91,9 @@ class ConfParam : public QObject {
 
   void initFilters() {
    filterListBP.resize(ampCount); filterListN.resize(ampCount);
-   //filterListD.resize(ampCount); filterListT.resize(ampCount); filterListA.resize(ampCount); 
-   //filterListB.resize(ampCount); filterListG.resize(ampCount); 
+   //filterListD.resize(ampCount); filterListT.resize(ampCount);
+   //filterListA.resize(ampCount); filterListB.resize(ampCount);
+   //filterListG.resize(ampCount); 
    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
     filterListBP[ampIdx].reserve(chnCount); filterListN[ampIdx].reserve(chnCount);
 //    filterListD[ampIdx].reserve(chnCount); filterListT[ampIdx].reserve(chnCount);
@@ -138,15 +139,32 @@ class ConfParam : public QObject {
 
  public slots:
   void onStrmDataReady() {
-   static QByteArray inbuf; inbuf.append(acqStrmSocket->readAll());
+   static QByteArray inbuf;
+   static qint64 lastMsQ=0;
+   inbuf.append(acqStrmSocket->readAll());
    while (inbuf.size()>=4) {
-    QDataStream ds(inbuf); ds.setByteOrder(QDataStream::LittleEndian);
+    const uchar *p0 = reinterpret_cast<const uchar*>(inbuf.constData());
+    const quint32 blockSize = (quint32)p0[0]
+                              | ((quint32)p0[1] << 8)
+                              | ((quint32)p0[2] << 16)
+                              | ((quint32)p0[3] << 24);
 
-    quint32 blockSize=0; ds>>blockSize;
-    if ((quint32)inbuf.size()<4u+blockSize) break;
+    if (inbuf.size() < 4 + (int)blockSize) break;
 
-    QByteArray block=inbuf.mid(4,blockSize); inbuf.remove(0,4+blockSize);
+    QByteArray block = inbuf.mid(4, blockSize);
+    inbuf.remove(0, 4 + (int)blockSize);
 
+    static quint64 outerRx = 0;
+    outerRx++;
+
+    //QDataStream ds(inbuf); ds.setByteOrder(QDataStream::LittleEndian);
+
+    //quint32 blockSize=0; ds>>blockSize;
+    //if ((quint32)inbuf.size()<4u+blockSize) break;
+
+    //QByteArray block=inbuf.mid(4,blockSize); inbuf.remove(0,4+blockSize);
+
+    int qszSnap=0;
     {
       QMutexLocker lk(&compMutex);
 
@@ -157,7 +175,24 @@ class ConfParam : public QObject {
       // while (compQueue.size()>=compQueueMax) compSpace.wait(&compMutex,1);
 
       compQueue.enqueue(std::move(block));
+      qszSnap=compQueue.size();
       compReady.wakeOne();
+    }
+
+    const qint64 now=QDateTime::currentMSecsSinceEpoch();
+    //if (now-lastMsQ>=1000) {
+    // lastMsQ=now;
+    // qInfo().noquote() << QString("[PP:RX] compQueue=%1").arg(qszSnap);
+    //}
+
+    if (now-lastMsQ>=1000) {
+     lastMsQ=now;
+     qInfo().noquote()
+        << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3")
+            .arg((qulonglong)outerRx)
+            .arg(qszSnap)
+            .arg(inbuf.size());
+     outerRx=0;
     }
    }
   }

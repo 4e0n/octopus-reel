@@ -24,7 +24,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #pragma once
 
 #include "../common/globals.h"
-#include "iirfilter.h"
 
 #ifdef EEMAGINE
 #define _UNICODE

@@ -45,6 +45,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 const int EEG_SCROLL_REFRESH_RATE=50; // 100Hz max.
 
+
 class ConfParam : public QObject {
  Q_OBJECT
  public:
@@ -183,55 +184,99 @@ class ConfParam : public QObject {
   void glUpdateParam(int);
 
  public slots:
-  void onStrmDataReady() {
-   static QByteArray buffer; buffer.append(acqStrmSocket->readAll());
-   //qDebug() << "[Client] Incoming data size:" << buffer.size();
-   while (buffer.size()>=4) {
-    QDataStream sizeStream(buffer); sizeStream.setByteOrder(QDataStream::LittleEndian);
-    quint32 blockSize=0; sizeStream>>blockSize;
-    //qDebug() << "[Client] Expected blockSize:" << blockSize;
-    if ((quint32)buffer.size()<4+blockSize) break; // Wait for more data
-    QByteArray block=buffer.mid(4,blockSize);
-    // Deserialize into TcpSamplePP
-    TcpSamplePP tcpS;
-    if (tcpS.deserialize(block,chnCount)) {
-//     if (tcpS.offset%1000==0) {
-//      qDebug("BUFFER(mod1000) RECVd! tcpS.offset-> %lld - Magic: %x",tcpS.offset,tcpS.MAGIC);
-//      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
-//      qInfo() << "Sample latency @onStrmDataReady:" << age << "ms";
-//     }
-//     if (tcpS.trigger) qDebug() << "Trigger arrived!";
- 
-     // Push the deserialized tcpSample to circular buffer
-     tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
-     tcpBufHead++;
-    } else {
-     qWarning() << "Failed to deserialize TcpSamplePP block.";
-    }
 
-    {
-     QMutexLocker locker(&mutex);
-     unsigned int availableSamples=tcpBufHead-tcpBufTail;
-     if (availableSamples>scrAvailableSamples && eegSweepUpdating==0) {
-      if (availableSamples>=halfTcpBufSize) qWarning() << "[Client] Buffer overflow risk! Tail too slow.";
-      //qDebug() << "[Client] 1.Min # EEG samples to fill one scrollframe has arrived, 2. All scrollers are idle.";
-      // A fraction of above - i.e. one pixel corresponds to how many physical samples
-      // 10:5Hz(100) 5:10Hz(200) 4:20Hz(250) 2:25Hz(500) 1:50Hz(1000)
-      scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
-      if (quitPending) {
-       if (acqStrmSocket && acqStrmSocket->isOpen()) acqStrmSocket->disconnectFromHost();
-      } 
-      eegSweepUpdating=ampCount; { for (auto& s:eegSweepPending) s=true; } eegSweepWait.wakeAll();
+void onStrmDataReady() {
+
+static quint64 g_outer_ok = 0;
+static quint64 g_time_ok = 0;
+static quint64 g_time_bad = 0;
+static qint64  g_time_last_ms = 0;
+static qint64  g_time_last_ms_rx = 0;
+  static QByteArray buffer;
+  buffer.append(acqStrmSocket->readAll());
+
+  const qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+  // RX backlog log 1 Hz
+  if (g_time_last_ms_rx==0) g_time_last_ms_rx=now;
+  if (now - g_time_last_ms_rx >= 1000) {
+    g_time_last_ms_rx = now;
+    qInfo().noquote()
+      << QString("[TIME:RX] buffer=%1 bytes")
+           .arg(buffer.size());
+  }
+
+  while (buffer.size() >= 4) {
+    const uchar *p = reinterpret_cast<const uchar*>(buffer.constData());
+    const quint32 L = (quint32)p[0]
+                    | ((quint32)p[1] << 8)
+                    | ((quint32)p[2] << 16)
+                    | ((quint32)p[3] << 24);
+
+    if (buffer.size() < 4 + (int)L) break;
+
+    const QByteArray payload = buffer.mid(4, L);
+    buffer.remove(0, 4 + (int)L);
+    g_outer_ok++;
+
+    int pos = 0;
+    while (pos + 4 <= payload.size()) {
+     const uchar *p = reinterpret_cast<const uchar*>(payload.constData() + pos);
+     const quint32 L = (quint32)p[0]
+                       | ((quint32)p[1] << 8)
+                       | ((quint32)p[2] << 16)
+                       | ((quint32)p[3] << 24);
+     pos += 4;
+     if (pos + (int)L > payload.size()) break; // corrupted / partial (shouldn't happen)
+
+     const QByteArray one = payload.mid(pos, L);
+     pos += (int)L;
+
+     TcpSamplePP s;
+     if (!s.deserialize(one,chnCount)) { g_time_bad++; continue; }
+     g_time_ok++;
+
+     // push into your ring under mutex (as you already do)
+     {
+       QMutexLocker locker(&mutex);
+       tcpBuffer[tcpBufHead % tcpBufSize] = s; // or std::move(s)
+       tcpBufHead++;
+       // your wake logic...
+       const quint64 availableSamples = tcpBufHead - tcpBufTail;
+
+       if (availableSamples > scrAvailableSamples && eegSweepUpdating==0) {
+        if (availableSamples >= (quint64)(tcpBufSize * 3 / 4))
+          qWarning() << "[TIME] Buffer high-water:" << availableSamples;
+
+        scrUpdateSamples = scrAvailableSamples / (eegSweepFrameTimeMs / eegSweepDivider);
+
+        if (quitPending) {
+          if (acqStrmSocket && acqStrmSocket->isOpen())
+            acqStrmSocket->disconnectFromHost();
+        }
+
+        eegSweepUpdating = ampCount;
+        for (auto &v : eegSweepPending) v = true;
+        eegSweepWait.wakeAll();
+       }
      }
     }
+  }
 
-    // Here the scrollings should asynchronously happen and this routine cannot enter the above region.
-    // As soon as the last scroller finishes, 1. the tcpBufTail will advance, 2.eegSweepUpdating will be 0
-    // So, the region above will again be available for a single entry only.
-
-    buffer.remove(0,4+blockSize); // Remove processed block
+  // packets/sec log 1 Hz
+  if (g_time_last_ms==0) g_time_last_ms=now;
+  if (now - g_time_last_ms >= 1000) {
+    qInfo().noquote()
+      << QString("[TIME:PKT] outer=%1/s samples=%2/s bad=%3/s")
+          .arg((qulonglong)g_outer_ok)
+          .arg((qulonglong)g_time_ok)
+          .arg((qulonglong)g_time_bad);
+    g_outer_ok = 0;
+    g_time_ok = g_time_bad = 0;
+    g_time_last_ms = now;
    }
   }
+
  private:
   void updateRecTime() { int s,m,h; QString dummyString; s=recCounter/eegRate; //m=s/60; h=m/60;
    h=s/3600; s%=3600; m=s/60; s%=60;

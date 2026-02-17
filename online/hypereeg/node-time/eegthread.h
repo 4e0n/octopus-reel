@@ -34,6 +34,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "../common/sample.h"
 #include "../common/octo_omp.h"
+#include "../common/logring.h"
 
 // Compute one envelope value from N(=48) normalized samples in [-1,1]
 inline float audioEnvFromN_RMS(const float *audN) {
@@ -267,6 +268,9 @@ class EEGThread : public QThread {
   virtual void run() override {
   
    while (threadActive) {
+    static quint64 lastH=0,lastT=0;
+    static qint64 lastMs=0;
+    quint64 hSnap=0,tSnap=0;
     {
      QMutexLocker locker(&conf->mutex);
      // Sleep until producer signals
@@ -282,7 +286,11 @@ class EEGThread : public QThread {
      conf->eegSweepUpdating--; // semaphore.. kind of..  
      // If this was the last scroller, then advance tail..
      if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples;
+
+     hSnap=conf->tcpBufHead;
+     tSnap=conf->tcpBufTail;
     }
+    log_ring_1hz("TIME:RING", hSnap, tSnap, lastH, lastT, lastMs);
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
   }

@@ -31,6 +31,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
+#include "../common/logring.h"
 
 class TcpThread : public QThread {
  Q_OBJECT
@@ -45,7 +46,7 @@ class TcpThread : public QThread {
 
   void run() override {
    const int N=conf->eegSamplesInTick;
-   const quint64 slack=2*N; // keep tail ~2*N behind head when backlog exists
+   const quint64 slack=N; // keep tail ~N behind head when backlog exists
    const quint64 wakeMs=conf->eegProbeMsecs;
 
    while (!(conf->tcpBufHead-conf->tcpBufTail)) msleep(1); // Wait/ensure for at least one available sample
@@ -87,6 +88,9 @@ class TcpThread : public QThread {
 //}
 
      conf->tcpBufTail+=N;
+static quint64 lastH=0, lastT=0;
+static qint64  lastMs=0;
+log_ring_1hz("ACQ:SEND", conf->tcpBufHead, conf->tcpBufTail, lastH, lastT, lastMs);
     }
 
 //static qint64 t1=0;
@@ -98,18 +102,57 @@ class TcpThread : public QThread {
 //           << "aud0" << s.audioN[0];
 //}
 
-    for (int i=0;i<N;i++) {
-     const QByteArray one=eegChunk[i].serialize();
-     const quint32 L=(quint32)one.size();
+//    for (int i=0;i<N;i++) {
+//     const QByteArray one=eegChunk[i].serialize();
+//     const quint32 L=(quint32)one.size();
 
-     QByteArray packet;
-     packet.reserve(4+one.size());
-     packet.append(char((L    )&0xff));
-     packet.append(char((L>> 8)&0xff));
-     packet.append(char((L>>16)&0xff));
-     packet.append(char((L>>24)&0xff));
-     packet.append(one);
-     emit sendPacketSignal(packet);
+//     QByteArray packet;
+//     packet.reserve(4+one.size());
+//     packet.append(char((L    )&0xff));
+//     packet.append(char((L>> 8)&0xff));
+//     packet.append(char((L>>16)&0xff));
+//     packet.append(char((L>>24)&0xff));
+//     packet.append(one);
+//     emit sendPacketSignal(packet);
+//    }
+
+    // Build ONE outer payload containing N inner frames
+    QByteArray payload;
+    payload.reserve(N * (4 + sz));
+
+    for (int i = 0; i < N; ++i) {
+     const QByteArray one = eegChunk[i].serialize();
+     const quint32 Li = (quint32)one.size();
+
+     payload.append(char((Li    ) & 0xff));
+     payload.append(char((Li>> 8) & 0xff));
+     payload.append(char((Li>>16) & 0xff));
+     payload.append(char((Li>>24) & 0xff));
+     payload.append(one);
+    }
+
+    // Wrap payload with OUTER length prefix
+    const quint32 Lo = (quint32)payload.size();
+
+    QByteArray out;
+    out.reserve(4 + (int)Lo);
+    out.append(char((Lo    ) & 0xff));
+    out.append(char((Lo>> 8) & 0xff));
+    out.append(char((Lo>>16) & 0xff));
+    out.append(char((Lo>>24) & 0xff));
+    out.append(payload);
+
+    emit sendPacketSignal(out);
+
+    static quint64 outerTx=0;
+    static qint64 lastMs=0;
+    outerTx++;
+    const qint64 now2 = QDateTime::currentMSecsSinceEpoch();
+    if (lastMs==0) lastMs=now2;
+    if (now2-lastMs>=1000) {
+     qInfo() << "[ACQ:TX] outer=" << outerTx << "/s  N=" << N;
+     outerTx=0;
+     lastMs=now2;
     }
 
     lastSend=now;

@@ -53,6 +53,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "serialdevice.h"
 #include "eeamp.h"
 #include "audioamp.h"
+#include "../common/logring.h"
 
 const int CBUF_SIZE_IN_SECS=10;
 
@@ -134,9 +135,9 @@ class AcqThread : public QThread {
 
   void run() override {
 #ifdef EEMAGINE
-   using namespace eemagine::sdk; //factory eeFact("libeego-SDK.so");
+   using namespace eemagine::sdk;
 #else
-   using namespace eesynth; //factory eeFact(conf->ampCount);
+   using namespace eesynth;
 #endif
 
    // --- Initial setup ---
@@ -164,11 +165,11 @@ class AcqThread : public QThread {
 
    chkTrig.resize(eeAmps.size()); chkTrigOffset=0;
 
-#ifdef EEMAGINE
-   using namespace eemagine::sdk;
-#else
-   using namespace eesynth;
-#endif
+//#ifdef EEMAGINE
+//   using namespace eemagine::sdk;
+//#else
+//   using namespace eesynth;
+//#endif
    // Initialize EEG streams of amps.
    for (auto& e:eeAmps) e.str=e.OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    qInfo() << "<AcqThread_Switch2EEG> EEG upstream started..";
@@ -183,7 +184,7 @@ class AcqThread : public QThread {
 
    while (true) {
 #ifndef EEMAGINE
-    if (nonHWTrig==TRIG_AMPSYNC) { nonHWTrig=0; // Manual TRIG_AMPSYNC put within fetchEegData0() ?
+    if (nonHWTrig==TRIG_AMPSYNC) { nonHWTrig=0; // Manual TRIG_AMPSYNC put within fetchEegData() ?
      for (EEAmp& e:eeAmps) (e.amp)->setTrigger(TRIG_AMPSYNC); // We set it here for all amps
                                                               // It will be received later for inter-amp syncronization
      syncTrigRecvd=eeAmps.size();
@@ -192,7 +193,7 @@ class AcqThread : public QThread {
     fetchEegData();
 
     // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
-    if (eeAmps.size()>1 && syncTrigRecvd==eeAmps.size()) {
+    if (syncTrigRecvd==eeAmps.size()) {
      qInfo() << "<AmpSync> SYNC received by all amps.. validating offsets.. ";
      unsigned int trigOffsetMin=*std::min_element(ampTrigOffset.begin(),ampTrigOffset.end());
      // The following table determines the continuous offset additions for each amp to be aligned.
@@ -275,8 +276,8 @@ class AcqThread : public QThread {
       tcpEEG.offset=counter0; counter0++;
 
       tcpEEG.trigger=0.; // Reset trigger in any case
-      //tcpEEG.timestampMs=QDateTime::currentMSecsSinceEpoch();
-      tcpEEG.timestampMs=0;
+      tcpEEG.timestampMs=QDateTime::currentMSecsSinceEpoch();
+      //tcpEEG.timestampMs=0;
 
 //      const qint64 avail = conf->tcpBufHead - conf->tcpBufTail;
 //      const qint64 free  = conf->tcpBufSize - avail;
@@ -303,6 +304,10 @@ class AcqThread : public QThread {
 
      }
      conf->tcpBufHead+=tcpDataSize; // Update producer index
+
+static quint64 lastH=0, lastT=0;
+static qint64  lastMs=0;
+log_ring_1hz("ACQ:PROD", conf->tcpBufHead, conf->tcpBufTail, lastH, lastT, lastMs);
     }
 
     cBufPivotPrev=cBufPivot;

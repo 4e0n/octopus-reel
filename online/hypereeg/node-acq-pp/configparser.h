@@ -132,6 +132,12 @@ class ConfigParser {
         qCritical() << "<ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
        }
+      } else if (opts[0].trimmed()=="EEGPROBEMS") {
+       conf->eegProbeMsecs=opts[1].toInt();
+       if (!(conf->eegProbeMsecs >= 10 && conf->eegProbeMsecs <= 500)) {
+        qCritical() << "<ConfigParser> <AMP> ERROR: EEGPROBEMS not within [10,500] msecs range!";
+        return true;
+       }
       } else {
        qCritical() << "<ConfigParser> <BUF> ERROR: Invalid section command!";
        return true;

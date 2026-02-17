@@ -72,7 +72,7 @@ class PPDaemon: public QObject {
    conf->totalCount=sList[6].toInt();
    conf->refGain=sList[7].toFloat();
    conf->bipGain=sList[8].toFloat();
-   conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   //conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
 
    // CHANNELS
@@ -273,6 +273,13 @@ class PPDaemon: public QObject {
     if (client->state()!=QAbstractSocket::ConnectedState) continue;
     client->write(packet);
     //client->flush(); // write actual serialized block
+
+    static qint64 lastTx=0;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - lastTx >= 1000) {
+     lastTx = now;
+     qInfo() << "[PP:TX] bytesToWrite=" << client->bytesToWrite();
+    }
    }
   }
 
