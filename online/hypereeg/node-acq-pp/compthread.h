@@ -14,43 +14,42 @@ class CompThread : public QThread {
 
   void run() override {
    const int eegCh=int(conf->chnCount-2);
+   TcpSample tcpS(conf->ampCount,conf->physChnCount);
+   TcpSamplePP tcpSPP(conf->ampCount,conf->physChnCount);
    while (!isInterruptionRequested() && !conf->compStop.load()) {
     QByteArray block;
     {
       QMutexLocker lk(&conf->compMutex);
-      while (conf->compQueue.isEmpty()) conf->compReady.wait(&conf->compMutex);
+
+      while (conf->compQueue.isEmpty() && !isInterruptionRequested() && !conf->compStop.load()) {
+       conf->compReady.wait(&conf->compMutex, 50);
+      }
+      if (isInterruptionRequested() || conf->compStop.load()) break;
+
       block = std::move(conf->compQueue.dequeue());
     }
 
-    // block is OUTER PAYLOAD: [Li][one][Li][one]...
-    int pos = 0;
-    while (pos + 4 <= block.size()) {
-     const uchar *p = reinterpret_cast<const uchar*>(block.constData() + pos);
-     const quint32 Li = (quint32)p[0]
-                        | ((quint32)p[1] << 8)
-                        | ((quint32)p[2] << 16)
-                        | ((quint32)p[3] << 24);
-     pos += 4;
+    // block is OUTER PAYLOAD: [one][one][one]... (fixed size sz)
+    const int sz = conf->frameBytesIn;
+    if (sz <= 0) { qWarning() << "[PP:COMP] frameBytesIn not set"; continue; }
+    if (block.size() % sz != 0) {
+     qWarning() << "[PP:COMP] block size not multiple of frameBytesIn:"
+                << "blockSz=" << block.size() << "frameBytesIn=" << sz;
+     continue;
+    }
 
-     if (pos + (int)Li > block.size()) {
-      qWarning() << "[PP:COMP] inner frame truncated/corrupt:"
-                 << "pos=" << pos << "Li=" << Li << "blockSz=" << block.size();
-      break;
-     }
+    const char* base = block.constData();
+    const int frames = block.size() / sz;
 
-     const QByteArray one = block.mid(pos, Li);
-     pos += (int)Li;
+    for (int i = 0; i < frames; ++i) {
+     const char* one = base + i * sz;
 
-     TcpSample tcpS;
-     if (!tcpS.deserialize(one, conf->chnCount)) {
-      // optional: log occasionally
-      continue;
-     }
+     if (!tcpS.deserializeRaw(one,sz,conf->chnCount,conf->ampCount)) continue;
 
-     // ---- now your compute path for ONE sample ----
+     // compute -> push ring
+     // ---- compute path for ONE sample ----
      // build TcpSamplePP, filter, push into ring, etc.
      // Build PP without serialize/deserialize round trip (you will implement this)
-     TcpSamplePP tcpSPP(conf->ampCount,conf->physChnCount);
      tcpSPP.fromTcpSample(tcpS,conf->chnCount);
 
      // Compute OUTSIDE ring lock
@@ -71,8 +70,8 @@ class CompThread : public QThread {
        if (interMode==2) {
         float sum=0.f;
         const int eSz=conf->chnInfo[chnIdx].interElec.size();
-        for (int i=0;i<eSz;i++)
-         sum+=tcpSPP.amp[ampIdx].dataN[ conf->chnInfo[chnIdx].interElec[i] ];
+        for (int ei=0;ei<eSz;ei++)
+         sum+=tcpSPP.amp[ampIdx].dataN[ conf->chnInfo[chnIdx].interElec[ei] ];
         tcpSPP.amp[ampIdx].dataN[chnIdx]=(eSz>0)?(sum/float(eSz)):0.f;
        } else if (interMode==0) {
         tcpSPP.amp[ampIdx].dataN[chnIdx]=0.f;
@@ -93,15 +92,23 @@ class CompThread : public QThread {
        // (B) LIVE-FIRST: drop oldest if ring full
        // while ((conf->tcpBufHead - conf->tcpBufTail) >= conf->tcpBufSize) conf->tcpBufTail++;
 
-       conf->tcpBuffer[conf->tcpBufHead%conf->tcpBufSize]=std::move(tcpSPP);
+       //conf->tcpBuffer[conf->tcpBufHead%conf->tcpBufSize]=std::move(tcpSPP);
+       auto &slot=conf->tcpBuffer[conf->tcpBufHead%conf->tcpBufSize];
+       slot = tcpSPP; // or slot.copyFrom(tcpSPP)
+
        conf->tcpBufHead++;
 
        static quint64 lastH=0, lastT=0;
        static qint64  lastMs=0;
        log_ring_1hz("PP:RING", conf->tcpBufHead, conf->tcpBufTail, lastH, lastT, lastMs);
 
-       const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
-       if (avail>=(quint64)conf->eegSamplesInTick) conf->dataReady.wakeOne();
+       //const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
+       //if (avail>=(quint64)conf->eegSamplesInTick) conf->dataReady.wakeOne();
+
+       const quint64 availBefore=(conf->tcpBufHead-1)-conf->tcpBufTail;
+       const quint64 availAfter=conf->tcpBufHead-conf->tcpBufTail;
+       if (availBefore<(quint64)conf->eegSamplesInTick && availAfter>=(quint64)conf->eegSamplesInTick)
+        conf->dataReady.wakeOne();
      }
     }
    } 

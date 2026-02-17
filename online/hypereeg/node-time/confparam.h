@@ -179,6 +179,8 @@ class ConfParam : public QObject {
 
   bool usePixmap=false;
 
+  int serSize;
+
  signals:
   void glUpdate();
   void glUpdateParam(int);
@@ -190,7 +192,7 @@ void onStrmDataReady() {
 static quint64 g_outer_ok = 0;
 static quint64 g_time_ok = 0;
 static quint64 g_time_bad = 0;
-static qint64  g_time_last_ms = 0;
+//static qint64  g_time_last_ms = 0;
 static qint64  g_time_last_ms_rx = 0;
   static QByteArray buffer;
   buffer.append(acqStrmSocket->readAll());
@@ -205,6 +207,64 @@ static qint64  g_time_last_ms_rx = 0;
       << QString("[TIME:RX] buffer=%1 bytes")
            .arg(buffer.size());
   }
+
+  while (buffer.size() >= 4) {
+   const uchar *p0 = reinterpret_cast<const uchar*>(buffer.constData());
+   const quint32 Lo = (quint32)p0[0]
+                   | ((quint32)p0[1] << 8)
+                   | ((quint32)p0[2] << 16)
+                   | ((quint32)p0[3] << 24);
+
+   if (buffer.size() < 4 + (int)Lo) break;
+
+   // payload pointer (NO COPY)
+   const char *pay = buffer.constData() + 4;
+   const int payLen = (int)Lo;
+
+   // fixed-size frames: payLen must be multiple of serSize
+   if (payLen % serSize != 0) {
+    g_time_bad++;
+    buffer.remove(0, 4 + payLen);
+    continue;
+   }
+   const int nFrames = payLen / serSize;
+
+   for (int i = 0; i < nFrames; ++i) {
+    const char *framePtr = pay + i*serSize;
+
+    // Wrap without copying
+    const QByteArray one = QByteArray::fromRawData(framePtr, serSize);
+
+    TcpSamplePP s;
+    if (!s.deserialize(one, chnCount)) { g_time_bad++; continue; }
+    g_time_ok++;
+
+    {
+      QMutexLocker locker(&mutex);
+      tcpBuffer[tcpBufHead % tcpBufSize] = s;
+      tcpBufHead++;
+
+      const quint64 availableSamples = tcpBufHead - tcpBufTail;
+      if (availableSamples > scrAvailableSamples && eegSweepUpdating==0) {
+        scrUpdateSamples = scrAvailableSamples / (eegSweepFrameTimeMs / eegSweepDivider);
+        if (quitPending) {
+          if (acqStrmSocket && acqStrmSocket->isOpen())
+            acqStrmSocket->disconnectFromHost();
+        }
+        eegSweepUpdating = ampCount;
+        for (auto &v : eegSweepPending) v = true;
+        eegSweepWait.wakeAll();
+      }
+     }
+    }
+
+    // now discard the outer packet
+    buffer.remove(0, 4 + payLen);
+    g_outer_ok++;
+   }
+
+
+/*
 
   while (buffer.size() >= 4) {
     const uchar *p = reinterpret_cast<const uchar*>(buffer.constData());
@@ -261,11 +321,11 @@ static qint64  g_time_last_ms_rx = 0;
        }
      }
     }
-  }
+   }
 
-  // packets/sec log 1 Hz
-  if (g_time_last_ms==0) g_time_last_ms=now;
-  if (now - g_time_last_ms >= 1000) {
+   // packets/sec log 1 Hz
+   if (g_time_last_ms==0) g_time_last_ms=now;
+   if (now - g_time_last_ms >= 1000) {
     qInfo().noquote()
       << QString("[TIME:PKT] outer=%1/s samples=%2/s bad=%3/s")
           .arg((qulonglong)g_outer_ok)
@@ -275,6 +335,7 @@ static qint64  g_time_last_ms_rx = 0;
     g_time_ok = g_time_bad = 0;
     g_time_last_ms = now;
    }
+*/
   }
 
  private:

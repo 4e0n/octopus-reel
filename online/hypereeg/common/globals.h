@@ -35,6 +35,8 @@ const unsigned int REF_CHN_MAXCOUNT=64;
 const unsigned int BIP_CHN_MAXCOUNT=24;
 const unsigned int TRIG_AMPSYNC=0xFF;
 
+inline constexpr int AUDIO_N=48;
+
 const QString optPath="/opt/octopus/";
 const QString dataPath=optPath+"data/";
 const QString synthDataPath=dataPath+"raweeg/synth-eeg.raw";

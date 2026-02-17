@@ -50,4 +50,5 @@ struct ConfParam {
  QVector<TcpSample> tcpBuffer;
  QVector<AcqChnInfo> chnInfo;
  QTcpServer acqCommServer,acqStrmServer;
+ int frameBytes;
 };

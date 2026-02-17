@@ -25,16 +25,79 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <vector>
 #include <QDataStream>
+#include <cstring>      // memcpy
+#include "le_helper.h"  // rd_u32_le()
 
 struct SamplePP {
- std::vector<float> data;   // Raw, non-filtered amplifier data.
- std::vector<float> dataBP; // [2-40]Hz IIR filtered amplifier data.
- std::vector<float> dataN;  // 30Q @ 50Hz IIR bandpass filtered version of data (notch level indicator for channels)
+ std::vector<float> data;    // Raw
+ std::vector<float> dataBP;  // Bandpass
+ std::vector<float> dataN;   // Notch-indicator / notch-filtered
 // std::vector<float> dataD;  // [2-4]Hz IIR filtered Delta data.
 // std::vector<float> dataT;  // [4-8]Hz IIR filtered Theta data.
 // std::vector<float> dataA;  // [8-14]Hz IIR filtered Alpha data.
 // std::vector<float> dataB;  // [14-28]Hz IIR filtered Beta data.
 // std::vector<float> dataG;  // [28-40]Hz IIR filtered Gamma data.
+ unsigned int trigger=0, offset=0; // NOT on wire
+
+ void init(size_t chnCount) {
+  trigger=0; offset=0;
+  data.assign(chnCount, 0.0f);
+  dataBP.assign(chnCount, 0.0f);
+  dataN.assign(chnCount, 0.0f);
+ }
+
+ SamplePP(size_t chnCount=0) { init(chnCount); }
+
+ // Wire format: data, dataBP, dataN (all float32 LE)
+ void serialize(QDataStream &out) const {
+  for (float f : data)   out << f;
+  for (float f : dataBP) out << f;
+  for (float f : dataN)  out << f;
+ }
+
+ bool deserialize(QDataStream &in, size_t chnCount) {
+  data.resize(chnCount);
+  dataBP.resize(chnCount);
+  dataN.resize(chnCount);
+
+  for (float &f : data)   in >> f;
+  for (float &f : dataBP) in >> f;
+  for (float &f : dataN)  in >> f;
+  return true;
+ }
+
+ // NEW: pointer-based deserialize matching serialize()
+ bool deserialize(const char* src, int len, int chnCount, int* consumed) {
+  if (!src || len < 0 || chnCount < 0) return false;
+
+  const int needBytes = chnCount * 3 * 4;  // data + dataBP + dataN
+  if (len < needBytes) return false;
+
+  data.resize(chnCount);
+  dataBP.resize(chnCount);
+  dataN.resize(chnCount);
+
+  const char* p = src;
+
+  auto rd_f32 = [&](float &dst) {
+   quint32 w = rd_u32_le(p);
+   std::memcpy(&dst, &w, 4);
+   p += 4;
+  };
+
+  for (int i=0;i<chnCount;++i) rd_f32(data[i]);
+  for (int i=0;i<chnCount;++i) rd_f32(dataBP[i]);
+  for (int i=0;i<chnCount;++i) rd_f32(dataN[i]);
+
+  if (consumed) *consumed = needBytes;
+  return true;
+ }
+};
+/*
+struct SamplePP {
+ std::vector<float> data;   // Raw, non-filtered amplifier data.
+ std::vector<float> dataBP; // [2-40]Hz IIR filtered amplifier data.
+ std::vector<float> dataN;  // 30Q @ 50Hz IIR bandpass filtered version of data (notch level indicator for channels)
  unsigned int trigger=0,offset=0;
 
  void init(size_t chnCount) {
@@ -76,3 +139,4 @@ struct SamplePP {
   return true;
  }
 };
+*/

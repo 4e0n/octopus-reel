@@ -187,6 +187,7 @@ class ConfigParser {
     conf->bipGain=sList[8].toFloat();
     conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+    conf->serSize=sList[10].toInt();
 
     conf->eegSweepDivider=conf->eegSweepCoeff[0];
     conf->eegSweepFrameTimeMs=conf->eegRate/conf->eegSweepRefreshRate; // (1000sps/50Hz)=20ms=20samples

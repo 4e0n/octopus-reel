@@ -77,6 +77,8 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
    conf->physChnCount=conf->refChnCount+conf->bipChnCount; conf->totalChnCount=conf->physChnCount+2;
    conf->totalCount=conf->ampCount*conf->totalChnCount;
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+   conf->frameBytes=TcpSample(conf->ampCount,conf->physChnCount).serialize().size();
+   qDebug() << "FrameBytes=" << conf->frameBytes;
    conf->dumpRaw=false;
    // --------------------------------------------------------------------------------
    if (!conf->acqCommServer.listen(QHostAddress::Any,conf->acqCommPort)) {

@@ -96,7 +96,8 @@ class AcqDaemon : public QObject {
                    QString::number(conf->totalCount).toUtf8()+","+ \
                    QString::number(conf->refGain).toUtf8()+","+ \
                    QString::number(conf->bipGain).toUtf8()+","+ \
-                   QString::number(conf->eegProbeMsecs).toUtf8()+"\n");
+                   QString::number(conf->eegProbeMsecs).toUtf8()+","+ \
+                   QString::number(conf->frameBytes).toUtf8()+"\n");
     } else if (cmd==CMD_ACQ_GETCHAN) {
      qInfo() << "<Comm> Sending Channels' Parameters..";
      for (const auto& ch:conf->chnInfo) {

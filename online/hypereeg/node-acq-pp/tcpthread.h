@@ -53,7 +53,7 @@ class TcpThread : public QThread {
 
    // determine fixed serialized size once
    TcpSamplePP tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
-   const int sz=tmp.serialize().size();
+   const int sz=conf->frameBytesOut;
 
    QByteArray packet; packet.reserve(4+N*sz);
 
@@ -77,17 +77,6 @@ class TcpThread : public QThread {
      const quint64 tail=conf->tcpBufTail;
      for (int i=0;i<N;++i) eegChunk[i]=(*tcpBuffer)[(tail+i)%tcpBufSize];
 
-//static qint64 t1=0;
-//qint64 noww=QDateTime::currentMSecsSinceEpoch();
-//if (noww-t1>1000) { t1=noww;
-//  qDebug() << "[CONS] head" << conf->tcpBufHead
-//           << "tail0" << tail
-//           << "avail" << (conf->tcpEEGHead - conf->tcpBufTail)
-//           << "off0"  << eegChunk[0].offset
-//           << "eeg0"  << eegChunk[0].amp[0].dataBP[0]
-//           << "aud0"  << eegChunk[0].audioN[0];
-//}
-
      hSnap = conf->tcpBufHead;
      tSnap = conf->tcpBufTail;
 
@@ -99,55 +88,34 @@ class TcpThread : public QThread {
     static qint64  lastMs=0;
     log_ring_1hz("PP:RING", hSnap, tSnap, lastH, lastT, lastMs);
 
-//static qint64 t1=0;
-//const quint64 noww=QDateTime::currentMSecsSinceEpoch();
-//if (noww-t1>1000) { t1=noww;
-//  const auto &s = eegChunk[0];
-//  qDebug() << "[CONS] off" << s.offset << "mag" << QString::number(s.MAGIC,16)
-//           << "eeg0" << s.amp[0].dataBP[0]
-//           << "aud0" << s.audioN[0];
-//}
+// Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
+//QByteArray payload;
+payload.resize(N * sz);               // allocate exact size once
+char *dst = payload.data();
+int off = 0;
 
-//    for (int i=0;i<N;i++) {
-//     const QByteArray one=eegChunk[i].serialize();
-//     const quint32 L=(quint32)one.size();
-//
-//     QByteArray packet;
-//     packet.reserve(4+one.size());
-//     packet.append(char((L    )&0xff));
-//     packet.append(char((L>> 8)&0xff));
-//     packet.append(char((L>>16)&0xff));
-//     packet.append(char((L>>24)&0xff));
-//     packet.append(one);
-//     emit sendPacketSignal(packet);
-//    }
+for (int i = 0; i < N; ++i) {
+  const QByteArray one = eegChunk[i].serialize();  // must be sz bytes
+  // (optional safety)
+  if (one.size() != sz) {
+    qWarning() << "[ACQ] serialize size changed!" << one.size() << "expected" << sz;
+    continue;
+  }
+  memcpy(dst + off, one.constData(), sz);
+  off += sz;
+}
 
-    // Build ONE payload containing N framed samples (each has its own inner length)
-    QByteArray payload;
-    payload.reserve(N * (4 + sz));
+// Outer frame = [uint32 Lo][payload]
+const quint32 Lo = (quint32)payload.size();
+//QByteArray out;
+out.resize(4 + (int)Lo);
+out[0] = char((Lo    ) & 0xff);
+out[1] = char((Lo>> 8) & 0xff);
+out[2] = char((Lo>>16) & 0xff);
+out[3] = char((Lo>>24) & 0xff);
+memcpy(out.data() + 4, payload.constData(), Lo);
 
-    for (int i = 0; i < N; ++i) {
-     const QByteArray one = eegChunk[i].serialize();
-     const quint32 L = (quint32)one.size();
-
-     payload.append(char((L     ) & 0xff));
-     payload.append(char((L >> 8) & 0xff));
-     payload.append(char((L >>16) & 0xff));
-     payload.append(char((L >>24) & 0xff));
-     payload.append(one);
-    }
-
-    // Outer frame: length-prefix the whole tick payload ONCE
-    const quint32 outerL = (quint32)payload.size();
-    QByteArray packet;
-    packet.reserve(4 + payload.size());
-    packet.append(char((outerL     ) & 0xff));
-    packet.append(char((outerL >> 8) & 0xff));
-    packet.append(char((outerL >>16) & 0xff));
-    packet.append(char((outerL >>24) & 0xff));
-    packet.append(payload);
-
-    emit sendPacketSignal(packet);
+emit sendPacketSignal(out);
 
     lastSend=now;
    }
@@ -158,6 +126,8 @@ class TcpThread : public QThread {
 
  private:
   ConfParam *conf;
+
+  QByteArray payload,out;
 
   TcpSamplePP tcpEEG;
   QVector<TcpSamplePP> *tcpBuffer; unsigned int tcpBufSize;

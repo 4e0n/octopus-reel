@@ -27,25 +27,29 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include <vector>
 #include "sample.h"
-
-const int AUDIO_N=48;
+#include "le_helper.h"
+#include "globals.h"
 
 struct TcpSample {
  static constexpr quint32 MAGIC=0x54534D50; // 'TSMP'
  quint64 offset=0,timestampMs=0; // wall-clock at creation
  std::vector<Sample> amp;
  float audioN[AUDIO_N];
+ unsigned int ampCount=0,chnCount=0;
  unsigned int trigger=0;
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
- void init(size_t ampCount,size_t chnCount) {
-  amp.resize(ampCount); for (Sample &s:amp) s.init(chnCount); offset=0; timestampMs=0; trigger=0;
+ void init(size_t aCount,size_t cCount) {
+  ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=0;
+  amp.resize(ampCount); for (auto &s:amp) s.init(chnCount);
+  for (size_t i=0;i<AUDIO_N;++i) audioN[i]=0.f;
  }
 
  QByteArray serialize() const { QByteArray ba;
   QDataStream out(&ba,QIODevice::WriteOnly);
   out.setByteOrder(QDataStream::LittleEndian);
+  out.setFloatingPointPrecision(QDataStream::SinglePrecision);
   out << static_cast<quint32>(MAGIC);
   out << static_cast<quint64>(offset) << static_cast<quint64>(timestampMs);
   out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
@@ -54,20 +58,70 @@ struct TcpSample {
   return ba;
  }
 
- bool deserialize(const QByteArray &ba,size_t chnCount) {
-  QDataStream in(ba);
-  in.setByteOrder(QDataStream::LittleEndian);
-  quint32 magic=0,ampCount=0;
-  in>>magic; if (magic!=MAGIC) { qDebug() << "<TCPSample> MAGIC mismatch!!!"; return false; }
-  in >> offset >> timestampMs >> trigger >> ampCount;
+ bool deserializeRaw(const char* data, int len, int cCount,
+                    quint32 expectedAmpCount = 0) {
+  if (!data || len <= 0) return false;
+
+  const char* p   = data;
+  const char* end = data + len;
+
+  auto need = [&](int n) -> bool { return (p + n) <= end; };
+
+  // MAGIC
+  if (!need(4)) return false;
+  const quint32 magic = rd_u32_le(p); p += 4;
+  if (magic != MAGIC) return false;
+
+  // offset
+  if (!need(8)) return false;
+  offset = rd_u64_le(p); p += 8;
+
+  // timestampMs
+  if (!need(8)) return false;
+  timestampMs = rd_u64_le(p); p += 8;
+
+  // trigger
+  if (!need(4)) return false;
+  trigger = rd_u32_le(p); p += 4;
+
+  // ampCount
+  if (!need(4)) return false;
+  const quint32 aCount = rd_u32_le(p); p += 4;
+
+  if (expectedAmpCount != 0 && aCount != expectedAmpCount)
+    return false;
+
+  ampCount=aCount;
+  chnCount=(unsigned)cCount;
+  amp.clear();
+  // amps (each is Sample of chnCount floats)
   amp.resize(ampCount);
-  for (Sample &s:amp) { s.init(chnCount);
-   if (!s.deserialize(in,chnCount)) { qDebug() << "<TCPSample> Sample deserialization error!!"; return false; }
+  for (quint32 a=0;a<ampCount;++a) {
+    amp[int(a)].init(chnCount);
+    int consumed = 0;
+    if (!amp[int(a)].deserialize(p, int(end - p), chnCount, &consumed))
+      return false;
+    p += consumed;
   }
-  for (size_t audIndex=0;audIndex<AUDIO_N;audIndex++) { float v=0.f;
-   in >> v;
-   audioN[audIndex]=v;
+
+  // audioN (AUDIO_N floats)
+  for (size_t i = 0; i < AUDIO_N; ++i) {
+    if (!need(4)) return false;
+    audioN[i] = rd_f32_le(p);
+    p += 4;
   }
+
+  // Strict framing check (HIGHLY recommended while stabilizing)
+  if (p != end) {
+   qWarning() << "[TcpSample] framing mismatch, remaining bytes =" << (end - p)
+              << "len =" << len << "ampCount =" << ampCount << "chnCount =" << chnCount;
+   return false;
+  }
+
   return true;
+ }
+
+ bool deserialize(const QByteArray& ba,int chnCount,quint32 expectedAmpCount=0) {
+  return deserializeRaw(ba.constData(),ba.size(),chnCount,expectedAmpCount);
  }
 };

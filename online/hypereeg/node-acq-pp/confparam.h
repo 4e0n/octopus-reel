@@ -137,6 +137,8 @@ class ConfParam : public QObject {
   int compQueueMax=64;         // tune later
   std::atomic<bool> compStop{false};
 
+  int frameBytesIn,frameBytesOut;
+
  public slots:
   void onStrmDataReady() {
    static QByteArray inbuf;
@@ -157,13 +159,6 @@ class ConfParam : public QObject {
     static quint64 outerRx = 0;
     outerRx++;
 
-    //QDataStream ds(inbuf); ds.setByteOrder(QDataStream::LittleEndian);
-
-    //quint32 blockSize=0; ds>>blockSize;
-    //if ((quint32)inbuf.size()<4u+blockSize) break;
-
-    //QByteArray block=inbuf.mid(4,blockSize); inbuf.remove(0,4+blockSize);
-
     int qszSnap=0;
     {
       QMutexLocker lk(&compMutex);
@@ -180,10 +175,6 @@ class ConfParam : public QObject {
     }
 
     const qint64 now=QDateTime::currentMSecsSinceEpoch();
-    //if (now-lastMsQ>=1000) {
-    // lastMsQ=now;
-    // qInfo().noquote() << QString("[PP:RX] compQueue=%1").arg(qszSnap);
-    //}
 
     if (now-lastMsQ>=1000) {
      lastMsQ=now;

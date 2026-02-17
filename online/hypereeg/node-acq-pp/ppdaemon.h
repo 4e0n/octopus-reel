@@ -74,6 +74,9 @@ class PPDaemon: public QObject {
    conf->bipGain=sList[8].toFloat();
    //conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+   conf->frameBytesIn=sList[10].toInt();
+
+   conf->frameBytesOut=TcpSamplePP(conf->ampCount,conf->physChnCount).serialize().size();
 
    // CHANNELS
 
@@ -96,6 +99,11 @@ class PPDaemon: public QObject {
     conf->chnInfo.append(chn);
    }
    conf->chnCount=conf->chnInfo.size();
+
+  qDebug() << "[PP] ampCount=" << conf->ampCount
+        << "chnCount=" << conf->chnCount
+        << "physChnCount=" << conf->physChnCount
+        << "frameBytesIn=" << conf->frameBytesIn;
 
    // Constants or calculated global settings upon the ones read from config file
    conf->tcpBuffer=QVector<TcpSamplePP>(conf->tcpBufSize,TcpSamplePP(conf->ampCount,conf->chnCount));
@@ -189,7 +197,8 @@ class PPDaemon: public QObject {
                    QString::number(conf->totalCount).toUtf8()+","+ \
                    QString::number(conf->refGain).toUtf8()+","+ \
                    QString::number(conf->bipGain).toUtf8()+","+ \
-                   QString::number(conf->eegProbeMsecs).toUtf8()+"\n");
+                   QString::number(conf->eegProbeMsecs).toUtf8()+","+ \
+                   QString::number(conf->frameBytesOut).toUtf8()+"\n");
     } else if (cmd==CMD_ACQ_GETCHAN) {
      qInfo() << "<Comm> Sending Channels' Parameters..";
      for (const auto& ch:conf->chnInfo) {
