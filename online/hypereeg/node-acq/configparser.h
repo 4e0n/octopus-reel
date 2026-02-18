@@ -178,12 +178,12 @@ class ConfigParser {
          qCritical() << "<ConfigParser> <CHN> ERROR: Invalid parameter!";
 	 return true;
         } else { // Set and append new channel..
-	 dummyChnInfo.physChn=opts2[1].toInt();          // Physical channel
-	 dummyChnInfo.chnName=opts2[2];                  // Channel name
-	 dummyChnInfo.topoTheta=opts2[3].toFloat();      // TopoThetaPhi - Theta
-	 dummyChnInfo.topoPhi=opts2[4].toFloat();        // TopoThetaPhi - Phi
-	 dummyChnInfo.topoX=opts2[5].toInt();            // TopoXY - X
-	 dummyChnInfo.topoY=opts2[6].toInt();            // TopoXY - Y
+	 dummyChnInfo.physChn=opts2[1].toInt();      // Physical channel
+	 dummyChnInfo.chnName=opts2[2];              // Channel name
+	 dummyChnInfo.topoTheta=opts2[3].toFloat();  // TopoThetaPhi - Theta
+	 dummyChnInfo.topoPhi=opts2[4].toFloat();    // TopoThetaPhi - Phi
+	 dummyChnInfo.topoX=opts2[5].toInt();        // TopoXY - X
+	 dummyChnInfo.topoY=opts2[6].toInt();        // TopoXY - Y
 	 if (opts2[0]=="R") {
           dummyChnInfo.type=0; conf->refChnCount++;  // referential
 	 } else if (opts2[0]=="B") {

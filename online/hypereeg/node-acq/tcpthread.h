@@ -78,77 +78,37 @@ class TcpThread : public QThread {
 
      conf->tcpBufTail+=N;
 
-     static quint64 lastH=0, lastT=0;
-     static qint64  lastMs=0;
-     log_ring_1hz("ACQ:SEND", conf->tcpBufHead, conf->tcpBufTail, lastH, lastT, lastMs);
+     static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
+     log_ring_1hz("ACQ:SEND",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
     }
 
-// Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
-//QByteArray payload;
-payload.resize(N * sz);               // allocate exact size once
-char *dst = payload.data();
-int off = 0;
-
-for (int i = 0; i < N; ++i) {
-  const QByteArray one = eegChunk[i].serialize();  // must be sz bytes
-  // (optional safety)
-  if (one.size() != sz) {
-    qWarning() << "[ACQPP] serialize size changed!" << one.size() << "expected" << sz;
-    continue;
-  }
-  memcpy(dst + off, one.constData(), sz);
-  off += sz;
-}
-
-// Outer frame = [uint32 Lo][payload]
-const quint32 Lo = (quint32)payload.size();
-//QByteArray out;
-out.resize(4 + (int)Lo);
-out[0] = char((Lo    ) & 0xff);
-out[1] = char((Lo>> 8) & 0xff);
-out[2] = char((Lo>>16) & 0xff);
-out[3] = char((Lo>>24) & 0xff);
-memcpy(out.data() + 4, payload.constData(), Lo);
-
-emit sendPacketSignal(out);
-
-/*
-    // Build ONE outer payload containing N inner frames
-    QByteArray payload;
-    payload.reserve(N * (4 + sz));
-
-    for (int i = 0; i < N; ++i) {
-     const QByteArray one = eegChunk[i].serialize();
-     const quint32 Li = (quint32)one.size();
-
-     payload.append(char((Li    ) & 0xff));
-     payload.append(char((Li>> 8) & 0xff));
-     payload.append(char((Li>>16) & 0xff));
-     payload.append(char((Li>>24) & 0xff));
-     payload.append(one);
+    // Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
+    payload.resize(N*sz); // allocate exact size once
+    char *dst=payload.data(); int off=0;
+    for (int i=0;i<N;++i) {
+     const QByteArray one=eegChunk[i].serialize(); // must be sz bytes
+     if (one.size()!=sz) { // optional safety
+      qWarning() << "[ACQPP] serialize size changed!" << one.size() << "expected" << sz;
+      continue;
+     }
+     memcpy(dst+off,one.constData(),sz);
+     off+=sz;
     }
 
-    // Wrap payload with OUTER length prefix
-    const quint32 Lo = (quint32)payload.size();
-
-    QByteArray out;
-    out.reserve(4 + (int)Lo);
-    out.append(char((Lo    ) & 0xff));
-    out.append(char((Lo>> 8) & 0xff));
-    out.append(char((Lo>>16) & 0xff));
-    out.append(char((Lo>>24) & 0xff));
-    out.append(payload);
+    // Outer frame=[uint32 Lo][payload]
+    const quint32 Lo=(quint32)payload.size();
+    out.resize(4+(int)Lo);
+    out[0]=char((Lo    )&0xff);
+    out[1]=char((Lo>> 8)&0xff);
+    out[2]=char((Lo>>16)&0xff);
+    out[3]=char((Lo>>24)&0xff);
+    memcpy(out.data()+4,payload.constData(),Lo);
 
     emit sendPacketSignal(out);
-*/
 
-
-
-
-    static quint64 outerTx=0;
-    static qint64 lastMs=0;
+    static quint64 outerTx=0; static qint64 lastMs=0;
     outerTx++;
-    const qint64 now2 = QDateTime::currentMSecsSinceEpoch();
+    const qint64 now2=QDateTime::currentMSecsSinceEpoch();
     if (lastMs==0) lastMs=now2;
     if (now2-lastMs>=1000) {
      qInfo() << "[ACQ:TX] outer=" << outerTx << "/s  N=" << N;

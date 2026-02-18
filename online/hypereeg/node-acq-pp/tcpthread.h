@@ -52,7 +52,7 @@ class TcpThread : public QThread {
    while (!(conf->tcpBufHead-conf->tcpBufTail)) msleep(1); // Wait/ensure for at least one available sample
 
    // determine fixed serialized size once
-   TcpSamplePP tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
+   //TcpSamplePP tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
    const int sz=conf->frameBytesOut;
 
    QByteArray packet; packet.reserve(4+N*sz);
@@ -70,52 +70,47 @@ class TcpThread : public QThread {
     if ((now-lastSend)<wakeMs) { msleep(1); continue; }
 
     // Copy N samples, advance tail
-    quint64 hSnap=0, tSnap=0;
+    quint64 hSnap=0,tSnap=0;
     {
      QMutexLocker locker(&conf->mutex);
      if ((conf->tcpBufHead-conf->tcpBufTail)<(quint64)N) continue;
      const quint64 tail=conf->tcpBufTail;
      for (int i=0;i<N;++i) eegChunk[i]=(*tcpBuffer)[(tail+i)%tcpBufSize];
 
-     hSnap = conf->tcpBufHead;
-     tSnap = conf->tcpBufTail;
+     hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
 
      conf->tcpBufTail+=N;
      conf->spaceReady.wakeOne();
     }
 
-    static quint64 lastH=0, lastT=0;
+    static quint64 lastH=0,lastT=0;
     static qint64  lastMs=0;
-    log_ring_1hz("PP:RING", hSnap, tSnap, lastH, lastT, lastMs);
+    log_ring_1hz("PP:SEND",hSnap,tSnap,lastH,lastT,lastMs);
 
-// Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
-//QByteArray payload;
-payload.resize(N * sz);               // allocate exact size once
-char *dst = payload.data();
-int off = 0;
+    // Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
+    payload.resize(N*sz); // allocate exact size once
+    char *dst=payload.data(); int off=0;
+    for (int i=0;i<N;++i) {
+     const QByteArray one=eegChunk[i].serialize(); // must be sz bytes
+     // (optional safety)
+     if (one.size()!=sz) {
+      qWarning() << "[ACQ] serialize size changed!" << one.size() << "expected" << sz;
+      continue;
+     }
+     memcpy(dst+off,one.constData(),sz);
+     off+=sz;
+    }
 
-for (int i = 0; i < N; ++i) {
-  const QByteArray one = eegChunk[i].serialize();  // must be sz bytes
-  // (optional safety)
-  if (one.size() != sz) {
-    qWarning() << "[ACQ] serialize size changed!" << one.size() << "expected" << sz;
-    continue;
-  }
-  memcpy(dst + off, one.constData(), sz);
-  off += sz;
-}
+    // Outer frame=[uint32 Lo][payload]
+    const quint32 Lo=(quint32)payload.size();
+    out.resize(4+(int)Lo);
+    out[0]=char((Lo    )&0xff);
+    out[1]=char((Lo>> 8)&0xff);
+    out[2]=char((Lo>>16)&0xff);
+    out[3]=char((Lo>>24)&0xff);
+    memcpy(out.data()+4,payload.constData(),Lo);
 
-// Outer frame = [uint32 Lo][payload]
-const quint32 Lo = (quint32)payload.size();
-//QByteArray out;
-out.resize(4 + (int)Lo);
-out[0] = char((Lo    ) & 0xff);
-out[1] = char((Lo>> 8) & 0xff);
-out[2] = char((Lo>>16) & 0xff);
-out[3] = char((Lo>>24) & 0xff);
-memcpy(out.data() + 4, payload.constData(), Lo);
-
-emit sendPacketSignal(out);
+    emit sendPacketSignal(out);
 
     lastSend=now;
    }

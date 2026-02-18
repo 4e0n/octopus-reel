@@ -180,14 +180,16 @@ class ConfigParser {
     conf->tcpBuffer.resize(conf->tcpBufSize);
     conf->refChnCount=sList[2].toInt();
     conf->bipChnCount=sList[3].toInt();
-    //conf->physChnCount=sList[4].toInt();
-    //conf->totalChnCount=sList[5].toInt();
-    //conf->totalCount=sList[6].toInt();
+    conf->physChnCount=sList[4].toInt();
+    conf->totalChnCount=sList[5].toInt();
+    conf->totalCount=sList[6].toInt();
     conf->refGain=sList[7].toFloat();
     conf->bipGain=sList[8].toFloat();
     conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-    conf->serSize=sList[10].toInt();
+    conf->frameBytes=sList[10].toInt();
+
+    qDebug() << "[TIME] ampCount="<<conf->ampCount<<" chnCount="<<conf->chnCount<<" frameBytes="<<conf->frameBytes;
 
     conf->eegSweepDivider=conf->eegSweepCoeff[0];
     conf->eegSweepFrameTimeMs=conf->eegRate/conf->eegSweepRefreshRate; // (1000sps/50Hz)=20ms=20samples

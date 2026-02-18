@@ -30,7 +30,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QIntValidator>
 #include <QDateTime>
 #include <QDir>
-#include "../common/version.h"
 #include "../common/globals.h"
 #include "../common/sample.h"
 #include "../common/tcpsample.h"

@@ -32,7 +32,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include <QDir>
 #include <QIntValidator>
-#include "../common/version.h"
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/tcp_commands.h"
@@ -72,7 +71,7 @@ class PPDaemon: public QObject {
    conf->totalCount=sList[6].toInt();
    conf->refGain=sList[7].toFloat();
    conf->bipGain=sList[8].toFloat();
-   //conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
    conf->frameBytesIn=sList[10].toInt();
 
@@ -100,10 +99,10 @@ class PPDaemon: public QObject {
    }
    conf->chnCount=conf->chnInfo.size();
 
-  qDebug() << "[PP] ampCount=" << conf->ampCount
-        << "chnCount=" << conf->chnCount
-        << "physChnCount=" << conf->physChnCount
-        << "frameBytesIn=" << conf->frameBytesIn;
+   qDebug() << "[PP] ampCount=" << conf->ampCount
+            << "chnCount=" << conf->chnCount
+            << "physChnCount=" << conf->physChnCount
+            << "frameBytesIn=" << conf->frameBytesIn;
 
    // Constants or calculated global settings upon the ones read from config file
    conf->tcpBuffer=QVector<TcpSamplePP>(conf->tcpBufSize,TcpSamplePP(conf->ampCount,conf->chnCount));

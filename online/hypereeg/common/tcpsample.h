@@ -58,62 +58,45 @@ struct TcpSample {
   return ba;
  }
 
- bool deserializeRaw(const char* data, int len, int cCount,
-                    quint32 expectedAmpCount = 0) {
-  if (!data || len <= 0) return false;
+ bool deserializeRaw(const char* data,int len,int cCount,quint32 expectedAmpCount=0) {
+  if (!data || len<=0) return false;
 
-  const char* p   = data;
-  const char* end = data + len;
+  const char* p=data; const char* end=data+len;
 
-  auto need = [&](int n) -> bool { return (p + n) <= end; };
+  auto need=[&](int n) -> bool { return (p + n)<=end; };
 
-  // MAGIC
-  if (!need(4)) return false;
-  const quint32 magic = rd_u32_le(p); p += 4;
-  if (magic != MAGIC) return false;
+  if (!need(4)) return false; // MAGIC
+  const quint32 magic=rd_u32_le(p); p+=4; if (magic != MAGIC) return false;
 
-  // offset
-  if (!need(8)) return false;
-  offset = rd_u64_le(p); p += 8;
+  if (!need(8)) return false; // offset
+  offset=rd_u64_le(p); p+=8;
 
-  // timestampMs
-  if (!need(8)) return false;
-  timestampMs = rd_u64_le(p); p += 8;
+  if (!need(8)) return false; // timestampMs
+  timestampMs=rd_u64_le(p); p+=8;
 
-  // trigger
-  if (!need(4)) return false;
-  trigger = rd_u32_le(p); p += 4;
+  if (!need(4)) return false; // trigger
+  trigger=rd_u32_le(p); p+=4;
 
-  // ampCount
-  if (!need(4)) return false;
-  const quint32 aCount = rd_u32_le(p); p += 4;
+  if (!need(4)) return false; // ampCount
+  const quint32 aCount=rd_u32_le(p); p+=4;
 
-  if (expectedAmpCount != 0 && aCount != expectedAmpCount)
-    return false;
+  if (expectedAmpCount!=0 && aCount!=expectedAmpCount) return false;
 
-  ampCount=aCount;
-  chnCount=(unsigned)cCount;
-  amp.clear();
-  // amps (each is Sample of chnCount floats)
-  amp.resize(ampCount);
-  for (quint32 a=0;a<ampCount;++a) {
-    amp[int(a)].init(chnCount);
-    int consumed = 0;
-    if (!amp[int(a)].deserialize(p, int(end - p), chnCount, &consumed))
-      return false;
-    p += consumed;
+  ampCount=aCount; chnCount=(unsigned)cCount; amp.clear(); amp.resize(ampCount);
+  for (quint32 a=0;a<ampCount;++a) { amp[int(a)].init(chnCount);
+   int consumed=0;
+   if (!amp[int(a)].deserialize(p,int(end-p),chnCount,&consumed)) return false;
+   p+=consumed;
   }
 
-  // audioN (AUDIO_N floats)
-  for (size_t i = 0; i < AUDIO_N; ++i) {
-    if (!need(4)) return false;
-    audioN[i] = rd_f32_le(p);
-    p += 4;
+  for (size_t i=0;i<AUDIO_N;++i) { // audioN
+   if (!need(4)) return false;
+   audioN[i]=rd_f32_le(p); p+=4;
   }
 
-  // Strict framing check (HIGHLY recommended while stabilizing)
-  if (p != end) {
-   qWarning() << "[TcpSample] framing mismatch, remaining bytes =" << (end - p)
+  // Strict framing check (keep during stabilization)
+  if (p!=end) {
+   qWarning() << "[TcpSample] framing mismatch, remaining bytes =" << (end-p)
               << "len =" << len << "ampCount =" << ampCount << "chnCount =" << chnCount;
    return false;
   }

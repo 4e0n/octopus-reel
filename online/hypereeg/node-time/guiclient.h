@@ -28,7 +28,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QTcpSocket>
 #include <QString>
 #include <QVector>
-#include "../common/version.h"
 #include "../common/globals.h"
 #include "../common/tcpsample_pp.h"
 #include "../common/tcp_commands.h"
@@ -40,7 +39,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 const int EEGFRAME_REFRESH_RATE=100; // Base refresh rate
 
-const QString cfgPathX=confPath+"hypereeg.conf";
+const QString cfgPathX=confPath()+"hypereeg.conf";
 
 class GUIClient: public QObject {
  Q_OBJECT

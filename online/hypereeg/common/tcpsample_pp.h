@@ -26,9 +26,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QByteArray>
 #include <QDataStream>
 #include <vector>
+#include "tcpsample.h"
 #include "sample_pp.h"
 #include "le_helper.h"
-#include "tcpsample.h"
 #include "globals.h"
 
 struct TcpSamplePP {
@@ -59,62 +59,45 @@ struct TcpSamplePP {
   return ba;
  }
 
- bool deserializeRaw(const char* data, int len, int cCount,
-                    quint32 expectedAmpCount = 0) {
-  if (!data || len <= 0) return false;
+ bool deserializeRaw(const char* data,int len,int cCount,quint32 expectedAmpCount=0) {
+  if (!data || len<=0) return false;
 
-  const char* p   = data;
-  const char* end = data + len;
+  const char* p=data; const char* end=data+len;
 
-  auto need = [&](int n) -> bool { return (p + n) <= end; };
+  auto need=[&](int n) -> bool { return (p + n)<=end; };
 
-  // MAGIC
-  if (!need(4)) return false;
-  const quint32 magic = rd_u32_le(p); p += 4;
-  if (magic != MAGIC) return false;
+  if (!need(4)) return false; // MAGIC
+  const quint32 magic=rd_u32_le(p); p+=4; if (magic != MAGIC) return false;
 
-  // offset
-  if (!need(8)) return false;
-  offset = rd_u64_le(p); p += 8;
+  if (!need(8)) return false; // offset
+  offset=rd_u64_le(p); p+=8;
 
-  // timestampMs
-  if (!need(8)) return false;
-  timestampMs = rd_u64_le(p); p += 8;
+  if (!need(8)) return false; // timestampMs
+  timestampMs=rd_u64_le(p); p+=8;
 
-  // trigger
-  if (!need(4)) return false;
-  trigger = rd_u32_le(p); p += 4;
+  if (!need(4)) return false; // trigger
+  trigger=rd_u32_le(p); p+=4;
 
-  // ampCount
-  if (!need(4)) return false;
-  const quint32 aCount = rd_u32_le(p); p += 4;
+  if (!need(4)) return false; // ampCount
+  const quint32 aCount=rd_u32_le(p); p+=4;
 
-  if (expectedAmpCount != 0 && aCount != expectedAmpCount)
-    return false;
+  if (expectedAmpCount!=0 && aCount!=expectedAmpCount) return false;
 
-  ampCount=aCount;
-  chnCount=(unsigned)cCount;
-  amp.clear();
-  // amps (each is SamplePP of chnCount floats)
-  amp.resize(ampCount);
-  for (quint32 a=0;a<ampCount;++a) {
-    amp[int(a)].init(chnCount);
-    int consumed = 0;
-    if (!amp[int(a)].deserialize(p, int(end - p), chnCount, &consumed))
-      return false;
-    p += consumed;
+  ampCount=aCount; chnCount=(unsigned)cCount; amp.clear(); amp.resize(ampCount);
+  for (quint32 a=0;a<ampCount;++a) { amp[int(a)].init(chnCount);
+   int consumed=0;
+   if (!amp[int(a)].deserialize(p,int(end-p),chnCount,&consumed)) return false;
+   p+=consumed;
   }
 
-  // audioN (AUDIO_N floats)
-  for (size_t i = 0; i < AUDIO_N; ++i) {
-    if (!need(4)) return false;
-    audioN[i] = rd_f32_le(p);
-    p += 4;
+  for (size_t i=0;i<AUDIO_N;++i) { // audioN
+   if (!need(4)) return false;
+   audioN[i]=rd_f32_le(p); p+=4;
   }
 
-  // Strict framing check (HIGHLY recommended while stabilizing)
-  if (p != end) {
-   qWarning() << "[TcpSamplePP] framing mismatch, remaining bytes =" << (end - p)
+  // Strict framing check (keep during stabilization)
+  if (p!=end) {
+   qWarning() << "[TcpSamplePP] framing mismatch, remaining bytes =" << (end-p)
               << "len =" << len << "ampCount =" << ampCount << "chnCount =" << chnCount;
    return false;
   }
@@ -126,41 +109,23 @@ struct TcpSamplePP {
   return deserializeRaw(ba.constData(),ba.size(),chnCount,expectedAmpCount);
  }
 
- #include "tcpsample.h"   // <-- add this near the top
+ void fromTcpSample(const TcpSample &s,size_t cCount) {
+  offset=s.offset; timestampMs=s.timestampMs; trigger=s.trigger;
 
-// ...
+  for (size_t i=0;i<AUDIO_N;++i) audioN[i]=s.audioN[i]; // Audio
 
-// Copy raw fields + raw EEG into PP containers (does NOT compute filters)
-void fromTcpSample(const TcpSample &s, size_t cCount) {
-  // meta
-  offset      = s.offset;
-  timestampMs = s.timestampMs;
-  trigger     = s.trigger;
+  ampCount=(unsigned)s.amp.size(); chnCount=(unsigned)cCount; amp.resize(ampCount);
 
-  // audio
-  for (size_t i = 0; i < AUDIO_N; ++i) audioN[i] = s.audioN[i];
+  for (unsigned a=0;a<ampCount;++a) { // Copy raw EEG data
+   amp[a].init(chnCount); // ensure data/dataN/dataBP exist (per SamplePP::init)
 
-  // sizing
-  ampCount = (unsigned)s.amp.size();
-  chnCount = (unsigned)cCount;
+   // copy raw data
+   for (unsigned c=0;c<chnCount;++c) { amp[a].data[c]=s.amp[a].data[c]; }
 
-  amp.resize(ampCount);
-
-  // raw EEG copy into PP sample
-  for (unsigned a = 0; a < ampCount; ++a) {
-    amp[a].init(chnCount);                 // ensures data/dataN/dataBP exist (per your SamplePP::init)
-
-    // copy raw data
-    for (unsigned c = 0; c < chnCount; ++c) {
-      amp[a].data[c] = s.amp[a].data[c];
-    }
-
-    // optional safety: clear derived fields so no stale values survive
-    // (remove if your filter loop always overwrites every element)
-    for (unsigned c = 0; c < chnCount; ++c) {
-      amp[a].dataN[c]  = 0.0f;
-      amp[a].dataBP[c] = 0.0f;
-    }
+   // optional safety: clear derived fields so no stale values survive
+   // (remove if the filter loop always overwrites every element)
+   for (unsigned c=0;c<chnCount;++c) { amp[a].dataN[c]=0.0f; amp[a].dataBP[c]=0.0f; }
   }
-}
+ }
 };
+

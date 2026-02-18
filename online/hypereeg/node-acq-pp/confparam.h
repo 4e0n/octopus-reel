@@ -134,7 +134,7 @@ class ConfParam : public QObject {
   QWaitCondition compReady;
   QWaitCondition compSpace;
   QQueue<QByteArray> compQueue;
-  int compQueueMax=64;         // tune later
+  int compQueueMax=64; // to be tuned later
   std::atomic<bool> compStop{false};
 
   int frameBytesIn,frameBytesOut;
@@ -146,18 +146,16 @@ class ConfParam : public QObject {
    inbuf.append(acqStrmSocket->readAll());
    while (inbuf.size()>=4) {
     const uchar *p0 = reinterpret_cast<const uchar*>(inbuf.constData());
-    const quint32 blockSize = (quint32)p0[0]
-                              | ((quint32)p0[1] << 8)
-                              | ((quint32)p0[2] << 16)
-                              | ((quint32)p0[3] << 24);
+    const quint32 blockSize=(quint32)p0[0]
+                            |((quint32)p0[1]<<8)
+                            |((quint32)p0[2]<<16)
+                            |((quint32)p0[3]<<24);
+    if (inbuf.size() < 4+(int)blockSize) break;
 
-    if (inbuf.size() < 4 + (int)blockSize) break;
+    QByteArray block=inbuf.mid(4,blockSize);
+    inbuf.remove(0,4+(int)blockSize);
 
-    QByteArray block = inbuf.mid(4, blockSize);
-    inbuf.remove(0, 4 + (int)blockSize);
-
-    static quint64 outerRx = 0;
-    outerRx++;
+    static quint64 outerRx=0; outerRx++;
 
     int qszSnap=0;
     {
@@ -178,11 +176,10 @@ class ConfParam : public QObject {
 
     if (now-lastMsQ>=1000) {
      lastMsQ=now;
-     qInfo().noquote()
-        << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3")
-            .arg((qulonglong)outerRx)
-            .arg(qszSnap)
-            .arg(inbuf.size());
+     qInfo().noquote() << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3")
+                           .arg((qulonglong)outerRx)
+                           .arg(qszSnap)
+                           .arg(inbuf.size());
      outerRx=0;
     }
    }

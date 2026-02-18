@@ -102,15 +102,6 @@ class EEGThread : public QThread {
    const float invSmp=1.0f/float(scrUpdateSmp); //const bool useNotch=conf->ctrlNotchActive;
    PARFOR(chnIndex,0,int(chnCount)) {
     double sum=0.0,sumSq=0.0;
-//    if (useNotch) {
-//     SIMD_REDUCE2(sum,sumSq)
-//     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
-//      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-//      const float x=s.amp[ampNo].dataN[chnIndex];
-//      if (s.trigger>0) trigger=s.trigger;
-//      sum+=x; sumSq+=double(x)*double(x);
-//     }
-//    } else {
      SIMD_REDUCE2(sum,sumSq)
      for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
       const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
@@ -127,7 +118,6 @@ class EEGThread : public QThread {
       if (s.trigger>0) trigger=s.trigger;
       sum+=x; sumSq+=double(x)*double(x);
      }
-//    }
     const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
     (*mu)[chnIndex]=float(m); (*sigma)[chnIndex]=float(std::sqrt(v));
    }
@@ -211,53 +201,6 @@ class EEGThread : public QThread {
      }
     }
  
-/*
-    // Upcoming event
-    if (conf->event) { conf->event=false; rBuffer.fill(Qt::transparent);
-
-     rotPainter.begin(&rBuffer);
-      rotPainter.setRenderHint(QPainter::TextAntialiasing,true);
-      rotPainter.setFont(evtFont); QColor penColor=Qt::darkGreen;
-      if (conf->curEventType==1) penColor=Qt::blue; else if (conf->curEventType==2) penColor=Qt::red;
-      rotPainter.setPen(penColor); rotPainter.drawText(2,9,conf->curEventName);
-     rotPainter.end();
-     rBufferC=rBuffer.transformed(rTransform,Qt::SmoothTransformation);
-
-     sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-     for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) {
-      sweepPainter.drawLine(wX[colIdx]-1,1,wX[colIdx]-1,conf->sweepFrameH-1);
-      sweepPainter.drawPixmap(wX[colIdx]-15,conf->sweepFrameH-104,rBufferC);
-     }
-    
-     sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver); sweepPainter.setPen(Qt::blue); // Line color
-     QVector<QPainter::PixmapFragment> fragments; fragments.reserve(chnCount/chnPerCol);
-     for (unsigned int colIdx=0;colIdx<chnCount/chnPerCol;colIdx++) { int lineX=wX[colIdx]-1;
-      sweepPainter.drawLine(lineX,1,lineX,conf->sweepFrameH-1);
-      // Prepare batched label blitting - for source in pixmap
-      fragments.append(QPainter::PixmapFragment::create(QPointF(lineX-14,conf->sweepFrameH-104),
-                                                        QRectF(0,0,rBufferC.width(),rBufferC.height())));
-     }
-     sweepPainter.drawPixmapFragments(fragments.constData(),fragments.size(),rBufferC);
-    } 
-*/
-    // Channel names
-//    sweepPainter.setPen(QColor(50,50,150)); sweepPainter.setFont(chnFont);
-//    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-//     unsigned int colIdx=chnIdx/chnPerCol;
-//     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
-//     sweepPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
-//    }
-/*
-    if (!conf->scrollMode) { // Scroll contents left by scrUpdateCount pixels
-     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-      // Main position increments of columns
-      //wX[colIdx]+=conf->scrUpdateCount;
-      wX[colIdx]++;
-     }
-    }
-*/
-   //if (wX[0]==150) sweepPainter.drawLine(149,300,149,400); // Amplitude legend
-
    sweepPainter.end();
   }
 
@@ -287,8 +230,7 @@ class EEGThread : public QThread {
      // If this was the last scroller, then advance tail..
      if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples;
 
-     hSnap=conf->tcpBufHead;
-     tSnap=conf->tcpBufTail;
+     hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
     }
     log_ring_1hz("TIME:RING", hSnap, tSnap, lastH, lastT, lastMs);
    }

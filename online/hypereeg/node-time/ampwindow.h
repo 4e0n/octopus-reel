@@ -65,7 +65,7 @@ class AmpWindow : public QMainWindow {
    // *** Channels & Interpolation
    chnWidget=new QWidget(mainTabWidget); chnWidget->setGeometry(2,2,tabW-4,tabH-4); 
 
-   float w=(float)(chnWidget->width()); float h=(float)(chnWidget->height());
+   float w=(float)(chnWidget->width()); //float h=(float)(chnWidget->height());
 
    unsigned tXmax=0,tYmax=0;
    for (int chnIdx=0;chnIdx<conf->chnInfo.size();chnIdx++) {

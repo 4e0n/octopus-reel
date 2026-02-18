@@ -161,6 +161,7 @@ class ConfParam : public QObject {
   int cntPastSize,cntPastIndex;
 
   unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick; float refGain,bipGain;
+  unsigned int physChnCount,totalChnCount,totalCount;
 
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
   int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
@@ -179,163 +180,82 @@ class ConfParam : public QObject {
 
   bool usePixmap=false;
 
-  int serSize;
+  int frameBytes;
 
  signals:
   void glUpdate();
   void glUpdateParam(int);
 
  public slots:
+  void onStrmDataReady() {
+   static quint64 outerOk=0;
+   static quint64 timeOk=0;
+   static quint64 timeBad=0;
+   //static qint64 timeLastMs=0;
+   static qint64 timeLastMsRx=0;
+   static QByteArray inbuf;
+   inbuf.append(acqStrmSocket->readAll());
 
-void onStrmDataReady() {
+   const qint64 now=QDateTime::currentMSecsSinceEpoch();
 
-static quint64 g_outer_ok = 0;
-static quint64 g_time_ok = 0;
-static quint64 g_time_bad = 0;
-//static qint64  g_time_last_ms = 0;
-static qint64  g_time_last_ms_rx = 0;
-  static QByteArray buffer;
-  buffer.append(acqStrmSocket->readAll());
-
-  const qint64 now = QDateTime::currentMSecsSinceEpoch();
-
-  // RX backlog log 1 Hz
-  if (g_time_last_ms_rx==0) g_time_last_ms_rx=now;
-  if (now - g_time_last_ms_rx >= 1000) {
-    g_time_last_ms_rx = now;
-    qInfo().noquote()
-      << QString("[TIME:RX] buffer=%1 bytes")
-           .arg(buffer.size());
-  }
-
-  while (buffer.size() >= 4) {
-   const uchar *p0 = reinterpret_cast<const uchar*>(buffer.constData());
-   const quint32 Lo = (quint32)p0[0]
-                   | ((quint32)p0[1] << 8)
-                   | ((quint32)p0[2] << 16)
-                   | ((quint32)p0[3] << 24);
-
-   if (buffer.size() < 4 + (int)Lo) break;
-
-   // payload pointer (NO COPY)
-   const char *pay = buffer.constData() + 4;
-   const int payLen = (int)Lo;
-
-   // fixed-size frames: payLen must be multiple of serSize
-   if (payLen % serSize != 0) {
-    g_time_bad++;
-    buffer.remove(0, 4 + payLen);
-    continue;
+   // RX backlog log 1 Hz
+   if (timeLastMsRx==0) timeLastMsRx=now;
+   if (now-timeLastMsRx >= 1000) {
+    timeLastMsRx=now;
+    qInfo().noquote() << QString("[TIME:RX] inbuf=%1 bytes")
+                          .arg(inbuf.size());
    }
-   const int nFrames = payLen / serSize;
 
-   for (int i = 0; i < nFrames; ++i) {
-    const char *framePtr = pay + i*serSize;
+   while (inbuf.size()>=4) {
+    const uchar *p0=reinterpret_cast<const uchar*>(inbuf.constData());
+    const quint32 Lo=(quint32)p0[0]
+                     |((quint32)p0[1]<<8)
+                     |((quint32)p0[2]<<16)
+                     |((quint32)p0[3]<<24);
+    if (inbuf.size() < 4+(int)Lo) break;
 
-    // Wrap without copying
-    const QByteArray one = QByteArray::fromRawData(framePtr, serSize);
+    // payload pointer (NO COPY)
+    const char *pay=inbuf.constData()+4;
+    const int payLen=(int)Lo;
 
-    TcpSamplePP s;
-    if (!s.deserialize(one, chnCount)) { g_time_bad++; continue; }
-    g_time_ok++;
+    // fixed-size frames: payLen must be multiple of frameBytes
+    if (payLen%frameBytes!=0) {
+     timeBad++;
+     inbuf.remove(0,4+payLen);
+     continue;
+    }
+    const int nFrames=payLen/frameBytes;
 
-    {
-      QMutexLocker locker(&mutex);
-      tcpBuffer[tcpBufHead % tcpBufSize] = s;
-      tcpBufHead++;
+    for (int i=0;i<nFrames;++i) {
+     const char *framePtr=pay+i*frameBytes;
+     // Wrap without copying
+     const QByteArray one=QByteArray::fromRawData(framePtr,frameBytes);
 
-      const quint64 availableSamples = tcpBufHead - tcpBufTail;
-      if (availableSamples > scrAvailableSamples && eegSweepUpdating==0) {
-        scrUpdateSamples = scrAvailableSamples / (eegSweepFrameTimeMs / eegSweepDivider);
-        if (quitPending) {
-          if (acqStrmSocket && acqStrmSocket->isOpen())
-            acqStrmSocket->disconnectFromHost();
-        }
-        eegSweepUpdating = ampCount;
-        for (auto &v : eegSweepPending) v = true;
-        eegSweepWait.wakeAll();
-      }
+     TcpSamplePP s;
+     if (!s.deserialize(one,chnCount)) { timeBad++; continue; }
+     timeOk++;
+
+     bool doWake=false;
+     {
+       QMutexLocker locker(&mutex);
+       tcpBuffer[tcpBufHead%tcpBufSize]=s;
+       tcpBufHead++;
+
+       const quint64 avail=tcpBufHead-tcpBufTail;
+       doWake=(avail>scrAvailableSamples && eegSweepUpdating==0);
+       if (doWake) {
+        scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
+        eegSweepUpdating=ampCount;
+        for (auto &v:eegSweepPending) v=true;
+       }
      }
+     if (doWake) eegSweepWait.wakeAll();
     }
 
     // now discard the outer packet
-    buffer.remove(0, 4 + payLen);
-    g_outer_ok++;
+    inbuf.remove(0,4+payLen);
+    outerOk++;
    }
-
-
-/*
-
-  while (buffer.size() >= 4) {
-    const uchar *p = reinterpret_cast<const uchar*>(buffer.constData());
-    const quint32 L = (quint32)p[0]
-                    | ((quint32)p[1] << 8)
-                    | ((quint32)p[2] << 16)
-                    | ((quint32)p[3] << 24);
-
-    if (buffer.size() < 4 + (int)L) break;
-
-    const QByteArray payload = buffer.mid(4, L);
-    buffer.remove(0, 4 + (int)L);
-    g_outer_ok++;
-
-    int pos = 0;
-    while (pos + 4 <= payload.size()) {
-     const uchar *p = reinterpret_cast<const uchar*>(payload.constData() + pos);
-     const quint32 L = (quint32)p[0]
-                       | ((quint32)p[1] << 8)
-                       | ((quint32)p[2] << 16)
-                       | ((quint32)p[3] << 24);
-     pos += 4;
-     if (pos + (int)L > payload.size()) break; // corrupted / partial (shouldn't happen)
-
-     const QByteArray one = payload.mid(pos, L);
-     pos += (int)L;
-
-     TcpSamplePP s;
-     if (!s.deserialize(one,chnCount)) { g_time_bad++; continue; }
-     g_time_ok++;
-
-     // push into your ring under mutex (as you already do)
-     {
-       QMutexLocker locker(&mutex);
-       tcpBuffer[tcpBufHead % tcpBufSize] = s; // or std::move(s)
-       tcpBufHead++;
-       // your wake logic...
-       const quint64 availableSamples = tcpBufHead - tcpBufTail;
-
-       if (availableSamples > scrAvailableSamples && eegSweepUpdating==0) {
-        if (availableSamples >= (quint64)(tcpBufSize * 3 / 4))
-          qWarning() << "[TIME] Buffer high-water:" << availableSamples;
-
-        scrUpdateSamples = scrAvailableSamples / (eegSweepFrameTimeMs / eegSweepDivider);
-
-        if (quitPending) {
-          if (acqStrmSocket && acqStrmSocket->isOpen())
-            acqStrmSocket->disconnectFromHost();
-        }
-
-        eegSweepUpdating = ampCount;
-        for (auto &v : eegSweepPending) v = true;
-        eegSweepWait.wakeAll();
-       }
-     }
-    }
-   }
-
-   // packets/sec log 1 Hz
-   if (g_time_last_ms==0) g_time_last_ms=now;
-   if (now - g_time_last_ms >= 1000) {
-    qInfo().noquote()
-      << QString("[TIME:PKT] outer=%1/s samples=%2/s bad=%3/s")
-          .arg((qulonglong)g_outer_ok)
-          .arg((qulonglong)g_time_ok)
-          .arg((qulonglong)g_time_bad);
-    g_outer_ok = 0;
-    g_time_ok = g_time_bad = 0;
-    g_time_last_ms = now;
-   }
-*/
   }
 
  private:

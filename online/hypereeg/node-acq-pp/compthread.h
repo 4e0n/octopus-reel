@@ -1,3 +1,25 @@
+/*
+Octopus-ReEL - Realtime Encephalography Laboratory Network
+   Copyright (C) 2007-2026 Barkin Ilhan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+ Contact info:
+ E-Mail:  barkin@unrlabs.org
+ Website: http://icon.unrlabs.org/staff/barkin/
+ Repo:    https://github.com/4e0n/
+*/
 
 #pragma once
 
@@ -22,34 +44,31 @@ class CompThread : public QThread {
       QMutexLocker lk(&conf->compMutex);
 
       while (conf->compQueue.isEmpty() && !isInterruptionRequested() && !conf->compStop.load()) {
-       conf->compReady.wait(&conf->compMutex, 50);
+       conf->compReady.wait(&conf->compMutex,50);
       }
       if (isInterruptionRequested() || conf->compStop.load()) break;
 
-      block = std::move(conf->compQueue.dequeue());
+      block=std::move(conf->compQueue.dequeue());
     }
 
-    // block is OUTER PAYLOAD: [one][one][one]... (fixed size sz)
-    const int sz = conf->frameBytesIn;
-    if (sz <= 0) { qWarning() << "[PP:COMP] frameBytesIn not set"; continue; }
-    if (block.size() % sz != 0) {
+    // block a.k.a. OUTER PAYLOAD: [one][one][one]... (fixed size sz)
+    const int sz=conf->frameBytesIn;
+    if (sz<=0) { qWarning() << "[PP:COMP] frameBytesIn not set"; continue; }
+    if (block.size()%sz!=0) {
      qWarning() << "[PP:COMP] block size not multiple of frameBytesIn:"
                 << "blockSz=" << block.size() << "frameBytesIn=" << sz;
      continue;
     }
 
-    const char* base = block.constData();
-    const int frames = block.size() / sz;
+    const char* base=block.constData(); const int frames=block.size()/sz;
 
-    for (int i = 0; i < frames; ++i) {
-     const char* one = base + i * sz;
+    for (int i=0;i<frames;++i) {
+     const char* one=base+i*sz;
 
      if (!tcpS.deserializeRaw(one,sz,conf->chnCount,conf->ampCount)) continue;
 
-     // compute -> push ring
-     // ---- compute path for ONE sample ----
-     // build TcpSamplePP, filter, push into ring, etc.
-     // Build PP without serialize/deserialize round trip (you will implement this)
+     // Compute path for ONE sample:
+     // build TcpSamplePP,filters,push into ring,...
      tcpSPP.fromTcpSample(tcpS,conf->chnCount);
 
      // Compute OUTSIDE ring lock
@@ -79,31 +98,26 @@ class CompThread : public QThread {
       }
      }
 
-     // Push into ring (SHORT critical section)
+     // Push into ring (critical section should be minimized)
      {
        QMutexLocker locker(&conf->mutex);
 
-       // pick policy:
-       // (A) NO-DROP: block comp thread until space exists
+       // Several policies possible:
+       // I. NO-DROP: block comp thread until space exists
        while ((conf->tcpBufHead-conf->tcpBufTail)>=conf->tcpBufSize) {
         conf->spaceReady.wait(&conf->mutex,5);
        }
 
-       // (B) LIVE-FIRST: drop oldest if ring full
-       // while ((conf->tcpBufHead - conf->tcpBufTail) >= conf->tcpBufSize) conf->tcpBufTail++;
+       // II. LIVE-FIRST: drop oldest if ring full
+       // while ((conf->tcpBufHead-conf->tcpBufTail) >= conf->tcpBufSize) conf->tcpBufTail++;
 
-       //conf->tcpBuffer[conf->tcpBufHead%conf->tcpBufSize]=std::move(tcpSPP);
        auto &slot=conf->tcpBuffer[conf->tcpBufHead%conf->tcpBufSize];
        slot = tcpSPP; // or slot.copyFrom(tcpSPP)
 
        conf->tcpBufHead++;
 
-       static quint64 lastH=0, lastT=0;
-       static qint64  lastMs=0;
-       log_ring_1hz("PP:RING", conf->tcpBufHead, conf->tcpBufTail, lastH, lastT, lastMs);
-
-       //const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
-       //if (avail>=(quint64)conf->eegSamplesInTick) conf->dataReady.wakeOne();
+       static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
+       log_ring_1hz("PP:COMP",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
 
        const quint64 availBefore=(conf->tcpBufHead-1)-conf->tcpBufTail;
        const quint64 availAfter=conf->tcpBufHead-conf->tcpBufTail;

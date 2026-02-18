@@ -28,57 +28,37 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "le_helper.h"
 
 struct Sample {
-  std::vector<float> data; // Raw amplifier data (wire format)
-  unsigned int trigger=0, offset=0; // NOT on wire
-
-  void init(size_t chnCount) { trigger=0; offset=0; data.assign(chnCount, 0.0f); }
-  Sample(size_t chnCount=0) { init(chnCount); }
-
-  void serialize(QDataStream &out) const { for (float f : data) out << f; }
-
-  bool deserialize(QDataStream &in, size_t chnCount) {
-    data.resize(chnCount);
-    for (float &f : data) in >> f;
-    return true;
-  }
-
-  // NEW: pointer-based deserialize matching serialize()
-  bool deserialize(const char* src, int len, int chnCount, int* consumed) {
-    if (!src || len < 0 || chnCount < 0) return false;
-    const int needBytes = chnCount * 4;
-    if (len < needBytes) return false;
-
-    data.resize(chnCount);
-
-    // Read chnCount floats, little-endian IEEE754
-    const char* p = src;
-    for (int i = 0; i < chnCount; ++i) {
-      quint32 w = rd_u32_le(p);      // uses your helper
-      float f;
-      memcpy(&f, &w, 4);
-      data[i] = f;
-      p += 4;
-    }
-
-    if (consumed) *consumed = needBytes;
-    return true;
-  }
-};
-/*
-struct Sample {
- std::vector<float> data; // Raw (non-filtered) amplifier data.
- unsigned int trigger=0,offset=0;
+ std::vector<float> data; // Raw amplifier data (wire format)
+ unsigned int trigger=0,offset=0; // NOT on wire
 
  void init(size_t chnCount) { trigger=0; offset=0; data.assign(chnCount,0.0f); }
-
  Sample(size_t chnCount=0) { init(chnCount); }
- 
+
  void serialize(QDataStream &out) const { for (float f:data) out<<f; }
 
  bool deserialize(QDataStream &in,size_t chnCount) {
   data.resize(chnCount);
-  for (float &f:data) in>>f;
+  for (float &f:data) in >> f;
+  return true;
+ }
+
+ // NEW: pointer-based deserialize matching serialize()
+ bool deserialize(const char* src,int len,int chnCount,int* consumed) {
+  if (!src || len<0 || chnCount<0) return false;
+  const int needBytes=chnCount*4;
+  if (len<needBytes) return false;
+
+  data.resize(chnCount);
+
+  // Read chnCount floats, little-endian IEEE754
+  const char* p=src;
+  for (int i=0;i<chnCount;++i) {
+   quint32 w=rd_u32_le(p);
+   float f; memcpy(&f,&w,4); data[i]=f;
+   p+=4;
+  }
+
+  if (consumed) *consumed=needBytes;
   return true;
  }
 };
-*/

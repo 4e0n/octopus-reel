@@ -40,7 +40,6 @@ class ConfigParser {
    QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
    QStringList bufSection;
 
-
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qCritical() << "<ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
