@@ -90,8 +90,8 @@ class ConfigParser {
        }
       } else if (opts[0].trimmed()=="BUFPAST") {
        conf->tcpBufSize=opts[1].toInt();
-       if (!(conf->tcpBufSize >= 2 && conf->tcpBufSize <= 50)) {
-        qCritical() << "<ConfigParser> <AMP> ERROR: BUFPAST not within [2,50] seconds range!";
+       if (!(conf->tcpBufSize >= 1 && conf->tcpBufSize <= 200)) {
+        qCritical() << "<ConfigParser> <AMP> ERROR: BUFPAST not within [1,320] seconds range!";
         return true;
        }
       } else if (opts[0].trimmed()=="EEGRATE") {

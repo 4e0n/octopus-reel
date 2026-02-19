@@ -23,6 +23,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
+#include <QDateTime>
+
 static inline void log_ring_1hz(const char* tag,quint64 head,quint64 tail,
                                 quint64& lastHead,quint64& lastTail,qint64& lastMs) {
  const qint64 now=QDateTime::currentMSecsSinceEpoch();

@@ -49,6 +49,8 @@ class AcqDaemon : public QObject {
    acqThread=new AcqThread(conf,this,ee,aud,ser); // Thread for acquiring/packaging EEG data from amps+Audio data (Producer)
    tcpThread=new TcpThread(conf,this); // Thread for serving the packages from ringbuffer to connected clients (Consumer)
    connect(tcpThread,&TcpThread::sendPacketSignal,this,&AcqDaemon::sendPacket,Qt::QueuedConnection); // Send packets timely
+
+   tcpThread->setStackSize(8*1024*1024); // 8 MiB
    acqThread->start(QThread::HighestPriority);
    tcpThread->start(QThread::HighestPriority);
   }

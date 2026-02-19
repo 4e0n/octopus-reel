@@ -28,76 +28,179 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDebug>
 #include <QDateTime>
 #include <cmath>
+#include <chrono>
+#ifdef __linux__
+#include <time.h>
+#include <errno.h>
+#endif
 #include "confparam.h"
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/logring.h"
+#include "rt_bootstrap.h"
+
+#ifdef __linux__
+static inline int64_t timespec_to_ns(const timespec& ts) {
+ return int64_t(ts.tv_sec)*1000000000LL+int64_t(ts.tv_nsec);
+}
+
+static inline timespec ns_to_timespec(int64_t ns) {
+ timespec ts;
+ ts.tv_sec=time_t(ns/1000000000LL);
+ ts.tv_nsec=long(ns%1000000000LL);
+ return ts;
+}
+
+static inline timespec ts_add_ns(timespec ts,int64_t add_ns) {
+ int64_t ns=timespec_to_ns(ts)+add_ns;
+ return ns_to_timespec(ns);
+}
+
+// absolute sleep until deadline (monotonic), resilient to EINTR
+static inline void sleep_until_abs(const timespec& deadline) {
+ while (true) {
+  const int rc=::clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&deadline,nullptr);
+  if (rc==0) return;
+  if (rc==EINTR) continue;
+  // unexpected: just bail out of sleep
+  return;
+ }
+}
+#endif
 
 class TcpThread : public QThread {
  Q_OBJECT
  public:
   TcpThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
    conf=c;
-   tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
-   tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer;
-   eegChunk.resize(conf->eegSamplesInTick);
-   conf->tcpBufTail=0;
+   tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer; conf->tcpBufTail=0;
   }
 
   void run() override {
+#ifdef __linux__
+   lock_memory_or_warn();
+   pin_thread_to_cpu(pthread_self(),2); // Pin tcpsend to core 2
+   set_thread_rt(pthread_self(),SCHED_FIFO,60); // Give (lesser) RT priority
+#endif 
+
+#ifdef __linux__
+   timespec nextDeadline{};
+   ::clock_gettime(CLOCK_MONOTONIC,&nextDeadline);
+
+   // optional: start a bit in the future so first iteration has time to fill backlog
+   nextDeadline=ts_add_ns(nextDeadline,5*1000*1000); // +5ms
+#else
+   using clock=std::chrono::steady_clock;
+   auto nextDeadline=clock::now();
+#endif 
+
+//   using ns=std::chrono::nanoseconds;
    const int N=conf->eegSamplesInTick;
-   const quint64 slack=N; // keep tail ~N behind head when backlog exists
-   const quint64 wakeMs=conf->eegProbeMsecs;
+   const quint64 target=quint64(2*N);
+   const quint64 minAvailToSend=target; // only send if we have at least target
 
-   while (!(conf->tcpBufHead-conf->tcpBufTail)) msleep(1); // Wait/ensure for at least one available sample
+   // Base cadence from physics (NOT from probe msec)
+   const int64_t basePeriod_ns=(int64_t(N)*1000000000LL)/int64_t(conf->eegRate);
 
-   // determine fixed serialized size once
-   TcpSample tmp(conf->ampCount,conf->physChnCount); tmp=(*tcpBuffer)[conf->tcpBufTail%tcpBufSize];
-   const int sz=tmp.serialize().size();
+   const int sz=TcpSample::serializedSizeFor(conf->ampCount,conf->physChnCount);
+   payload.resize(N*sz);
+   const quint32 Lo=quint32(payload.size());
+   out.resize(4+Lo);
 
-   QByteArray packet; packet.reserve(4+N*sz);
+   // --- PI tuning (start conservative) ---
+   // Units: err is "samples". corrNs is "nanoseconds".
+   // So Kp and Ki are "ns per sample" and "ns per sample per tick".
+   const int64_t Kp_ns_per_sample=std::max<int64_t>(2000,1000000/target/2); // 10 µs per sample of error for N=50
+   const int64_t Ki_ns_per_sample=std::max<int64_t>(1,Kp_ns_per_sample/200); // 0.05 µs per sample per tick
+   const int64_t corrClamp_ns=basePeriod_ns/4; // max +/-25% correction
+   const int64_t integClamp=10*target;         // samples (anti-windup)
 
-   quint64 lastSend=QDateTime::currentMSecsSinceEpoch();
+   int64_t integ=0;
 
-   while(!isInterruptionRequested()) { quint64 avail;
+   auto clamp_i64=[](int64_t v,int64_t lo,int64_t hi) -> int64_t {
+    return (v<lo) ? lo:(v>hi)?hi:v;
+   };
+
+   // Wait for at least one sample
+   while (!isInterruptionRequested()) {
+    QMutexLocker locker(&conf->mutex);
+    if (conf->tcpBufHead-conf->tcpBufTail) break;
+    locker.unlock();
+    msleep(1);
+   }
+
+   //auto nextDeadline=clock::now();
+
+   while (!isInterruptionRequested()) {
+#ifdef __linux__
+    sleep_until_abs(nextDeadline);
+    timespec nowts{};
+    ::clock_gettime(CLOCK_MONOTONIC,&nowts);
+    const int64_t nowNs=timespec_to_ns(nowts); const int64_t nextNs=timespec_to_ns(nextDeadline);
+    // If we woke up VERY late, resync phase
+    if (nowNs>nextNs+5*basePeriod_ns) { nextDeadline=nowts; integ=0; }
+    //if (timespec_to_ns(nowts)>timespec_to_ns(nextDeadline)+5*basePeriod_ns) {
+    // nextDeadline=nowts; // resync if we fell behind badly
+    //}
+#else
+    // fallback (coarse)i -- or-> std::this_thread::sleep_until
+    const auto now=clock::now();
+    if (now<nextDeadline) {
+      const auto dt=std::chrono::duration_cast<std::chrono::milliseconds>(nextDeadline-now);
+      if (dt.count()>0) msleep(unsigned(dt.count())); // coarse sleep
+      continue; // re-check deadline precisely
+    }
+#endif
+
+    quint64 avail=0;
     {
-     QMutexLocker locker(&conf->mutex);
-     avail=conf->tcpBufHead-conf->tcpBufTail;
+      QMutexLocker locker(&conf->mutex);
+      avail=conf->tcpBufHead-conf->tcpBufTail;
     }
-    if (avail<slack) { msleep(1); continue; } // Not following from distant enough
 
-    const quint64 now=QDateTime::currentMSecsSinceEpoch();
-    if ((now-lastSend)<wakeMs) { msleep(1); continue; }
+    // PLL error
+    const int64_t err=int64_t(avail)-int64_t(target);
 
-    // Copy N samples, advance tail
+    // PI update (anti-windup clamp)
+    integ=clamp_i64(integ+err,-integClamp,integClamp);
+
+    int64_t corrNs=Kp_ns_per_sample*err+Ki_ns_per_sample*integ;
+    corrNs=clamp_i64(corrNs,-corrClamp_ns,corrClamp_ns);
+
+    // schedule next deadline:
+    // if err>0 (too much backlog), corrNs>0 => shorten period => earlier deadline
+    int64_t periodNs=basePeriod_ns-corrNs;
+    periodNs=clamp_i64(periodNs,basePeriod_ns/2,basePeriod_ns*2); // [0.5x .. 2x]
+#ifdef __linux__
+    nextDeadline=ts_add_ns(nextDeadline,periodNs);
+#else
+    nextDeadline+=std::chrono::nanoseconds(periodNs);
+#endif
+
+    // Only integrate if we actually have some data (or only when avail>=N).
+    //if (avail>=quint64(N)) { integ=clamp_i64(integ+err,-integClamp,integClamp); }
+    // More conservative -- prevent wind-up while starved -- only send if enough samples exista 
+    if (avail<minAvailToSend) { integ=0; continue; }
     {
-     QMutexLocker locker(&conf->mutex);
-     if ((conf->tcpBufHead-conf->tcpBufTail)<(quint64)N) continue;
-     const quint64 tail=conf->tcpBufTail;
-     for (int i=0;i<N;++i) eegChunk[i]=(*tcpBuffer)[(tail+i)%tcpBufSize];
+      QMutexLocker locker(&conf->mutex);
+      avail=conf->tcpBufHead-conf->tcpBufTail;
+      if (avail<quint64(N)) { integ=0; continue; }
+      const quint64 tail0=conf->tcpBufTail;
+      char* dst=payload.data();
+      for (int i=0;i<N;++i) {
+       const TcpSample& s=(*tcpBuffer)[(tail0+quint64(i))%tcpBufSize];
+       const int wrote=s.serializeTo(dst+i*sz,sz);
+       if (wrote!=sz) {
+        qWarning() << "[ACQ] serializeTo failed wrote=" << wrote << " expected=" << sz;
+        // optional: std::memset(dst+i*sz,0,sz);
+       }
+      }
+      conf->tcpBufTail+=quint64(N);
+      static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
+      log_ring_1hz("ACQ:SEND",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
+    } // unlock ASAP
 
-     conf->tcpBufTail+=N;
-
-     static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
-     log_ring_1hz("ACQ:SEND",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
-    }
-
-    // Build ONE payload: N fixed-size frames back-to-back (no inner lengths)
-    payload.resize(N*sz); // allocate exact size once
-    char *dst=payload.data(); int off=0;
-    for (int i=0;i<N;++i) {
-     const QByteArray one=eegChunk[i].serialize(); // must be sz bytes
-     if (one.size()!=sz) { // optional safety
-      qWarning() << "[ACQPP] serialize size changed!" << one.size() << "expected" << sz;
-      continue;
-     }
-     memcpy(dst+off,one.constData(),sz);
-     off+=sz;
-    }
-
-    // Outer frame=[uint32 Lo][payload]
-    const quint32 Lo=(quint32)payload.size();
-    out.resize(4+(int)Lo);
+    // Build outer frame (no mutex)
     out[0]=char((Lo    )&0xff);
     out[1]=char((Lo>> 8)&0xff);
     out[2]=char((Lo>>16)&0xff);
@@ -105,18 +208,6 @@ class TcpThread : public QThread {
     memcpy(out.data()+4,payload.constData(),Lo);
 
     emit sendPacketSignal(out);
-
-    static quint64 outerTx=0; static qint64 lastMs=0;
-    outerTx++;
-    const qint64 now2=QDateTime::currentMSecsSinceEpoch();
-    if (lastMs==0) lastMs=now2;
-    if (now2-lastMs>=1000) {
-     qInfo() << "[ACQ:TX] outer=" << outerTx << "/s  N=" << N;
-     outerTx=0;
-     lastMs=now2;
-    }
-
-    lastSend=now;
    }
   }
 
@@ -125,11 +216,8 @@ class TcpThread : public QThread {
 
  private:
   ConfParam *conf;
-
-  QByteArray payload,out;
-
-  TcpSample tcpEEG;
+  //TcpSample tcpEEG;
   QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
 
-  std::vector<TcpSample> eegChunk;
+  QByteArray payload,out;
 };

@@ -70,7 +70,11 @@ struct AudioAmp {
   snd_pcm_t* handle=nullptr;
   std::thread th;
 
-  std::atomic<uint64_t> underruns{0};
+  std::atomic<uint64_t> alsa_underruns{0};
+  std::atomic<uint64_t> reader_wait_misses{0};
+  std::atomic<uint64_t> audio_realigns{0};
+  std::atomic<uint64_t> audio_soft_clamps{0};
+  std::atomic<uint64_t> audio_stalls{0};
 
   // Trigger (RIGHT channel)
   float trigHigh=8000.f;
@@ -88,6 +92,7 @@ struct AudioAmp {
 
   // PI state
   double lagInt=0.0;
+
 
   static bool alsa_set_capture_level(const char* card,long percent) {
    percent=std::clamp(percent,0L,100L);
@@ -234,7 +239,11 @@ struct AudioAmp {
    // base correction window and slew
    constexpr double BASE_MIN=0.990; // ±1%
    constexpr double BASE_MAX=1.010;
-   constexpr double SLEW_PER_FETCH=0.0015; // ±0.15% per 48 samples
+   constexpr double SLEW_PER_FETCH=0.0015; // ±0.15%per fetch (48 samples)
+
+   auto zero_out=[&]{
+    for (unsigned i=0;i<OUT;i++) dstN[i]=0.0f; // OUT=48
+   };
 
    // Init on first call
    if (!rs_inited) {
@@ -357,9 +366,17 @@ struct AudioAmp {
     return audioFrameCounter.load(std::memory_order_acquire)>=needAbs;
    };
 
-   if (!have_enough() && wait_ms>0) {
-    std::unique_lock<std::mutex> lk(cvMx);
-    cvAvail.wait_for(lk,std::chrono::milliseconds(wait_ms),have_enough);
+   if (!have_enough()) {
+    if (wait_ms>0) {
+     std::unique_lock<std::mutex> lk(cvMx);
+     cvAvail.wait_for(lk,std::chrono::milliseconds(wait_ms),have_enough);
+    }
+    // Re-check after optional wait
+    if (!have_enough()) {
+     reader_wait_misses.fetch_add(1,std::memory_order_relaxed);
+     zero_out();
+     return UINT_MAX; // No trigger info
+    }
    }
 
    uint64_t prodNow=audioFrameCounter.load(std::memory_order_acquire);
@@ -368,21 +385,27 @@ struct AudioAmp {
    static uint64_t lastProdSeen=0;
    static uint64_t lastProdNs  =0;
 
-   const uint64_t now=now_ns();
-   if (lastProdSeen==0) { lastProdSeen=prodNow; lastProdNs=now; }
-   if (prodNow!=lastProdSeen) { lastProdSeen=prodNow; lastProdNs=now; }
+   const uint64_t now2=now_ns();
+   if (lastProdSeen==0) { lastProdSeen=prodNow; lastProdNs=now2; }
+   if (prodNow!=lastProdSeen) { lastProdSeen=prodNow; lastProdNs=now2; }
 
    constexpr uint64_t STALL_NS=20'000'000ULL; // 20 ms: real stall threshold
-   const bool stalled=(now-lastProdNs)>STALL_NS;
+   const bool stalled=(now2-lastProdNs)>STALL_NS;
 
    // Soft realign only if stalled AND we're dangerously close to producer tail
+
    if (stalled) {
+    // Count any real producer stall
+    audio_stalls.fetch_add(1,std::memory_order_relaxed);
     const uint64_t i0=uint64_t(std::floor(rs_srcPos));
+    // Only realign if we are dangerously close to producer tail
     if (prodNow <= i0+OUT+1) {
-     const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)):0ULL;
+     const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)) : 0ULL;
      rs_srcPos=double(snap);
-     lastSnapNs=now;
-     qWarning() << "<AcqThread_AudioAmp> Producer stall (>20ms) detected; realigned.";
+     lastSnapNs=now2;
+     // Count actual realign event
+     //qWarning() << "<AcqThread_AudioAmp> Producer stall (>20ms) detected; realigned.";
+     audio_realigns.fetch_add(1,std::memory_order_relaxed);
     }
    }
 
@@ -392,12 +415,13 @@ struct AudioAmp {
     const uint64_t lag=prodNow-i0;
     const uint64_t maxSafeLag=(bufSizeFrames>SAFETY_MARGIN) ? (bufSizeFrames-SAFETY_MARGIN):0U;
     if (lag>maxSafeLag) {
+     audio_soft_clamps.fetch_add(1,std::memory_order_relaxed);
      const uint64_t snap=(prodNow>(LAG_SOFT_CLAMP+1)) ? (prodNow-(LAG_SOFT_CLAMP+1)):0ULL;
      rs_srcPos=double(snap);
-     const uint64_t now=now_ns();
-     if (now-lastSnapNs>400'000'000ULL) {
-      lastSnapNs=now;
-      qWarning() << "<AcqThread_AudioAmp> Reader far behind; soft-clamped to tail.";
+     const uint64_t now3=now_ns();
+     if (now3-lastSnapNs>400'000'000ULL) {
+      lastSnapNs=now3;
+      //qWarning() << "<AcqThread_AudioAmp> Reader far behind; soft-clamped to tail.";
      }
     }
    }
@@ -461,7 +485,11 @@ struct AudioAmp {
 //  uint64_t lastPrint=0;
    while (run.load(std::memory_order_acquire)) {
     int r=snd_pcm_readi(handle,buf.data(),period);
-    if (r==-EPIPE) { snd_pcm_prepare(handle); continue; }
+    if (r==-EPIPE) {
+     alsa_underruns.fetch_add(1,std::memory_order_relaxed);
+     snd_pcm_prepare(handle);
+     continue;
+    }
     if (r<0) { std::fprintf(stderr,"[AudioAmp] read: %s\n",snd_strerror(r)); continue; }
 
     unsigned head=bufHead.load(std::memory_order_relaxed);

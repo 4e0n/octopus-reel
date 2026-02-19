@@ -244,7 +244,8 @@ class ConfParam : public QObject {
        const quint64 avail=tcpBufHead-tcpBufTail;
        doWake=(avail>scrAvailableSamples && eegSweepUpdating==0);
        if (doWake) {
-        scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
+        //scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
+	scrUpdateSamples=1;
         eegSweepUpdating=ampCount;
         for (auto &v:eegSweepPending) v=true;
        }
