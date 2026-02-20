@@ -48,6 +48,13 @@ struct SamplePP {
   //dataB.assign(chnCount,0.0f); dataG.assign(chnCount,0.0f);
  }
 
+ void initSizeOnly(size_t chnCount) {
+  trigger=0; offset=0;
+  data.resize(chnCount);
+  dataBP.resize(chnCount);
+  dataN.resize(chnCount);
+ }
+
  SamplePP(size_t chnCount=0) { init(chnCount); }
 
  // Wire format: data, dataBP, dataN (all float32 LE)
@@ -105,5 +112,15 @@ struct SamplePP {
 
   if (consumed) *consumed=needBytes;
   return true;
+ }
+
+ inline void copyFrom(const SamplePP& src) {
+  Q_ASSERT(data.size()==src.data.size());
+  Q_ASSERT(dataBP.size()==src.dataBP.size());
+  Q_ASSERT(dataN.size()==src.dataN.size());
+  std::memcpy(data.data(),  src.data.data(),  src.data.size()*sizeof(float));
+  std::memcpy(dataBP.data(),src.dataBP.data(),src.dataBP.size()*sizeof(float));
+  std::memcpy(dataN.data(), src.dataN.data(), src.dataN.size()*sizeof(float));
+  trigger=src.trigger; offset=src.offset;
  }
 };

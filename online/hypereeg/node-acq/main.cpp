@@ -55,7 +55,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "acqdaemon.h"
 #include "../common/messagehandler.h"
-#include "rt_bootstrap.h"
+#include "../common/rt_bootstrap.h"
 
 const QString CFGPATH="/etc/octopus/hypereeg.conf";
 

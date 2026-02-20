@@ -50,7 +50,7 @@ struct TcpSample {
  void initSizeOnly(size_t aCount,size_t cCount) {
   ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; amp.resize(ampCount);
   for (auto& s:amp) s.initSizeOnly(chnCount);
-  // do NOT touch audioN contents (to be overwritten later)
+  // audioN contents to be overwritten later
   trigger=0; offset=0; timestampMs=0;
  }
 
@@ -106,6 +106,48 @@ struct TcpSample {
   return ba;
  }
 
+ // Deterministic size for given shape (matches deserializeRaw layout)
+ static inline int serializedSizeFor(size_t aCount,size_t cCount) {
+  return 4            // MAGIC
+       + 8+8          // offset, timestampMs
+       + 4+4          // trigger, ampCount
+       + int(aCount)*int(cCount)*4
+       + AUDIO_N*4;
+ }
+
+ // Current object's size (uses current ampCount/chnCount)
+ inline int serializedSize() const {
+  // NOTE: amp.size() is the wire ampCount
+  return serializedSizeFor(amp.size(),chnCount);
+ }
+
+ // Write into preallocated buffer. Returns bytes written, or 0 on error.
+ int serializeTo(char* dst,int cap) const {
+  if (!dst || cap<=0) return 0;
+  const quint32 aCount=quint32(amp.size());
+  const int need=serializedSizeFor(aCount,chnCount);
+  if (cap<need) return 0;
+  char* p=dst;
+  wr_u32_le(p,MAGIC);
+  wr_u64_le(p,quint64(offset));
+  wr_u64_le(p,quint64(timestampMs));
+  wr_u32_le(p,quint32(trigger));
+  wr_u32_le(p,aCount);
+  // amp floats (same order as Sample::serialize(QDataStream): for each Sample, for each float)
+  for (quint32 a=0;a<aCount;++a) {
+   // Be defensive if someone forgot initSizeOnly/init:
+   const auto& v=amp[int(a)].data;
+   const int want=int(chnCount);
+   const int have=int(v.size());
+   const int n=(have<want) ? have:want;
+   for (int i=0;i<n;++i) wr_f32_le(p,v[size_t(i)]);
+   for (int i=n;i<want;++i) wr_f32_le(p,0.0f); // pad if undersized
+  }
+  // audio
+  for (int i=0;i<AUDIO_N;++i) wr_f32_le(p,audioN[i]);
+  return int(p-dst); // should equal need
+ }
+
  bool deserializeRaw(const char* data,int len,int cCount,quint32 expectedAmpCount=0) {
   if (!data || len<=0) return false;
 
@@ -154,47 +196,5 @@ struct TcpSample {
 
  bool deserialize(const QByteArray& ba,int chnCount,quint32 expectedAmpCount=0) {
   return deserializeRaw(ba.constData(),ba.size(),chnCount,expectedAmpCount);
- }
-
- // Deterministic size for given shape (matches deserializeRaw layout)
- static inline int serializedSizeFor(size_t aCount,size_t cCount) {
-  return 4            // MAGIC
-       + 8+8          // offset, timestampMs
-       + 4+4          // trigger, ampCount
-       + int(aCount)*int(cCount)*4
-       + AUDIO_N*4;
- }
-
- // Current object's size (uses current ampCount/chnCount)
- inline int serializedSize() const {
-  // NOTE: amp.size() is the wire ampCount
-  return serializedSizeFor(amp.size(),chnCount);
- }
-
- // Write into preallocated buffer. Returns bytes written, or 0 on error.
- int serializeTo(char* dst,int cap) const {
-  if (!dst || cap<=0) return 0;
-  const quint32 aCount=quint32(amp.size());
-  const int need=serializedSizeFor(aCount,chnCount);
-  if (cap<need) return 0;
-  char* p=dst;
-  wr_u32_le(p,MAGIC);
-  wr_u64_le(p,quint64(offset));
-  wr_u64_le(p,quint64(timestampMs));
-  wr_u32_le(p,quint32(trigger));
-  wr_u32_le(p,aCount);
-  // amp floats (same order as Sample::serialize(QDataStream): for each Sample, for each float)
-  for (quint32 a=0;a<aCount;++a) {
-   // Be defensive if someone forgot initSizeOnly/init:
-   const auto& v=amp[int(a)].data;
-   const int want=int(chnCount);
-   const int have=int(v.size());
-   const int n=(have<want) ? have:want;
-   for (int i=0;i<n;++i) wr_f32_le(p,v[size_t(i)]);
-   for (int i=n;i<want;++i) wr_f32_le(p,0.0f); // pad if undersized
-  }
-  // audio
-  for (int i=0;i<AUDIO_N;++i) wr_f32_le(p,audioN[i]);
-  return int(p-dst); // should equal need
  }
 };

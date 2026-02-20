@@ -26,47 +26,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QThread>
 #include <QMutex>
 #include <QDebug>
-#include <QDateTime>
+#include <atomic>
+#ifdef __linux__
+#include <pthread.h>
+#endif
 #include <cmath>
 #include <chrono>
-#ifdef __linux__
-#include <time.h>
-#include <errno.h>
-#endif
 #include "confparam.h"
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/logring.h"
-#include "rt_bootstrap.h"
-
-#ifdef __linux__
-static inline int64_t timespec_to_ns(const timespec& ts) {
- return int64_t(ts.tv_sec)*1000000000LL+int64_t(ts.tv_nsec);
-}
-
-static inline timespec ns_to_timespec(int64_t ns) {
- timespec ts;
- ts.tv_sec=time_t(ns/1000000000LL);
- ts.tv_nsec=long(ns%1000000000LL);
- return ts;
-}
-
-static inline timespec ts_add_ns(timespec ts,int64_t add_ns) {
- int64_t ns=timespec_to_ns(ts)+add_ns;
- return ns_to_timespec(ns);
-}
-
-// absolute sleep until deadline (monotonic), resilient to EINTR
-static inline void sleep_until_abs(const timespec& deadline) {
- while (true) {
-  const int rc=::clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&deadline,nullptr);
-  if (rc==0) return;
-  if (rc==EINTR) continue;
-  // unexpected: just bail out of sleep
-  return;
- }
-}
-#endif
+#include "../common/rt_bootstrap.h"
+#include "../common/timespec.h"
 
 class TcpThread : public QThread {
  Q_OBJECT
@@ -83,18 +54,10 @@ class TcpThread : public QThread {
    set_thread_rt(pthread_self(),SCHED_FIFO,60); // Give (lesser) RT priority
 #endif 
 
-#ifdef __linux__
-   timespec nextDeadline{};
-   ::clock_gettime(CLOCK_MONOTONIC,&nextDeadline);
-
+   ts::deadline_t nextDeadline=ts::now();
    // optional: start a bit in the future so first iteration has time to fill backlog
-   nextDeadline=ts_add_ns(nextDeadline,5*1000*1000); // +5ms
-#else
-   using clock=std::chrono::steady_clock;
-   auto nextDeadline=clock::now();
-#endif 
+   nextDeadline=ts::add_ns(nextDeadline,5*1000*1000); // +5ms
 
-//   using ns=std::chrono::nanoseconds;
    const int N=conf->eegSamplesInTick;
    const quint64 target=quint64(2*N);
    const quint64 minAvailToSend=target; // only send if we have at least target
@@ -105,7 +68,7 @@ class TcpThread : public QThread {
    const int sz=TcpSample::serializedSizeFor(conf->ampCount,conf->physChnCount);
    payload.resize(N*sz);
    const quint32 Lo=quint32(payload.size());
-   out.resize(4+Lo);
+   out.resize(4+int(Lo));
 
    // --- PI tuning (start conservative) ---
    // Units: err is "samples". corrNs is "nanoseconds".
@@ -129,28 +92,17 @@ class TcpThread : public QThread {
     msleep(1);
    }
 
-   //auto nextDeadline=clock::now();
-
    while (!isInterruptionRequested()) {
-#ifdef __linux__
-    sleep_until_abs(nextDeadline);
-    timespec nowts{};
-    ::clock_gettime(CLOCK_MONOTONIC,&nowts);
-    const int64_t nowNs=timespec_to_ns(nowts); const int64_t nextNs=timespec_to_ns(nextDeadline);
+    ts::sleep_until_abs(nextDeadline);
+    // Optional “late wake” resync
+    const auto nowts=ts::now();
+    const int64_t nowNs=ts::timespec_to_ns(nowts);
+    const int64_t nextNs=ts::timespec_to_ns(nextDeadline);
     // If we woke up VERY late, resync phase
     if (nowNs>nextNs+5*basePeriod_ns) { nextDeadline=nowts; integ=0; }
     //if (timespec_to_ns(nowts)>timespec_to_ns(nextDeadline)+5*basePeriod_ns) {
     // nextDeadline=nowts; // resync if we fell behind badly
     //}
-#else
-    // fallback (coarse)i -- or-> std::this_thread::sleep_until
-    const auto now=clock::now();
-    if (now<nextDeadline) {
-      const auto dt=std::chrono::duration_cast<std::chrono::milliseconds>(nextDeadline-now);
-      if (dt.count()>0) msleep(unsigned(dt.count())); // coarse sleep
-      continue; // re-check deadline precisely
-    }
-#endif
 
     quint64 avail=0;
     {
@@ -171,11 +123,7 @@ class TcpThread : public QThread {
     // if err>0 (too much backlog), corrNs>0 => shorten period => earlier deadline
     int64_t periodNs=basePeriod_ns-corrNs;
     periodNs=clamp_i64(periodNs,basePeriod_ns/2,basePeriod_ns*2); // [0.5x .. 2x]
-#ifdef __linux__
-    nextDeadline=ts_add_ns(nextDeadline,periodNs);
-#else
-    nextDeadline+=std::chrono::nanoseconds(periodNs);
-#endif
+    nextDeadline=ts::add_ns(nextDeadline,periodNs);
 
     // Only integrate if we actually have some data (or only when avail>=N).
     //if (avail>=quint64(N)) { integ=clamp_i64(integ+err,-integClamp,integClamp); }

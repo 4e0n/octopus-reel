@@ -55,7 +55,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "eeamp.h"
 #include "audioamp.h"
 #include "../common/logring.h"
-#include "rt_bootstrap.h"
+#include "../common/rt_bootstrap.h"
 
 const int CBUF_SIZE_IN_SECS=10;
 

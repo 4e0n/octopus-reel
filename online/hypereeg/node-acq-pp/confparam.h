@@ -133,55 +133,86 @@ class ConfParam : public QObject {
   QMutex compMutex;
   QWaitCondition compReady;
   QWaitCondition compSpace;
-  QQueue<QByteArray> compQueue;
+  //QQueue<QByteArray> compQueue;
   int compQueueMax=64; // to be tuned later
   std::atomic<bool> compStop{false};
 
   int frameBytesIn,frameBytesOut;
 
+  std::atomic<quint64> rxDropBlocks{0};
+
+  struct CompBlock {
+   QByteArray buf; int off=0; // bytes already consumed (0..buf.size())
+  };
+
+  QQueue<CompBlock> compQueue;
+
  public slots:
   void onStrmDataReady() {
    static QByteArray inbuf;
+   static int rd=0;           // read cursor into inbuf
    static qint64 lastMsQ=0;
+   static quint64 outerRx=0;
+   static quint64 dropped=0;
+
    inbuf.append(acqStrmSocket->readAll());
-   while (inbuf.size()>=4) {
-    const uchar *p0 = reinterpret_cast<const uchar*>(inbuf.constData());
-    const quint32 blockSize=(quint32)p0[0]
-                            |((quint32)p0[1]<<8)
-                            |((quint32)p0[2]<<16)
-                            |((quint32)p0[3]<<24);
-    if (inbuf.size() < 4+(int)blockSize) break;
 
-    QByteArray block=inbuf.mid(4,blockSize);
-    inbuf.remove(0,4+(int)blockSize);
+   auto compact_if_needed=[&](){
+    // compact when cursor is large to avoid unbounded growth
+    if (rd > 1<<20) {               // 1MB consumed -> compact
+     inbuf.remove(0,rd);
+     rd=0;
+    } else if (rd>0 && rd>inbuf.size()/2) {
+     // optional: compact when we've consumed > half
+     inbuf.remove(0,rd);
+     rd=0;
+    }
+   };
 
-    static quint64 outerRx=0; outerRx++;
+   static constexpr quint32 MAX_BLOCK=8u*1024u*1024u;
+
+   while ((inbuf.size()-rd)>=4) {
+    const uchar* p0=reinterpret_cast<const uchar*>(inbuf.constData()+rd);
+    const quint32 blockSize=(quint32)p0[0]|((quint32)p0[1]<<8)|((quint32)p0[2]<<16)|((quint32)p0[3]<<24);
+    if (blockSize==0 || blockSize>MAX_BLOCK) {
+     qWarning() << "[PP:RX] bad blockSize=" << blockSize << "clearing buffer";
+     inbuf.clear(); rd=0;
+     return;
+    }
+
+    if ((inbuf.size()-rd)<(4+(int)blockSize)) break;
+
+    // Copy out exactly one block (one allocation+copy; no mid/remove memmove)
+    QByteArray block(inbuf.constData()+rd+4,(int)blockSize);
+    rd+=4+(int)blockSize;
+
+    outerRx++;
 
     int qszSnap=0;
     {
       QMutexLocker lk(&compMutex);
-
-      // Policy I. LIVE-FIRST: drop oldest when queue full
-      while (compQueue.size()>=compQueueMax) compQueue.dequeue();
-
-      // Policy II. INTEGRITY-FIRST: wait briefly for space (avoid long waits in event loop)
-      // while (compQueue.size()>=compQueueMax) compSpace.wait(&compMutex,1);
-
-      compQueue.enqueue(std::move(block));
+      while (compQueue.size()>=compQueueMax) { compQueue.dequeue(); dropped++; }
+      //compQueue.enqueue(std::move(block));
+      CompBlock cb; cb.buf=std::move(block); cb.off=0; compQueue.enqueue(std::move(cb)); 
       qszSnap=compQueue.size();
       compReady.wakeOne();
     }
 
-    const qint64 now=QDateTime::currentMSecsSinceEpoch();
+    compact_if_needed();
 
+    // 1Hz log (call time only here)
+    const qint64 now=QDateTime::currentMSecsSinceEpoch();
     if (now-lastMsQ>=1000) {
      lastMsQ=now;
-     qInfo().noquote() << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3")
-                           .arg((qulonglong)outerRx)
-                           .arg(qszSnap)
-                           .arg(inbuf.size());
+     qInfo().noquote() << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3 rd=%4 drop=%5")
+                          .arg((qulonglong)outerRx)
+                          .arg(qszSnap)
+                          .arg(inbuf.size())
+                          .arg(rd)
+                          .arg((qulonglong)dropped);
      outerRx=0;
     }
    }
+   compact_if_needed();
   }
 };

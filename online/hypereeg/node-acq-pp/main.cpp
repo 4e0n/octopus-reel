@@ -76,6 +76,14 @@ int main(int argc,char* argv[]) {
  setvbuf(stdout,nullptr,_IOLBF,0); // Avoid buffering
  setvbuf(stderr,nullptr,_IONBF,0);
 
+#ifdef __linux__
+ // 1) Avoid swapping/pagefault stalls
+ lock_memory_or_warn(); // needs CAP_IPC_LOCK (or high memlock ulimit)
+
+ // 2) Help scheduler a bit (optional)
+ set_process_nice(-10); // needs CAP_SYS_NICE
+#endif
+
  QCoreApplication app(argc,argv);
 
  umask(0002);
