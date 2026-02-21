@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QDebug>
 #include <QFile>
-//#include <QDateTime>
+#include <QDateTime>
 //#include <QDataStream>
 
 #ifdef EEMAGINE
@@ -66,7 +66,8 @@ class AcqThread : public QThread {
             std::vector<amplifier*> *ee=nullptr,AudioAmp *aud=nullptr,SerialDevice *ser=nullptr) : QThread(parent) {
    conf=c; eeAmpsOrig=ee; audioAmp=aud; serDev=ser;
 
-   conf->syncOngoing=conf->syncPerformed=false;
+   conf->syncOngoing.store(false,std::memory_order_release);
+   conf->syncPerformed.store(false,std::memory_order_release);
 
    smp=Sample(conf->physChnCount); tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
    tcpBufSize=conf->tcpBufSize; tcpBuffer=&(conf->tcpBuffer);
@@ -80,13 +81,6 @@ class AcqThread : public QThread {
   }
 
   // --------
-
-  //inline void ensureOutBlockSize(quint64 n) {
-  // if (outBlock.size()>=size_t(n)) return;
-  // const size_t old=outBlock.size(); outBlock.resize(size_t(n));
-  // // Allocate amp+Sample buffers once
-  // for (size_t i=old;i<outBlock.size();++i) outBlock[i].initSizeOnly(conf->ampCount,conf->physChnCount);
-  //}
 
   void fetchEegData() {
 #ifdef EEMAGINE
@@ -124,17 +118,12 @@ class AcqThread : public QThread {
      dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
 #ifdef EEMAGINE
-     if (conf->syncOngoing) {
-      if (dst.trigger!=0) {
-       if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
-        qInfo("<AmpSync> SYNC received by @AMP#%u -- %u",(unsigned)ampIdx+1,(unsigned)dst.offset);
-        ampTrigOffset[ampIdx]=dst.offset;
-        ++syncTrigRecvd; // arrived to one of amps, wait for the rest... - also; serial here -> no atomics needed
-       } else { // Other trigger than SYNC
-        qInfo("<AmpSync> Trigger #%u arrived at AMP#%u -- @sampleoffset=%u",(unsigned)dst.trigger,
-                                                                            (unsigned)ampIdx+1,
-                                                                            (unsigned)dst.offset);
-       }
+     if (conf->syncOngoing.load(std::memory_order_acquire) && dst.trigger==(unsigned)TRIG_AMPSYNC) {
+      if (!syncSeen[ampIdx]) {
+       syncSeen[ampIdx]=true;
+       syncAtIdx[ampIdx]=quint64(baseIdx)+smpIdx; // <-- our own timebase
+       ++syncSeenCount;
+       qInfo("<AmpSync> SYNC received by AMP#%u @bufidx=%llu",(unsigned)ampIdx+1,(unsigned long long)syncAtIdx[ampIdx]);
       }
      }
 #endif
@@ -147,7 +136,16 @@ class AcqThread : public QThread {
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
   }
 
+  void beginSync() {
+   conf->syncOngoing.store(true,std::memory_order_release);
+   //conf->syncPerformed stays as "was ever doneâ"
+   std::fill(syncSeen.begin(),syncSeen.end(),false);
+   std::fill(syncAtOff.begin(),syncAtOff.end(),0u);
+   syncSeenCount=0;
+  }
+
   void run() override {
+   lastSyncSendMs=0;
 
 #ifdef __linux__
    lock_memory_or_warn();
@@ -176,13 +174,19 @@ class AcqThread : public QThread {
     EEAmp e(ampIdx,ee,rMask,bMask,cBufSz,cBufSz/2,conf->physChnCount);
     // Select same channels for all eeAmps (i.e. All 64/64 referentials and 2/24 of bipolars)
     eeAmps.push_back(e);
-    ampTrigOffset.push_back(0); // Construct trigger counts with "# of triggers=0" for each amp.
+    ampAlignOffset.push_back(0); // Construct trigger counts with "# of triggers=0" for each amp.
     ampIdx++;
    }
    cBufPivotList.resize(eeAmps.size());
 #ifdef EEMAGINE
    syncTrigRecvd=0;
 #endif
+
+   syncAtIdx.assign(eeAmps.size(),0);
+
+   syncSeen.assign(eeAmps.size(),false);
+   syncAtOff.assign(eeAmps.size(),0u);
+   syncSeenCount=0;
 
    chkTrig.resize(eeAmps.size()); chkTrigOffset=0;
 
@@ -202,39 +206,25 @@ class AcqThread : public QThread {
    }
 
    // Send SYNC
-   sendTrigger(TRIG_AMPSYNC);
+   beginSync();
+   sendAmpSyncByte();
    qInfo() << "<AmpSync> SYNC sent..";
 
    while (true) {
-#ifndef EEMAGINE
-    unsigned t=nonHWTrig.load(std::memory_order_acquire); // Manual TRIG_AMPSYNC put within fetchEegData() ?
-    if (t==TRIG_AMPSYNC) { // consume only if it's still TRIG_AMPSYNC
-     unsigned expected=TRIG_AMPSYNC;
-     // We set it here for all ampsi -> It will be received later for inter-amp syncronization
-     if (nonHWTrig.compare_exchange_strong(expected,0,std::memory_order_acq_rel)) {
-      for (EEAmp& e:eeAmps) (e.amp)->setTrigger(TRIG_AMPSYNC);
-      syncTrigRecvd=eeAmps.size();
-     }
-    }
-#endif
-
     fetchEegData();
 
-    // If all amps have received the SYNC trigger already, align their buffers according to the trigger instant
-    if (syncTrigRecvd==eeAmps.size()) {
-     qInfo() << "<AmpSync> SYNC received by all amps.. validating offsets.. ";
-     unsigned int trigOffsetMin=*std::min_element(ampTrigOffset.begin(),ampTrigOffset.end());
-     // The following table determines the continuous offset additions for each amp to be aligned.
-     for (unsigned int ampIdx=0;ampIdx<eeAmps.size();ampIdx++) ampTrigOffset[ampIdx]-=trigOffsetMin;
-     unsigned int trigOffsetMax=*std::max_element(ampTrigOffset.begin(),ampTrigOffset.end());
-//     if (trigOffsetMax>conf->eegRate) {
-//      qWarning() << "<AmpSync> Warning!! SYNC is not recvd within a second for at least one amp!";
-//     } else {
-     qInfo() << "<AmpSync> SYNC retro-adjustments (per-amp alignment sample offsets) to be made:";
-     for (int trigIdx=0;trigIdx<ampTrigOffset.size();trigIdx++) qInfo(" AMP#%d -> %d",trigIdx+1,ampTrigOffset[trigIdx]);
-     qInfo() << "<AmpSync> SUCCESS. Offsets are now being synced on-the-fly to the earliest amp at TCPsample package level.";
-//     }
-     conf->syncOngoing=false; conf->syncPerformed=true; syncTrigRecvd=0; // Ready for future SYNCing to update ampTrigOffset[i] values
+    if (conf->syncOngoing.load(std::memory_order_acquire) && syncSeenCount==(unsigned)eeAmps.size()) {
+     quint64 minIdx=*std::min_element(syncAtIdx.begin(),syncAtIdx.end());
+     for (size_t a=0;a<eeAmps.size();++a)
+      ampAlignOffset[a]=unsigned(syncAtIdx[a]-minIdx); // Should be small now (0..few)
+
+     qInfo() << "<AmpSync> alignment offsets (samples):";
+     for (int a=0;a<ampAlignOffset.size();++a)
+      qInfo(" AMP#%d -> +%u",a+1,ampAlignOffset[a]);
+
+     conf->syncOngoing.store(false,std::memory_order_release);
+     conf->syncPerformed.store(true,std::memory_order_release);
+     syncSeenCount=0;
     }
 
     const quint64 tcpDataSize=cBufPivot-cBufPivotPrev;
@@ -245,6 +235,8 @@ class AcqThread : public QThread {
     audioBlock.resize(size_t(tcpDataSize)*AUDIO_N);
     for (quint64 i=0;i<tcpDataSize;++i) {
      float* dst=audioBlock.data()+size_t(i)*AUDIO_N;
+     // audioBlock holds AUDIO_N samples per EEG sample (aligned by acquisition cadence)
+     // TODO soon: add pulse detection on right channel for trigger verification.
      audioAmp->fetchN(dst,0); // fills 48 floats, or zeros on miss
     }
 
@@ -271,24 +263,67 @@ class AcqThread : public QThread {
     // no mutex: fill slots
     for (quint64 i=0;i<tcpDataSize;++i) {
      TcpSample &s=(*tcpBuffer)[(start+i)%tcpBufSize];
-     // make sure slot has correct shape once (no heavy work)
+     unsigned hwTrig=0; int trigNonZeroCount=0;
      for (unsigned ampIdx=0;ampIdx<eeAmps.size();++ampIdx) {
-      s.amp[ampIdx].copyFrom(eeAmps[ampIdx].cBuf[(cBufPivotPrev+i+ampTrigOffset[ampIdx])%cBufSz]);
+      const Sample &src=eeAmps[ampIdx].cBuf[(cBufPivotPrev+i+ampAlignOffset[int(ampIdx)])%cBufSz];
+      s.amp[ampIdx].copyFrom(src);
+
+      unsigned t=src.trigger;
+      if (conf->syncOngoing.load(std::memory_order_acquire)) {
+       const quint64 rawIdx=(cBufPivotPrev+i+ampAlignOffset[int(ampIdx)]);
+       if (pickTrigWithLookaroundExpected(eeAmps[ampIdx].cBuf.data(),rawIdx,cBufSz,unsigned(TRIG_AMPSYNC))) {
+        t=unsigned(TRIG_AMPSYNC);
+       }
+      }
+
+      if (t!=0) {
+       ++trigNonZeroCount;
+       if (hwTrig==0) hwTrig=t;
+       else if (hwTrig!=t) ++trigMismatchCounter;
+      }
      }
-     s.trigger=0;
-     // we want trigger only on first produced sample:
-     if (i==0) { unsigned t=nonHWTrig.exchange(0,std::memory_order_acq_rel); s.trigger=t; }
+     // detect missing triggers on some amps
+     if (hwTrig!=0 && trigNonZeroCount!=int(eeAmps.size())) ++trigMissingCounter;
+     s.trigger=hwTrig; s.userEvent=0; // future
+     ++trigProduced; if (hwTrig) ++trigNonZeroProduced;
+     // audio copy as before
      const float* aud=audioBlock.data()+size_t(i)*AUDIO_N;
+     // TODO soon: verify trigger timing from audio right-channel pulse
+     // (disabled now; should not affect realtime path)
+     // const bool audioPulse=detectAudioPulse(aud, maybe conf thresholds);
+     // if (audioPulse) { optional: log / compare with hwTrig }
      for (int k=0;k<AUDIO_N;++k) s.audioN[k]=aud[k];
      s.offset=counter0++; s.timestampMs=0;
     }
-    
+
     {
       QMutexLocker locker(&conf->mutex);
       conf->tcpBufHead=newHead;
-      static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
-      log_ring_1hz("ACQ:PROD",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
-    }
+      static quint64 lastH=0,lastTail=0; static qint64  lastMsRing=0;
+      log_ring_1hz("ACQ:PROD", conf->tcpBufHead,conf->tcpBufTail,lastH,lastTail,lastMsRing);
+      // --- TRIG stats gated to ~1Hz ---
+      static qint64 lastMsTrig=0;
+      const qint64 nowMs=QDateTime::currentMSecsSinceEpoch();
+      if (nowMs-lastMsTrig>=1000) {
+       static quint64 lastMismatch=0,lastMissing=0;
+       static quint64 lastTrigProduced=0,lastTrigNZ=0;
+       const quint64 dMismatch=trigMismatchCounter-lastMismatch;
+       const quint64 dMissing =trigMissingCounter -lastMissing;
+       const quint64 dT       =trigProduced       -lastTrigProduced;
+       const quint64 dNZ      =trigNonZeroProduced-lastTrigNZ;
+       // Always show rate once per second (or gate further if you want)
+       qInfo() << "[TRIGRATE] produced/s=" << dT << " trig/s=" << dNZ;
+       // Only warn on problems
+       if (dNZ||dMismatch||dMissing) {
+        qWarning() << "[TRIGSTAT] mismatch/s=" << dMismatch << " missing/s=" << dMissing;
+       }
+       lastMismatch    =trigMismatchCounter;
+       lastMissing     =trigMissingCounter;
+       lastTrigProduced=trigProduced;
+       lastTrigNZ      =trigNonZeroProduced;
+       lastMsTrig      =nowMs;
+      }
+    }  
 
     cBufPivotPrev=cBufPivot;
 
@@ -303,21 +338,69 @@ class AcqThread : public QThread {
    qInfo("<AcqThread> Exiting thread..");
   }
 
-  void sendTrigger(unsigned int t) {
-   conf->syncOngoing=true;
-   if (t<256) { // also including TRIG_AMPSYNC=255
-#ifdef EEMAGINE
-    unsigned char trig=(unsigned char)t;
-    serDev->write(trig);
-#else
-    nonHWTrig=t; // The same for eesynth.h -- includes TRIG_AMPSYNC
-#endif
-   } else { // Non-hardware trigger
-    nonHWTrig=t; // Put manually to trigger part in TCPBuffer by within thread loop
+ public slots:
+  void requestAmpSync() {
+   // If already in a sync window, dont allow re-triggering.
+   if (conf->syncOngoing.load(std::memory_order_acquire)) {
+    qInfo() << "<AmpSync> request ignored: sync already ongoing";
+    return;
    }
+   const qint64 now=QDateTime::currentMSecsSinceEpoch();
+   if (lastSyncSendMs!=0 && (now-lastSyncSendMs)<syncCooldownMs) {
+    qInfo() << "<AmpSync> request ignored: cooldown"
+            << (syncCooldownMs-(now-lastSyncSendMs)) << "ms remaining";
+    return;
+   }
+   lastSyncSendMs=now;
+   beginSync();       // sets syncOngoing=true and resets arrays
+   sendAmpSyncByte(); // actually write to SparkFun/amps
+   qInfo() << "<AmpSync> SYNC sent";
+  }
+
+  void requestSynthTrig(uint32_t t) {
+#ifndef OCTO_DIAG_TRIG
+   qWarning() << "[TRIG] synthetic trigger disabled (compile without OCTO_DIAG_TRIG)";
+   return;
+#else
+   if (t>=256) {
+    qWarning() << "[TRIG] invalid synthetic trigger (must be <256):" << t;
+    return;
+   }
+   if (t==TRIG_AMPSYNC) {
+    qWarning() << "[TRIG] use requestAmpSync() for AMPSYNC";
+    return;
+   }
+   sendTriggerByte(uint8_t(t));
+   qInfo() << "[TRIG] synthetic trigger sent:" << t;
+#endif
   }
 
  private:
+  static inline unsigned pickTrigWithLookaroundExpected(const Sample* buf,quint64 idx,unsigned cBufSz,unsigned expected) {
+   const unsigned t0=buf[idx%cBufSz].trigger; if (t0==expected) return expected;
+   // Â±1 sample grace (cheap and deterministic)
+   const unsigned tPrev=buf[(idx+cBufSz-1)%cBufSz].trigger; if (tPrev==expected) return expected;
+   const unsigned tNext=buf[(idx+1)%cBufSz].trigger; if (tNext==expected) return expected;
+   return 0;
+  }
+
+  void sendAmpSyncByte() {
+#ifdef EEMAGINE
+   const unsigned char trig=(unsigned char)TRIG_AMPSYNC;
+   serDev->write(trig);
+#else
+   for (EEAmp& e:eeAmps) (e.amp)->setTrigger(TRIG_AMPSYNC);
+#endif
+  }
+
+  void sendTriggerByte(uint8_t t) {
+#ifdef EEMAGINE
+   serDev->write(t);
+#else
+   for (EEAmp& e: eeAmps) (e.amp)->setTrigger(t);
+#endif
+  }
+
   ConfParam *conf;
 
   TcpSample tcpEEG; Sample smp;
@@ -326,16 +409,29 @@ class AcqThread : public QThread {
   std::vector<EEAmp> eeAmps; unsigned int cBufSz,smpCount,chnCount;
   quint64 cBufPivotPrev,cBufPivot; std::vector<unsigned int> cBufPivotList;
 
-  unsigned int syncTrigRecvd; QVector<unsigned int> ampTrigOffset; // Trigger offsets for syncronization.
+  unsigned int syncTrigRecvd; QVector<unsigned int> ampAlignOffset; // Trigger offsets for syncronization.
   QVector<unsigned int> chkTrig; unsigned int chkTrigOffset;
 
   quint64 counter0,counter1;
-  std::atomic_uint nonHWTrig{0};
 
   // --- Hardware pointers -- coming from the sky
   std::vector<amplifier*> *eeAmpsOrig;
   AudioAmp *audioAmp;
   SerialDevice *serDev;
 
-  std::vector<float> audioBlock;   // size=tcpDataSize*AUDIO_N
+  std::vector<float> audioBlock;
+
+  std::vector<bool> syncSeen;          // size=ampCount
+  std::vector<unsigned int> syncAtOff; // size=ampCount (the offset value when TRIG_AMPSYNC observed)
+  unsigned int syncSeenCount=0;
+
+  quint64 trigMismatchCounter=0;
+  quint64 trigMissingCounter=0;
+  quint64 trigProduced=0;
+  quint64 trigNonZeroProduced=0;
+
+  qint64 lastSyncSendMs=0;  // only touched by AcqThread
+  static constexpr int syncCooldownMs=1000; // 1s of SYNC debouncing/cooling
+
+  std::vector<quint64> syncAtIdx;
 };

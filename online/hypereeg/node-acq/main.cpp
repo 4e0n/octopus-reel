@@ -79,7 +79,7 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
    conf->totalCount=conf->ampCount*conf->totalChnCount;
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
    conf->frameBytes=TcpSample(conf->ampCount,conf->physChnCount).serialize().size();
-   qDebug() << "FrameBytes=" << conf->frameBytes;
+   //qDebug() << "FrameBytes=" << conf->frameBytes;
    conf->dumpRaw=false;
    // --------------------------------------------------------------------------------
    if (!conf->acqCommServer.listen(QHostAddress::Any,conf->acqCommPort)) {
@@ -226,7 +226,7 @@ int main(int argc,char *argv[]) {
   ampIdx++;
  }
 
- for (int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
+ for (unsigned int ampIdx=0;ampIdx<conf.ampCount;ampIdx++) {
   if (!ampStatus[ampIdx]) {
    qWarning() << "Exiting...";
    return 1;

@@ -37,6 +37,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "acqthread.h"
 #include "tcpthread.h"
 
+static constexpr const char* PROMPT = ">> ";
+static inline void sendPrompt(QTcpSocket* s) { if (!s) return;
+ s->write(PROMPT); s->flush();
+}
+
 class AcqDaemon : public QObject {
  Q_OBJECT
  public:
@@ -61,8 +66,14 @@ class AcqDaemon : public QObject {
   void onNewCommClient() {
    while (conf->acqCommServer.hasPendingConnections()) {
     QTcpSocket *client=conf->acqCommServer.nextPendingConnection();
-    //client->setSocketOption(QAbstractSocket::LowDelayOption,1);
+    client->setSocketOption(QAbstractSocket::LowDelayOption,1);
     //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,60*1024);
+
+    // Welcome banner+tiny hint
+    client->write("node-acq command port\r\n");
+    client->write("Type HELP for commands. Example: AMPSYNC\r\n");
+    sendPrompt(client);
+
     connect(client,&QTcpSocket::readyRead,this,[this,client]() {
      QByteArray cmd=client->readAll().trimmed();
      handleCommand(QString::fromUtf8(cmd),client);
@@ -139,25 +150,21 @@ class AcqDaemon : public QObject {
      conf->dumpRaw=false; conf->hEEGStream.setDevice(nullptr); conf->hEEGFile.close();
      client->write("node-acq: Raw EEG dumping stopped.\n");
     } else if (cmd==CMD_ACQ_AMPSYNC) {
-     qInfo() << "<Comm> Conveying SYNC to amplifier(s)..";
-     conf->syncOngoing=true; conf->syncPerformed=false;
-     acqThread->sendTrigger(TRIG_AMPSYNC);
-     client->write("SYNC conveyed to amps.\n");
-    } else if (cmd==CMD_ACQ_S_TRIG_1000) {
-     acqThread->sendTrigger(1000);
-    } else if (cmd==CMD_ACQ_S_TRIG_1) {
-     acqThread->sendTrigger(1);
-    } else if (cmd==CMD_ACQ_S_TRIG_2) {
-     acqThread->sendTrigger(2);
+     qInfo() << "<Comm> SYNC requested";
+     QMetaObject::invokeMethod(acqThread,"requestAmpSync",Qt::QueuedConnection);
+     client->write("OK: AMPSYNC requested\n");
+    } else if (cmd==CMD_ACQ_QUIT) {
+     client->write("Bye!\r\n");
+     client->disconnectFromHost();
     }
    } else { // command with parameter
     sList=cmd.split("=");
-    if (sList[0]=="TRIGGER") {
+    if (sList[0]=="TRIG") {
      int pos=0;
      if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
      if (iParam<0xffff) {
-      qInfo("<Comm> Conveying **non-hardware** trigger to amplifier(s).. TCode:%d",iParam);
-      acqThread->sendTrigger(iParam);
+      qInfo("<Comm> Requesting synthetictrigger to amplifier(s).. TCode:%d",iParam);
+      QMetaObject::invokeMethod(acqThread,"requestSynthTrig",Qt::QueuedConnection,Q_ARG(uint32_t,iParam));
       client->write("**Non-hardware** trigger conveyed to amps.\n");
      } else {
       qWarning() << "<Comm> Error! **Non-hardware** trigger is out of (256,65535] range. Trigger not conveyed.";
@@ -191,6 +198,7 @@ class AcqDaemon : public QObject {
      client->write("node-acq: Unknown command..\n");
     }
    }
+   sendPrompt(client);
   }
 
   void onNewStrmClient() {

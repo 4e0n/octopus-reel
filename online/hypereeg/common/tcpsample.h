@@ -38,6 +38,7 @@ struct TcpSample {
  float audioN[AUDIO_N];
  unsigned int ampCount=0,chnCount=0;
  unsigned int trigger=0;
+ quint32 userEvent=0;
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 

@@ -28,6 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QMutex>
+#include <atomic>
 #include <vector>
 #include "acqchninfo.h"
 #include "../common/tcpsample.h"
@@ -43,7 +44,9 @@ struct ConfParam {
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
  unsigned int eegSamplesInTick;
  QFile hEEGFile; QDataStream hEEGStream;
- bool dumpRaw,syncOngoing,syncPerformed;
+ bool dumpRaw;
+ std::atomic_bool syncOngoing{false};
+ std::atomic_bool syncPerformed{false};;
  QVector<QTcpSocket*> strmClients;
  QMutex mutex,chnInterMutex;
  quint64 tcpBufHead,tcpBufTail;

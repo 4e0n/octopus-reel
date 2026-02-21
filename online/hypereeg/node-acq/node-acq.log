@@ -1,0 +1,223 @@
+2026-02-21T11:44:21.113 [INFO] [RT] mlockall OK
+2026-02-21T11:44:21.114 [INFO] ===============================================================
+[OMP] enabled, _OPENMP=201511
+[OMP] omp_get_max_threads() = 4
+[OMP] omp_get_dynamic()     = 0
+[OMP] omp_get_nested()      = 0
+[OMP] spawned threads       = 4 (in_parallel=1)
+2026-02-21T11:44:21.122 [INFO] ===============================================================
+2026-02-21T11:44:21.123 [INFO] <Comm> listening on port 65000
+2026-02-21T11:44:21.258 [INFO] ===============================================================
+2026-02-21T11:44:21.258 [INFO] Hardware connection status...
+2026-02-21T11:44:21.258 [INFO] -----------------------------
+2026-02-21T11:44:21.258 [INFO] Audio Device...
+2026-02-21T11:44:21.258 [INFO] ---------------
+XDG_RUNTIME_DIR (/run/user/10000) is not owned by us (uid 0), but by uid 10000! (This could e.g. happen if you try to connect to a non-root PulseAudio as a root user, over the native protocol. Don't do that.)
+2026-02-21T11:44:21.303 [INFO] <AudioAmp> ALSA period= 256 frames ( 5.33333 ms) buffer= 2048 frames ( 42.6667 ms)
+2026-02-21T11:44:21.303 [INFO] <Audio> AudioAmp ALSA initialized successfully.
+2026-02-21T11:44:21.303 [INFO] ---------------------------------------------------------------
+2026-02-21T11:44:21.303 [INFO] EEG Amplifiers...
+2026-02-21T11:44:21.303 [INFO] -----------------
+2026-02-21T11:44:21.303 [INFO] <AmpProbe> Amplifiers are initialized successfully.
+2026-02-21T11:44:21.303 [INFO] Sorting according to their IDs...
+2026-02-21T11:44:21.303 [INFO] Before:
+2026-02-21T11:44:21.303 [INFO] 1077
+2026-02-21T11:44:21.304 [INFO] 1075
+2026-02-21T11:44:21.304 [INFO] After:
+2026-02-21T11:44:21.304 [INFO] 1075
+2026-02-21T11:44:21.304 [INFO] 1077
+2026-02-21T11:44:21.304 [INFO] ---------------------------------------------------------------
+2026-02-21T11:44:21.304 [INFO] <AmpProbe> Checking amplifiers on/off status...
+2026-02-21T11:44:22.812 [INFO] <AmpProbe> EEG Amplifier 0 is on for streaming.
+2026-02-21T11:44:24.325 [INFO] <AmpProbe> EEG Amplifier 1 is on for streaming.
+2026-02-21T11:44:24.325 [INFO] ---------------------------------------------------------------
+2026-02-21T11:44:24.325 [INFO] HyperSync Serial Device...
+2026-02-21T11:44:24.325 [INFO] --------------------------
+2026-02-21T11:44:27.330 [INFO] <HyperSync> Device initialized successfully.
+2026-02-21T11:44:27.330 [INFO] ===============================================================
+2026-02-21T11:44:27.330 [INFO] Detailed channels info:
+2026-02-21T11:44:27.330 [INFO] -----------------------
+2026-02-21T11:44:27.330 [INFO] 1 -> Fp1 - (92.0,108.00) - [5,2] ChnType=0, Inter=1 33 
+2026-02-21T11:44:27.330 [INFO] 2 -> Fpz - (92.0,90.00) - [6,2] ChnType=0, Inter=0 2 
+2026-02-21T11:44:27.330 [INFO] 3 -> Fp2 - (92.0,72.00) - [7,2] ChnType=0, Inter=1 34 
+2026-02-21T11:44:27.330 [INFO] 4 -> F7 - (92.0,144.00) - [2,4] ChnType=0, Inter=32 36 57 
+2026-02-21T11:44:27.330 [INFO] 5 -> F3 - (60.0,129.00) - [4,4] ChnType=0, Inter=33 36 37 40 
+2026-02-21T11:44:27.331 [INFO] 6 -> Fz - (46.0,90.00) - [6,4] ChnType=0, Inter=37 38 41 
+2026-02-21T11:44:27.331 [INFO] 7 -> F4 - (60.0,51.00) - [8,4] ChnType=0, Inter=34 38 39 42 
+2026-02-21T11:44:27.331 [INFO] 8 -> F8 - (92.0,36.00) - [10,4] ChnType=0, Inter=35 39 58 
+2026-02-21T11:44:27.331 [INFO] 9 -> FC5 - (71.0,159.00) - [3,5] ChnType=0, Inter=36 40 43 57 
+2026-02-21T11:44:27.331 [INFO] 10 -> FC1 - (32.0,135.00) - [5,5] ChnType=0, Inter=37 40 41 44 
+2026-02-21T11:44:27.331 [INFO] 11 -> FC2 - (32.0,45.00) - [7,5] ChnType=0, Inter=38 41 42 45 
+2026-02-21T11:44:27.331 [INFO] 12 -> FC6 - (71.0,21.00) - [9,5] ChnType=0, Inter=39 42 46 58 
+2026-02-21T11:44:27.331 [INFO] 13 -> M1 - (120.0,155.00) - [1,6] ChnType=0, Inter=13 57 59 
+2026-02-21T11:44:27.331 [INFO] 14 -> T7 - (92.0,180.00) - [2,6] ChnType=0, Inter=12 43 57 59 
+2026-02-21T11:44:27.331 [INFO] 15 -> C3 - (46.0,180.00) - [4,6] ChnType=0, Inter=40 43 44 47 
+2026-02-21T11:44:27.331 [INFO] 16 -> Cz - (0.0,0.00) - [6,6] ChnType=0, Inter=41 44 45 
+2026-02-21T11:44:27.331 [INFO] 17 -> C4 - (46.0,0.00) - [8,6] ChnType=0, Inter=42 45 46 48 
+2026-02-21T11:44:27.331 [INFO] 18 -> T8 - (92.0,0.00) - [10,6] ChnType=0, Inter=18 46 58 60 
+2026-02-21T11:44:27.331 [INFO] 19 -> M2 - (120.0,25.00) - [11,6] ChnType=0, Inter=17 58 60 
+2026-02-21T11:44:27.331 [INFO] 20 -> CP5 - (71.0,201.00) - [3,7] ChnType=0, Inter=43 47 49 59 
+2026-02-21T11:44:27.331 [INFO] 21 -> CP1 - (32.0,225.00) - [5,7] ChnType=0, Inter=44 47 50 
+2026-02-21T11:44:27.331 [INFO] 22 -> CP2 - (32.0,315.00) - [7,7] ChnType=0, Inter=45 48 51 
+2026-02-21T11:44:27.331 [INFO] 23 -> CP6 - (71.0,339.00) - [9,7] ChnType=0, Inter=46 48 52 60 
+2026-02-21T11:44:27.331 [INFO] 24 -> P7 - (92.0,216.00) - [2,8] ChnType=0, Inter=49 59 61 
+2026-02-21T11:44:27.331 [INFO] 25 -> P3 - (60.0,231.00) - [4,8] ChnType=0, Inter=47 49 50 54 
+2026-02-21T11:44:27.331 [INFO] 26 -> Pz - (46.0,270.00) - [6,8] ChnType=0, Inter=28 50 51 
+2026-02-21T11:44:27.331 [INFO] 27 -> P4 - (60.0,309.00) - [8,8] ChnType=0, Inter=48 51 52 55 
+2026-02-21T11:44:27.332 [INFO] 28 -> P8 - (92.0,324.00) - [10,8] ChnType=0, Inter=52 60 62 
+2026-02-21T11:44:27.332 [INFO] 29 -> POz - (69.0,270.00) - [6,9] ChnType=0, Inter=25 63 
+2026-02-21T11:44:27.332 [INFO] 30 -> O1 - (92.0,252.00) - [5,10] ChnType=0, Inter=54 63 
+2026-02-21T11:44:27.332 [INFO] 31 -> O2 - (92.0,288.00) - [7,10] ChnType=0, Inter=55 63 
+2026-02-21T11:44:27.332 [INFO] 32 -> EOG - (0.0,0.00) - [6,1] ChnType=0, Inter=31 
+2026-02-21T11:44:27.332 [INFO] 1 -> BP1 - (0.0,0.00) - [1,11] ChnType=1, Inter=0 
+2026-02-21T11:44:27.332 [INFO] 33 -> AF7 - (92.0,128.00) - [2,3] ChnType=0, Inter=3 33 
+2026-02-21T11:44:27.332 [INFO] 34 -> AF3 - (74.0,113.00) - [4,3] ChnType=0, Inter=0 4 32 
+2026-02-21T11:44:27.332 [INFO] 35 -> AF4 - (74.0,67.00) - [8,3] ChnType=0, Inter=2 6 35 
+2026-02-21T11:44:27.332 [INFO] 36 -> AF8 - (92.0,52.00) - [10,3] ChnType=0, Inter=7 34 
+2026-02-21T11:44:27.332 [INFO] 37 -> F5 - (75.0,139.00) - [3,4] ChnType=0, Inter=3 4 8 
+2026-02-21T11:44:27.332 [INFO] 38 -> F1 - (50.0,112.00) - [5,4] ChnType=0, Inter=6 7 11 
+2026-02-21T11:44:27.332 [INFO] 39 -> F2 - (50.0,68.00) - [7,4] ChnType=0, Inter=5 6 10 
+2026-02-21T11:44:27.332 [INFO] 40 -> F6 - (75.0,41.00) - [9,4] ChnType=0, Inter=6 7 11 
+2026-02-21T11:44:27.332 [INFO] 41 -> FC3 - (50.0,152.00) - [4,5] ChnType=0, Inter=4 8 9 14 
+2026-02-21T11:44:27.332 [INFO] 42 -> FCz - (23.0,90.00) - [6,5] ChnType=0, Inter=5 9 10 15 
+2026-02-21T11:44:27.332 [INFO] 43 -> FC4 - (50.0,28.00) - [8,5] ChnType=0, Inter=6 10 11 16 
+2026-02-21T11:44:27.332 [INFO] 44 -> C5 - (69.0,180.00) - [3,6] ChnType=0, Inter=8 13 14 19 
+2026-02-21T11:44:27.332 [INFO] 45 -> C1 - (23.0,180.00) - [5,6] ChnType=0, Inter=9 14 15 20 
+2026-02-21T11:44:27.332 [INFO] 46 -> C2 - (23.0,0.00) - [7,6] ChnType=0, Inter=10 15 16 21 
+2026-02-21T11:44:27.332 [INFO] 47 -> C6 - (69.0,0.00) - [9,6] ChnType=0, Inter=11 16 17 22 
+2026-02-21T11:44:27.332 [INFO] 48 -> CP3 - (50.0,208.00) - [4,7] ChnType=0, Inter=14 19 20 24 
+2026-02-21T11:44:27.332 [INFO] 49 -> CP4 - (50.0,332.00) - [8,7] ChnType=0, Inter=16 21 22 26 
+2026-02-21T11:44:27.332 [INFO] 50 -> P5 - (75.0,221.00) - [3,8] ChnType=0, Inter=19 23 24 53 
+2026-02-21T11:44:27.332 [INFO] 51 -> P1 - (50.0,248.00) - [5,8] ChnType=0, Inter=20 24 25 
+2026-02-21T11:44:27.332 [INFO] 52 -> P2 - (50.0,292.00) - [7,8] ChnType=0, Inter=21 25 26 
+2026-02-21T11:44:27.332 [INFO] 53 -> P6 - (75.0,319.00) - [9,8] ChnType=0, Inter=22 26 27 56 
+2026-02-21T11:44:27.333 [INFO] 54 -> PO5 - (83.0,239.00) - [3,9] ChnType=0, Inter=49 54 61 
+2026-02-21T11:44:27.333 [INFO] 55 -> PO3 - (74.0,247.00) - [4,9] ChnType=0, Inter=24 29 53 
+2026-02-21T11:44:27.333 [INFO] 56 -> PO4 - (74.0,293.00) - [8,9] ChnType=0, Inter=26 30 56 
+2026-02-21T11:44:27.333 [INFO] 57 -> PO6 - (83.0,301.00) - [9,9] ChnType=0, Inter=52 55 62 
+2026-02-21T11:44:27.333 [INFO] 58 -> FT7 - (92.0,162.00) - [2,5] ChnType=0, Inter=3 8 13 
+2026-02-21T11:44:27.333 [INFO] 59 -> FT8 - (92.0,18.00) - [10,5] ChnType=0, Inter=7 11 17 
+2026-02-21T11:44:27.333 [INFO] 60 -> TP7 - (92.0,198.00) - [2,7] ChnType=0, Inter=13 19 23 
+2026-02-21T11:44:27.333 [INFO] 61 -> TP8 - (92.0,342.00) - [10,7] ChnType=0, Inter=17 22 27 
+2026-02-21T11:44:27.333 [INFO] 62 -> PO7 - (92.0,234.00) - [2,9] ChnType=0, Inter=23 53 
+2026-02-21T11:44:27.333 [INFO] 63 -> PO8 - (92.0,306.00) - [10,9] ChnType=0, Inter=27 56 
+2026-02-21T11:44:27.333 [INFO] 64 -> Oz - (92.0,270.00) - [6,10] ChnType=0, Inter=28 29 30 
+2026-02-21T11:44:27.333 [INFO] 2 -> BP2 - (0.0,0.00) - [2,11] ChnType=1, Inter=0 
+2026-02-21T11:44:27.333 [INFO] ===============================================================
+2026-02-21T11:44:27.333 [INFO] Acquisition Parameters Summary:
+2026-02-21T11:44:27.333 [INFO] -------------------------------
+2026-02-21T11:44:27.333 [INFO] Connected # of amplifier(s): 2
+2026-02-21T11:44:27.333 [INFO] Sample Rate-> 1000 sps
+2026-02-21T11:44:27.333 [INFO] TCP Ringbuffer allocated for 120000 seconds.
+2026-02-21T11:44:27.333 [INFO] EEG data fetched every 50 ms.
+2026-02-21T11:44:27.333 [INFO] Per-amp Physical Channel#: 66 (64+2)
+2026-02-21T11:44:27.333 [INFO] Per-amp Total Channel# (with Trig and Offset): 68
+2026-02-21T11:44:27.333 [INFO] Total Channel# from all amps: 136
+2026-02-21T11:44:27.333 [INFO] Referential channels gain: 1
+2026-02-21T11:44:27.333 [INFO] Bipolar channels gain: 4
+2026-02-21T11:44:27.333 [INFO] ===============================================================
+2026-02-21T11:44:27.333 [INFO] Networking Summary:
+2026-02-21T11:44:27.333 [INFO] -----------------------------
+2026-02-21T11:44:27.333 [INFO] <ServerIP> is "0.0.0.0"
+2026-02-21T11:44:27.333 [INFO] <Strm> listening on port 65001
+2026-02-21T11:44:27.333 [INFO] ====================== Thread Runtime =========================
+2026-02-21T11:44:27.334 [INFO] ===============================================================
+2026-02-21T11:44:27.350 [INFO] [RT] mlockall OK
+2026-02-21T11:44:27.350 [INFO] <AudioAmp> Starting audio acquisition...
+2026-02-21T11:44:27.355 [INFO] [RT] mlockall OK
+2026-02-21T11:44:28.209 [INFO] <AcqThread_Switch2EEG> EEG upstream started..
+2026-02-21T11:44:28.267 [INFO] <AmpSync> SYNC sent..
+2026-02-21T11:44:28.271 [INFO] [TRIGRATE] produced/s= 1  trig/s= 0
+2026-02-21T11:44:28.277 [INFO] <AmpSync> SYNC received by AMP#1 @bufidx=61
+2026-02-21T11:44:28.278 [INFO] <AmpSync> SYNC received by AMP#2 @bufidx=8
+2026-02-21T11:44:28.279 [INFO] <AmpSync> alignment offsets (samples):
+2026-02-21T11:44:28.279 [INFO]  AMP#1 -> +53
+2026-02-21T11:44:28.279 [INFO]  AMP#2 -> +0
+2026-02-21T11:44:29.271 [INFO] [ACQ:PROD] fill=102  +1002/s  -900/s  head=1002 tail=900
+2026-02-21T11:44:29.271 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 1
+2026-02-21T11:44:29.271 [WARN] [TRIGSTAT] mismatch/s= 0  missing/s= 0
+2026-02-21T11:44:29.417 [INFO] [ACQ:SEND] fill=95  +1145/s  -1050/s  head=1145 tail=1050
+2026-02-21T11:44:30.271 [INFO] [ACQ:PROD] fill=101  +999/s  -1000/s  head=2001 tail=1900
+2026-02-21T11:44:30.271 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:30.462 [INFO] [ACQ:SEND] fill=89  +1044/s  -1050/s  head=2189 tail=2100
+2026-02-21T11:44:31.275 [INFO] [ACQ:PROD] fill=105  +1004/s  -1000/s  head=3005 tail=2900
+2026-02-21T11:44:31.275 [INFO] [TRIGRATE] produced/s= 1004  trig/s= 0
+2026-02-21T11:44:31.508 [INFO] [ACQ:SEND] fill=88  +1049/s  -1050/s  head=3238 tail=3150
+2026-02-21T11:44:32.275 [INFO] [ACQ:PROD] fill=106  +1001/s  -1000/s  head=4006 tail=3900
+2026-02-21T11:44:32.275 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 0
+2026-02-21T11:44:32.553 [INFO] [ACQ:SEND] fill=82  +1044/s  -1050/s  head=4282 tail=4200
+2026-02-21T11:44:33.275 [INFO] [ACQ:PROD] fill=105  +999/s  -1000/s  head=5005 tail=4900
+2026-02-21T11:44:33.275 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:33.600 [INFO] [ACQ:SEND] fill=79  +1047/s  -1050/s  head=5329 tail=5250
+2026-02-21T11:44:34.219 [INFO] <Comm> Client connected from "::ffff:10.0.10.10"
+2026-02-21T11:44:34.275 [INFO] [ACQ:PROD] fill=104  +999/s  -1000/s  head=6004 tail=5900
+2026-02-21T11:44:34.275 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:34.646 [INFO] [ACQ:SEND] fill=73  +1044/s  -1050/s  head=6373 tail=6300
+2026-02-21T11:44:35.275 [INFO] [ACQ:PROD] fill=105  +1001/s  -1000/s  head=7005 tail=6900
+2026-02-21T11:44:35.275 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 0
+2026-02-21T11:44:35.693 [INFO] [ACQ:SEND] fill=72  +1049/s  -1050/s  head=7422 tail=7350
+2026-02-21T11:44:36.275 [INFO] [ACQ:PROD] fill=104  +999/s  -1000/s  head=8004 tail=7900
+2026-02-21T11:44:36.275 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:36.741 [INFO] [ACQ:SEND] fill=69  +1047/s  -1050/s  head=8469 tail=8400
+2026-02-21T11:44:37.275 [INFO] [ACQ:PROD] fill=106  +1002/s  -1000/s  head=9006 tail=8900
+2026-02-21T11:44:37.275 [INFO] [TRIGRATE] produced/s= 1002  trig/s= 0
+2026-02-21T11:44:37.788 [INFO] [ACQ:SEND] fill=68  +1049/s  -1050/s  head=9518 tail=9450
+2026-02-21T11:44:38.275 [INFO] [ACQ:PROD] fill=105  +999/s  -1000/s  head=10005 tail=9900
+2026-02-21T11:44:38.275 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:38.836 [INFO] [ACQ:SEND] fill=64  +1046/s  -1050/s  head=10564 tail=10500
+2026-02-21T11:44:39.275 [INFO] [ACQ:PROD] fill=106  +1001/s  -1000/s  head=11006 tail=10900
+2026-02-21T11:44:39.275 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 0
+2026-02-21T11:44:39.457 [INFO] <Comm> Received command: "AMPSYNC"
+2026-02-21T11:44:39.457 [INFO] <Comm> SYNC requested
+2026-02-21T11:44:39.457 [INFO] <AmpSync> SYNC sent
+2026-02-21T11:44:39.465 [INFO] <AmpSync> SYNC received by AMP#1 @bufidx=11251
+2026-02-21T11:44:39.466 [INFO] <AmpSync> SYNC received by AMP#2 @bufidx=11199
+2026-02-21T11:44:39.466 [INFO] <AmpSync> alignment offsets (samples):
+2026-02-21T11:44:39.466 [INFO]  AMP#1 -> +52
+2026-02-21T11:44:39.467 [INFO]  AMP#2 -> +0
+2026-02-21T11:44:39.884 [INFO] [ACQ:SEND] fill=63  +1049/s  -1050/s  head=11613 tail=11550
+2026-02-21T11:44:40.279 [INFO] [ACQ:PROD] fill=110  +1004/s  -1000/s  head=12010 tail=11900
+2026-02-21T11:44:40.279 [INFO] [TRIGRATE] produced/s= 1004  trig/s= 1
+2026-02-21T11:44:40.279 [WARN] [TRIGSTAT] mismatch/s= 0  missing/s= 0
+2026-02-21T11:44:40.932 [INFO] [ACQ:SEND] fill=60  +1047/s  -1050/s  head=12660 tail=12600
+2026-02-21T11:44:41.278 [INFO] [ACQ:PROD] fill=109  +999/s  -1000/s  head=13009 tail=12900
+2026-02-21T11:44:41.279 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:41.981 [INFO] [ACQ:SEND] fill=59  +1049/s  -1050/s  head=13709 tail=13650
+2026-02-21T11:44:42.278 [INFO] [ACQ:PROD] fill=110  +1001/s  -1000/s  head=14010 tail=13900
+2026-02-21T11:44:42.279 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 0
+2026-02-21T11:44:43.029 [INFO] [ACQ:SEND] fill=58  +1049/s  -1050/s  head=14758 tail=14700
+2026-02-21T11:44:43.279 [INFO] [ACQ:PROD] fill=109  +999/s  -1000/s  head=15009 tail=14900
+2026-02-21T11:44:43.279 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:44.078 [INFO] [ACQ:SEND] fill=55  +1047/s  -1050/s  head=15805 tail=15750
+2026-02-21T11:44:44.278 [INFO] [ACQ:PROD] fill=58  +999/s  -1050/s  head=16008 tail=15950
+2026-02-21T11:44:44.279 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:45.127 [INFO] [ACQ:SEND] fill=56  +1051/s  -1050/s  head=16856 tail=16800
+2026-02-21T11:44:45.278 [INFO] [ACQ:PROD] fill=60  +1002/s  -1000/s  head=17010 tail=16950
+2026-02-21T11:44:45.282 [INFO] [TRIGRATE] produced/s= 1004  trig/s= 0
+2026-02-21T11:44:45.982 [INFO] <Comm> Received command: "AMPSYNC"
+2026-02-21T11:44:45.982 [INFO] <Comm> SYNC requested
+2026-02-21T11:44:45.982 [INFO] <AmpSync> SYNC sent
+2026-02-21T11:44:45.990 [INFO] <AmpSync> SYNC received by AMP#2 @bufidx=17724
+2026-02-21T11:44:45.993 [INFO] <AmpSync> SYNC received by AMP#1 @bufidx=17776
+2026-02-21T11:44:45.994 [INFO] <AmpSync> alignment offsets (samples):
+2026-02-21T11:44:45.994 [INFO]  AMP#1 -> +52
+2026-02-21T11:44:45.994 [INFO]  AMP#2 -> +0
+2026-02-21T11:44:46.176 [INFO] [ACQ:SEND] fill=56  +1050/s  -1050/s  head=17906 tail=17850
+2026-02-21T11:44:46.278 [INFO] [ACQ:PROD] fill=58  +998/s  -1000/s  head=18008 tail=17950
+2026-02-21T11:44:46.282 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 1
+2026-02-21T11:44:46.282 [WARN] [TRIGSTAT] mismatch/s= 0  missing/s= 0
+2026-02-21T11:44:47.225 [INFO] [ACQ:SEND] fill=52  +1046/s  -1050/s  head=18952 tail=18900
+2026-02-21T11:44:47.279 [INFO] [ACQ:PROD] fill=60  +1002/s  -1000/s  head=19010 tail=18950
+2026-02-21T11:44:47.282 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:48.274 [INFO] [ACQ:SEND] fill=51  +1049/s  -1050/s  head=20001 tail=19950
+2026-02-21T11:44:48.278 [INFO] [ACQ:PROD] fill=59  +999/s  -1000/s  head=20009 tail=19950
+2026-02-21T11:44:48.282 [INFO] [TRIGRATE] produced/s= 1002  trig/s= 0
+2026-02-21T11:44:49.278 [INFO] [ACQ:PROD] fill=60  +1001/s  -1000/s  head=21010 tail=20950
+2026-02-21T11:44:49.282 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0
+2026-02-21T11:44:49.323 [INFO] [ACQ:SEND] fill=53  +1052/s  -1050/s  head=21053 tail=21000
+2026-02-21T11:44:49.521 [INFO] <Comm> Received command: "QUIT"
+2026-02-21T11:44:50.278 [INFO] [ACQ:PROD] fill=59  +999/s  -1000/s  head=22009 tail=21950
+2026-02-21T11:44:50.282 [INFO] [TRIGRATE] produced/s= 1001  trig/s= 0
+2026-02-21T11:44:50.372 [INFO] [ACQ:SEND] fill=52  +1049/s  -1050/s  head=22102 tail=22050
+2026-02-21T11:44:51.278 [INFO] [ACQ:PROD] fill=110  +1001/s  -950/s  head=23010 tail=22900
+2026-02-21T11:44:51.282 [INFO] [TRIGRATE] produced/s= 999  trig/s= 0

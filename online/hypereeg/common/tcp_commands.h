@@ -36,6 +36,7 @@ const QString CMD_ACQ_S_TRIG_1="STRIG1";
 const QString CMD_ACQ_S_TRIG_2="STRIG2";
 const QString CMD_ACQ_DUMPON="DUMP=1";
 const QString CMD_ACQ_DUMPOFF="DUMP=0";
+const QString CMD_ACQ_QUIT="QUIT";
 const QString CMD_ACQ_REBOOT="REBOOT";
 const QString CMD_ACQ_SHUTDOWN="SHUTDOWN";
 //const QString CMD_ACQ_TRIGGER="TRIGGER";

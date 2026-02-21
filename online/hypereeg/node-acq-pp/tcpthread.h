@@ -83,7 +83,7 @@ class TcpThread : public QThread {
 
    // PI tuning (same convention as node-acq)
    const int64_t Kp_ns_per_sample=std::max<int64_t>(2000,1000000/target/2);
-   const int64_t Ki_ns_per_sample=std::max<int64_t>(1,Kp_ns_per_sample/200);
+   const int64_t Ki_ns_per_sample=std::max<int64_t>(1,Kp_ns_per_sample/500);
    const int64_t corrClamp_ns=basePeriod_ns/4;
    const int64_t integClamp=10*target;
 
