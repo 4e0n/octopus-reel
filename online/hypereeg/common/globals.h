@@ -23,7 +23,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#define EEMAGINE
+//#define EEMAGINE
 
 #define OCTO_OMP
 #include "octo_omp.h"

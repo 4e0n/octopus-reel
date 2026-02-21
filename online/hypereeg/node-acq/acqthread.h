@@ -29,7 +29,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDebug>
 #include <QFile>
 #include <QDateTime>
-//#include <QDataStream>
 
 #ifdef EEMAGINE
 #define _UNICODE
@@ -55,7 +54,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "eeamp.h"
 #include "audioamp.h"
 #include "../common/logring.h"
+#ifdef EEMAGINE
 #include "../common/rt_bootstrap.h"
+#endif
 
 const int CBUF_SIZE_IN_SECS=10;
 
@@ -148,9 +149,11 @@ class AcqThread : public QThread {
    lastSyncSendMs=0;
 
 #ifdef __linux__
+#ifdef EEMAGINE
    lock_memory_or_warn();
    pin_thread_to_cpu(pthread_self(),1); // Pin acquisition to core 1
    set_thread_rt(pthread_self(),SCHED_FIFO,80); // Give acquisition RT priority
+#endif
 #endif
 
 #ifdef EEMAGINE
@@ -191,6 +194,9 @@ class AcqThread : public QThread {
    chkTrig.resize(eeAmps.size()); chkTrigOffset=0;
 
    // Initialize EEG streams of amps.
+#ifndef EEMAGINE
+   eesynth::set_block_msec(unsigned(conf->eegProbeMsecs));
+#endif
    for (auto& e:eeAmps) e.str=e.OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    qInfo() << "<AcqThread_Switch2EEG> EEG upstream started..";
 
@@ -269,7 +275,7 @@ class AcqThread : public QThread {
       s.amp[ampIdx].copyFrom(src);
 
       unsigned t=src.trigger;
-      if (conf->syncOngoing.load(std::memory_order_acquire)) {
+      if (conf->syncOngoing.load(std::memory_order_acquire) && t==0) {
        const quint64 rawIdx=(cBufPivotPrev+i+ampAlignOffset[int(ampIdx)]);
        if (pickTrigWithLookaroundExpected(eeAmps[ampIdx].cBuf.data(),rawIdx,cBufSz,unsigned(TRIG_AMPSYNC))) {
         t=unsigned(TRIG_AMPSYNC);
@@ -358,6 +364,7 @@ class AcqThread : public QThread {
   }
 
   void requestSynthTrig(uint32_t t) {
+   Q_UNUSED(t);
 #ifndef OCTO_DIAG_TRIG
    qWarning() << "[TRIG] synthetic trigger disabled (compile without OCTO_DIAG_TRIG)";
    return;

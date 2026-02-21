@@ -36,7 +36,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/logring.h"
+#ifdef EEMAGINE
 #include "../common/rt_bootstrap.h"
+#endif
 #include "../common/timespec.h"
 
 class TcpThread : public QThread {
@@ -49,9 +51,11 @@ class TcpThread : public QThread {
 
   void run() override {
 #ifdef __linux__
+#ifdef EEMAGINE
    lock_memory_or_warn();
    pin_thread_to_cpu(pthread_self(),2); // Pin tcpsend to core 2
    set_thread_rt(pthread_self(),SCHED_FIFO,60); // Give (lesser) RT priority
+#endif
 #endif 
 
    ts::deadline_t nextDeadline=ts::now();

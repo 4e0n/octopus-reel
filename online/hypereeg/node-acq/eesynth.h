@@ -49,6 +49,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 // Very small inline feeder that reads /opt/octopus/data/raweeg/synth-eeg.raw on demand.
 // File format per sample: u64 offset, float32[ch= numAmps*chansPerAmp], float32 trigger.
+
+namespace eesynth {
+ unsigned& _block_msec();
+}
+
 struct Feeder {
  std::ifstream f;
  std::streampos dataStart;
@@ -77,7 +82,10 @@ struct Feeder {
   if (!f.read(reinterpret_cast<char*>(&chn),4)) return false;
   if (amps==0 || chn==0 || amps>8 || chn>256) return false; // Basic sanity checks
   numAmps=amps; chansPerAmp=chn; totalCh=numAmps*chansPerAmp;
-  N=fs/10; if (N==0) N=100; // 100 ms worth
+
+  const unsigned blockMs=eesynth::_block_msec();
+  N=(fs*blockMs)/1000; if (N==0) N=1;
+  //if (N==0) N=100; // 100 ms worth
   batch.resize(static_cast<std::size_t>(N)*totalCh);
   trig.resize(N); offs.resize(N);
   dataStart=f.tellg(); // start of sample payload after header
@@ -108,6 +116,8 @@ namespace eesynth {
 inline unsigned& _amp_id_counter() { static unsigned c=0; return c; }
 inline unsigned alloc_amp_id() { return _amp_id_counter()++; }
 inline void reset_amp_ids() { _amp_id_counter()=0; }
+inline unsigned& _block_msec() { static unsigned ms=50; return ms; } // default 50ms
+inline void set_block_msec(unsigned ms) { _block_msec()=(ms?ms:50); }
 
 // ========== Master playback ==========
 // Reads ONE shared file, prepares the next 100-sample batch once,
@@ -203,8 +213,9 @@ class stream {
    const unsigned fs=(dt>0.0) ? unsigned(1.0/dt+0.5):1000u; // derive fs from dt if possible; fallback to 1000 Hz
 
    if (!F.openOnce("/opt/octopus/data/raweeg/synth-eeg.raw",fs)) { // If no file, output zeros
-    const unsigned N=smpCount;
-    const unsigned eegCh=(chnCount>=2)? chnCount-2 : chnCount;
+    const unsigned blockMs=eesynth::_block_msec();
+    const unsigned N=std::max(1u,(fs*blockMs)/1000);
+    const unsigned eegCh=(chnCount>=2)?chnCount-2:chnCount;
     b.setCounts(chnCount,N);
 
     const double counter0=counter;

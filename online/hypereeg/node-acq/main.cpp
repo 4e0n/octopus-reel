@@ -55,7 +55,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "confparam.h"
 #include "acqdaemon.h"
 #include "../common/messagehandler.h"
+#ifdef EEMAGINE
 #include "../common/rt_bootstrap.h"
+#endif
 
 const QString CFGPATH="/etc/octopus/hypereeg.conf";
 
@@ -144,11 +146,12 @@ int main(int argc,char *argv[]) {
  setvbuf(stderr,nullptr,_IONBF,0);
  
 #ifdef __linux__
+#ifdef EEMAGINE
  // 1) Avoid swapping/pagefault stalls
  lock_memory_or_warn(); // needs CAP_IPC_LOCK (or high memlock ulimit)
-
  // 2) Help scheduler a bit (optional)
  set_process_nice(-10); // needs CAP_SYS_NICE
+#endif
 #endif
 
  QCoreApplication app(argc,argv);
