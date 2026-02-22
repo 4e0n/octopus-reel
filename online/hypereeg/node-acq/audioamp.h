@@ -77,8 +77,8 @@ struct AudioAmp {
   std::atomic<uint64_t> audio_stalls{0};
 
   // Trigger (RIGHT channel)
-  float trigHigh=8000.f;
-  float trigLow=4000.f;
+  float trigHigh=200.f;
+  float trigLow=120.f;
   unsigned trigMinGap=2400; // 50 ms @ 48 kHz
   uint64_t lastTrigFrame=0;
 
@@ -151,6 +151,9 @@ struct AudioAmp {
    int rc=snd_pcm_open(&handle,AUDIO_DEV_NAME,SND_PCM_STREAM_CAPTURE,0);
    if (rc<0) { qWarning() << "<AudioAmp> ALSA open failed:" << snd_strerror(rc); return false; }
 
+   qInfo() << "<AudioAmp> Opened PCM name =" << snd_pcm_name(handle);
+   qInfo() << "<AudioAmp> snd_pcm_state=" << snd_pcm_state_name(snd_pcm_state(handle));
+
 //alsa_set_capture_level("CODEC",80);
 
    snd_pcm_hw_params_t* hw=nullptr;
@@ -181,6 +184,14 @@ struct AudioAmp {
 
    rc=snd_pcm_hw_params(handle,hw);
    if (rc<0) { qWarning() << "<AudioAmp> hw_params commit failed:" << snd_strerror(rc); return false; }
+
+   snd_pcm_hw_params_t* cur=nullptr;
+   snd_pcm_hw_params_alloca(&cur);
+   snd_pcm_hw_params_current(handle, cur);
+   unsigned ch=0; snd_pcm_hw_params_get_channels(cur, &ch);
+   unsigned rrate=0; int dir=0; snd_pcm_hw_params_get_rate(cur, &rrate, &dir);
+   snd_pcm_format_t fmt; snd_pcm_hw_params_get_format(cur, &fmt);
+   qInfo() << "<AudioAmp> effective fmt=" << snd_pcm_format_name(fmt) << "rate=" << rrate << "ch=" << ch;
 
    snd_pcm_uframes_t per2=0,buf2=0;
    snd_pcm_hw_params_get_period_size(hw,&per2,nullptr);
@@ -241,14 +252,22 @@ struct AudioAmp {
    constexpr double BASE_MAX=1.010;
    constexpr double SLEW_PER_FETCH=0.0015; // ±0.15%per fetch (48 samples)
 
+   // Peak detection
+   float peakL=0.0f; int16_t peakR_i16=0;
+
    auto zero_out=[&]{
     for (unsigned i=0;i<OUT;i++) dstN[i]=0.0f; // OUT=48
    };
 
    // Init on first call
    if (!rs_inited) {
-    rs_lastProd=audioFrameCounter.load(std::memory_order_acquire);
-    rs_srcPos=double(rs_lastProd);
+    const uint64_t prod=audioFrameCounter.load(std::memory_order_acquire);
+    const uint64_t back=512; // ~10.7 ms @ 48 kHz
+    const uint64_t start=(prod>back)?(prod-back):0;
+    rs_lastProd=prod;
+    rs_srcPos=double(start);
+//    rs_lastProd=audioFrameCounter.load(std::memory_order_acquire);
+//    rs_srcPos=double(rs_lastProd);
     rs_stepEst=1.0;
     rs_stepCorr=1.0;
     rs_stepBias=0.0;
@@ -358,6 +377,7 @@ struct AudioAmp {
 
    const double stepUse=(rs_stepEst+rs_stepBias)*rs_stepCorr;
 
+
    // ----- Ensure enough input for interpolation -----
    const double needEndPos=std::floor(rs_srcPos+stepUse*(OUT-1))+1.0;
    const uint64_t needAbs=(needEndPos<0.0) ? 0ULL : uint64_t(needEndPos);
@@ -443,21 +463,27 @@ struct AudioAmp {
     const uint64_t i0=uint64_t(std::floor(pos));
     const double f=pos-double(i0);
 
+    // LEFT channel: interpolate -> gain -> clamp
     const float L0=i16_to_f32(sampleChan(i0,0));
     const float L1=i16_to_f32(sampleChan(i0+1,0));
-    dstN[n]=L0+float(f)*(L1-L0);
+    float L=L0+float(f)*(L1-L0);
+    peakL=std::max(peakL,std::fabs(L));
 
-    float swGain=SWGAIN;
-    dstN[n]*=swGain;
-    dstN[n]=std::clamp(dstN[n],-1.0f,1.0f);
+    L*=SWGAIN;
+    L=std::clamp(L,-1.0f,1.0f);
+    dstN[n]=L;
 
+    // RIGHT channel: raw int16 peak (for diagnostic)
+    const int16_t r=sampleChan(i0,1);
+    peakR_i16=std::max<int16_t>(peakR_i16,int16_t(std::abs(int(r))));
+
+    // Trigger detect on RIGHT
     if (trigOff==UINT_MAX) {
-     const int16_t r=sampleChan(i0,1);
      if (!trigUp && r>=int16_t(trigHigh)) {
       const uint64_t absPos=i0;
       if (absPos-lastTrigFrame>=trigMinGap) {
-       trigOff=n;
-       lastTrigFrame=absPos;
+        trigOff=n;
+        lastTrigFrame=absPos;
       }
       trigUp=true;
      } else if (trigUp && r<=int16_t(trigLow)) {
@@ -465,6 +491,15 @@ struct AudioAmp {
      }
     }
    }
+
+//   static uint64_t lastLogNs=0;
+//   uint64_t now=now_ns();
+//   if (now-lastLogNs>200'000'000ULL) { // 5 Hz
+//    qInfo() << "[AUDCHK] peakL=" << peakL
+//            << " peakR_i16=" << peakR_i16
+//            << " trigOff=" << (trigOff==UINT_MAX ? -1 : int(trigOff));
+//    lastLogNs=now;
+//   }
 
    rs_srcPos=pos;
    return trigOff;

@@ -11,11 +11,11 @@
 #include <string.h>
 #include <stdio.h>
 
-static void warn_errno(const char* what) {
+static inline void warn_errno(const char* what) {
  fprintf(stderr,"[RT] %s failed: %s (errno=%d)\n",what,strerror(errno),errno);
 }
 
-static bool set_process_nice(int nice_val) {
+static inline bool set_process_nice(int nice_val) {
  errno=0;
  if (setpriority(PRIO_PROCESS,0,nice_val)!=0) { warn_errno("setpriority"); return false; }
  return true;
@@ -64,7 +64,7 @@ static inline void lock_memory_or_warn() {
 // return true;
 //}
 
-static bool set_thread_rt(pthread_t thr,int policy,int prio) {
+static inline bool set_thread_rt(pthread_t thr,int policy,int prio) {
  sched_param sp{};
  sp.sched_priority=prio;
  int rc=pthread_setschedparam(thr,policy,&sp);
@@ -72,7 +72,7 @@ static bool set_thread_rt(pthread_t thr,int policy,int prio) {
  return true;
 }
 
-static bool pin_thread_to_cpu(pthread_t thr,int cpu) {
+static inline bool pin_thread_to_cpu(pthread_t thr,int cpu) {
  cpu_set_t set;
  CPU_ZERO(&set);
  CPU_SET(cpu,&set);

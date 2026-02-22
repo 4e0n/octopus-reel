@@ -32,6 +32,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 // Pins 2..9 used as 8-bit parallel trigger bus (bit0 -> D2, ..., bit7 -> D9)
 const uint8_t TRIG_PINS[8]={2,3,4,5,6,7,8,9};
+
+// Dedicated audio trigger pin (D10==A10)
+const uint8_t AUDIO_TRIG_PIN=10;
+
 const uint8_t LED_PIN=17;     // TX/RX LED on Pro Micro (active LOW)
 const unsigned PULSE_US=2000; // 2 ms pulse
 
@@ -39,6 +43,9 @@ void setup() {
  for (uint8_t i=0;i<8;++i) {
   pinMode(TRIG_PINS[i],OUTPUT); digitalWrite(TRIG_PINS[i],LOW); // start LOW to avoid spurious highs
  }
+ // Init audio trigger pin LOW
+ pinMode(AUDIO_TRIG_PIN,OUTPUT); digitalWrite(AUDIO_TRIG_PIN,LOW);
+ // LED Pin
  pinMode(LED_PIN,OUTPUT); digitalWrite(LED_PIN,HIGH); // start HIGH (active LOW)
  Serial.begin(115200);
  delay(200); // Let USB settle (200ms)
@@ -50,15 +57,23 @@ inline void writeParallel(uint8_t b) {
  for (uint8_t i=0;i<8;++i) digitalWrite(TRIG_PINS[i],(b>>i)&0x01);
 }
 
+inline void clearParallel() {
+ for (uint8_t i=0;i<8;++i) digitalWrite(TRIG_PINS[i],LOW);
+}
+
 void loop() {
  if (!Serial.available()) return;
 
  int v=Serial.read(); if (v<0) return; // v can be -1 as errcode.. should not happen
  uint8_t inByte=static_cast<uint8_t>(v);
 
- writeParallel(inByte); // Emit pulse: set bits -> hold -> clear
+ // Emit pulse: raise audio trigger+bus,hold,clear all
+ writeParallel(inByte); digitalWrite(AUDIO_TRIG_PIN,HIGH);
  delayMicroseconds(PULSE_US);
- for (uint8_t i=0;i<8;++i) digitalWrite(TRIG_PINS[i],LOW);
- digitalWrite(LED_PIN,LOW); delayMicroseconds(200); digitalWrite(LED_PIN,HIGH); // LED blink (non-blocking-ish)
+ clearParallel(); digitalWrite(AUDIO_TRIG_PIN,LOW);
+
+ // LED Blink
+ digitalWrite(LED_PIN,LOW); delayMicroseconds(200); digitalWrite(LED_PIN,HIGH);
+
  Serial.write(inByte); // Echo the same byte as ACK
 }
