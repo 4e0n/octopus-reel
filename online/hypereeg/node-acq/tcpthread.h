@@ -41,6 +41,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #endif
 #include "../common/timespec.h"
 
+//#define PLL_VERBOSE
+
 class TcpThread : public QThread {
  Q_OBJECT
  public:
@@ -143,13 +145,15 @@ class TcpThread : public QThread {
        const TcpSample& s=(*tcpBuffer)[(tail0+quint64(i))%tcpBufSize];
        const int wrote=s.serializeTo(dst+i*sz,sz);
        if (wrote!=sz) {
-        qWarning() << "[ACQ] serializeTo failed wrote=" << wrote << " expected=" << sz;
+        qWarning() << "<TcpThread>[ACQ] serializeTo failed wrote=" << wrote << " expected=" << sz;
         // optional: std::memset(dst+i*sz,0,sz);
        }
       }
       conf->tcpBufTail+=quint64(N);
+#ifdef PLL_VERBOSE
       static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
       log_ring_1hz("ACQ:SEND",conf->tcpBufHead,conf->tcpBufTail,lastH,lastT,lastMs);
+#endif
     } // unlock ASAP
 
     // Build outer frame (no mutex)

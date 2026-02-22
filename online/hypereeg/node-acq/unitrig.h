@@ -34,7 +34,6 @@ struct UniTrig {
 
  void beginSync() {
   syncOngoing.store(true,std::memory_order_release);
-  syncPerformed.store(syncPerformed.load(std::memory_order_relaxed),std::memory_order_relaxed); // keep "ever did"
   std::fill(syncSeenAtAmp.begin(),syncSeenAtAmp.end(),false);
   std::fill(syncSeenAtAmpLocalIdx.begin(),syncSeenAtAmpLocalIdx.end(),0);
   syncSeenAtAmpCount=0;
@@ -68,17 +67,18 @@ struct UniTrig {
 
  // Merge per-amp triggers into a single trigger code.
  // Returns merged trigger (0 if none).
- inline unsigned mergeTriggers(const unsigned* t, unsigned ampCount) {
+ inline unsigned mergeTriggers(const unsigned* t,unsigned ampCount) {
   unsigned hwTrig=0,nonZero=0;
   for (unsigned a=0;a<ampCount;++a) {
    const unsigned ta=t[a];
    if (!ta) continue;
-    ++nonZero;
-    if (!hwTrig) hwTrig=ta; else if (hwTrig!=ta) ++trigMismatchCounter;
-   }
-   if (hwTrig && nonZero!=ampCount) ++trigMissingCounter;
-   ++trigProduced;
-   if (hwTrig) ++trigNonZeroProduced;
-   return hwTrig;
+   ++nonZero;
+   if (!hwTrig) hwTrig=ta;
+   else if (hwTrig!=ta) ++trigMismatchCounter;
+  }
+  if (hwTrig && nonZero!=ampCount) ++trigMissingCounter;
+  ++trigProduced;
+  if (hwTrig) ++trigNonZeroProduced;
+  return hwTrig;
  }
 };

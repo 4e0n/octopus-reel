@@ -60,16 +60,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #endif
 #include "unitrig.h"
 
+//#define EEG_VERBOSE
+//#define HSYNC_VERBOSE
+
 const int CBUF_SIZE_IN_SECS=10;
 
-struct SyncProbe {
- std::atomic<bool> armed{false};
- quint64 audioFrameBase=0; // absolute audio frame counter at start of current chunk
-};
-
-struct FirstHit { std::atomic<int> idx{-1}; }; // idx in EEG-sample units within the chunk
-
-class AcqThread : public QThread {
+class AcqThread:public QThread {
  Q_OBJECT
  public:
   AcqThread(ConfParam *c,QObject *parent=nullptr,
@@ -122,14 +118,17 @@ class AcqThread : public QThread {
      }
     }
 
+#ifdef EEMAGINE
+    const bool syncOn=uniTrig.syncOngoing.load(std::memory_order_acquire);
+#endif
     for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) { // set trigger/offset serially
      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
      dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
      dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
 #ifdef EEMAGINE
-     if (uniTrig.syncOngoing.load(std::memory_order_acquire) && dst.trigger==(unsigned)TRIG_AMPSYNC) {
+     if (syncOn && dst.trigger==(unsigned)TRIG_AMPSYNC) {
       if (uniTrig.noteSyncSeen(ampIdx, uint64_t(baseIdx)+smpIdx)) {
-       qInfo("<AmpSync> SYNC received by AMP#%u @bufidx=%llu",(unsigned)ampIdx+1,(unsigned long long)uniTrig.syncSeenAtAmpLocalIdx[ampIdx]);
+       qInfo("<AmpSync> SYNC received by AMP#%u @bufidx=%llu",unsigned(ampIdx+1),(unsigned long long)uniTrig.syncSeenAtAmpLocalIdx[ampIdx]);
       }
      }
 #endif
@@ -206,9 +205,13 @@ class AcqThread : public QThread {
    while (true) {
     fetchEegData();
 
-    if (uniTrig.tryFinalizeIfReady()) {
-     qInfo() << "<AmpSync> alignment offsets (samples):";
-     for (size_t a=0;a<uniTrig.ampAlignOffset.size();++a) qInfo(" AMP#%u -> +%u", unsigned(a+1), unsigned(uniTrig.ampAlignOffset[a]));
+    if (uniTrig.syncOngoing.load(std::memory_order_acquire) && uniTrig.syncSeenAtAmpCount==conf->ampCount) {
+     if (uniTrig.tryFinalizeIfReady()) {
+      qInfo("<AmpSync> aligment offsets (samples):");
+      for (size_t a=0;a<uniTrig.ampAlignOffset.size();++a) {
+       qInfo(" AMP#%u -> +%u",unsigned(a+1),unsigned(uniTrig.ampAlignOffset[a]));
+      }
+     }
     }
 
     const quint64 tcpDataSize=cBufPivot-cBufPivotPrev;
@@ -217,29 +220,11 @@ class AcqThread : public QThread {
     // ensure capacity once; resize can still happen if tcpDataSize grows,
     // but it wont do nested heap churn per sample.
     audioBlock.resize(size_t(tcpDataSize)*AUDIO_N);
-    //audioTrigOff.assign(size_t(tcpDataSize),UINT_MAX);
     for (quint64 i=0;i<tcpDataSize;++i) {
-     for (unsigned ampIdx=0;ampIdx<eeAmps.size();++ampIdx) {
-      const Sample &src=eeAmps[ampIdx].cBuf[(cBufPivotPrev+i+quint64(uniTrig.ampAlignOffset[ampIdx]))%cBufSz];
-      unsigned t=src.trigger;
-      if (uniTrig.syncOngoing.load(std::memory_order_acquire) && t==0) {
-       const quint64 rawIdx=(cBufPivotPrev+i+uniTrig.ampAlignOffset[int(ampIdx)]);
-       if (pickTrigWithLookaroundExpected(eeAmps[ampIdx].cBuf.data(),rawIdx,cBufSz,unsigned(TRIG_AMPSYNC)))
-        t=unsigned(TRIG_AMPSYNC);
-      }
-     }
-
      float* dst=audioBlock.data()+size_t(i)*AUDIO_N;
      // audioBlock holds AUDIO_N samples per EEG sample (aligned by acquisition cadence)
-     const unsigned off=audioAmp->fetchN(dst,0); // fills 48 floats, or zeros on miss + capture trigger
-     //audioTrigOff[size_t(i)]=off;
-
-//     float peakL=0.0f,peakR=0.0f;
-//     for (unsigned k=0;k<audioSamplesPerEEG;++k) {
-//      float L=audioBuf[2*k+0]; float R=audioBuf[2*k+1];
-//      peakL=std::max(peakL,std::fabs(L)); peakR=std::max(peakR,std::fabs(R));
-//     }
-//     if (peakL>0.01f || peakR>0.01f) { qInfo() << "[AUD] L=" << peakL << " R=" << peakR; }
+     //const unsigned off=
+     audioAmp->fetchN(dst,0); // fills 48 floats, or zeros on miss + capture trigger
     }
 
     quint64 start=0,newHead=0;
@@ -262,15 +247,12 @@ class AcqThread : public QThread {
       start=head; newHead=head+tcpDataSize;
     }
 
-    static quint64 audPulseCount=0;
-    static int firstPulseI=-1,firstPulseOff=-1;
-
     // no mutex: fill slots
+#ifdef EEMAGINE
     const bool syncOn=uniTrig.syncOngoing.load(std::memory_order_acquire);
+#endif
     for (quint64 i=0;i<tcpDataSize;++i) {
      TcpSample &s=(*tcpBuffer)[(start+i)%tcpBufSize];
-     //const unsigned off=audioTrigOff[size_t(i)];
-     //const bool audioPulse=(off!=UINT_MAX);
 
      unsigned tbuf[EE_MAX_AMPCOUNT]; // stack
 
@@ -279,10 +261,12 @@ class AcqThread : public QThread {
       s.amp[ampIdx].copyFrom(src);
 
       unsigned t=src.trigger;
-      if (uniTrig.syncOngoing.load(std::memory_order_acquire) && t==0) {
+#ifdef EEMAGINE
+      if (syncOn && t==0) {
        const quint64 rawIdx=(cBufPivotPrev+i+uniTrig.ampAlignOffset[int(ampIdx)]);
        if (pickTrigWithLookaroundExpected(eeAmps[ampIdx].cBuf.data(),rawIdx,cBufSz,unsigned(TRIG_AMPSYNC))) t=unsigned(TRIG_AMPSYNC);
       }
+#endif
       tbuf[ampIdx]=t;
      }
      const unsigned hwTrig=uniTrig.mergeTriggers(tbuf,unsigned(eeAmps.size()));
@@ -298,18 +282,44 @@ class AcqThread : public QThread {
     {
       QMutexLocker locker(&conf->mutex);
       conf->tcpBufHead=newHead;
-      static quint64 lastH=0,lastTail=0; static qint64  lastMsRing=0;
-      log_ring_1hz("ACQ:PROD", conf->tcpBufHead,conf->tcpBufTail,lastH,lastTail,lastMsRing);
-      // --- TRIG stats gated to ~1Hz ---
-      static qint64 lastMsTrig=0;
-      const qint64 nowMs=QDateTime::currentMSecsSinceEpoch();
-      if (nowMs-lastMsTrig>=1000) {
-       lastMsTrig      =nowMs;
-       qInfo() << "[AUDTRIG] pulses/s=" << audPulseCount
-               << " first=(i=" << firstPulseI << " off=" << firstPulseOff << ")";
-       audPulseCount=0; firstPulseI=-1; firstPulseOff=-1;
+#if defined(EEG_VERBOSE) || defined(HSYNC_VERBOSE)
+      static qint64 lastMsRing=0; const qint64 nowMs=QDateTime::currentMSecsSinceEpoch();
+      if (nowMs-lastMsRing >= 1000) {
+       bool didLog=false;
+#ifdef EEG_VERBOSE
+       static quint64 lastH=0,lastT=0;
+       const quint64 H=conf->tcpBufHead; const quint64 T=conf->tcpBufTail;
+       const quint64 used=H-T;
+       const quint64 free=quint64(tcpBufSize)-used;
+       const quint64 dH=H-lastH; const quint64 dT=T-lastT;
+       qInfo("<AcqThread>[RING] head=%llu tail=%llu used=%llu free=%llu dH/s=%llu dT/s=%llu drop=%llu",
+        (unsigned long long)H,(unsigned long long)T,(unsigned long long)used,(unsigned long long)free,
+        (unsigned long long)dH,(unsigned long long)dT,(unsigned long long)conf->droppedSamples
+       );
+       lastH=H; lastT=T;
+       didLog=true;
+#endif
+
+#ifdef HSYNC_VERBOSE
+       static uint64_t lastMis=0,lastMiss=0,lastProd=0,lastNZ=0;
+       const uint64_t dMis =uniTrig.trigMismatchCounter-lastMis;
+       const uint64_t dMiss=uniTrig.trigMissingCounter -lastMiss;
+       const uint64_t dProd=uniTrig.trigProduced       -lastProd;
+       const uint64_t dNZ  =uniTrig.trigNonZeroProduced-lastNZ;
+       qInfo("<AmpSync>[TRIG] prod/s=%llu nz/s=%llu mismatch/s=%llu missing/s=%llu",
+        (unsigned long long)dProd,(unsigned long long)dNZ,(unsigned long long)dMis,(unsigned long long)dMiss
+       );
+       lastMis=uniTrig.trigMismatchCounter; lastMiss=uniTrig.trigMissingCounter;
+       lastProd=uniTrig.trigProduced; lastNZ=uniTrig.trigNonZeroProduced;
+       if (dMis||dMiss) {
+        qWarning("<AmpSync>[TRIG] problems: mismatch/s=%llu missing/s=%llu",(unsigned long long)dMis,(unsigned long long)dMiss);
+       }
+       didLog=true;
+#endif
+       if (didLog) lastMsRing=nowMs;
       }
-    }  
+#endif
+    }
 
     cBufPivotPrev=cBufPivot;
 
@@ -358,7 +368,7 @@ class AcqThread : public QThread {
     return;
    }
    sendTriggerByte(uint8_t(t));
-   qInfo() << "[TRIG] synthetic trigger sent:" << t;
+   qInfo() << "<AmpSync> Synthetic trigger sent:" << t;
 #endif
   }
 
@@ -410,9 +420,4 @@ class AcqThread : public QThread {
   qint64 lastSyncSendMs=0;
 
   static constexpr int syncCooldownMs=1000; // 1s of SYNC debouncing/cooling
-
-  //SyncProbe syncProbe;
-  //FirstHit eegSyncHit[EE_MAX_AMPCOUNT];
-  //std::vector<uint32_t> audioTrigOff;
-  //std::atomic<int> audioSyncHitI{-1},audioSyncHitOff{-1};
 };
