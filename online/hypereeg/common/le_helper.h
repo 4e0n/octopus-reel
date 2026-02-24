@@ -56,22 +56,20 @@ static inline float rd_f32_le(const char* p) {
 }
 
 // ---- Fixed-size wire helpers (local; no le_helper changes needed) ----
-static inline void wr_u32_le(char*& p, quint32 v) {
- *p++ = char(v & 0xff);
- *p++ = char((v >> 8) & 0xff);
- *p++ = char((v >> 16) & 0xff);
- *p++ = char((v >> 24) & 0xff);
+static inline void wr_u32_le(char*& p,quint32 v) {
+ *p++=char((v    )&0xff);
+ *p++=char((v>> 8)&0xff);
+ *p++=char((v>>16)&0xff);
+ *p++=char((v>>24)&0xff);
 }
 
-static inline void wr_u64_le(char*& p, quint64 v) {
- for (int i = 0; i < 8; ++i) {
-  *p++ = char((v >> (8*i)) & 0xff);
- }
+static inline void wr_u64_le(char*& p,quint64 v) {
+ for (int i=0;i<8;++i) { *p++=char((v>>(8*i))&0xff); }
 }
 
-static inline void wr_f32_le(char*& p, float f) {
+static inline void wr_f32_le(char*& p,float f) {
  quint32 w;
- static_assert(sizeof(float) == 4, "float must be 32-bit IEEE754");
- std::memcpy(&w, &f, 4);
- wr_u32_le(p, w);
+ static_assert(sizeof(float)==4,"float must be 32-bit IEEE754");
+ std::memcpy(&w,&f,4);
+ wr_u32_le(p,w);
 }

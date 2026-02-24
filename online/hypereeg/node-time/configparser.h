@@ -176,7 +176,6 @@ class ConfigParser {
     conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
     conf->eegRate=sList[1].toInt();       // EEG SAMPLERATE
     conf->tcpBufSize*=conf->eegRate;
-    conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
     conf->tcpBuffer.resize(conf->tcpBufSize);
     conf->refChnCount=sList[2].toInt();
     conf->bipChnCount=sList[3].toInt();
@@ -189,15 +188,13 @@ class ConfigParser {
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
     conf->frameBytes=sList[10].toInt();
 
-    qDebug() << "[TIME] ampCount="<<conf->ampCount<<" chnCount="<<conf->chnCount<<" frameBytes="<<conf->frameBytes;
 
-    conf->eegSweepDivider=conf->eegSweepCoeff[0];
-    conf->eegSweepFrameTimeMs=conf->eegRate/conf->eegSweepRefreshRate; // (1000sps/50Hz)=20ms=20samples
     // # of data to wait for, to be available for screen plot/sweeper
-    conf->scrAvailableSamples=conf->eegSweepFrameTimeMs*(conf->eegRate/1000); // 20ms -> 20 sample
+    // (1000sps/50Hz)/(1000/1000)=20ms=20samples
+    conf->scrAvailableSamples=(conf->eegRate/conf->eegSweepRefreshRate)*(conf->eegRate/1000); // 20ms -> 20 sample
+    conf->scrUpdateSamples=conf->scrAvailableSamples;
 
     conf->eegBand=0;
-
 
     // CHANNELS
 
@@ -220,20 +217,13 @@ class ConfigParser {
     }
     conf->chnCount=conf->chnInfo.size();
 
+    qDebug() << "[TIME] ampCount="<<conf->ampCount<<" chnCount="<<conf->chnCount<<" frameBytes="<<conf->frameBytes;
+
     //for (int idx=0;idx<conf->chnInfo.size();idx++) {
     // QString x="";
     // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
     // qDebug() << x.toUtf8();
     //}
-
-    conf->s0.resize(conf->scrAvailableSamples); // Mean+StD buffers for GUI sweeper
-    conf->s0s.resize(conf->scrAvailableSamples);
-    conf->s1.resize(conf->scrAvailableSamples);
-    conf->s1s.resize(conf->scrAvailableSamples);
-    for (unsigned int idx=0;idx<conf->scrAvailableSamples;idx++) {
-     conf->s0[idx].resize(conf->chnCount); conf->s0s[idx].resize(conf->chnCount);
-     conf->s1[idx].resize(conf->chnCount); conf->s1s[idx].resize(conf->chnCount);
-    }
 
     for (auto& chn:conf->chnInfo) qDebug() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.type;
 

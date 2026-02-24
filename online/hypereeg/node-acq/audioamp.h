@@ -38,6 +38,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QString>
 #include <QDebug>
 
+#include "confparam.h"
+
 #ifdef EEMAGINE
 static constexpr auto AUDIO_DEV_NAME="octopus_uca202";
 #else
@@ -93,6 +95,9 @@ struct AudioAmp {
   // PI state
   double lagInt=0.0;
 
+  ConfParam *conf;
+
+  AudioAmp(ConfParam *c) { conf=c; }
 
   static bool alsa_set_capture_level(const char* card,long percent) {
    percent=std::clamp(percent,0L,100L);
@@ -456,8 +461,9 @@ struct AudioAmp {
    };
 
    unsigned trigOff=UINT_MAX;
-   bool trigUp=false;
+   //bool trigUp=false;
 
+   const int16_t threshold=(int16_t)conf->audTrigThr;
    double pos=rs_srcPos;
    for (unsigned n=0;n<OUT;++n,pos+=stepUse) {
     const uint64_t i0=uint64_t(std::floor(pos));
@@ -473,33 +479,46 @@ struct AudioAmp {
     L=std::clamp(L,-1.0f,1.0f);
     dstN[n]=L;
 
-    // RIGHT channel: raw int16 peak (for diagnostic)
-    const int16_t r=sampleChan(i0,1);
-    peakR_i16=std::max<int16_t>(peakR_i16,int16_t(std::abs(int(r))));
+    // RIGHT channel: interpolate -> gain -> clamp
+    const float R0=i16_to_f32(sampleChan(i0,1));
+    const float R1=i16_to_f32(sampleChan(i0+1,1));
+    float R=R0+float(f)*(R1-R0);
+    R=std::clamp(R,-1.0f,1.0f);
+    const int16_t rr=std::abs(int16_t(R*32768.0));
+
+//    // RIGHT channel: raw int16 peak (for diagnostic)
+//    const int16_t r=sampleChan(i0,1);
+//    const int16_t rr=int16_t(std::abs(int(r)));
+//    //peakR_i16=std::max<int16_t>(peakR_i16,int16_t(std::abs(int(r))));
 
     // Trigger detect on RIGHT
-    if (trigOff==UINT_MAX) {
-     if (!trigUp && r>=int16_t(trigHigh)) {
-      const uint64_t absPos=i0;
-      if (absPos-lastTrigFrame>=trigMinGap) {
-        trigOff=n;
-        lastTrigFrame=absPos;
+    if (conf->triggerPending) {
+     conf->trigVal_r=rr;
+     if (conf->audTrigDebCounter==0 || trigOff==UINT_MAX) {
+      if (rr>=int16_t(threshold)) {
+       trigOff=n;
+       conf->audTrigDebCounter=500;
       }
-      trigUp=true;
-     } else if (trigUp && r<=int16_t(trigLow)) {
-      trigUp=false;
      }
     }
-   }
 
-//   static uint64_t lastLogNs=0;
-//   uint64_t now=now_ns();
-//   if (now-lastLogNs>200'000'000ULL) { // 5 Hz
-//    qInfo() << "[AUDCHK] peakL=" << peakL
-//            << " peakR_i16=" << peakR_i16
-//            << " trigOff=" << (trigOff==UINT_MAX ? -1 : int(trigOff));
-//    lastLogNs=now;
-//   }
+   }
+   if (conf->audTrigDebCounter>0) --conf->audTrigDebCounter;
+
+   //if (trigOff!=UINT_MAX) {
+   // qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << conf->trigVal_r << "/" << threshold;
+   //}
+
+#ifdef AUDIO_VERBOSE
+   static uint64_t lastLogNs=0;
+   uint64_t now=now_ns();
+   if (now-lastLogNs>200'000'000ULL) { // 5 Hz
+    qInfo() << "[AUDCHK] peakL=" << peakL
+            << " peakR_i16=" << peakR_i16
+            << " trigOff=" << (trigOff==UINT_MAX ? -1 : int(trigOff));
+    lastLogNs=now;
+   }
+#endif
 
    rs_srcPos=pos;
    return trigOff;
@@ -508,8 +527,12 @@ struct AudioAmp {
  private:
   void captureLoop() {
 #ifdef __linux__
-   struct sched_param sp{30};
-   pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+//   struct sched_param sp{30};
+//   pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+   cpu_set_t cs;
+   CPU_ZERO(&cs);
+   CPU_SET(3,&cs);           // 1: acqThread 2: tcpThread
+   pthread_setaffinity_np(pthread_self(),sizeof(cs), &cs);
 #endif
    snd_pcm_hw_params_t* p; snd_pcm_hw_params_alloca(&p);
    snd_pcm_hw_params_current(handle,p);

@@ -1,3 +1,26 @@
+/*
+Octopus-ReEL - Realtime Encephalography Laboratory Network
+   Copyright (C) 2007-2026 Barkin Ilhan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+ Contact info:
+ E-Mail:  barkin@unrlabs.org
+ Website: http://icon.unrlabs.org/staff/barkin/
+ Repo:    https://github.com/4e0n/
+*/
+
 #pragma once
 
 #include <atomic>
@@ -23,6 +46,9 @@ struct UniTrig {
  uint64_t trigProduced=0;        // samples processed (merge evaluated)
  uint64_t trigNonZeroProduced=0; // merged!=0
 
+ uint64_t syncBeginLocalIdx=0;    // localIdx at beginSync (AcqThread supplies)
+ uint64_t syncDeadlineLocalIdx=0; // begin + timeoutSamples
+
  void init(size_t ampCount) {
   syncSeenAtAmp.assign(ampCount,false);
   syncSeenAtAmpLocalIdx.assign(ampCount,0);
@@ -32,12 +58,15 @@ struct UniTrig {
 //  syncPerformed.store(false,std::memory_order_release);
  }
 
- void beginSync() {
+ void beginSync(uint64_t nowLocalIdx,uint64_t timeoutSamples) {
+  syncPerformed.store(false,std::memory_order_release);
   syncOngoing.store(true,std::memory_order_release);
   std::fill(syncSeenAtAmp.begin(),syncSeenAtAmp.end(),false);
   std::fill(syncSeenAtAmpLocalIdx.begin(),syncSeenAtAmpLocalIdx.end(),0);
   syncSeenAtAmpCount=0;
   std::fill(ampAlignOffset.begin(),ampAlignOffset.end(),0);
+  syncBeginLocalIdx=nowLocalIdx;
+  syncDeadlineLocalIdx=nowLocalIdx+timeoutSamples;
  }
 
  // Call from fetch loop when you see TRIG_AMPSYNC from ampIdx
@@ -53,7 +82,7 @@ struct UniTrig {
  // Returns true exactly once when all amps have seen sync and offsets computed
  bool tryFinalizeIfReady() {
   if (!syncOngoing.load(std::memory_order_acquire)) return false;
-  if (syncSeenAtAmpCount != syncSeenAtAmp.size()) return false;
+  if (syncSeenAtAmpCount!=syncSeenAtAmp.size()) return false;
 
   const uint64_t minIdx=*std::min_element(syncSeenAtAmpLocalIdx.begin(),syncSeenAtAmpLocalIdx.end());
   for (size_t a=0;a<syncSeenAtAmp.size();++a) {

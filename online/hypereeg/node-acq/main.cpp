@@ -131,6 +131,7 @@ void conf_info(ConfParam *conf) {
  qInfo() << "Total Channel# from all amps:" << conf->totalCount;
  qInfo() << "Referential channels gain:" << conf->refGain;
  qInfo() << "Bipolar channels gain:" << conf->bipGain;
+ qInfo() << "AudioCard (analog) trigger threshold:" << conf->audTrigThr;
  qInfo() << "===============================================================";
  qInfo() << "Networking Summary:";
  qInfo() << "-----------------------------";
@@ -139,7 +140,7 @@ void conf_info(ConfParam *conf) {
 }
 
 int main(int argc,char *argv[]) {
- AudioAmp audioAmp; SerialDevice serDev; ConfParam conf;
+ ConfParam conf; SerialDevice serDev;AudioAmp audioAmp(&conf);
  
  qInstallMessageHandler(qtMessageHandler);
  setvbuf(stdout,nullptr,_IOLBF,0); // Avoid buffering

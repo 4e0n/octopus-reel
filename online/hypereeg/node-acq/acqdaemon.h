@@ -37,10 +37,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "acqthread.h"
 #include "tcpthread.h"
 
-static constexpr const char* PROMPT = ">> ";
-static inline void sendPrompt(QTcpSocket* s) { if (!s) return;
- s->write(PROMPT); s->flush();
-}
+//static constexpr const char* PROMPT = ">> ";
+//static inline void sendPrompt(QTcpSocket* s) { if (!s) return;
+// s->write(PROMPT); s->flush();
+//}
 
 class AcqDaemon : public QObject {
  Q_OBJECT
@@ -70,9 +70,9 @@ class AcqDaemon : public QObject {
     //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,60*1024);
 
     // Welcome banner+tiny hint
-    client->write("node-acq command port\r\n");
-    client->write("Type HELP for commands. Example: AMPSYNC\r\n");
-    sendPrompt(client);
+//    client->write("node-acq command port\r\n");
+//    client->write("Type HELP for commands. Example: AMPSYNC\r\n");
+//    sendPrompt(client);
 
     connect(client,&QTcpSocket::readyRead,this,[this,client]() {
      QByteArray cmd=client->readAll().trimmed();
@@ -198,7 +198,7 @@ class AcqDaemon : public QObject {
      client->write("node-acq: Unknown command..\n");
     }
    }
-   sendPrompt(client);
+//   sendPrompt(client);
   }
 
   void onNewStrmClient() {

@@ -94,9 +94,6 @@ class ControlWindow : public QMainWindow {
    toggleRecordingButton->setCheckable(true);
    connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
 
-   conf->timeLabel=new QLabel("Rec.Time: 00:00:00",cntWidget);
-   conf->timeLabel->setGeometry(110,mainTabWidget->height()-52,190,20);
-
    manualSyncButton=new QPushButton("SYNC",cntWidget);
    manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
    connect(manualSyncButton,SIGNAL(clicked()),this,SLOT(slotManualSync()));
@@ -183,8 +180,6 @@ class ControlWindow : public QMainWindow {
 
   void slotToggleRecording() {
    if (!conf->ctrlRecordingActive) {
-    conf->timeLabel->setText("Rec.Time: 00:00:00");
-    conf->recCounter=0;
     conf->commandToDaemon(conf->storCommSocket,CMD_STOR_REC_ON);
     conf->ctrlRecordingActive=true;
    } else {
@@ -198,14 +193,7 @@ class ControlWindow : public QMainWindow {
   void slotSynthTrig1() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_1); }
   void slotSynthTrig2() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_2); }
 
-//  void slotToggleNotch() {
-//   {
-//    QMutexLocker locker(&conf->mutex);
-//    conf->ctrlNotchActive ? conf->ctrlNotchActive=false : conf->ctrlNotchActive=true;
-//   }
-//  }
-
-  void slotScrollSpeed(int x) { conf->eegSweepDivider=conf->eegSweepCoeff[x]; }
+  void slotScrollSpeed(int x) { conf->eegSweepSpeedIdx=x; }
   void slotEEGBand(int x) { conf->eegBand=x; }
 
  private:

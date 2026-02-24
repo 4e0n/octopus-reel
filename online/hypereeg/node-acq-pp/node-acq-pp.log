@@ -1,0 +1,888 @@
+2026-02-23T12:55:20.921 [INFO] [RT] mlockall OK
+2026-02-23T12:55:20.921 [INFO] ===============================================================
+[OMP] enabled, _OPENMP=201511
+[OMP] omp_get_max_threads() = 4
+[OMP] omp_get_dynamic()     = 0
+[OMP] omp_get_nested()      = 0
+[OMP] spawned threads       = 4 (in_parallel=1)
+2026-02-23T12:55:20.929 [INFO] ===============================================================
+2026-02-23T12:55:20.933 [INFO] <GetConfFromAcqDaemon> Reply: "2,1000,64,2,66,68,136,1,4,50,748"
+2026-02-23T12:55:20.934 [INFO] <GetChannelListFromAcqDaemon> ChannelList received.
+2026-02-23T12:55:20.934 [DEBUG] [PP] ampCount= 2 chnCount= 66 physChnCount= 66 frameBytesIn= 748
+2026-02-23T12:55:20.946 [INFO] ===============================================================
+2026-02-23T12:55:20.946 [INFO] Channels Info:
+2026-02-23T12:55:20.946 [INFO] --------------
+2026-02-23T12:55:20.946 [INFO] 1 "Fp1" 0
+2026-02-23T12:55:20.946 [INFO] 2 "Fpz" 0
+2026-02-23T12:55:20.946 [INFO] 3 "Fp2" 0
+2026-02-23T12:55:20.946 [INFO] 4 "F7" 0
+2026-02-23T12:55:20.946 [INFO] 5 "F3" 0
+2026-02-23T12:55:20.946 [INFO] 6 "Fz" 0
+2026-02-23T12:55:20.946 [INFO] 7 "F4" 0
+2026-02-23T12:55:20.946 [INFO] 8 "F8" 0
+2026-02-23T12:55:20.946 [INFO] 9 "FC5" 0
+2026-02-23T12:55:20.946 [INFO] 10 "FC1" 0
+2026-02-23T12:55:20.946 [INFO] 11 "FC2" 0
+2026-02-23T12:55:20.946 [INFO] 12 "FC6" 0
+2026-02-23T12:55:20.946 [INFO] 13 "M1" 0
+2026-02-23T12:55:20.946 [INFO] 14 "T7" 0
+2026-02-23T12:55:20.946 [INFO] 15 "C3" 0
+2026-02-23T12:55:20.946 [INFO] 16 "Cz" 0
+2026-02-23T12:55:20.946 [INFO] 17 "C4" 0
+2026-02-23T12:55:20.946 [INFO] 18 "T8" 0
+2026-02-23T12:55:20.946 [INFO] 19 "M2" 0
+2026-02-23T12:55:20.946 [INFO] 20 "CP5" 0
+2026-02-23T12:55:20.946 [INFO] 21 "CP1" 0
+2026-02-23T12:55:20.947 [INFO] 22 "CP2" 0
+2026-02-23T12:55:20.947 [INFO] 23 "CP6" 0
+2026-02-23T12:55:20.947 [INFO] 24 "P7" 0
+2026-02-23T12:55:20.947 [INFO] 25 "P3" 0
+2026-02-23T12:55:20.947 [INFO] 26 "Pz" 0
+2026-02-23T12:55:20.947 [INFO] 27 "P4" 0
+2026-02-23T12:55:20.947 [INFO] 28 "P8" 0
+2026-02-23T12:55:20.947 [INFO] 29 "POz" 0
+2026-02-23T12:55:20.947 [INFO] 30 "O1" 0
+2026-02-23T12:55:20.947 [INFO] 31 "O2" 0
+2026-02-23T12:55:20.947 [INFO] 32 "EOG" 0
+2026-02-23T12:55:20.947 [INFO] 1 "BP1" 1
+2026-02-23T12:55:20.947 [INFO] 33 "AF7" 0
+2026-02-23T12:55:20.947 [INFO] 34 "AF3" 0
+2026-02-23T12:55:20.947 [INFO] 35 "AF4" 0
+2026-02-23T12:55:20.947 [INFO] 36 "AF8" 0
+2026-02-23T12:55:20.947 [INFO] 37 "F5" 0
+2026-02-23T12:55:20.947 [INFO] 38 "F1" 0
+2026-02-23T12:55:20.947 [INFO] 39 "F2" 0
+2026-02-23T12:55:20.947 [INFO] 40 "F6" 0
+2026-02-23T12:55:20.947 [INFO] 41 "FC3" 0
+2026-02-23T12:55:20.947 [INFO] 42 "FCz" 0
+2026-02-23T12:55:20.947 [INFO] 43 "FC4" 0
+2026-02-23T12:55:20.947 [INFO] 44 "C5" 0
+2026-02-23T12:55:20.947 [INFO] 45 "C1" 0
+2026-02-23T12:55:20.947 [INFO] 46 "C2" 0
+2026-02-23T12:55:20.947 [INFO] 47 "C6" 0
+2026-02-23T12:55:20.947 [INFO] 48 "CP3" 0
+2026-02-23T12:55:20.947 [INFO] 49 "CP4" 0
+2026-02-23T12:55:20.947 [INFO] 50 "P5" 0
+2026-02-23T12:55:20.947 [INFO] 51 "P1" 0
+2026-02-23T12:55:20.947 [INFO] 52 "P2" 0
+2026-02-23T12:55:20.947 [INFO] 53 "P6" 0
+2026-02-23T12:55:20.947 [INFO] 54 "PO5" 0
+2026-02-23T12:55:20.947 [INFO] 55 "PO3" 0
+2026-02-23T12:55:20.947 [INFO] 56 "PO4" 0
+2026-02-23T12:55:20.947 [INFO] 57 "PO6" 0
+2026-02-23T12:55:20.947 [INFO] 58 "FT7" 0
+2026-02-23T12:55:20.947 [INFO] 59 "FT8" 0
+2026-02-23T12:55:20.947 [INFO] 60 "TP7" 0
+2026-02-23T12:55:20.947 [INFO] 61 "TP8" 0
+2026-02-23T12:55:20.947 [INFO] 62 "PO7" 0
+2026-02-23T12:55:20.947 [INFO] 63 "PO8" 0
+2026-02-23T12:55:20.947 [INFO] 64 "Oz" 0
+2026-02-23T12:55:20.947 [INFO] 2 "BP2" 1
+2026-02-23T12:55:20.947 [INFO] ===============================================================
+2026-02-23T12:55:20.947 [INFO] Networking Summary:
+2026-02-23T12:55:20.947 [INFO] -------------------
+2026-02-23T12:55:20.947 [INFO] <ServerIP> is "10.0.10.20"
+2026-02-23T12:55:20.947 [INFO] <Comm> downstreaming on ports (comm,strm): 65000 65001
+2026-02-23T12:55:20.947 [INFO] <Comm> listening on port(comm,strm): 65002 65003
+2026-02-23T12:55:20.947 [INFO] ====================== Thread Runtime =========================
+2026-02-23T12:55:20.947 [INFO] ===============================================================
+2026-02-23T12:55:20.948 [INFO] [RT] mlockall OK
+2026-02-23T12:55:20.950 [INFO] [RT] mlockall OK
+2026-02-23T12:55:20.958 [INFO] [PP:RX] outer=1/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:21.958 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:22.013 [INFO] [PP:SEND] fill=50  +1100/s  -1050/s  head=1100 tail=1050
+2026-02-23T12:55:23.007 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=2100 tail=2050
+2026-02-23T12:55:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=3100 tail=3050
+2026-02-23T12:55:24.054 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=4100 tail=4050
+2026-02-23T12:55:25.054 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=5100 tail=5050
+2026-02-23T12:55:26.103 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=6100 tail=6050
+2026-02-23T12:55:27.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=7100 tail=7050
+2026-02-23T12:55:28.155 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=8100 tail=8050
+2026-02-23T12:55:29.203 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=9100 tail=9050
+2026-02-23T12:55:30.205 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=10100 tail=10050
+2026-02-23T12:55:31.252 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=11100 tail=11050
+2026-02-23T12:55:32.252 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=12100 tail=12050
+2026-02-23T12:55:33.252 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=13100 tail=13050
+2026-02-23T12:55:34.252 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=14100 tail=14050
+2026-02-23T12:55:35.301 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=15100 tail=15050
+2026-02-23T12:55:36.301 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=16100 tail=16050
+2026-02-23T12:55:37.301 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=17100 tail=17050
+2026-02-23T12:55:38.304 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=18100 tail=18050
+2026-02-23T12:55:39.351 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=19100 tail=19050
+2026-02-23T12:55:40.351 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=20100 tail=20050
+2026-02-23T12:55:41.351 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=21100 tail=21050
+2026-02-23T12:55:42.351 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=22100 tail=22050
+2026-02-23T12:55:43.351 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=23100 tail=23050
+2026-02-23T12:55:44.351 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=24100 tail=24050
+2026-02-23T12:55:45.354 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=25100 tail=25050
+2026-02-23T12:55:46.401 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=26100 tail=26050
+2026-02-23T12:55:47.401 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=27100 tail=27050
+2026-02-23T12:55:48.401 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=28100 tail=28050
+2026-02-23T12:55:49.404 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=29100 tail=29050
+2026-02-23T12:55:50.451 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=30100 tail=30050
+2026-02-23T12:55:51.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=31100 tail=31050
+2026-02-23T12:55:52.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=32100 tail=32050
+2026-02-23T12:55:53.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=33100 tail=33050
+2026-02-23T12:55:54.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=34100 tail=34050
+2026-02-23T12:55:55.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=35100 tail=35050
+2026-02-23T12:55:56.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=36100 tail=36050
+2026-02-23T12:55:57.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=37100 tail=37050
+2026-02-23T12:55:58.451 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:55:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=38100 tail=38050
+2026-02-23T12:55:59.454 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=39100 tail=39050
+2026-02-23T12:56:00.454 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=40100 tail=40050
+2026-02-23T12:56:01.454 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=41100 tail=41050
+2026-02-23T12:56:02.454 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=42100 tail=42050
+2026-02-23T12:56:03.501 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=43100 tail=43050
+2026-02-23T12:56:04.501 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=44100 tail=44050
+2026-02-23T12:56:05.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=45100 tail=45050
+2026-02-23T12:56:06.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=46100 tail=46050
+2026-02-23T12:56:07.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=47100 tail=47050
+2026-02-23T12:56:08.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=48100 tail=48050
+2026-02-23T12:56:09.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=49100 tail=49050
+2026-02-23T12:56:10.504 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=50100 tail=50050
+2026-02-23T12:56:11.552 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=51100 tail=51050
+2026-02-23T12:56:12.552 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=52100 tail=52050
+2026-02-23T12:56:13.554 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=53100 tail=53050
+2026-02-23T12:56:14.602 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=54100 tail=54050
+2026-02-23T12:56:15.602 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=55100 tail=55050
+2026-02-23T12:56:16.605 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=56100 tail=56050
+2026-02-23T12:56:17.605 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=57100 tail=57050
+2026-02-23T12:56:18.605 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=58100 tail=58050
+2026-02-23T12:56:19.652 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=59100 tail=59050
+2026-02-23T12:56:20.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=60100 tail=60050
+2026-02-23T12:56:21.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=61100 tail=61050
+2026-02-23T12:56:22.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=62100 tail=62050
+2026-02-23T12:56:23.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=63100 tail=63050
+2026-02-23T12:56:24.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=64100 tail=64050
+2026-02-23T12:56:25.655 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=65100 tail=65050
+2026-02-23T12:56:26.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=66100 tail=66050
+2026-02-23T12:56:27.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=67100 tail=67050
+2026-02-23T12:56:28.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=68100 tail=68050
+2026-02-23T12:56:29.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=69100 tail=69050
+2026-02-23T12:56:30.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=70100 tail=70050
+2026-02-23T12:56:31.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=71100 tail=71050
+2026-02-23T12:56:32.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=72100 tail=72050
+2026-02-23T12:56:33.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=73100 tail=73050
+2026-02-23T12:56:34.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=74100 tail=74050
+2026-02-23T12:56:35.703 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=75100 tail=75050
+2026-02-23T12:56:36.705 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=76100 tail=76050
+2026-02-23T12:56:37.706 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=77100 tail=77050
+2026-02-23T12:56:38.705 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=78100 tail=78050
+2026-02-23T12:56:39.706 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=79100 tail=79050
+2026-02-23T12:56:40.706 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=80100 tail=80050
+2026-02-23T12:56:41.753 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=81100 tail=81050
+2026-02-23T12:56:42.753 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=82100 tail=82050
+2026-02-23T12:56:43.753 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=83100 tail=83050
+2026-02-23T12:56:44.753 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=84100 tail=84050
+2026-02-23T12:56:45.753 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=85100 tail=85050
+2026-02-23T12:56:46.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=86100 tail=86050
+2026-02-23T12:56:47.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=87100 tail=87050
+2026-02-23T12:56:48.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=88100 tail=88050
+2026-02-23T12:56:49.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=89100 tail=89050
+2026-02-23T12:56:50.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=90100 tail=90050
+2026-02-23T12:56:51.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=91100 tail=91050
+2026-02-23T12:56:52.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=92100 tail=92050
+2026-02-23T12:56:53.803 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=93100 tail=93050
+2026-02-23T12:56:54.806 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=94100 tail=94050
+2026-02-23T12:56:55.856 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=95100 tail=95050
+2026-02-23T12:56:56.856 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=96100 tail=96050
+2026-02-23T12:56:57.906 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=97100 tail=97050
+2026-02-23T12:56:58.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:56:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=98100 tail=98050
+2026-02-23T12:56:59.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=99100 tail=99050
+2026-02-23T12:57:00.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=100100 tail=100050
+2026-02-23T12:57:01.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=101100 tail=101050
+2026-02-23T12:57:02.953 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=102100 tail=102050
+2026-02-23T12:57:03.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=103100 tail=103050
+2026-02-23T12:57:05.006 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=104100 tail=104050
+2026-02-23T12:57:06.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=105100 tail=105050
+2026-02-23T12:57:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=106100 tail=106050
+2026-02-23T12:57:07.056 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=107100 tail=107050
+2026-02-23T12:57:08.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=108100 tail=108050
+2026-02-23T12:57:09.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=109100 tail=109050
+2026-02-23T12:57:10.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=110100 tail=110050
+2026-02-23T12:57:11.106 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=111100 tail=111050
+2026-02-23T12:57:12.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=112100 tail=112050
+2026-02-23T12:57:13.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=113100 tail=113050
+2026-02-23T12:57:14.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=114100 tail=114050
+2026-02-23T12:57:15.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=115100 tail=115050
+2026-02-23T12:57:16.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=116100 tail=116050
+2026-02-23T12:57:17.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=117100 tail=117050
+2026-02-23T12:57:18.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=118100 tail=118050
+2026-02-23T12:57:19.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=119100 tail=119050
+2026-02-23T12:57:20.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=120100 tail=120050
+2026-02-23T12:57:21.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=121100 tail=121050
+2026-02-23T12:57:22.106 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=122100 tail=122050
+2026-02-23T12:57:23.156 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=123100 tail=123050
+2026-02-23T12:57:24.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=124100 tail=124050
+2026-02-23T12:57:25.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=125100 tail=125050
+2026-02-23T12:57:26.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=126100 tail=126050
+2026-02-23T12:57:27.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=127100 tail=127050
+2026-02-23T12:57:28.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=128100 tail=128050
+2026-02-23T12:57:29.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=129100 tail=129050
+2026-02-23T12:57:30.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=130100 tail=130050
+2026-02-23T12:57:31.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=131100 tail=131050
+2026-02-23T12:57:32.156 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=132100 tail=132050
+2026-02-23T12:57:33.206 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=133100 tail=133050
+2026-02-23T12:57:34.256 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=134100 tail=134050
+2026-02-23T12:57:35.256 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=135100 tail=135050
+2026-02-23T12:57:36.256 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=136100 tail=136050
+2026-02-23T12:57:37.256 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=137100 tail=137050
+2026-02-23T12:57:38.256 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=138100 tail=138050
+2026-02-23T12:57:39.256 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=139100 tail=139050
+2026-02-23T12:57:40.303 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=140100 tail=140050
+2026-02-23T12:57:41.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=141100 tail=141050
+2026-02-23T12:57:42.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=142100 tail=142050
+2026-02-23T12:57:43.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=143100 tail=143050
+2026-02-23T12:57:44.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=144100 tail=144050
+2026-02-23T12:57:45.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=145100 tail=145050
+2026-02-23T12:57:46.306 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=146100 tail=146050
+2026-02-23T12:57:47.353 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=147100 tail=147050
+2026-02-23T12:57:48.355 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=148100 tail=148050
+2026-02-23T12:57:49.356 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=149100 tail=149050
+2026-02-23T12:57:50.356 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=150100 tail=150050
+2026-02-23T12:57:51.356 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=151100 tail=151050
+2026-02-23T12:57:52.356 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=152100 tail=152050
+2026-02-23T12:57:53.405 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=153100 tail=153050
+2026-02-23T12:57:54.405 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=154100 tail=154050
+2026-02-23T12:57:55.406 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=155100 tail=155050
+2026-02-23T12:57:56.453 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=156100 tail=156050
+2026-02-23T12:57:57.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=157100 tail=157050
+2026-02-23T12:57:58.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:57:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=158100 tail=158050
+2026-02-23T12:57:59.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=159100 tail=159050
+2026-02-23T12:58:00.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=160100 tail=160050
+2026-02-23T12:58:01.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=161100 tail=161050
+2026-02-23T12:58:02.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=162100 tail=162050
+2026-02-23T12:58:03.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=163100 tail=163050
+2026-02-23T12:58:04.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=164100 tail=164050
+2026-02-23T12:58:05.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=165100 tail=165050
+2026-02-23T12:58:06.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=166100 tail=166050
+2026-02-23T12:58:07.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=167100 tail=167050
+2026-02-23T12:58:08.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=168100 tail=168050
+2026-02-23T12:58:09.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=169100 tail=169050
+2026-02-23T12:58:10.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=170100 tail=170050
+2026-02-23T12:58:11.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=171100 tail=171050
+2026-02-23T12:58:12.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=172100 tail=172050
+2026-02-23T12:58:13.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=173100 tail=173050
+2026-02-23T12:58:14.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=174100 tail=174050
+2026-02-23T12:58:15.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=175100 tail=175050
+2026-02-23T12:58:16.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=176100 tail=176050
+2026-02-23T12:58:17.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=177100 tail=177050
+2026-02-23T12:58:18.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=178100 tail=178050
+2026-02-23T12:58:19.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=179100 tail=179050
+2026-02-23T12:58:20.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=180100 tail=180050
+2026-02-23T12:58:21.456 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=181100 tail=181050
+2026-02-23T12:58:22.503 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=182100 tail=182050
+2026-02-23T12:58:23.503 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=183100 tail=183050
+2026-02-23T12:58:24.503 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=184100 tail=184050
+2026-02-23T12:58:25.503 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=185100 tail=185050
+2026-02-23T12:58:26.503 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=186100 tail=186050
+2026-02-23T12:58:27.503 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=187100 tail=187050
+2026-02-23T12:58:28.505 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=188100 tail=188050
+2026-02-23T12:58:29.506 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=189100 tail=189050
+2026-02-23T12:58:30.553 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=190100 tail=190050
+2026-02-23T12:58:31.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=191100 tail=191050
+2026-02-23T12:58:32.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=192100 tail=192050
+2026-02-23T12:58:33.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=193100 tail=193050
+2026-02-23T12:58:34.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=194100 tail=194050
+2026-02-23T12:58:35.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=195100 tail=195050
+2026-02-23T12:58:36.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=196100 tail=196050
+2026-02-23T12:58:37.553 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=197100 tail=197050
+2026-02-23T12:58:38.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=198100 tail=198050
+2026-02-23T12:58:39.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=199100 tail=199050
+2026-02-23T12:58:40.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=200100 tail=200050
+2026-02-23T12:58:41.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=201100 tail=201050
+2026-02-23T12:58:42.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=202100 tail=202050
+2026-02-23T12:58:43.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=203100 tail=203050
+2026-02-23T12:58:44.556 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=204100 tail=204050
+2026-02-23T12:58:45.606 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=205100 tail=205050
+2026-02-23T12:58:46.606 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=206100 tail=206050
+2026-02-23T12:58:47.653 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=207100 tail=207050
+2026-02-23T12:58:48.656 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=208100 tail=208050
+2026-02-23T12:58:49.703 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=209100 tail=209050
+2026-02-23T12:58:50.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=210100 tail=210050
+2026-02-23T12:58:51.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=211100 tail=211050
+2026-02-23T12:58:52.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=212100 tail=212050
+2026-02-23T12:58:53.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=213100 tail=213050
+2026-02-23T12:58:54.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=214100 tail=214050
+2026-02-23T12:58:55.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=215100 tail=215050
+2026-02-23T12:58:56.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=216100 tail=216050
+2026-02-23T12:58:57.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=217100 tail=217050
+2026-02-23T12:58:58.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:58:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=218100 tail=218050
+2026-02-23T12:58:59.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=219100 tail=219050
+2026-02-23T12:59:00.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=220100 tail=220050
+2026-02-23T12:59:01.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=221100 tail=221050
+2026-02-23T12:59:02.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=222100 tail=222050
+2026-02-23T12:59:03.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=223100 tail=223050
+2026-02-23T12:59:04.704 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=224100 tail=224050
+2026-02-23T12:59:05.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=225100 tail=225050
+2026-02-23T12:59:06.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=226100 tail=226050
+2026-02-23T12:59:07.703 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=227100 tail=227050
+2026-02-23T12:59:08.704 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=228100 tail=228050
+2026-02-23T12:59:09.753 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=229100 tail=229050
+2026-02-23T12:59:10.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=230100 tail=230050
+2026-02-23T12:59:11.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=231100 tail=231050
+2026-02-23T12:59:12.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=232100 tail=232050
+2026-02-23T12:59:13.756 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=233100 tail=233050
+2026-02-23T12:59:14.806 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=234100 tail=234050
+2026-02-23T12:59:15.853 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=235100 tail=235050
+2026-02-23T12:59:16.853 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=236100 tail=236050
+2026-02-23T12:59:17.856 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=237100 tail=237050
+2026-02-23T12:59:18.903 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=238100 tail=238050
+2026-02-23T12:59:19.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=239100 tail=239050
+2026-02-23T12:59:20.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=240100 tail=240050
+2026-02-23T12:59:21.906 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=241100 tail=241050
+2026-02-23T12:59:22.956 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=242100 tail=242050
+2026-02-23T12:59:23.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=243100 tail=243050
+2026-02-23T12:59:24.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=244100 tail=244050
+2026-02-23T12:59:25.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=245100 tail=245050
+2026-02-23T12:59:26.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=246100 tail=246050
+2026-02-23T12:59:27.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=247100 tail=247050
+2026-02-23T12:59:28.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=248100 tail=248050
+2026-02-23T12:59:29.956 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=249100 tail=249050
+2026-02-23T12:59:31.003 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=250100 tail=250050
+2026-02-23T12:59:32.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=251100 tail=251050
+2026-02-23T12:59:33.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=252100 tail=252050
+2026-02-23T12:59:34.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=253100 tail=253050
+2026-02-23T12:59:35.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=254100 tail=254050
+2026-02-23T12:59:36.006 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=255100 tail=255050
+2026-02-23T12:59:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=256100 tail=256050
+2026-02-23T12:59:37.056 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=257100 tail=257050
+2026-02-23T12:59:38.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=258100 tail=258050
+2026-02-23T12:59:39.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=259100 tail=259050
+2026-02-23T12:59:40.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=260100 tail=260050
+2026-02-23T12:59:41.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=261100 tail=261050
+2026-02-23T12:59:42.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=262100 tail=262050
+2026-02-23T12:59:43.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=263100 tail=263050
+2026-02-23T12:59:44.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=264100 tail=264050
+2026-02-23T12:59:45.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=265100 tail=265050
+2026-02-23T12:59:46.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=266100 tail=266050
+2026-02-23T12:59:47.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=267100 tail=267050
+2026-02-23T12:59:48.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=268100 tail=268050
+2026-02-23T12:59:49.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=269100 tail=269050
+2026-02-23T12:59:50.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=270100 tail=270050
+2026-02-23T12:59:51.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=271100 tail=271050
+2026-02-23T12:59:52.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=272100 tail=272050
+2026-02-23T12:59:53.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=273100 tail=273050
+2026-02-23T12:59:54.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=274100 tail=274050
+2026-02-23T12:59:55.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=275100 tail=275050
+2026-02-23T12:59:56.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=276100 tail=276050
+2026-02-23T12:59:57.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=277100 tail=277050
+2026-02-23T12:59:58.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T12:59:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=278100 tail=278050
+2026-02-23T12:59:59.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=279100 tail=279050
+2026-02-23T13:00:00.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=280100 tail=280050
+2026-02-23T13:00:01.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=281100 tail=281050
+2026-02-23T13:00:02.056 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=282100 tail=282050
+2026-02-23T13:00:03.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=283100 tail=283050
+2026-02-23T13:00:04.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=284100 tail=284050
+2026-02-23T13:00:05.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=285100 tail=285050
+2026-02-23T13:00:06.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=286100 tail=286050
+2026-02-23T13:00:07.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=287100 tail=287050
+2026-02-23T13:00:08.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=288100 tail=288050
+2026-02-23T13:00:09.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=289100 tail=289050
+2026-02-23T13:00:10.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=290100 tail=290050
+2026-02-23T13:00:11.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=291100 tail=291050
+2026-02-23T13:00:12.057 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=292100 tail=292050
+2026-02-23T13:00:13.058 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=293100 tail=293050
+2026-02-23T13:00:14.058 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=294100 tail=294050
+2026-02-23T13:00:15.108 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=295100 tail=295050
+2026-02-23T13:00:16.158 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=296100 tail=296050
+2026-02-23T13:00:17.158 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=297100 tail=297050
+2026-02-23T13:00:18.208 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=298100 tail=298050
+2026-02-23T13:00:19.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=299100 tail=299050
+2026-02-23T13:00:20.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=300100 tail=300050
+2026-02-23T13:00:21.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=301100 tail=301050
+2026-02-23T13:00:22.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=302100 tail=302050
+2026-02-23T13:00:23.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=303100 tail=303050
+2026-02-23T13:00:24.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=304100 tail=304050
+2026-02-23T13:00:25.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=305100 tail=305050
+2026-02-23T13:00:26.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=306100 tail=306050
+2026-02-23T13:00:27.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=307100 tail=307050
+2026-02-23T13:00:28.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=308100 tail=308050
+2026-02-23T13:00:29.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=309100 tail=309050
+2026-02-23T13:00:30.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=310100 tail=310050
+2026-02-23T13:00:31.208 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=311100 tail=311050
+2026-02-23T13:00:32.258 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=312100 tail=312050
+2026-02-23T13:00:33.305 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=313100 tail=313050
+2026-02-23T13:00:34.308 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=314100 tail=314050
+2026-02-23T13:00:35.355 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=315100 tail=315050
+2026-02-23T13:00:36.358 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=316100 tail=316050
+2026-02-23T13:00:37.358 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=317100 tail=317050
+2026-02-23T13:00:38.405 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=318100 tail=318050
+2026-02-23T13:00:39.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=319100 tail=319050
+2026-02-23T13:00:40.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=320100 tail=320050
+2026-02-23T13:00:41.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=321100 tail=321050
+2026-02-23T13:00:42.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=322100 tail=322050
+2026-02-23T13:00:43.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=323100 tail=323050
+2026-02-23T13:00:44.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=324100 tail=324050
+2026-02-23T13:00:45.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=325100 tail=325050
+2026-02-23T13:00:46.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=326100 tail=326050
+2026-02-23T13:00:47.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=327100 tail=327050
+2026-02-23T13:00:48.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=328100 tail=328050
+2026-02-23T13:00:49.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=329100 tail=329050
+2026-02-23T13:00:50.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=330100 tail=330050
+2026-02-23T13:00:51.408 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=331100 tail=331050
+2026-02-23T13:00:52.457 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=332100 tail=332050
+2026-02-23T13:00:53.457 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=333100 tail=333050
+2026-02-23T13:00:54.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=334100 tail=334050
+2026-02-23T13:00:55.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=335100 tail=335050
+2026-02-23T13:00:56.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=336100 tail=336050
+2026-02-23T13:00:57.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=337100 tail=337050
+2026-02-23T13:00:58.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:00:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=338100 tail=338050
+2026-02-23T13:00:59.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=339100 tail=339050
+2026-02-23T13:01:00.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=340100 tail=340050
+2026-02-23T13:01:01.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:02.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=341100 tail=341050
+2026-02-23T13:01:02.458 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:03.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=342100 tail=342050
+2026-02-23T13:01:03.508 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:04.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=343100 tail=343050
+2026-02-23T13:01:04.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:05.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=344100 tail=344050
+2026-02-23T13:01:05.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:06.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=345100 tail=345050
+2026-02-23T13:01:06.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:07.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=346100 tail=346050
+2026-02-23T13:01:07.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:08.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=347100 tail=347050
+2026-02-23T13:01:08.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:09.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=348100 tail=348050
+2026-02-23T13:01:09.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:10.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=349100 tail=349050
+2026-02-23T13:01:10.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:11.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=350100 tail=350050
+2026-02-23T13:01:11.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:12.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=351100 tail=351050
+2026-02-23T13:01:12.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:13.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=352100 tail=352050
+2026-02-23T13:01:13.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:14.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=353100 tail=353050
+2026-02-23T13:01:14.508 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:15.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=354100 tail=354050
+2026-02-23T13:01:15.557 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:16.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=355100 tail=355050
+2026-02-23T13:01:16.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:17.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=356100 tail=356050
+2026-02-23T13:01:17.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:18.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=357100 tail=357050
+2026-02-23T13:01:18.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:19.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=358100 tail=358050
+2026-02-23T13:01:19.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:20.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=359100 tail=359050
+2026-02-23T13:01:20.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:21.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=360100 tail=360050
+2026-02-23T13:01:21.558 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:22.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=361100 tail=361050
+2026-02-23T13:01:22.605 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:23.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=362100 tail=362050
+2026-02-23T13:01:23.606 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:24.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=363100 tail=363050
+2026-02-23T13:01:24.608 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:25.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=364100 tail=364050
+2026-02-23T13:01:25.608 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:26.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=365100 tail=365050
+2026-02-23T13:01:26.655 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:27.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=366100 tail=366050
+2026-02-23T13:01:27.658 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:28.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=367100 tail=367050
+2026-02-23T13:01:28.658 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:29.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=368100 tail=368050
+2026-02-23T13:01:29.658 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:30.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=369100 tail=369050
+2026-02-23T13:01:30.658 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:31.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=370100 tail=370050
+2026-02-23T13:01:31.705 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:32.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=371100 tail=371050
+2026-02-23T13:01:32.708 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:33.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=372100 tail=372050
+2026-02-23T13:01:33.708 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:34.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=373100 tail=373050
+2026-02-23T13:01:34.708 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:35.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=374100 tail=374050
+2026-02-23T13:01:35.708 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:36.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=375100 tail=375050
+2026-02-23T13:01:36.755 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:37.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=376100 tail=376050
+2026-02-23T13:01:37.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:38.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=377100 tail=377050
+2026-02-23T13:01:38.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:39.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=378100 tail=378050
+2026-02-23T13:01:39.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:40.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=379100 tail=379050
+2026-02-23T13:01:40.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:41.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=380100 tail=380050
+2026-02-23T13:01:41.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:42.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=381100 tail=381050
+2026-02-23T13:01:42.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:43.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=382100 tail=382050
+2026-02-23T13:01:43.758 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:44.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=383100 tail=383050
+2026-02-23T13:01:44.808 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:45.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=384100 tail=384050
+2026-02-23T13:01:45.855 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:46.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=385100 tail=385050
+2026-02-23T13:01:46.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:47.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=386100 tail=386050
+2026-02-23T13:01:47.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:48.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=387100 tail=387050
+2026-02-23T13:01:48.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:49.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=388100 tail=388050
+2026-02-23T13:01:49.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:50.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=389100 tail=389050
+2026-02-23T13:01:50.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:51.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=390100 tail=390050
+2026-02-23T13:01:51.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:52.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=391100 tail=391050
+2026-02-23T13:01:52.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:53.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=392100 tail=392050
+2026-02-23T13:01:53.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:54.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=393100 tail=393050
+2026-02-23T13:01:54.858 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:55.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=394100 tail=394050
+2026-02-23T13:01:55.905 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:56.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=395100 tail=395050
+2026-02-23T13:01:56.905 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:57.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=396100 tail=396050
+2026-02-23T13:01:57.908 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:58.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=397100 tail=397050
+2026-02-23T13:01:58.958 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:01:59.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=398100 tail=398050
+2026-02-23T13:01:59.958 [INFO] [PP:RX] outer=20/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:02:00.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=399100 tail=399050
+2026-02-23T13:02:01.008 [INFO] [PP:RX] outer=21/s compQueue=1 inbuf=0 rd=0 drop=0
+2026-02-23T13:02:01.013 [INFO] [PP:SEND] fill=50  +1000/s  -1000/s  head=400100 tail=400050

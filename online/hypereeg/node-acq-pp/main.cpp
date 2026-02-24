@@ -80,7 +80,7 @@ int main(int argc,char* argv[]) {
  // 1) Avoid swapping/pagefault stalls
  lock_memory_or_warn(); // needs CAP_IPC_LOCK (or high memlock ulimit)
 
- // 2) Help scheduler a bit (optional)
+ // 2) Help scheduler a bit
  set_process_nice(-10); // needs CAP_SYS_NICE
 #endif
 

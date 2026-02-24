@@ -39,13 +39,15 @@ struct TcpSample {
  unsigned int ampCount=0,chnCount=0;
  unsigned int trigger=0;
  quint32 userEvent=0;
+ quint32 audioTrigEvent=0;
+ int16_t audioNR[AUDIO_N];
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  void init(size_t aCount,size_t cCount) {
   ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=0;
   amp.resize(ampCount); for (auto &s:amp) s.init(chnCount);
-  for (size_t i=0;i<AUDIO_N;++i) audioN[i]=0.f;
+  for (size_t i=0;i<AUDIO_N;++i) { audioN[i]=0.f; audioNR[i]=0; }
  }
 
  void initSizeOnly(size_t aCount,size_t cCount) {

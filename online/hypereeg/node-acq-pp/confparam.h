@@ -25,6 +25,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #include <QColor>
 #include <QTcpSocket>
+#include <QElapsedTimer>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QThread>
@@ -38,6 +39,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "ppchninfo.h"
 #include "../common/tcpsample.h"
 #include "../common/tcpsample_pp.h"
+#include "../common/framedstreamreader.h"
 #include "iirfilter.h"
 
 // Notch@50Hz (Q=30)
@@ -83,7 +85,8 @@ class ConfParam : public QObject {
 
   QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) {
    if (!socket || socket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
-   socket->write(command.toUtf8()+"\n");
+   //drainUntilPrompt(*socket,100);
+   socket->write(command.toUtf8()+"\n"); //socket->flush();
    if (!socket->waitForBytesWritten(timeoutMs)) return QString(); // timeout or write error
    if (!socket->waitForReadyRead(timeoutMs)) return QString(); // timeout or no response
    return QString::fromUtf8(socket->readAll()).trimmed();
@@ -148,71 +151,95 @@ class ConfParam : public QObject {
   QQueue<CompBlock> compQueue;
 
  public slots:
+
+public slots:
   void onStrmDataReady() {
-   static QByteArray inbuf;
-   static int rd=0;           // read cursor into inbuf
-   static qint64 lastMsQ=0;
-   static quint64 outerRx=0;
-   static quint64 dropped=0;
+    static QByteArray inbuf;
+    static int rd = 0;
+    static qint64 lastMsLog = 0;
 
-   inbuf.append(acqStrmSocket->readAll());
+    inbuf.append(acqStrmSocket->readAll());
 
-   auto compact_if_needed=[&](){
-    // compact when cursor is large to avoid unbounded growth
-    if (rd > 1<<20) {               // 1MB consumed -> compact
-     inbuf.remove(0,rd);
-     rd=0;
-    } else if (rd>0 && rd>inbuf.size()/2) {
-     // optional: compact when we've consumed > half
-     inbuf.remove(0,rd);
-     rd=0;
-    }
-   };
+    auto compact_if_needed = [&]() {
+      if (rd > (1<<20) || (rd > 0 && rd > inbuf.size()/2)) {
+        inbuf.remove(0, rd);
+        rd = 0;
+      }
+    };
 
-   static constexpr quint32 MAX_BLOCK=8u*1024u*1024u;
+    static constexpr quint32 MAX_BLOCK = 8u*1024u*1024u;
 
-   while ((inbuf.size()-rd)>=4) {
-    const uchar* p0=reinterpret_cast<const uchar*>(inbuf.constData()+rd);
-    const quint32 blockSize=(quint32)p0[0]|((quint32)p0[1]<<8)|((quint32)p0[2]<<16)|((quint32)p0[3]<<24);
-    if (blockSize==0 || blockSize>MAX_BLOCK) {
-     qWarning() << "[PP:RX] bad blockSize=" << blockSize << "clearing buffer";
-     inbuf.clear(); rd=0;
-     return;
-    }
+    while ((inbuf.size() - rd) >= 4) {
+      const uchar* p0 = reinterpret_cast<const uchar*>(inbuf.constData() + rd);
+      const quint32 blockSize =
+          (quint32)p0[0] | ((quint32)p0[1] << 8) | ((quint32)p0[2] << 16) | ((quint32)p0[3] << 24);
 
-    if ((inbuf.size()-rd)<(4+(int)blockSize)) break;
+      if (blockSize == 0 || blockSize > MAX_BLOCK) {
+        rxBadBlocks.fetch_add(1, std::memory_order_relaxed);
+        qWarning() << "[PP:RX] bad blockSize=" << blockSize << "clearing buffer";
+        inbuf.clear();
+        rd = 0;
+        return;
+      }
 
-    // Copy out exactly one block (one allocation+copy; no mid/remove memmove)
-    QByteArray block(inbuf.constData()+rd+4,(int)blockSize);
-    rd+=4+(int)blockSize;
+      if ((inbuf.size() - rd) < (4 + (int)blockSize))
+        break;
 
-    outerRx++;
+      QByteArray block(inbuf.constData() + rd + 4, (int)blockSize); // copy of one block
+      rd += 4 + (int)blockSize;
 
-    int qszSnap=0;
-    {
-      QMutexLocker lk(&compMutex);
-      while (compQueue.size()>=compQueueMax) { compQueue.dequeue(); dropped++; }
-      //compQueue.enqueue(std::move(block));
-      CompBlock cb; cb.buf=std::move(block); cb.off=0; compQueue.enqueue(std::move(cb)); 
-      qszSnap=compQueue.size();
-      compReady.wakeOne();
+      rxOuterBlocks.fetch_add(1, std::memory_order_relaxed);
+
+      enqueueCompBlock(std::move(block));
+
+      compact_if_needed();
+
+      const qint64 now = QDateTime::currentMSecsSinceEpoch();
+      if (now - lastMsLog >= 1000) {
+        lastMsLog = now;
+        qInfo().noquote() << QString("[PP:RX] outer=%1 bad=%2 drop=%3 compQ=%4 inbuf=%5 rd=%6")
+                             .arg((qulonglong)rxOuterBlocks.exchange(0))
+                             .arg((qulonglong)rxBadBlocks.load())
+                             .arg((qulonglong)rxDroppedBlocks.load())
+                             .arg(compQueue.size())
+                             .arg(inbuf.size())
+                             .arg(rd);
+      }
     }
 
     compact_if_needed();
+  }
 
-    // 1Hz log (call time only here)
-    const qint64 now=QDateTime::currentMSecsSinceEpoch();
-    if (now-lastMsQ>=1000) {
-     lastMsQ=now;
-     qInfo().noquote() << QString("[PP:RX] outer=%1/s compQueue=%2 inbuf=%3 rd=%4 drop=%5")
-                          .arg((qulonglong)outerRx)
-                          .arg(qszSnap)
-                          .arg(inbuf.size())
-                          .arg(rd)
-                          .arg((qulonglong)dropped);
-     outerRx=0;
+ private:
+  enum class QueuePolicy { DropOldest, Backpressure };
+
+  QueuePolicy compPolicy = QueuePolicy::DropOldest;
+
+  std::atomic<quint64> rxOuterBlocks{0};
+  std::atomic<quint64> rxBadBlocks{0};
+  std::atomic<quint64> rxDroppedBlocks{0};
+
+  void enqueueCompBlock(QByteArray &&block)
+  {
+    QMutexLocker lk(&compMutex);
+
+    if (compPolicy == QueuePolicy::Backpressure) {
+      while (!compStop.load(std::memory_order_relaxed) && compQueue.size() >= compQueueMax) {
+        compSpace.wait(&compMutex);  // consumer must wake this
+      }
+      if (compStop.load(std::memory_order_relaxed)) return;
+    } else {
+      // DropOldest: keep most recent blocks, bounded latency
+      while (compQueue.size() >= compQueueMax) {
+        compQueue.dequeue();
+        rxDroppedBlocks.fetch_add(1, std::memory_order_relaxed);
+      }
     }
-   }
-   compact_if_needed();
+
+    CompBlock cb;
+    cb.buf = std::move(block);
+    cb.off = 0;
+    compQueue.enqueue(std::move(cb));
+    compReady.wakeOne();
   }
 };

@@ -49,10 +49,10 @@ inline float audioEnvFromN_MAV(const float *audN) {
  return float(acc/48.0);
 }
 
-class EEGThread : public QThread {
+class EEGThread:public QThread {
  Q_OBJECT
  public:
-  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,QObject *parent=nullptr) : QThread(parent) {
+  explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,QObject *parent=nullptr):QThread(parent) {
    conf=c; ampNo=a; sweepBuffer=sb; trigger=0; threadActive=true;
 
    chnCount=conf->chnInfo.size();
@@ -60,6 +60,13 @@ class EEGThread : public QThread {
    //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
    chnPerCol=66;
    colCount=std::ceil((float)(chnCount)/(float)(chnPerCol));
+
+   prevY.resize(chnCount);
+   for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+    const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
+    prevY[int(chnIdx)]=baseY;
+   }
+   prevYA=conf->sweepFrameH-conf->audWaveH/2;
 
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); wX.append(colIdx*ww+1); }
@@ -79,128 +86,98 @@ class EEGThread : public QThread {
   }
 
   void resetScrollBuffer() {
-   QRect cr(0,0,conf->sweepFrameW-1,conf->sweepFrameH-1);
    sweepBuffer->fill(Qt::white);
-  }
-
-  void meanf(unsigned int startIdx, float* mu, float* sigma) {
-   const unsigned tcpBufTail=conf->tcpBufTail; const unsigned scrUpdateSmp=conf->scrUpdateSamples;
-   const float invSmp=1.0f/float(scrUpdateSmp);
-   double sum=0.0,sumSq=0.0;
-   SIMD_REDUCE2(sum,sumSq)
-   for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
-    const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-    const float x=audioEnvFromN_RMS(s.audioN);
-    sum+=x; sumSq+=double(x)*double(x);
+   for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+    const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
+    prevY[int(chnIdx)]=baseY;
    }
-   const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
-   *mu=float(m); *sigma=float(std::sqrt(v));
+   prevYA=conf->sweepFrameH-conf->audWaveH/2;
+   // reset cursors
+   for (int colIdx=0;colIdx<wX.size();++colIdx) wX[colIdx]=w0[colIdx];
   }
 
-  void mean(unsigned int startIdx,std::vector<float>* mu,std::vector<float>* sigma) {
-   const unsigned tcpBufTail=conf->tcpBufTail; const unsigned scrUpdateSmp=conf->scrUpdateSamples;
-   const float invSmp=1.0f/float(scrUpdateSmp); //const bool useNotch=conf->ctrlNotchActive;
-   PARFOR(chnIndex,0,int(chnCount)) {
-    double sum=0.0,sumSq=0.0;
-     SIMD_REDUCE2(sum,sumSq)
-     for (int smpIndex=0;smpIndex<int(scrUpdateSmp);++smpIndex) {
-      const auto& s=(*tcpBuffer)[(tcpBufTail+smpIndex+startIdx)%tcpBufSize];
-      float x;
-      switch (conf->eegBand) {
-       default:
-       case 0: x=s.amp[ampNo].dataBP[chnIndex]; break;
-       //case 1: x=s.amp[ampNo].dataD[chnIndex]; break;
-       //case 2: x=s.amp[ampNo].dataT[chnIndex]; break;
-       //case 3: x=s.amp[ampNo].dataA[chnIndex]; break;
-       //case 4: x=s.amp[ampNo].dataB[chnIndex]; break;
-       //case 5: x=s.amp[ampNo].dataG[chnIndex]; break;
-      }
-      if (s.trigger>0) trigger=s.trigger;
-      sum+=x; sumSq+=double(x)*double(x);
-     }
-    const double m=sum*invSmp; const double v=std::max(0.0,sumSq*invSmp-m*m);
-    (*mu)[chnIndex]=float(m); (*sigma)[chnIndex]=float(std::sqrt(v));
+  inline bool shouldDrawIdx(unsigned i,unsigned N,int speedIdx) {
+   switch (speedIdx) {
+    case 0: return (i+1==N);           // 1 column
+    case 1: return (i+1==N)||(i+2==N); // 2 columns
+    case 2: return (i%4)==3;           // 5 columns
+    case 3: return (i%2)==1;           // 10 columns
+    case 4:
+    default: return true;              // 20 columns
    }
   }
 
-  void updateBuffer() {
-   unsigned int scrUpdateSmp=conf->scrUpdateSamples;
-   unsigned int scrUpdateCount=scrAvailSmp/scrUpdateSmp;
+  void updateBufferTick(quint64 baseTail,unsigned N,int speedIdx,float ampX) {
+//   auto shouldDrawIndex=[&](unsigned i) -> bool {
+//    switch (speedIdx) {
+//      case 0: return (i+1==N);           // only last
+//      case 1: return (i+1==N)||(i+2==N); // last two: ...18,19
+//      case 2: return (i%4)==3;           // 3,7,11,15,19
+//      case 3: return (i%2)==1;           // 1,3,...,19
+//      case 4: default: return true;      // all samples
+//    }
+//   };
 
    sweepPainter.begin(sweepBuffer);
-    sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+   sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    for (unsigned int smpIdx=0;smpIdx<scrUpdateCount-1;smpIdx++) {
-     std::vector<float> s0(chnCount); std::vector<float> s0s(chnCount);
-     std::vector<float> s1(chnCount); std::vector<float> s1s(chnCount);
-     float sA0,sA1; float sA0s,sA1s;
-     mean((smpIdx+0)*scrUpdateSmp,&s0,&s0s); mean((smpIdx+1)*scrUpdateSmp,&s1,&s1s);
-     meanf((smpIdx+0)*scrUpdateSmp,&sA0,&sA0s); meanf((smpIdx+1)*scrUpdateSmp,&sA1,&sA1s);
+   // We will draw one column per selected i, advancing wX each time
+   for (unsigned i=0;i<N;++i) {
+    if (!shouldDrawIdx(i,N,speedIdx)) continue;
+    const TcpSamplePP &s=(*tcpBuffer)[(baseTail+i)%tcpBufSize];
 
-     TcpSamplePP tcpS=(*tcpBuffer)[(conf->tcpBufTail+smpIdx)%conf->tcpBufSize];
-
-//     if (tcpS.offset%1000==0) {
-//      qint64 now=QDateTime::currentMSecsSinceEpoch(); qint64 age=now-tcpS.timestampMs;
-//      qInfo() << "Sample latency @updateBuffer:" << age << "ms";
-//     }
-
-     for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
-      unsigned int colIdx=chnIdx/chnPerCol;
-      scrCurY=(int)(chnY/2.0+chnY*(chnIdx%chnPerCol));
-
-      // Cursor vertical line for each column
-      if (wX[colIdx]<=wn[colIdx]) {
-       sweepPainter.setPen(Qt::white); sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->sweepFrameH-1);
-       if (wX[colIdx]<(wn[colIdx]-1)) {
-        sweepPainter.setPen(Qt::black); sweepPainter.drawLine(wX[colIdx]+1,0,wX[colIdx]+1,conf->sweepFrameH-1);
-       }
+    // Clear cursor lines once per column (per colIdx)
+    for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
+     if (wX[colIdx]<=wn[colIdx]) {
+      sweepPainter.setPen(Qt::white);
+      sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->sweepFrameH-1);
+      if (wX[colIdx]<wn[colIdx]-1) {
+       sweepPainter.setPen(Qt::black);
+       sweepPainter.drawLine(wX[colIdx]+1,0,wX[colIdx]+1,conf->sweepFrameH-1);
       }
-
-      // Baselines
-      //sweepPainter.setPen(Qt::darkGray);
-      //sweepPainter.drawLine(wX[colIdx]-1,scrCurY,wX[colIdx],scrCurY);
-      // Data
- 
-      int mu0=scrCurY-(int)(s0[chnIdx]*chnY*conf->eegAmpX[ampNo]);
-      int mu1=scrCurY-(int)(s1[chnIdx]*chnY*conf->eegAmpX[ampNo]);
-      int sigma0=(int)(s0s[chnIdx]*chnY*conf->eegAmpX[ampNo]*0.5);
-      int sigma1=(int)(s1s[chnIdx]*chnY*conf->eegAmpX[ampNo]*0.5);
-
-      sweepPainter.setPen(Qt::blue);
-      sweepPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
-      sweepPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
-
-      sweepPainter.setPen(Qt::black);
-      sweepPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
-
-     }
-
-     scrCurY=conf->sweepFrameH-conf->audWaveH/2;
-     int mu0=scrCurY-(int)(sA0*conf->audWaveH*20);
-     int mu1=scrCurY-(int)(sA1*conf->audWaveH*20);
-     //int sigma0=(int)(sA0s*conf->audWaveH*20*0.5);
-     //int sigma1=(int)(sA1s*conf->audWaveH*20*0.5);
-
-     sweepPainter.setPen(Qt::red);
-     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-     // sweepPainter.drawLine(wX[colIdx]-1,mu0-sigma0,wX[colIdx]-1,mu0+sigma0);
-     // sweepPainter.drawLine(wX[colIdx],  mu1-sigma1,wX[colIdx],  mu1+sigma1);
-     // sweepPainter.setPen(Qt::black);
-      sweepPainter.drawLine(wX[colIdx]-1,mu0,wX[colIdx],mu1);
-     }
-
-     if (trigger) { trigger=0;
-      sweepPainter.setPen(Qt::blue);
-      //for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-      // sweepPainter.drawLine(wX[colIdx]-1,0,wX[colIdx]-1,conf->sweepFrameH);
-      //}
-     }
-
-     for (int colIdx=0;colIdx<wX.size();colIdx++) {
-      wX[colIdx]++; if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx]; // Check for end of screen
      }
     }
- 
+
+    // EEG channels
+    sweepPainter.setPen(Qt::black); float x; int y;
+    for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+     const unsigned colIdx=chnIdx/chnPerCol;
+     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
+     y=baseY-int(x*chnY*ampX);
+     x=s.amp[ampNo].dataBP[chnIdx]; // for now (2-40)
+     y=baseY-int(x*chnY*conf->eegAmpX[ampNo]);
+     // draw line from previous to current at this column
+     const int x0=wX[colIdx]-1;
+     const int x1=wX[colIdx];
+     if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevY[chnIdx],x1,y);
+     prevY[chnIdx]=y;
+    }
+
+    // Audio envelope
+    const int baseYA=conf->sweepFrameH-conf->audWaveH/2;
+    const float env=audioEnvFromN_RMS(s.audioN);
+    const int yA=baseYA-int(env*conf->audWaveH*20);
+    sweepPainter.setPen(Qt::red);
+    for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
+     const int x0=wX[colIdx]-1;
+     const int x1=wX[colIdx];
+     if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYA,x1,yA);
+    }
+    prevYA=yA;
+
+    // Trigger marker
+    if (s.trigger>0) {
+     sweepPainter.setPen(Qt::blue);
+     for (unsigned colIdx=0;colIdx<colCount;++colIdx)
+      sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->sweepFrameH-1);
+    }
+
+    // -- One column drawn, advance x one column
+    for (int colIdx=0;colIdx<wX.size();++colIdx) {
+     wX[colIdx]++;
+     if (wX[colIdx]>wn[colIdx]) wX[colIdx]=w0[colIdx];
+    }
+   }
    sweepPainter.end();
   }
 
@@ -209,30 +186,38 @@ class EEGThread : public QThread {
 
  protected:
   virtual void run() override {
-  
    while (threadActive) {
-    static quint64 lastH=0,lastT=0;
-    static qint64 lastMs=0;
-    quint64 hSnap=0,tSnap=0;
+    quint64 baseTail=0; unsigned N=0; int speedIdx=0; float ampX=1.f; quint64 hSnap=0,tSnap=0;
     {
-     QMutexLocker locker(&conf->mutex);
-     // Sleep until producer signals
-     while (!conf->eegSweepPending[ampNo]) { conf->eegSweepWait.wait(&conf->mutex); }
+      QMutexLocker locker(&conf->mutex);
 
-     if (conf->quitPending) {
-      threadActive=false; //qDebug() << "Thread got the finish signal:" << ampNo;
-     } else {
-      updateBuffer();
-      emit updateEEGFrame(); //qDebug() << ampNo << "updated.";
-     }
-     conf->eegSweepPending[ampNo]=false;
-     conf->eegSweepUpdating--; // semaphore.. kind of..  
-     // If this was the last scroller, then advance tail..
-     if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrAvailableSamples;
+      // Sleep until producer signals
+      while (!conf->eegSweepPending[ampNo]) { conf->eegSweepWait.wait(&conf->mutex); }
 
-     hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
+      if (conf->quitPending) {
+       // consume our token so the producer side doesn't deadlock waiting for us
+       conf->eegSweepPending[ampNo]=false; conf->eegSweepUpdating--;
+       if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
+       hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
+       threadActive=false; //qDebug() << "Thread got the finish signal:" << ampNo;
+      } else {
+       // snapshot what we need, then unlock before painting
+       baseTail=conf->tcpBufTail; N=conf->scrUpdateSamples;
+       speedIdx=conf->eegSweepSpeedIdx; ampX=conf->eegAmpX[ampNo];
+       conf->eegSweepPending[ampNo]=false;
+       conf->eegSweepUpdating--; // semaphore.. kind of..  
+       if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
+       hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
+      }
     }
-    log_ring_1hz("TIME:RING", hSnap, tSnap, lastH, lastT, lastMs);
+    // Paint independent of mutex
+    updateBufferTick(baseTail,N,speedIdx,ampX);
+    emit updateEEGFrame(); //qDebug() << ampNo << "updated.";
+
+    // If this was the last scroller then advance tail..
+    if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
+
+    hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
   }
@@ -247,4 +232,7 @@ class EEGThread : public QThread {
   QPainter sweepPainter,rotPainter; QVector<QStaticText> chnTextCache;
 
   int trigger;
+
+  QVector<int> prevY; // Previous y pixel of EEG channels
+  int prevYA=0;       // Previous y pixel of Audio channel
 };

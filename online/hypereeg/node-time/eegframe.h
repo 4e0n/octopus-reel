@@ -34,7 +34,7 @@ class EEGFrame : public QFrame {
  Q_OBJECT
  public:
   explicit EEGFrame(ConfParam *c=nullptr,unsigned int a=0,QWidget *parent=nullptr) : QFrame(parent) {
-   conf=c; ampNo=a; sweepSched=false;
+   conf=c; ampNo=a;
    sweepBuffer=QImage(conf->sweepFrameW,conf->sweepFrameH,QImage::Format_RGB32);
 
    chnCount=conf->chnInfo.size();
@@ -65,35 +65,34 @@ class EEGFrame : public QFrame {
    eegThread->start(QThread::HighestPriority);
   }
 
-  bool sweepSched; QImage sweepBuffer; EEGThread *eegThread;
-
  protected:
   virtual void paintEvent(QPaintEvent *event) override {
    Q_UNUSED(event);
    QRect cr(0,0,conf->sweepFrameW-1,conf->sweepFrameH-1);
    mainPainter.begin(this);
-   mainPainter.drawImage(0,0,sweepBuffer); sweepSched=false;
-   mainPainter.setPen(Qt::black);
-   mainPainter.drawRect(cr);
-   // Channel names
-   mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
-   for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) { // 2 audio channels
-    unsigned int colIdx=chnIdx/chnPerCol;
-    scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
-    mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
+    mainPainter.drawImage(0,0,sweepBuffer);
     mainPainter.setPen(Qt::black);
-    mainPainter.drawLine(width()/2,0,width()/2,height()-1);
-   }
-   mainPainter.setPen(Qt::blue);
-   for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
-    mainPainter.drawStaticText(w0[colIdx]+4,conf->sweepFrameH-conf->audWaveH/2,audLabel);
-   }
+    mainPainter.drawRect(cr);
+    // Channel names
+    mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
+    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) { // 2 audio channels
+     unsigned int colIdx=chnIdx/chnPerCol;
+     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
+     mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
+     mainPainter.setPen(Qt::black);
+     //if (chnIdx==chnCount-1) mainPainter.drawLine(width()/2,0,width()/2,height()-1);
+    }
+    mainPainter.setPen(Qt::blue);
+    const int frameH=conf->sweepFrameH; const int audH=conf->audWaveH/2;
+    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+     mainPainter.drawStaticText(w0[colIdx]+4,frameH-audH,audLabel);
+    }
    mainPainter.end();
   }
 
  private:
-  ConfParam *conf; unsigned int ampNo; QPainter mainPainter;
+  ConfParam *conf; unsigned int ampNo; QPainter mainPainter; QImage sweepBuffer;
+  EEGThread *eegThread;
   unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
-  QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont;
-  QStaticText audLabel;
+  QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont; QStaticText audLabel;
 };

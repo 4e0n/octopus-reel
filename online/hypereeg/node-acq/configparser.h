@@ -108,14 +108,20 @@ class ConfigParser {
        }
       } else if (opts[0].trimmed()=="REFGAIN") {
        conf->refGain=opts[1].toFloat();
-       if (!(conf->refGain==1.0 ||  conf->refGain==2.0)) {
+       if (!(conf->refGain==1.0 || conf->refGain==2.0)) {
         qCritical() << "<ConfigParser> <AMP> ERROR: REFGAIN not among {1.0,2.0}x range!";
         return true;
        }
       } else if (opts[0].trimmed()=="BIPGAIN") {
        conf->bipGain=opts[1].toFloat();
-       if (!(conf->bipGain==4.0 ||  conf->bipGain==8.0)) {
+       if (!(conf->bipGain==4.0 || conf->bipGain==8.0)) {
         qCritical() << "<ConfigParser> <AMP> ERROR: BIPGAIN not among {4.0,8.0}x range!";
+        return true;
+       }
+      } else if (opts[0].trimmed()=="AUDTRIGTHR") {
+       conf->audTrigThr=opts[1].toInt();
+       if (!(conf->audTrigThr>20 || conf->audTrigThr<32000)) {
+        qCritical() << "<ConfigParser> <AMP> ERROR: AUDTRIGTHR not among {20,32000}x range!";
         return true;
        }
       } else {

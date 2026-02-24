@@ -38,6 +38,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "guichninfo.h"
 #include "headmodel.h"
 #include "../common/tcpsample_pp.h"
+#include "../common/framedstreamreader.h"
 
 #include "../../../common/event.h"
 #include "../../../common/coord3d.h"
@@ -45,22 +46,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 const int EEG_SCROLL_REFRESH_RATE=50; // 100Hz max.
 
-
 class ConfParam : public QObject {
  Q_OBJECT
  public:
   ConfParam() {
    eegSweepRefreshRate=EEG_SCROLL_REFRESH_RATE; eegSweepUpdating=0;
-   eegSweepMode=quitPending=ctrlRecordingActive=false; ctrlNotchActive=false;
-   tcpBufHead=tcpBufTail=0; recCounter=0; audWaveH=100; //cumIdx=0;
-  };
+   quitPending=ctrlRecordingActive=false; tcpBufHead=tcpBufTail=0; audWaveH=100;
+  }
 
   void initMultiAmp(int ampC=0) {
    ampCount=ampC; eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
-  };
+  }
 
   QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) { // Upstream command
-   if (!socket || socket->state() != QAbstractSocket::ConnectedState) return QString(); // or the error msg
+   if (!socket || socket->state()!=QAbstractSocket::ConnectedState) return QString(); // or the error msg
    socket->write(command.toUtf8()+"\n");
    if (!socket->waitForBytesWritten(timeoutMs)) return QString(); // timeout or write error
    if (!socket->waitForReadyRead(timeoutMs)) return QString(); // timeout or no response
@@ -83,7 +82,7 @@ class ConfParam : public QObject {
 
    // Get valid lines
    for (int i=0;i<lines.size();i++)
-    if (!(lines[i].at(0)=='#') && lines[i].contains('|')) validLines.append(lines[i]);
+    if (!(lines[i].at(0)=='#')&&lines[i].contains('|')) validLines.append(lines[i]);
 
    // Find the essential line defining gizmo names
    for (int i=0;i<validLines.size();i++) {
@@ -125,22 +124,24 @@ class ConfParam : public QObject {
    return idx;
   }
 
-  QVector<QColor> rgbPalette;
-
   QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
-  //QString timeIpAddr; quint32 timeCommPort,timeStrmPort; // We're server
+  QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize; quint64 tcpBufHead,tcpBufTail; int frameBytes;
 
-  QMutex mutex; QVector<GUIChnInfo> chnInfo; QVector<QThread*> threads;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int physChnCount,totalChnCount,totalCount; float refGain,bipGain;
 
-  bool eegSweepMode; unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegSweepDivider,eegBand; QWaitCondition eegSweepWait;
-  //std::atomic<unsigned int> eegSweepUpdating;
-  unsigned int eegSweepUpdating; QVector<bool> eegSweepPending;
+  QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
+  QVector<bool> eegSweepPending; bool quitPending; unsigned int eegSweepUpdating;
 
-  std::vector<std::vector<float>> s0,s0s,s1,s1s; // Sweep vals
+  unsigned int scrAvailableSamples,scrUpdateSamples; int eegSweepSpeedIdx=0;
+  unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegBand; QWaitCondition eegSweepWait;
 
-  const int eegSweepCoeff[5]={10,5,4,2,1};
+  int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
+  int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
+
+  bool ctrlRecordingActive;
 
   QVector<float> eegAmpX,erpAmpX;
   const float eegAmpRange[6]={(1e6/1000.0),
@@ -156,31 +157,20 @@ class ConfParam : public QObject {
                               (1e6/  50.0),
                               (1e6/  20.0)};
 
-  //std::atomic<quint64> tcpBufHead,tcpBufTail;
-  quint64 tcpBufHead,tcpBufTail; QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
-  int cntPastSize,cntPastIndex;
-
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick; float refGain,bipGain;
-  unsigned int physChnCount,totalChnCount,totalCount;
-
-  int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
-  int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
-
-  bool ctrlRecordingActive,ctrlNotchActive, tick,event,quitPending;
-
-  QVector<Event> events; QString curEventName; quint32 curEventType;
-  float erpRejBwd,erpAvgBwd,erpAvgFwd,erpRejFwd; // In terms of milliseconds
-
-  unsigned int scrAvailableSamples,scrUpdateSamples;
-
-  quint64 recCounter; QString rHour,rMin,rSec; QLabel *timeLabel;
-
   QVector<HeadModel> headModel; bool glGizmoLoaded; QVector<Gizmo> glGizmo;
   QVector<bool> glFrameOn,glGridOn,glScalpOn,glSkullOn,glBrainOn,glGizmoOn,glElectrodesOn;
 
-  bool usePixmap=false;
+  QVector<Event> events; bool event; QString curEventName; quint32 curEventType;
+  float erpRejBwd,erpAvgBwd,erpAvgFwd,erpRejFwd; // In terms of milliseconds
+  QVector<QColor> rgbPalette;
 
-  int frameBytes;
+  std::atomic<quint64> rxFrames{0};
+  std::atomic<quint64> rxBytes{0};
+  std::atomic<quint64> rbDrops{0};   // if you drop-oldest or overwrite
+  std::atomic<quint64> drawFrames{0}; // how many GUI sweeps happened
+  std::atomic<quint64> consFrames{0}; // how many samples consumers pulled
+
+  // --------------------------------------------------------------------------------------
 
  signals:
   void glUpdate();
@@ -191,19 +181,16 @@ class ConfParam : public QObject {
    static quint64 outerOk=0;
    static quint64 timeOk=0;
    static quint64 timeBad=0;
-   //static qint64 timeLastMs=0;
    static qint64 timeLastMsRx=0;
    static QByteArray inbuf;
    inbuf.append(acqStrmSocket->readAll());
-
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
 
    // RX backlog log 1 Hz
    if (timeLastMsRx==0) timeLastMsRx=now;
-   if (now-timeLastMsRx >= 1000) {
+   if (now-timeLastMsRx>=1000) {
     timeLastMsRx=now;
-    qInfo().noquote() << QString("[TIME:RX] inbuf=%1 bytes")
-                          .arg(inbuf.size());
+    qInfo().noquote() << QString("[TIME:RX] inbuf=%1 bytes").arg(inbuf.size());
    }
 
    while (inbuf.size()>=4) {
@@ -233,6 +220,7 @@ class ConfParam : public QObject {
 
      TcpSamplePP s;
      if (!s.deserialize(one,chnCount)) { timeBad++; continue; }
+     //if (!s.deserializeRaw(framePtr,frameBytes)) { timeBad++; continue; }
      timeOk++;
 
      bool doWake=false;
@@ -242,11 +230,10 @@ class ConfParam : public QObject {
        tcpBufHead++;
 
        const quint64 avail=tcpBufHead-tcpBufTail;
-       doWake=(avail>scrAvailableSamples && eegSweepUpdating==0);
+       doWake=(avail>=scrAvailableSamples && eegSweepUpdating==0);
        if (doWake) {
-        //scrUpdateSamples=scrAvailableSamples/(eegSweepFrameTimeMs/eegSweepDivider);
-	scrUpdateSamples=1;
-        eegSweepUpdating=ampCount;
+	//scrUpdateSamples=qMax(1u,eegRate/eegSweepRefreshRate); // 20 at 1kHz/50Hz
+        //eegSweepUpdating=ampCount;
         for (auto &v:eegSweepPending) v=true;
        }
      }
@@ -260,11 +247,4 @@ class ConfParam : public QObject {
   }
 
  private:
-  void updateRecTime() { int s,m,h; QString dummyString; s=recCounter/eegRate; //m=s/60; h=m/60;
-   h=s/3600; s%=3600; m=s/60; s%=60;
-   if (h<10) rHour="0"; else rHour=""; rHour+=dummyString.setNum(h);
-   if (m<10) rMin="0"; else rMin=""; rMin+=dummyString.setNum(m);
-   if (s<10) rSec="0"; else rSec=""; rSec+=dummyString.setNum(s);
-   timeLabel->setText("Rec.Time: "+rHour+":"+rMin+":"+rSec);
-  }
 };
