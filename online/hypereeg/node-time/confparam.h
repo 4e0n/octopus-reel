@@ -29,6 +29,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QWaitCondition>
 #include <QThread>
 #include <atomic>
+#include <QElapsedTimer>
+#include <QTimer>
 #include <QFile>
 #include <QTextStream>
 #include <QVector>
@@ -51,11 +53,31 @@ class ConfParam : public QObject {
  public:
   ConfParam() {
    eegSweepRefreshRate=EEG_SCROLL_REFRESH_RATE; eegSweepUpdating=0;
-   quitPending=ctrlRecordingActive=false; tcpBufHead=tcpBufTail=0; audWaveH=100;
+   ctrlRecordingActive=false; tcpBufHead=tcpBufTail=0; audWaveH=100;
+   quitPending=false;
   }
 
   void initMultiAmp(int ampC=0) {
    ampCount=ampC; eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
+   eegSweepPending.resize(ampCount); for (auto &v:eegSweepPending) v=false;
+   // tick window (keep your existing logic/values)
+   scrUpdateSamples=qMax(1u,eegRate/eegSweepRefreshRate);
+   scrAvailableSamples=scrUpdateSamples;
+   // PLL init (no gating applied yet; Step 2 will use it)
+   pllT.start();
+   pllTargetPeriodMs=int(1000/qMax(1u,eegSweepRefreshRate));
+   pllNextMs=pllT.elapsed()+qint64(1000/qMax(1u,eegSweepRefreshRate)); // ~20ms
+//   pllNextMs=pllT.elapsed()+pllTargetPeriodMs;
+   pllErrI=0.0;
+   pllInit=true;
+
+   if (!pllTimer) {
+    pllTimer=new QTimer(this);
+    pllTimer->setTimerType(Qt::PreciseTimer);
+    connect(pllTimer,&QTimer::timeout,this,&ConfParam::onPllTick);
+   }
+   // 1ms polling is fine; PLL gate will only allow ~20ms ticks anyway
+   pllTimer->start(1);
   }
 
   QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) { // Upstream command
@@ -123,6 +145,24 @@ class ConfParam : public QObject {
    for (int i=0;i<glGizmo.size();i++) if (glGizmo[i].name==s) { idx=i; break; }
    return idx;
   }
+  
+  void requestQuit() { 
+   {
+     QMutexLocker locker(&mutex);
+     quitPending=true;
+     // unblock all consumers even if no pending tick
+     for (auto &v:eegSweepPending) v=true;
+     eegSweepUpdating=ampCount; // doesn't matter much now; just prevents weird last==0 paths
+   }
+   for (auto *t:threads) if (t) t->requestInterruption();
+   if (pllTimer) pllTimer->stop();
+   if (acqStrmSocket) {
+    acqStrmSocket->blockSignals(true);
+    disconnect(acqStrmSocket,nullptr,this,nullptr);
+    acqStrmSocket->close();
+   }
+   eegSweepWait.wakeAll();
+  }
 
   QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
@@ -133,7 +173,7 @@ class ConfParam : public QObject {
   unsigned int physChnCount,totalChnCount,totalCount; float refGain,bipGain;
 
   QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
-  QVector<bool> eegSweepPending; bool quitPending; unsigned int eegSweepUpdating;
+  QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
 
   unsigned int scrAvailableSamples,scrUpdateSamples; int eegSweepSpeedIdx=0;
   unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegBand; QWaitCondition eegSweepWait;
@@ -164,11 +204,26 @@ class ConfParam : public QObject {
   float erpRejBwd,erpAvgBwd,erpAvgFwd,erpRejFwd; // In terms of milliseconds
   QVector<QColor> rgbPalette;
 
-  std::atomic<quint64> rxFrames{0};
-  std::atomic<quint64> rxBytes{0};
-  std::atomic<quint64> rbDrops{0};   // if you drop-oldest or overwrite
-  std::atomic<quint64> drawFrames{0}; // how many GUI sweeps happened
-  std::atomic<quint64> consFrames{0}; // how many samples consumers pulled
+   // --- PLL/barrier timing (producer-side gate) ---
+  QElapsedTimer pllT;
+  bool   pllInit=false;
+  qint64 pllNextMs=0;          // next allowed wake time in pllT.elapsed() ms domain
+  int    pllTargetPeriodMs=20; // derived from eegSweepRefreshRate (e.g. 20ms @ 50Hz)
+  double pllErrI=0.0;
+
+  // --- perf / logging (producer + consumer) ---
+  std::atomic<quint64> time_okFrames{0};     // successful deserializations
+  std::atomic<quint64> time_badFrames{0};    // deserialize fail OR payLen%frameBytes!=0
+  std::atomic<quint64> wakeIssued{0};        // producer scheduled a tick
+  std::atomic<quint64> wakeGateSkip{0};      // producer wanted to wake but PLL gate blocked
+  std::atomic<quint64> ringOverruns{0};      // if you later add "drop" policy; kept for completeness
+
+  // consumer-side counters (all amps combined)
+  std::atomic<quint64> consTicks{0};         // how many tick renders happened (all amps)
+  std::atomic<quint64> consSamples{0};       // how many samples consumers processed (all amps)
+  std::atomic<quint64> consDrawMsAcc{0};     // accumulated draw ms (all amps)
+
+  QTimer *pllTimer=nullptr;
 
   // --------------------------------------------------------------------------------------
 
@@ -178,10 +233,12 @@ class ConfParam : public QObject {
 
  public slots:
   void onStrmDataReady() {
+   if (quitPending) return;
    static quint64 outerOk=0;
-   static quint64 timeOk=0;
-   static quint64 timeBad=0;
    static qint64 timeLastMsRx=0;
+   static qint64 perfLastMs=0;
+   static quint64 perf_last_ok=0,perf_last_bad=0,perf_last_wake=0,perf_last_skip=0;
+
    static QByteArray inbuf;
    inbuf.append(acqStrmSocket->readAll());
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
@@ -207,7 +264,7 @@ class ConfParam : public QObject {
 
     // fixed-size frames: payLen must be multiple of frameBytes
     if (payLen%frameBytes!=0) {
-     timeBad++;
+     time_badFrames.fetch_add(1,std::memory_order_relaxed);
      inbuf.remove(0,4+payLen);
      continue;
     }
@@ -217,33 +274,109 @@ class ConfParam : public QObject {
      const char *framePtr=pay+i*frameBytes;
      // Wrap without copying
      const QByteArray one=QByteArray::fromRawData(framePtr,frameBytes);
-
      TcpSamplePP s;
-     if (!s.deserialize(one,chnCount)) { timeBad++; continue; }
-     //if (!s.deserializeRaw(framePtr,frameBytes)) { timeBad++; continue; }
-     timeOk++;
+     if (!s.deserialize(one,chnCount)) {
+      time_badFrames.fetch_add(1,std::memory_order_relaxed);
+      continue;
+     }
+     // producer counters
+     time_okFrames.fetch_add(1,std::memory_order_relaxed);
 
-     bool doWake=false;
      {
        QMutexLocker locker(&mutex);
-       tcpBuffer[tcpBufHead%tcpBufSize]=s;
-       tcpBufHead++;
+       tcpBuffer[tcpBufHead%tcpBufSize]=s; tcpBufHead++;
+     } 
 
+/*
+     bool doWake=false; bool gateSkip=false;
+     const qint64 nowPll = pllT.elapsed(); // IMPORTANT: use same time domain as pllNextMs
+     {
+       QMutexLocker locker(&mutex);
+       tcpBuffer[tcpBufHead%tcpBufSize]=s; tcpBufHead++;
        const quint64 avail=tcpBufHead-tcpBufTail;
-       doWake=(avail>=scrAvailableSamples && eegSweepUpdating==0);
-       if (doWake) {
-	//scrUpdateSamples=qMax(1u,eegRate/eegSweepRefreshRate); // 20 at 1kHz/50Hz
-        //eegSweepUpdating=ampCount;
-        for (auto &v:eegSweepPending) v=true;
+       const bool wantWake=(avail>=scrAvailableSamples && eegSweepUpdating==0);
+       if (wantWake) {
+        if (!pllInit) {
+         pllT.start(); pllNextMs=pllT.elapsed()+pllTargetPeriodMs;
+         pllInit=true; gateSkip=true;
+        } else if (nowPll<pllNextMs) {
+         gateSkip=true;
+        } else {
+         eegSweepUpdating=ampCount;
+         for (auto &v:eegSweepPending) v=true;
+         doWake=true;
+         wakeIssued.fetch_add(1,std::memory_order_relaxed);
+         // advance gate (no catch-up storm)
+         pllNextMs=nowPll+pllTargetPeriodMs;
+        }
        }
      }
+     if (gateSkip) wakeGateSkip.fetch_add(1,std::memory_order_relaxed);
      if (doWake) eegSweepWait.wakeAll();
+*/
     }
-
-    // now discard the outer packet
+    // discard the outer packet
     inbuf.remove(0,4+payLen);
     outerOk++;
    }
+
+   // PERF log 1 Hz (producer-side + ring fill)
+   if (perfLastMs==0) perfLastMs=now;
+   if (now-perfLastMs>=1000) {
+    perfLastMs=now;
+    const quint64 ok=time_okFrames.load(std::memory_order_relaxed);
+    const quint64 bad=time_badFrames.load(std::memory_order_relaxed);
+    const quint64 wk=wakeIssued.load(std::memory_order_relaxed);
+    const quint64 sk=wakeGateSkip.load(std::memory_order_relaxed);
+    quint64 hSnap=0,tSnap=0;
+    {
+      QMutexLocker locker(&mutex);
+      hSnap=tcpBufHead; tSnap=tcpBufTail;
+    }
+    const quint64 used=hSnap-tSnap;
+    const double fillPct=tcpBufSize ? (100.0*double(used)/double(tcpBufSize)):0.0;
+
+    const quint64 d_ok  =ok -perf_last_ok;   perf_last_ok=ok;
+    const quint64 d_bad =bad-perf_last_bad;  perf_last_bad=bad;
+    const quint64 d_wk  =wk -perf_last_wake; perf_last_wake=wk;
+    const quint64 d_sk  =sk -perf_last_skip; perf_last_skip=sk;
+
+    qInfo().noquote()
+     << QString("[TIME:PERF] ok=%1/s bad=%2/s wake=%3/s gateSkip=%4/s ring=%5/%6 (%7%)")
+         .arg((qulonglong)d_ok)
+         .arg((qulonglong)d_bad)
+         .arg((qulonglong)d_wk)
+         .arg((qulonglong)d_sk)
+         .arg((qulonglong)used)
+         .arg((qulonglong)tcpBufSize)
+         .arg(fillPct, 0, 'f', 1);
+   }
+  }
+
+ private slots:
+  void onPllTick() {
+   if (!pllInit) return;
+   if (quitPending) return;
+   bool doWake=false; bool gateSkip=false;
+   const qint64 nowPll=pllT.elapsed();
+   {
+     QMutexLocker locker(&mutex);
+     const quint64 avail=tcpBufHead-tcpBufTail;
+     const bool wantWake=(avail>=scrAvailableSamples) && (eegSweepUpdating==0);
+     if (!wantWake) return;
+     if (nowPll<pllNextMs) {
+      gateSkip=true;
+     } else {
+      eegSweepUpdating=ampCount;
+      for (auto &v:eegSweepPending) v=true;
+      doWake=true;
+      wakeIssued.fetch_add(1,std::memory_order_relaxed);
+      // no catch-up storm
+      pllNextMs=nowPll+pllTargetPeriodMs;
+     }
+   }
+   if (gateSkip) wakeGateSkip.fetch_add(1,std::memory_order_relaxed);
+   if (doWake) eegSweepWait.wakeAll();
   }
 
  private:

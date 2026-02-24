@@ -30,7 +30,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QPainter>
 #include <QStaticText>
 #include <QVector>
+#include <QElapsedTimer>
 #include <thread>
+#include <QDateTime>
 #include "confparam.h"
 #include "../common/sample.h"
 #include "../common/octo_omp.h"
@@ -96,35 +98,28 @@ class EEGThread:public QThread {
    for (int colIdx=0;colIdx<wX.size();++colIdx) wX[colIdx]=w0[colIdx];
   }
 
-  inline bool shouldDrawIdx(unsigned i,unsigned N,int speedIdx) {
-   switch (speedIdx) {
-    case 0: return (i+1==N);           // 1 column
-    case 1: return (i+1==N)||(i+2==N); // 2 columns
-    case 2: return (i%4)==3;           // 5 columns
-    case 3: return (i%2)==1;           // 10 columns
-    case 4:
-    default: return true;              // 20 columns
-   }
-  }
+  void updateBufferTick(quint64 tailSnap,unsigned NSnap) {
+   const unsigned N=NSnap; const quint64 tail=tailSnap;
+   // Snapshot needed params (keep lock held in your current design)
+   const int speedIdx=conf->eegSweepSpeedIdx;
 
-  void updateBufferTick(quint64 baseTail,unsigned N,int speedIdx,float ampX) {
-//   auto shouldDrawIndex=[&](unsigned i) -> bool {
-//    switch (speedIdx) {
-//      case 0: return (i+1==N);           // only last
-//      case 1: return (i+1==N)||(i+2==N); // last two: ...18,19
-//      case 2: return (i%4)==3;           // 3,7,11,15,19
-//      case 3: return (i%2)==1;           // 1,3,...,19
-//      case 4: default: return true;      // all samples
-//    }
-//   };
+   auto shouldDrawIndex=[&](unsigned i) -> bool {
+    switch (speedIdx) {
+      case 0: return (i+1==N);           // only last
+      case 1: return (i+1==N)||(i+2==N); // last two: ...18,19
+      case 2: return (i%4)==3;           // 3,7,11,15,19
+      case 3: return (i%2)==1;           // 1,3,...,19
+      case 4: default: return true;      // all samples
+    }
+   };
 
    sweepPainter.begin(sweepBuffer);
    sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
    // We will draw one column per selected i, advancing wX each time
    for (unsigned i=0;i<N;++i) {
-    if (!shouldDrawIdx(i,N,speedIdx)) continue;
-    const TcpSamplePP &s=(*tcpBuffer)[(baseTail+i)%tcpBufSize];
+    if (!shouldDrawIndex(i)) continue;
+    const TcpSamplePP &s=(*tcpBuffer)[(tail+i)%tcpBufSize];
 
     // Clear cursor lines once per column (per colIdx)
     for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
@@ -139,13 +134,12 @@ class EEGThread:public QThread {
     }
 
     // EEG channels
-    sweepPainter.setPen(Qt::black); float x; int y;
+    sweepPainter.setPen(Qt::black);
     for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
      const unsigned colIdx=chnIdx/chnPerCol;
      const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
-     y=baseY-int(x*chnY*ampX);
-     x=s.amp[ampNo].dataBP[chnIdx]; // for now (2-40)
-     y=baseY-int(x*chnY*conf->eegAmpX[ampNo]);
+     float x=s.amp[ampNo].dataBP[chnIdx]; // for now (2-40)
+     const int y=baseY-int(x*chnY*conf->eegAmpX[ampNo]);
      // draw line from previous to current at this column
      const int x0=wX[colIdx]-1;
      const int x1=wX[colIdx];
@@ -187,37 +181,84 @@ class EEGThread:public QThread {
  protected:
   virtual void run() override {
    while (threadActive) {
-    quint64 baseTail=0; unsigned N=0; int speedIdx=0; float ampX=1.f; quint64 hSnap=0,tSnap=0;
+    quint64 tailSnap; unsigned NSnap;
     {
       QMutexLocker locker(&conf->mutex);
 
       // Sleep until producer signals
-      while (!conf->eegSweepPending[ampNo]) { conf->eegSweepWait.wait(&conf->mutex); }
-
-      if (conf->quitPending) {
-       // consume our token so the producer side doesn't deadlock waiting for us
-       conf->eegSweepPending[ampNo]=false; conf->eegSweepUpdating--;
-       if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
-       hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
-       threadActive=false; //qDebug() << "Thread got the finish signal:" << ampNo;
-      } else {
-       // snapshot what we need, then unlock before painting
-       baseTail=conf->tcpBufTail; N=conf->scrUpdateSamples;
-       speedIdx=conf->eegSweepSpeedIdx; ampX=conf->eegAmpX[ampNo];
-       conf->eegSweepPending[ampNo]=false;
-       conf->eegSweepUpdating--; // semaphore.. kind of..  
-       if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
-       hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
+      //while (!conf->eegSweepPending[ampNo]) { conf->eegSweepWait.wait(&conf->mutex); }
+      while (!conf->eegSweepPending[ampNo] && !conf->quitPending && !isInterruptionRequested()) {
+       conf->eegSweepWait.wait(&conf->mutex);
       }
+
+      if (conf->quitPending || isInterruptionRequested()) { threadActive=false; break; }
+      //if (conf->quitPending) { threadActive=false; break; }
+ 
+      tailSnap=conf->tcpBufTail; NSnap=conf->scrUpdateSamples;
+      conf->eegSweepPending[ampNo]=false; conf->eegSweepUpdating--;
+      const bool last=(conf->eegSweepUpdating==0);
+      if (last) conf->tcpBufTail+=conf->scrUpdateSamples;
     }
-    // Paint independent of mutex
-    updateBufferTick(baseTail,N,speedIdx,ampX);
-    emit updateEEGFrame(); //qDebug() << ampNo << "updated.";
+    QElapsedTimer tDraw; tDraw.start();
 
-    // If this was the last scroller then advance tail..
-    if (conf->eegSweepUpdating==0) conf->tcpBufTail+=conf->scrUpdateSamples;
+    updateBufferTick(tailSnap,NSnap); // no conf->mutex held
 
-    hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
+    const quint64 ms=quint64(tDraw.elapsed());
+    conf->consDrawMsAcc.fetch_add(ms,std::memory_order_relaxed);
+    conf->consTicks.fetch_add(1,std::memory_order_relaxed);
+    conf->consSamples.fetch_add(NSnap,std::memory_order_relaxed);
+
+    emit updateEEGFrame();
+
+    // --- 1 Hz consumer log (print only from ampNo==0 to avoid spam) ---
+    if (ampNo==0) {
+     static qint64 lastMs=0;
+     static quint64 lastTicks=0,lastMsAcc=0,lastCons=0,lastWake=0,lastSkip=0;
+
+     const qint64 nowMs=QDateTime::currentMSecsSinceEpoch();
+     if (lastMs==0) lastMs=nowMs;
+
+     if (nowMs-lastMs>=1000) {
+      lastMs=nowMs;
+
+      const quint64 ticks=conf->consTicks.load(std::memory_order_relaxed);
+      const quint64 msAcc=conf->consDrawMsAcc.load(std::memory_order_relaxed);
+      const quint64 cons=conf->consSamples.load(std::memory_order_relaxed);
+
+      const quint64 wake=conf->wakeIssued.load(std::memory_order_relaxed);
+      const quint64 skip=conf->wakeGateSkip.load(std::memory_order_relaxed);
+
+      const quint64 d_ticks=ticks-lastTicks; lastTicks=ticks;
+      const quint64 d_msAcc=msAcc-lastMsAcc; lastMsAcc=msAcc;
+      const quint64 d_cons=cons-lastCons;    lastCons=cons;
+
+      const quint64 d_wake=wake-lastWake; lastWake=wake;
+      const quint64 d_skip=skip-lastSkip; lastSkip=skip;
+
+      double avgMs=0.0;
+      if (d_ticks>0) avgMs=double(d_msAcc)/double(d_ticks);
+
+      quint64 hSnap=0,tSnap=0;
+      {
+        QMutexLocker locker(&conf->mutex);
+        hSnap=conf->tcpBufHead;
+        tSnap=conf->tcpBufTail;
+      }
+      const quint64 used=hSnap-tSnap;
+      const double fillPct=conf->tcpBufSize ? (100.0*double(used)/double(conf->tcpBufSize)):0.0;
+
+      qInfo().noquote()
+        << QString("[TIME:CONS] ticks=%1/s avgDraw=%2 ms | cons=%3 smp/s | wake=%4/s gateSkip=%5/s | ring=%6/%7 (%8%)")
+             .arg((qulonglong)d_ticks)
+             .arg(avgMs,0,'f',2)
+             .arg((qulonglong)d_cons)
+             .arg((qulonglong)d_wake)
+             .arg((qulonglong)d_skip)
+             .arg((qulonglong)used)
+             .arg((qulonglong)conf->tcpBufSize)
+             .arg(fillPct,0,'f',1);
+     }
+    }
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
   }

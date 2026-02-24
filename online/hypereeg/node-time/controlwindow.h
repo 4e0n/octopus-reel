@@ -167,13 +167,19 @@ class ControlWindow : public QMainWindow {
   }
 
   void slotQuit() {
-   { QMutexLocker locker(&conf->mutex); conf->quitPending=true; }
-
+   conf->requestQuit();
+   for (auto *t:conf->threads)
+    if (t) t->wait();
+//   {
+//     QMutexLocker locker(&conf->mutex);
+//     //conf->quitPending=true;
+//     conf->requestQuit();
+//   }
    if (conf->acqStrmSocket->state() != QAbstractSocket::UnconnectedState)
     conf->acqStrmSocket->waitForDisconnected(1000); // timeout in ms
    //while (conf->acqStrmSocket->state() != QAbstractSocket::UnconnectedState);
 
-   for (auto& thread:conf->threads) { thread->wait(); delete thread; }
+//   for (auto& thread:conf->threads) { thread->wait(); delete thread; }
    
    QApplication::quit();
   }
