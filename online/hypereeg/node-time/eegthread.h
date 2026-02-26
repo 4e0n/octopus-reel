@@ -256,23 +256,22 @@ class EEGThread:public QThread {
       quint64 hSnap=0,tSnap=0;
       {
         QMutexLocker locker(&conf->mutex);
-        hSnap=conf->tcpBufHead;
-        tSnap=conf->tcpBufTail;
+        hSnap=conf->tcpBufHead; tSnap=conf->tcpBufTail;
       }
       const quint64 used=hSnap-tSnap;
       const double fillPct=conf->tcpBufSize ? (100.0*double(used)/double(conf->tcpBufSize)):0.0;
 
       qInfo().noquote()
         << QString("[TIME:CONS] ticks=%1/s avgDraw=%2 ms | cons=%3 smp/s | wake=%4/s gateSkip=%5/s | ring=%6/%7 (%8%) | Ticksamples=%9")
-             .arg((qulonglong)d_ticks)
-             .arg(avgMs,0,'f',2)
-             .arg((qulonglong)d_cons)
-             .arg((qulonglong)d_wake)
-             .arg((qulonglong)d_skip)
-             .arg((qulonglong)used)
-             .arg((qulonglong)conf->tcpBufSize)
-             .arg(fillPct,0,'f',1)
-             .arg(conf->tickSamples);
+            .arg((qulonglong)d_ticks)
+            .arg(avgMs,0,'f',2)
+            .arg((qulonglong)d_cons)
+            .arg((qulonglong)d_wake)
+            .arg((qulonglong)d_skip)
+            .arg((qulonglong)used)
+            .arg((qulonglong)conf->tcpBufSize)
+            .arg(fillPct,0,'f',1)
+            .arg(conf->tickSamples);
      }
     }
    }

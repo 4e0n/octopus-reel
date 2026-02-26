@@ -34,7 +34,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/tcp_commands.h"
-//#include "confparam.h"
 #include "recthread.h"
 
 const QString RECROOTDIR="/opt/octopus/stor/heeg";
@@ -55,7 +54,6 @@ class StorDaemon: public QObject {
    conf->acqStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
 
    conf->acqCommSocket->connectToHost(conf->acqIpAddr,conf->acqCommPort); conf->acqCommSocket->waitForConnected();
-
 
    // Get crucial info from the "master" node we connect to
    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
@@ -149,7 +147,6 @@ class StorDaemon: public QObject {
      qInfo() << "<Comm> Recording on..";
 
      const QString tStamp=QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
-//     const QString base="/opt/octopus/data/" + tStamp;
 
      const QString rootDir=RECROOTDIR;
      const QString recDir=rootDir+"/"+tStamp;

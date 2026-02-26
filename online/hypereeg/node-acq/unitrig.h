@@ -69,7 +69,7 @@ struct UniTrig {
   syncDeadlineLocalIdx=nowLocalIdx+timeoutSamples;
  }
 
- // Call from fetch loop when you see TRIG_AMPSYNC from ampIdx
+ // Call from fetch loop when TRIG_AMPSYNC from ampIdx is seen
  inline bool noteSyncSeen(size_t ampIdx,uint64_t localIdx) {
   if (!syncOngoing.load(std::memory_order_relaxed)) return false;
   if (syncSeenAtAmp[ampIdx]) return false;

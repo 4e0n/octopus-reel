@@ -159,7 +159,7 @@ class AcqDaemon : public QObject {
     }
    } else { // command with parameter
     sList=cmd.split("=");
-    if (sList[0]=="TRIG") {
+    if (sList[0]==CMD_ACQ_TRIGGER) {
      int pos=0;
      if (trigV.validate(sList[1],pos)==QValidator::Acceptable) iParam=sList[1].toInt();
      if (iParam<0xffff) {

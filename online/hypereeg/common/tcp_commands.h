@@ -31,7 +31,7 @@ const QString CMD_ACQ_DISCONNECT="DISCONNECT";
 const QString CMD_ACQ_GETCONF="GETCONF";
 const QString CMD_ACQ_GETCHAN="GETCHAN";
 const QString CMD_ACQ_COMPCHAN="COMPCHAN";
-const QString CMD_ACQ_S_TRIG_1000="STRIG1000";
+//const QString CMD_ACQ_S_TRIG_1000="STRIG1000";
 const QString CMD_ACQ_S_TRIG_1="STRIG1";
 const QString CMD_ACQ_S_TRIG_2="STRIG2";
 const QString CMD_ACQ_DUMPON="DUMP=1";
@@ -39,7 +39,7 @@ const QString CMD_ACQ_DUMPOFF="DUMP=0";
 const QString CMD_ACQ_QUIT="QUIT";
 const QString CMD_ACQ_REBOOT="REBOOT";
 const QString CMD_ACQ_SHUTDOWN="SHUTDOWN";
-//const QString CMD_ACQ_TRIGGER="TRIGGER";
+const QString CMD_ACQ_TRIGGER="TRIG";
 //const QString CMD_ACQ_STOP_EEGSTRM="STOPEEGSTRM";
 
 // node-stor

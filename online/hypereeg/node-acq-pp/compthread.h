@@ -51,8 +51,8 @@ class CompThread : public QThread {
 
 #ifdef _OPENMP
    omp_set_dynamic(0);
-   // On a 4-core machine, start conservative.
-   // 2 is usually safer; 3 if you really dedicate cores to compute.
+   // On a 4-core machine, start conservative
+   // 2 is usually safer; 3 really dedicate cores to compute
    omp_set_num_threads(2);
 #endif
 
@@ -63,8 +63,7 @@ class CompThread : public QThread {
    // Simple guard: when output ring is "near full", pause briefly.
    // This prevents burning CPU while SEND drains.
    const quint64 outNearFullThreshold=(conf->tcpBufSize > quint64(conf->eegSamplesInTick))
-        ? (conf->tcpBufSize-quint64(conf->eegSamplesInTick))
-        : (conf->tcpBufSize);
+        ? (conf->tcpBufSize-quint64(conf->eegSamplesInTick)):(conf->tcpBufSize);
 
    while (!isInterruptionRequested() && !conf->compStop.load()) {
     // 1) Wait for work (blocking)
@@ -78,7 +77,7 @@ class CompThread : public QThread {
       if (conf->compQueue.isEmpty()) continue; // defensive
       cb=std::move(conf->compQueue.dequeue());
       conf->compSpace.wakeOne();
-      // If you also maintain compSpace somewhere, you'd wake it here.
+      // If compSpace is maintained somewhere, it is awaken here.
     }
     // 2) Validate block framing
     const int sz=conf->frameBytesIn;
@@ -123,27 +122,32 @@ class CompThread : public QThread {
       for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
        auto &notch=conf->filterListN[ampIdx][chnIdx];
        auto &bp=conf->filterListBP[ampIdx][chnIdx];
-       //auto &delta=conf->filterListD[ampIdx][chnIdx];
-       //auto &theta=conf->filterListT[ampIdx][chnIdx];
-       //auto &alpha=conf->filterListA[ampIdx][chnIdx];
-       //auto &beta=conf->filterListB[ampIdx][chnIdx];
-       //auto &gamma=conf->filterListG[ampIdx][chnIdx];
+#ifdef EEGBANDSCOMP
+       auto &delta=conf->filterListD[ampIdx][chnIdx];
+       auto &theta=conf->filterListT[ampIdx][chnIdx];
+       auto &alpha=conf->filterListA[ampIdx][chnIdx];
+       auto &beta=conf->filterListB[ampIdx][chnIdx];
+       auto &gamma=conf->filterListG[ampIdx][chnIdx];
+#endif
        const float x=tcpSPP.amp[ampIdx].data[chnIdx];
        const float xN=notch.filterSample(x);
        const float xBP=bp.filterSample(xN);
-       //const float xD=delta.filterSample(xN);
-       //const float xT=theta.filterSample(xN);
-       //const float xA=alpha.filterSample(xN);
-       //const float xB=beta.filterSample(xN);
-       //const float xG=gamma.filterSample(xN);
+#ifdef EEGBANDSCOMP
+       const float xD=delta.filterSample(xN);
+       const float xT=theta.filterSample(xN);
+       const float xA=alpha.filterSample(xN);
+       const float xB=beta.filterSample(xN);
+       const float xG=gamma.filterSample(xN);
+#endif
        tcpSPP.amp[ampIdx].dataN[chnIdx]=xN;
        tcpSPP.amp[ampIdx].dataBP[chnIdx]=xBP;
-       //tcpSPP.amp[ampIdx].dataD[chnIdx]=xBP;
-       //tcpSPP.amp[ampIdx].dataT[chnIdx]=xBP;
-       //tcpSPP.amp[ampIdx].dataA[chnIdx]=xBP;
-       //tcpSPP.amp[ampIdx].dataB[chnIdx]=xBP;
-       //tcpSPP.amp[ampIdx].dataG[chnIdx]=xBP;
-
+#ifdef EEGBANDSCOMP
+       tcpSPP.amp[ampIdx].dataD[chnIdx]=xBP;
+       tcpSPP.amp[ampIdx].dataT[chnIdx]=xBP;
+       tcpSPP.amp[ampIdx].dataA[chnIdx]=xBP;
+       tcpSPP.amp[ampIdx].dataB[chnIdx]=xBP;
+       tcpSPP.amp[ampIdx].dataG[chnIdx]=xBP;
+#endif
        const unsigned interMode=conf->chnInfo[chnIdx].interMode[ampIdx];
        if (interMode==2) {
         float sum=0.f;

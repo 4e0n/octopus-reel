@@ -94,21 +94,27 @@ class ConfParam : public QObject {
 
   void initFilters() {
    filterListBP.resize(ampCount); filterListN.resize(ampCount);
-   //filterListD.resize(ampCount); filterListT.resize(ampCount);
-   //filterListA.resize(ampCount); filterListB.resize(ampCount);
-   //filterListG.resize(ampCount); 
+#ifdef EEGBANDSCOMP
+   filterListD.resize(ampCount); filterListT.resize(ampCount);
+   filterListA.resize(ampCount); filterListB.resize(ampCount);
+   filterListG.resize(ampCount); 
+#endif
    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
     filterListBP[ampIdx].reserve(chnCount); filterListN[ampIdx].reserve(chnCount);
-    //filterListD[ampIdx].reserve(chnCount); filterListT[ampIdx].reserve(chnCount);
-    //filterListA[ampIdx].reserve(chnCount); filterListB[ampIdx].reserve(chnCount);
-    //filterListG[ampIdx].reserve(chnCount);
+#ifdef EEGBANDSCOMP
+    filterListD[ampIdx].reserve(chnCount); filterListT[ampIdx].reserve(chnCount);
+    filterListA[ampIdx].reserve(chnCount); filterListB[ampIdx].reserve(chnCount);
+    filterListG[ampIdx].reserve(chnCount);
+#endif
     for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
 //    filterListBP[ampIdx].emplace_back(b_01_100,a_01_100);
      filterListBP[ampIdx].emplace_back(b_2_40,a_2_40);
      filterListN[ampIdx].emplace_back(b_notch,a_notch);
-     //filterListD[ampIdx].emplace_back(b_delta,a_delta); filterListT[ampIdx].emplace_back(b_theta,a_theta);
-     //filterListA[ampIdx].emplace_back(b_alpha,a_alpha); filterListB[ampIdx].emplace_back(b_beta,a_beta);
-     //filterListG[ampIdx].emplace_back(b_gamma,a_gamma);
+#ifdef EEGBANDSCOMP
+     filterListD[ampIdx].emplace_back(b_delta,a_delta); filterListT[ampIdx].emplace_back(b_theta,a_theta);
+     filterListA[ampIdx].emplace_back(b_alpha,a_alpha); filterListB[ampIdx].emplace_back(b_beta,a_beta);
+     filterListG[ampIdx].emplace_back(b_gamma,a_gamma);
+#endif
     }
    }
   }
@@ -131,7 +137,9 @@ class ConfParam : public QObject {
 
   // IIR filter states and others.. for each channel of the amplifier
   std::vector<std::vector<IIRFilter>> filterListBP,filterListN;
-  //std::vector<std::vector<IIRFilter>> filterListD,filterListT,filterListA,filterListB,filterListG;
+#ifdef EEGBANDSCOMP
+  std::vector<std::vector<IIRFilter>> filterListD,filterListT,filterListA,filterListB,filterListG;
+#endif
 
   // --- compute queue (producer: readyRead, consumer: CompThread)
   QMutex compMutex;
@@ -154,66 +162,53 @@ class ConfParam : public QObject {
 
 public slots:
   void onStrmDataReady() {
-    static QByteArray inbuf;
-    static int rd = 0;
-    static qint64 lastMsLog = 0;
+   static QByteArray inbuf; static int rd=0; static qint64 lastMsLog=0;
+   inbuf.append(acqStrmSocket->readAll());
 
-    inbuf.append(acqStrmSocket->readAll());
+   auto compact_if_needed=[&]() {
+    if (rd>(1<<20) || (rd>0 && rd>inbuf.size()/2)) { inbuf.remove(0,rd); rd=0; }
+   };
 
-    auto compact_if_needed = [&]() {
-      if (rd > (1<<20) || (rd > 0 && rd > inbuf.size()/2)) {
-        inbuf.remove(0, rd);
-        rd = 0;
-      }
-    };
+   static constexpr quint32 MAX_BLOCK=8u*1024u*1024u;
 
-    static constexpr quint32 MAX_BLOCK = 8u*1024u*1024u;
-
-    while ((inbuf.size() - rd) >= 4) {
-      const uchar* p0 = reinterpret_cast<const uchar*>(inbuf.constData() + rd);
-      const quint32 blockSize =
-          (quint32)p0[0] | ((quint32)p0[1] << 8) | ((quint32)p0[2] << 16) | ((quint32)p0[3] << 24);
-
-      if (blockSize == 0 || blockSize > MAX_BLOCK) {
-        rxBadBlocks.fetch_add(1, std::memory_order_relaxed);
-        qWarning() << "[PP:RX] bad blockSize=" << blockSize << "clearing buffer";
-        inbuf.clear();
-        rd = 0;
-        return;
-      }
-
-      if ((inbuf.size() - rd) < (4 + (int)blockSize))
-        break;
-
-      QByteArray block(inbuf.constData() + rd + 4, (int)blockSize); // copy of one block
-      rd += 4 + (int)blockSize;
-
-      rxOuterBlocks.fetch_add(1, std::memory_order_relaxed);
-
-      enqueueCompBlock(std::move(block));
-
-      compact_if_needed();
-
-      const qint64 now = QDateTime::currentMSecsSinceEpoch();
-      if (now - lastMsLog >= 1000) {
-        lastMsLog = now;
-        qInfo().noquote() << QString("[PP:RX] outer=%1 bad=%2 drop=%3 compQ=%4 inbuf=%5 rd=%6")
-                             .arg((qulonglong)rxOuterBlocks.exchange(0))
-                             .arg((qulonglong)rxBadBlocks.load())
-                             .arg((qulonglong)rxDroppedBlocks.load())
-                             .arg(compQueue.size())
-                             .arg(inbuf.size())
-                             .arg(rd);
-      }
+   while ((inbuf.size()-rd)>=4) {
+    const uchar* p0=reinterpret_cast<const uchar*>(inbuf.constData()+rd);
+    const quint32 blockSize=(quint32)p0[0]|((quint32)p0[1]<<8)|((quint32)p0[2]<<16)|((quint32)p0[3]<<24);
+    if (blockSize==0 || blockSize>MAX_BLOCK) {
+     rxBadBlocks.fetch_add(1,std::memory_order_relaxed);
+     qWarning() << "[PP:RX] bad blockSize=" << blockSize << "clearing buffer";
+     inbuf.clear(); rd=0;
+     return;
     }
+    if ((inbuf.size()-rd)<(4+(int)blockSize)) break;
+
+    QByteArray block(inbuf.constData()+rd+4,(int)blockSize); // copy of one block
+    rd+=4+(int)blockSize;
+
+    rxOuterBlocks.fetch_add(1,std::memory_order_relaxed);
+
+    enqueueCompBlock(std::move(block));
 
     compact_if_needed();
+
+    const qint64 now=QDateTime::currentMSecsSinceEpoch();
+    if (now-lastMsLog>=1000) {
+     lastMsLog=now;
+     qInfo().noquote() << QString("[PP:RX] outer=%1 bad=%2 drop=%3 compQ=%4 inbuf=%5 rd=%6")
+                           .arg((qulonglong)rxOuterBlocks.exchange(0))
+                           .arg((qulonglong)rxBadBlocks.load())
+                           .arg((qulonglong)rxDroppedBlocks.load())
+                           .arg(compQueue.size())
+                           .arg(inbuf.size())
+                           .arg(rd);
+    }
+   }
+   compact_if_needed();
   }
 
  private:
-  enum class QueuePolicy { DropOldest, Backpressure };
-
-  QueuePolicy compPolicy = QueuePolicy::DropOldest;
+  enum class QueuePolicy {DropOldest,Backpressure};
+  QueuePolicy compPolicy=QueuePolicy::DropOldest;
 
   std::atomic<quint64> rxOuterBlocks{0};
   std::atomic<quint64> rxBadBlocks{0};
@@ -222,23 +217,18 @@ public slots:
   void enqueueCompBlock(QByteArray &&block)
   {
     QMutexLocker lk(&compMutex);
-
-    if (compPolicy == QueuePolicy::Backpressure) {
-      while (!compStop.load(std::memory_order_relaxed) && compQueue.size() >= compQueueMax) {
-        compSpace.wait(&compMutex);  // consumer must wake this
-      }
-      if (compStop.load(std::memory_order_relaxed)) return;
+    if (compPolicy==QueuePolicy::Backpressure) {
+     while (!compStop.load(std::memory_order_relaxed) && compQueue.size()>=compQueueMax) compSpace.wait(&compMutex);
+                                                                                         // consumer must wake this
+     if (compStop.load(std::memory_order_relaxed)) return;
     } else {
-      // DropOldest: keep most recent blocks, bounded latency
-      while (compQueue.size() >= compQueueMax) {
-        compQueue.dequeue();
-        rxDroppedBlocks.fetch_add(1, std::memory_order_relaxed);
-      }
+     // DropOldest: keep most recent blocks, bounded latency
+     while (compQueue.size() >= compQueueMax) {
+      compQueue.dequeue();
+      rxDroppedBlocks.fetch_add(1,std::memory_order_relaxed);
+     }
     }
-
-    CompBlock cb;
-    cb.buf = std::move(block);
-    cb.off = 0;
+    CompBlock cb; cb.buf=std::move(block); cb.off=0;
     compQueue.enqueue(std::move(cb));
     compReady.wakeOne();
   }

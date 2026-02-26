@@ -42,7 +42,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class AmpWindow : public QMainWindow {
  Q_OBJECT
  public:
-  explicit AmpWindow(unsigned int aNo=0,ConfParam *c=nullptr,QWidget *parent=nullptr) : QMainWindow(parent) {
+  explicit AmpWindow(unsigned int aNo=0,ConfParam *c=nullptr,QWidget *parent=nullptr):QMainWindow(parent) {
    ampNo=aNo; conf=c;
    setGeometry(ampNo*(conf->guiAmpW+10)+conf->guiAmpX,conf->guiAmpY,conf->guiAmpW,conf->guiAmpH);
    setFixedSize(conf->guiAmpW,conf->guiAmpH);

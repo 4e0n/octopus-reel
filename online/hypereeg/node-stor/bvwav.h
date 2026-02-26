@@ -41,20 +41,20 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <math.h>  // lrintf
 
 struct BrainVisionMeta {
-  QStringList channelNames;     // size=nChBV (EEG+optional derived channels)
-  double sampleRateHz=1000.0;   // e.g. 1000
-  QString unit="uV";
-  double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
+ QStringList channelNames;     // size=nChBV (EEG+optional derived channels)
+ double sampleRateHz=1000.0;   // e.g. 1000
+ QString unit="uV";
+ double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
 };
 
 struct WavMeta {
-  int sampleRate=48000;
-  int numChannels=1;            // mono audio
-  // PCM 16-bit LE
+ int sampleRate=48000;
+ int numChannels=1;    // mono audio
+ // PCM 16-bit LE
 };
 
 class BVWav {
-public:
+ public:
   BVWav()=default;
   ~BVWav() { stop(nullptr); }
 
@@ -66,23 +66,20 @@ public:
   bool setup(const QString& filenameBase,const BrainVisionMeta& bvMeta,
              const WavMeta& wavMeta,QString* err=nullptr) {
    reset();
-
    if (bvMeta.channelNames.isEmpty()) return setErr(err,"BV: channelNames empty.");
    if (bvMeta.sampleRateHz<=0.0) return setErr(err,"BV: Requirement not satisfied: sampleRateHz>0.");
    if (wavMeta.sampleRate<=0) return setErr(err,"WAV: Requirement not satisfied: sampleRate>0.");
    if (wavMeta.numChannels<=0) return setErr(err,"WAV: Requirement not satisfied: numChannels>0.");
-
    m_bvMeta=bvMeta; m_nChBV=bvMeta.channelNames.size(); m_wavMeta=wavMeta;
-
    m_base=filenameBase;
    m_vhdrPath=m_base+".vhdr"; m_eegPath=m_base+".eeg"; m_vmrkPath=m_base+".vmrk"; m_wavPath=m_base+".wav";
 
    // Ensure directory exists
    {
-    QFileInfo fi(m_base); QDir dir=fi.dir();
-    if (!dir.exists()) {
-     if (!dir.mkpath(".")) return setErr(err,"Cannot create directory: "+dir.absolutePath());
-    }
+     QFileInfo fi(m_base); QDir dir=fi.dir();
+     if (!dir.exists()) {
+      if (!dir.mkpath(".")) return setErr(err,"Cannot create directory: "+dir.absolutePath());
+     }
    }
 
    // Open EEG (binary)
@@ -122,22 +119,21 @@ public:
 
    // 1) BrainVision: write one frame=nChBVxfloat32
    {
-    const int64_t nBytes=int64_t(m_nChBV)*int64_t(sizeof(float));
-    if (!writeAll(m_fdEeg,bvFrameInterleaved,size_t(nBytes),err,"write .eeg failed")) return false;
-    m_bvFramesWritten++;
+     const int64_t nBytes=int64_t(m_nChBV)*int64_t(sizeof(float));
+     if (!writeAll(m_fdEeg,bvFrameInterleaved,size_t(nBytes),err,"write .eeg failed")) return false;
+     m_bvFramesWritten++;
    }
 
    // 2) WAV: write exactly 48 frames at 48k (per channel interleaved)
    {
-    const int framesPerTick=48;
-    const int ch=m_wavMeta.numChannels;
-    const int samples=framesPerTick*ch;
-    const int64_t nBytes=int64_t(samples)*int64_t(sizeof(int16_t));
-    if (!writeAll(m_fdWav,audio48_i16,size_t(nBytes),err,"write .wav failed")) return false;
-    m_wavFramesWritten+=uint64_t(framesPerTick);
-    m_wavDataBytes+=uint64_t(nBytes);
+     const int framesPerTick=48;
+     const int ch=m_wavMeta.numChannels;
+     const int samples=framesPerTick*ch;
+     const int64_t nBytes=int64_t(samples)*int64_t(sizeof(int16_t));
+     if (!writeAll(m_fdWav,audio48_i16,size_t(nBytes),err,"write .wav failed")) return false;
+     m_wavFramesWritten+=uint64_t(framesPerTick);
+     m_wavDataBytes+=uint64_t(nBytes);
    }
-
    return true;
   }
 
@@ -147,30 +143,26 @@ public:
    if (!m_open) return setErr(err,"writeTick called while not open.");
    if (!bvFrameInterleaved) return setErr(err,"BV frame pointer null.");
    if (!audio48_f32) return setErr(err,"audio48 pointer null.");
-
    // BrainVision frame
    {
-    const int64_t nBytes=int64_t(m_nChBV)*int64_t(sizeof(float));
-    if (!writeAll(m_fdEeg,bvFrameInterleaved,size_t(nBytes),err,"write .eeg failed")) return false;
-    m_bvFramesWritten++;
+     const int64_t nBytes=int64_t(m_nChBV)*int64_t(sizeof(float));
+     if (!writeAll(m_fdEeg,bvFrameInterleaved,size_t(nBytes),err,"write .eeg failed")) return false;
+     m_bvFramesWritten++;
    }
-
    // Convert 48*ch floats -> int16 buffer (stack-friendly small)
    const int framesPerTick=48;
    const int ch=m_wavMeta.numChannels;
    const int samples=framesPerTick*ch;
 
-   int16_t tmp[48*8]; // supports up to 8 channels without heap; adjust if you ever exceed
+   int16_t tmp[48*8]; // supports up to 8 channels without heap
    if (samples>int(sizeof(tmp)/sizeof(tmp[0])))
     return setErr(err,"WAV: too many channels for stack buffer; increase tmp size.");
 
    for (int i=0;i<samples;++i) {
     float x=audio48_f32[i];
-
     // Assuming normalized [-1..+1]:
     if (x>1.0f) x=1.0f;
     if (x<-1.0f) x=-1.0f;
-
     const int v=int(lrintf(x*32767.0f));
     tmp[i]=(v<-32768) ? -32768:(v>32767 ? 32767:int16_t(v));
    }
@@ -209,7 +201,6 @@ public:
    size_t k=0;
    for (size_t i=0;i<N;++i) {
     const TcpSample& t=chunk[i];
-
     // EEG part (132)
     for (size_t a=0;a<ampCount;++a) {
      const Sample& s=t.amp[a];
@@ -217,13 +208,11 @@ public:
       bvBuf[k++]=s.data[c];
      }
     }
-
     // AUD part (48)
     for (size_t j=0;j<48;++j) {
      bvBuf[k++]=t.audioN[j];  // AUD0..AUD47
     }
    }
-
    const int64_t bvBytes=int64_t(bvBuf.size())*int64_t(sizeof(float));
    if (!writeAll(m_fdEeg,bvBuf.data(),size_t(bvBytes),err,"write .eeg failed")) return false;
    m_bvFramesWritten+=uint64_t(N);
@@ -321,8 +310,7 @@ public:
   }
 
   static bool setErrno(QString* err,const QString& msg) {
-   const QString full=msg+QString(" (errno=%1: %2)")
-                           .arg(errno).arg(QString::fromLocal8Bit(::strerror(errno)));
+   const QString full=msg+QString(" (errno=%1: %2)").arg(errno).arg(QString::fromLocal8Bit(::strerror(errno)));
    if (err) *err=full;
    return false;
   }
@@ -342,8 +330,7 @@ public:
     if (w<0) {
      if (errno==EINTR) continue;
      if (err) {
-      *err=QString("%1 (errno=%2: %3)")
-            .arg(what).arg(errno).arg(QString::fromLocal8Bit(::strerror(errno)));
+      *err=QString("%1 (errno=%2: %3)").arg(what).arg(errno).arg(QString::fromLocal8Bit(::strerror(errno)));
      }
      return false;
     }
@@ -448,11 +435,11 @@ public:
    auto put16=[&](int off,uint16_t v) { std::memcpy(h+off,&v,2); };
 
    put4(0,"RIFF");
-   put32(4,36);              // placeholder: 36 + dataBytes
+   put32(4,36);     // placeholder: 36+dataBytes
    put4(8,"WAVE");
 
    put4(12,"fmt ");
-   put32(16,16);             // PCM fmt chunk size
+   put32(16,16);    // PCM fmt chunk size
    put16(20,audioFormat);
    put16(22,numCh);
    put32(24,sampleRate);
@@ -461,7 +448,7 @@ public:
    put16(34,bitsPerSample);
 
    put4(36,"data");
-   put32(40,0);              // placeholder dataBytes
+   put32(40,0);     // placeholder dataBytes
 
    return writeAll(m_fdWav,h,sizeof(h),err,"write wav header failed");
   }
@@ -483,7 +470,7 @@ public:
    return true;
   }
 
-private:
+ private:
   BrainVisionMeta m_bvMeta; WavMeta m_wavMeta;
   int m_nChBV=0; QString m_base,m_vhdrPath,m_eegPath,m_vmrkPath,m_wavPath;
   int m_fdEeg=-1; int m_fdVhdr=-1; int m_fdVmrk=-1; int m_fdWav=-1;

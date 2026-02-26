@@ -265,8 +265,8 @@ class AcqThread:public QThread {
       if (tcpDataSize>free) {
        // POLICY CHOICE:
        // A) block until free (true no-overwrite, but risks upstream loss if hardware buffers overflow)
-       // B) -> drop oldest (keeps newest real-time, but you lose historical samples)
-       // C) drop newest (keeps continuity, but you lose current samples)
+       // B) -> drop oldest (keeps newest real-time, but causes losing historical samples)
+       // C) drop newest (keeps continuity, but causes losing current samples)
        const quint64 need=tcpDataSize-free;
        conf->tcpBufTail+=need;
        droppedSamples+=need; // add this counter in ConfParam

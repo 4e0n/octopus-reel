@@ -100,7 +100,7 @@ class ControlWindow : public QMainWindow {
 
    manualTrigButton=new QPushButton("PING",cntWidget);
    manualTrigButton->setGeometry(550,mainTabWidget->height()-54,60,20);
-   connect(manualTrigButton,SIGNAL(clicked()),this,SLOT(slotManualTrig()));
+   connect(manualTrigButton,SIGNAL(clicked()),this,SLOT(slotManualTrig(13)));
 
    synthTrig1Button=new QPushButton("TRIG(1)",cntWidget);
    synthTrig1Button->setGeometry(640,mainTabWidget->height()-54,60,20);
@@ -170,17 +170,8 @@ class ControlWindow : public QMainWindow {
    conf->requestQuit();
    for (auto *t:conf->threads)
     if (t) t->wait();
-//   {
-//     QMutexLocker locker(&conf->mutex);
-//     //conf->quitPending=true;
-//     conf->requestQuit();
-//   }
-   if (conf->acqStrmSocket->state() != QAbstractSocket::UnconnectedState)
+   if (conf->acqStrmSocket->state()!=QAbstractSocket::UnconnectedState)
     conf->acqStrmSocket->waitForDisconnected(1000); // timeout in ms
-   //while (conf->acqStrmSocket->state() != QAbstractSocket::UnconnectedState);
-
-//   for (auto& thread:conf->threads) { thread->wait(); delete thread; }
-   
    QApplication::quit();
   }
 
@@ -195,7 +186,7 @@ class ControlWindow : public QMainWindow {
   }
 
   void slotManualSync() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_AMPSYNC); }
-  void slotManualTrig() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_1000); }
+  void slotManualTrig(int trig) { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_TRIGGER+"="+QString::number(trig)); }
   void slotSynthTrig1() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_1); }
   void slotSynthTrig2() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_2); }
 

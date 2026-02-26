@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/node-stor-web.py
+ExecStart=/opt/octopus/bin/node-stor-web.py
 Restart=always
 RestartSec=2
 User=octopus

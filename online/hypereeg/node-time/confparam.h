@@ -60,17 +60,15 @@ class ConfParam : public QObject {
   void initMultiAmp(int ampC=0) {
    ampCount=ampC; eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
    eegSweepPending.resize(ampCount); for (auto &v:eegSweepPending) v=false;
-   // tick window (keep your existing logic/values)
+   // tick window (keep existing logic/values)
    scrUpdateSamples=qMax(1u,eegRate/eegSweepRefreshRate);
    scrAvailableSamples=scrUpdateSamples;
    // PLL init (no gating applied yet; Step 2 will use it)
    pllT.start();
    pllTargetPeriodMs=int(1000/qMax(1u,eegSweepRefreshRate));
    pllNextMs=pllT.elapsed()+qint64(1000/qMax(1u,eegSweepRefreshRate)); // ~20ms
-//   pllNextMs=pllT.elapsed()+pllTargetPeriodMs;
-   pllErrI=0.0;
-   pllInit=true;
-
+   //pllNextMs=pllT.elapsed()+pllTargetPeriodMs;
+   pllErrI=0.0; pllInit=true;
    if (!pllTimer) {
     pllTimer=new QTimer(this);
     pllTimer->setTimerType(Qt::PreciseTimer);
@@ -175,10 +173,9 @@ class ConfParam : public QObject {
 
   QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
   QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
-
  
   unsigned int tickSamples=0;           // chosen per wake/tick (shared by all consumers)
-  unsigned int scrMaxUpdateSamples=200; // cap per tick (you already added)
+  unsigned int scrMaxUpdateSamples=200; // cap per tick (already added)
   unsigned int scrAvailableSamples,scrUpdateSamples; int eegSweepSpeedIdx=0;
   unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegBand; QWaitCondition eegSweepWait;
 
@@ -210,22 +207,22 @@ class ConfParam : public QObject {
 
    // --- PLL/barrier timing (producer-side gate) ---
   QElapsedTimer pllT;
-  bool   pllInit=false;
-  qint64 pllNextMs=0;          // next allowed wake time in pllT.elapsed() ms domain
-  int    pllTargetPeriodMs=20; // derived from eegSweepRefreshRate (e.g. 20ms @ 50Hz)
+  bool pllInit=false;
+  qint64 pllNextMs=0;       // next allowed wake time in pllT.elapsed() ms domain
+  int pllTargetPeriodMs=20; // derived from eegSweepRefreshRate (e.g. 20ms @ 50Hz)
   double pllErrI=0.0;
 
   // --- perf / logging (producer + consumer) ---
-  std::atomic<quint64> time_okFrames{0};     // successful deserializations
-  std::atomic<quint64> time_badFrames{0};    // deserialize fail OR payLen%frameBytes!=0
-  std::atomic<quint64> wakeIssued{0};        // producer scheduled a tick
-  std::atomic<quint64> wakeGateSkip{0};      // producer wanted to wake but PLL gate blocked
-  std::atomic<quint64> ringOverruns{0};      // if you later add "drop" policy; kept for completeness
+  std::atomic<quint64> time_okFrames{0};  // successful deserializations
+  std::atomic<quint64> time_badFrames{0}; // deserialize fail OR payLen%frameBytes!=0
+  std::atomic<quint64> wakeIssued{0};     // producer scheduled a tick
+  std::atomic<quint64> wakeGateSkip{0};   // producer wanted to wake but PLL gate blocked
+  std::atomic<quint64> ringOverruns{0};   // if a "drop" policy is added later; kept for completeness
 
   // consumer-side counters (all amps combined)
-  std::atomic<quint64> consTicks{0};         // how many tick renders happened (all amps)
-  std::atomic<quint64> consSamples{0};       // how many samples consumers processed (all amps)
-  std::atomic<quint64> consDrawMsAcc{0};     // accumulated draw ms (all amps)
+  std::atomic<quint64> consTicks{0};      // how many tick renders happened (all amps)
+  std::atomic<quint64> consSamples{0};    // how many samples consumers processed (all amps)
+  std::atomic<quint64> consDrawMsAcc{0};  // accumulated draw ms (all amps)
 
   QTimer *pllTimer=nullptr;
 
@@ -285,39 +282,10 @@ class ConfParam : public QObject {
      }
      // producer counters
      time_okFrames.fetch_add(1,std::memory_order_relaxed);
-
      {
        QMutexLocker locker(&mutex);
        tcpBuffer[tcpBufHead%tcpBufSize]=s; tcpBufHead++;
      } 
-
-/*
-     bool doWake=false; bool gateSkip=false;
-     const qint64 nowPll = pllT.elapsed(); // IMPORTANT: use same time domain as pllNextMs
-     {
-       QMutexLocker locker(&mutex);
-       tcpBuffer[tcpBufHead%tcpBufSize]=s; tcpBufHead++;
-       const quint64 avail=tcpBufHead-tcpBufTail;
-       const bool wantWake=(avail>=scrAvailableSamples && eegSweepUpdating==0);
-       if (wantWake) {
-        if (!pllInit) {
-         pllT.start(); pllNextMs=pllT.elapsed()+pllTargetPeriodMs;
-         pllInit=true; gateSkip=true;
-        } else if (nowPll<pllNextMs) {
-         gateSkip=true;
-        } else {
-         eegSweepUpdating=ampCount;
-         for (auto &v:eegSweepPending) v=true;
-         doWake=true;
-         wakeIssued.fetch_add(1,std::memory_order_relaxed);
-         // advance gate (no catch-up storm)
-         pllNextMs=nowPll+pllTargetPeriodMs;
-        }
-       }
-     }
-     if (gateSkip) wakeGateSkip.fetch_add(1,std::memory_order_relaxed);
-     if (doWake) eegSweepWait.wakeAll();
-*/
     }
     // discard the outer packet
     inbuf.remove(0,4+payLen);
@@ -340,20 +308,19 @@ class ConfParam : public QObject {
     const quint64 used=hSnap-tSnap;
     const double fillPct=tcpBufSize ? (100.0*double(used)/double(tcpBufSize)):0.0;
 
-    const quint64 d_ok  =ok -perf_last_ok;   perf_last_ok=ok;
-    const quint64 d_bad =bad-perf_last_bad;  perf_last_bad=bad;
-    const quint64 d_wk  =wk -perf_last_wake; perf_last_wake=wk;
-    const quint64 d_sk  =sk -perf_last_skip; perf_last_skip=sk;
+    const quint64 d_ok=ok-perf_last_ok;    perf_last_ok=ok;
+    const quint64 d_bad=bad-perf_last_bad; perf_last_bad=bad;
+    const quint64 d_wk=wk-perf_last_wake;  perf_last_wake=wk;
+    const quint64 d_sk=sk-perf_last_skip;  perf_last_skip=sk;
 
-    qInfo().noquote()
-     << QString("[TIME:PERF] ok=%1/s bad=%2/s wake=%3/s gateSkip=%4/s ring=%5/%6 (%7%)")
-         .arg((qulonglong)d_ok)
-         .arg((qulonglong)d_bad)
-         .arg((qulonglong)d_wk)
-         .arg((qulonglong)d_sk)
-         .arg((qulonglong)used)
-         .arg((qulonglong)tcpBufSize)
-         .arg(fillPct, 0, 'f', 1);
+    qInfo().noquote() << QString("[TIME:PERF] ok=%1/s bad=%2/s wake=%3/s gateSkip=%4/s ring=%5/%6 (%7%)")
+     .arg((qulonglong)d_ok)
+     .arg((qulonglong)d_bad)
+     .arg((qulonglong)d_wk)
+     .arg((qulonglong)d_sk)
+     .arg((qulonglong)used)
+     .arg((qulonglong)tcpBufSize)
+     .arg(fillPct,0,'f',1);
    }
   }
 
@@ -365,18 +332,9 @@ class ConfParam : public QObject {
    const qint64 nowPll=pllT.elapsed();
    {
      QMutexLocker locker(&mutex);
-
      const quint64 avail=tcpBufHead-tcpBufTail;
      const bool wantWake=(avail>=scrAvailableSamples) && (eegSweepUpdating==0);
      if (!wantWake) return;
-
-     //if (nowPll<pllNextMs) {
-     // gateSkip=true;
-     //} else {
-     // eegSweepUpdating=ampCount;
-     // for (auto &v:eegSweepPending) v=true;
-     // doWake=true;
- 
      // decide how many samples THIS tick will consume (shared)
      unsigned int n=scrUpdateSamples; // minimum (e.g. 20)
      const unsigned int cap=scrMaxUpdateSamples; // e.g. 200

@@ -83,7 +83,7 @@ inline void run_paced_sender(const Params& p,int payloadBytesPerSample,ShouldSto
  out[2]=char((Lo>>16)&0xff);
  out[3]=char((Lo>>24)&0xff);
 
- int64_t lastLogMs=0;
+ //int64_t lastLogMs=0;
 
  while (!shouldStop()) {
   ts::sleep_until_abs(nextDeadline);

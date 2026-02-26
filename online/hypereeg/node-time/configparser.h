@@ -103,22 +103,6 @@ class ConfigParser {
         return true;
        }
        qDebug() << "node-time:" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
-      //} else if (opts[0].trimmed()=="TIME") {
-      // opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-      // if (opts2.size()==3) {
-      //  QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-      //  conf->timeIpAddr=acqHostInfo.addresses().first().toString();
-      //  conf->timeCommPort=opts2[1].toInt();
-      //  conf->timeStrmPort=opts2[2].toInt();
-      //  if ((!(conf->timeCommPort >= 65000 && conf->timeCommPort < 65999)) || // Simple port validation
-      //      (!(conf->timeStrmPort >= 65000 && conf->timeStrmPort < 65999))) {
-      //   qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid hostname/IP/port settings!";
-      //   return true;
-      //  }
-      // } else {
-      //  qDebug() << "node-time: <ConfigParser> <STRM> ERROR: Invalid count of STRM|OUT params!";
-      //  return true;
-      // }
       } else if (opts[0].trimmed()=="STOR") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==2) {
@@ -188,7 +172,6 @@ class ConfigParser {
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
     conf->frameBytes=sList[10].toInt();
 
-
     // # of data to wait for, to be available for screen plot/sweeper
     // (1000sps/50Hz)/(1000/1000)=20ms=20samples
     conf->scrAvailableSamples=(conf->eegRate/conf->eegSweepRefreshRate)*(conf->eegRate/1000); // 20ms -> 20 sample
@@ -243,7 +226,6 @@ class ConfigParser {
      conf->glGizmoOn[ampIdx]=conf->glElectrodesOn[ampIdx]=true;
      conf->glScalpOn[ampIdx]=conf->glSkullOn[ampIdx]=conf->glBrainOn[ampIdx]=true;
     }
-
 
     // Setup STOR command socket
     conf->storCommSocket->connectToHost(conf->storIpAddr,conf->storCommPort); conf->storCommSocket->waitForConnected();

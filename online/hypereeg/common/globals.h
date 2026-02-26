@@ -23,13 +23,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#define EEMAGINE
+//#define EEMAGINE
 
 //#define EEG_VERBOSE
 #define HSYNC_VERBOSE
 //#define HSYNC_VERBOSE2
 //#define AUDIO_VERBOSE
 #define PLL_VERBOSE
+
+//#define EEGBANDSCOMP
 
 #define OCTO_OMP
 #include "octo_omp.h"

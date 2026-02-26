@@ -48,7 +48,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class RecThread : public QThread {
   Q_OBJECT
  public:
-  explicit RecThread(ConfParam *c,QObject *parent=nullptr) : QThread(parent) {
+  explicit RecThread(ConfParam *c,QObject *parent=nullptr):QThread(parent) {
    conf=c;
    tcpEEG=TcpSample(conf->ampCount,conf->chnCount);
    tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer;
@@ -74,8 +74,8 @@ class RecThread : public QThread {
 
   void requestMarker(QString type,QString desc) { // optional for later
    {
-    QMutexLocker lk(&markerMutex);
-    markerQueue.push_back({std::move(type),std::move(desc)});
+     QMutexLocker lk(&markerMutex);
+     markerQueue.push_back({std::move(type),std::move(desc)});
    }
    markerReq.store(true,std::memory_order_release);
    // Wake the thread so the marker is flushed quickly.
@@ -104,8 +104,10 @@ class RecThread : public QThread {
     // ---- Phase 0: START ----
     if (startReq.exchange(false, std::memory_order_acq_rel)) {
      QString base;
-     { QMutexLocker lk(&cmdMutex); base=pendingBase; }
-
+     {
+       QMutexLocker lk(&cmdMutex);
+       base=pendingBase;
+     }
      // stop any previous run
      if (recOn) {
       QString err;
@@ -113,11 +115,9 @@ class RecThread : public QThread {
       recOn=false;
      }
 
-     BrainVisionMeta bv;
-     bv.sampleRateHz=conf->eegRate; bv.unit="uV"; bv.channelResolution=1.0;
+     BrainVisionMeta bv; bv.sampleRateHz=conf->eegRate; bv.unit="uV"; bv.channelResolution=1.0;
 
-     bv.channelNames.clear();
-     bv.channelNames.reserve(int(conf->ampCount*conf->chnCount+48));
+     bv.channelNames.clear(); bv.channelNames.reserve(int(conf->ampCount*conf->chnCount+48));
      // EEG: amp-major, channel-minor (as you already do)
      for (uint32_t a=0;a<conf->ampCount;++a) for (uint32_t c=0;c<conf->chnCount;++c) {
       bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->chnInfo[c].chnName);
@@ -157,22 +157,20 @@ class RecThread : public QThread {
     {
       QMutexLocker locker(&conf->mutex);
       while (!isInterruptionRequested()) {
-       const quint64 avail = conf->tcpBufHead - conf->tcpBufTail;
-       if (avail >= quint64(N)) break;
+       const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
+       if (avail>=quint64(N)) break;
        //conf->dataReady.wait(&conf->mutex); // no timeout (event-driven) vs. 50ms: avoid pathological sleeps
        conf->dataReady.wait(&conf->mutex,50); // no timeout (event-driven) vs. 50ms: avoid pathological sleeps
       }
       if (isInterruptionRequested()) break;
       // Dont reserve more data; let the top-of-loop STOP handle cleanup.
       if (stopReq.load(std::memory_order_acquire)) continue;
-      tail0 = conf->tcpBufTail;
-      // reserve these N samples NOW
-      conf->tcpBufTail = tail0 + quint64(N);
-      // wake producer (space freed)
-      conf->spaceReady.wakeOne();
+      tail0=conf->tcpBufTail;
+      conf->tcpBufTail=tail0+quint64(N); // reserve N samples NOW
+      conf->spaceReady.wakeOne(); // wake producer (space freed)
     }
     // copy OUTSIDE mutex
-    for (int i=0; i<N; ++i) eegChunk[i] = conf->tcpBuffer[(tail0 + quint64(i)) % conf->tcpBufSize];
+    for (int i=0;i<N;++i) eegChunk[i]=conf->tcpBuffer[(tail0+quint64(i))%conf->tcpBufSize];
 
     // ***ALARM*** (sequence integrity check)
     bool okSeq=true;
@@ -197,8 +195,8 @@ class RecThread : public QThread {
     if (recOn) {
      QElapsedTimer tm; tm.start();
      QString err;
-     const bool ok = recorder.writeChunk_FromTcpSamples(eegChunk, conf->ampCount, conf->chnCount, &err);
-     const qint64 ms = tm.elapsed();
+     const bool ok=recorder.writeChunk_FromTcpSamples(eegChunk,conf->ampCount,conf->chnCount, &err);
+     const qint64 ms=tm.elapsed();
      qInfo().noquote() << QString("[STOR:REC] writeChunk ms=%1 N=%2").arg(ms).arg(N);
      if (!ok) {
       qCritical() << "<RecThread> STOR[REC] writeChunk failed:" << err;
@@ -207,7 +205,7 @@ class RecThread : public QThread {
        qCritical() << "<RecThread> STOR[REC] stop after write failure failed:" << err2;
       recOn=false;
      } else {
-      bvSampleIndex += uint64_t(N);
+      bvSampleIndex+=uint64_t(N);
      }
     }
 
@@ -216,9 +214,12 @@ class RecThread : public QThread {
     if (now-lastMs>=1000) {
      lastMs=now;
      quint64 h,t;
-     { QMutexLocker lk(&conf->mutex); h=conf->tcpBufHead; t=conf->tcpBufTail; }
-       qInfo().noquote() << QString("[STOR:REC] recOn=%1 N=%2 head=%3 tail=%4 ring=%5")
-         .arg(recOn?1:0).arg(N).arg((qulonglong)h).arg((qulonglong)t).arg((qulonglong)(h-t));
+     {
+       QMutexLocker lk(&conf->mutex);
+       h=conf->tcpBufHead; t=conf->tcpBufTail;
+     }
+     qInfo().noquote() << QString("[STOR:REC] recOn=%1 N=%2 head=%3 tail=%4 ring=%5")
+      .arg(recOn?1:0).arg(N).arg((qulonglong)h).arg((qulonglong)t).arg((qulonglong)(h-t));
     }
    }
 
@@ -233,34 +234,23 @@ class RecThread : public QThread {
 
  private:
   ConfParam* conf=nullptr;
-  std::atomic<bool> startReq{false};
-  std::atomic<bool> stopReq{false};
-  QString pendingBase; // guarded by cmdMutex
-  QMutex cmdMutex;
-
+  std::atomic<bool> startReq{false}; std::atomic<bool> stopReq{false};
+  QMutex cmdMutex; QString pendingBase; // -> cmdMutex
   // Recording state owned by this thread
-  bool recOn=false;
-  QString recBase;
+  bool recOn=false; QString recBase;
   uint64_t bvSampleIndex=1; // 1-based for vmrk
   BVWav recorder;
 
   // chunk buffers
-  TcpSample tcpEEG;
-  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
-  int N=0;
-  std::vector<TcpSample> eegChunk;
+  TcpSample tcpEEG; QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
+  int N=0; std::vector<TcpSample> eegChunk;
 
   // for alarms
   qint64 lastOffset=-1;
 
-  struct PendingMarker {
-   QString type;
-   QString desc;
-  };
+  struct PendingMarker { QString type; QString desc; };
 
-  QMutex markerMutex;
-  std::deque<PendingMarker> markerQueue;
-  std::atomic<bool> markerReq{false};
+  QMutex markerMutex; std::deque<PendingMarker> markerQueue; std::atomic<bool> markerReq{false};
 
   static quint32 cheapCrc(qint64 off0,qint64 offN,quint32 n) {
    quint64 x=(quint64)off0^((quint64)offN<<1)^((quint64)n<<32)^0x9e3779b97f4a7c15ULL;

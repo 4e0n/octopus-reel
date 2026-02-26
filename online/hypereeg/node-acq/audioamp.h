@@ -159,7 +159,7 @@ struct AudioAmp {
    qInfo() << "<AudioAmp> Opened PCM name =" << snd_pcm_name(handle);
    qInfo() << "<AudioAmp> snd_pcm_state=" << snd_pcm_state_name(snd_pcm_state(handle));
 
-//alsa_set_capture_level("CODEC",80);
+   //alsa_set_capture_level("CODEC",80);
 
    snd_pcm_hw_params_t* hw=nullptr;
    snd_pcm_hw_params_alloca(&hw);
@@ -381,7 +381,6 @@ struct AudioAmp {
    }
 
    const double stepUse=(rs_stepEst+rs_stepBias)*rs_stepCorr;
-
 
    // ----- Ensure enough input for interpolation -----
    const double needEndPos=std::floor(rs_srcPos+stepUse*(OUT-1))+1.0;

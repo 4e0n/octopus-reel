@@ -82,7 +82,6 @@ class ConfParam : public QObject {
   static QByteArray inbuf;
   static int rd = 0;
   static qint64 lastMsLog = 0;
-  //static quint64 lastUsed = 0;
 
   inbuf.append(acqStrmSocket->readAll());
 
@@ -98,96 +97,84 @@ class ConfParam : public QObject {
   // One-frame serialized size (raw TcpSample, NOT PP)
   const int frameSz=TcpSample::serializedSizeFor(ampCount,physChnCount);
 
-  while ((inbuf.size() - rd) >= 4) {
-    const uchar* p0 = reinterpret_cast<const uchar*>(inbuf.constData() + rd);
-    const quint32 blockSize =
-      (quint32)p0[0] | ((quint32)p0[1] << 8) | ((quint32)p0[2] << 16) | ((quint32)p0[3] << 24);
+  while ((inbuf.size()-rd)>=4) {
+   const uchar* p0=reinterpret_cast<const uchar*>(inbuf.constData()+rd);
+   const quint32 blockSize=(quint32)p0[0]|((quint32)p0[1]<<8)|((quint32)p0[2]<<16)|((quint32)p0[3]<<24);
 
-    if (blockSize == 0 || blockSize > MAX_BLOCK) {
-      qWarning() << "[STOR:RX] bad blockSize=" << blockSize << "clearing buffer";
-      inbuf.clear();
-      rd = 0;
-      return;
+   if (blockSize==0 || blockSize>MAX_BLOCK) {
+    qWarning() << "[STOR:RX] bad blockSize=" << blockSize << "clearing buffer";
+    inbuf.clear(); rd=0;
+    return;
+   }
+
+   if ((inbuf.size()-rd)<(4+(int)blockSize)) break;
+
+   const char* blockPtr=inbuf.constData()+rd+4;
+   const int blockBytes=(int)blockSize;
+   rd+=4+blockBytes;
+
+   if ((blockBytes%frameSz)!=0) {
+    rxBadBlocks.fetch_add(1,std::memory_order_relaxed);
+    qWarning() << "[STOR:RX] block remainder not multiple of frameSz"
+               << "blockBytes=" << blockBytes << "frameSz=" << frameSz;
+    compact_if_needed();
+    continue;
+   }
+
+   const int frames=blockBytes/frameSz;
+
+   TcpSample tcpS(ampCount,physChnCount);
+   for (int i=0;i<frames;++i) {
+    const char* one=blockPtr+i*frameSz;
+    rxOuterBlocks.fetch_add(1,std::memory_order_relaxed);
+
+    // Use the SAME low-level call style as PP uses (deserializeRaw)
+    if (!tcpS.deserializeRaw(one,frameSz,physChnCount,ampCount)) {
+     // count/log
+     rxFramesBad.fetch_add(1,std::memory_order_relaxed);
+     continue;
     }
+    rxFramesOk.fetch_add(1,std::memory_order_relaxed);
 
-    if ((inbuf.size() - rd) < (4 + (int)blockSize))
-      break;
-
-    const char* blockPtr = inbuf.constData() + rd + 4;
-    const int blockBytes = (int)blockSize;
-    rd += 4 + blockBytes;
-
-    if ((blockBytes % frameSz) != 0) {
-      rxBadBlocks.fetch_add(1, std::memory_order_relaxed);
-      qWarning() << "[STOR:RX] block remainder not multiple of frameSz"
-                 << "blockBytes=" << blockBytes << "frameSz=" << frameSz;
-      compact_if_needed();
-      continue;
+    // Push into ring (NO DROP=wait)
+    {
+      QMutexLocker locker(&mutex);
+      while ((tcpBufHead-tcpBufTail)>=tcpBufSize) spaceReady.wait(&mutex);
+      const quint64 before=tcpBufHead-tcpBufTail;
+      tcpBuffer[tcpBufHead%tcpBufSize]=tcpS; tcpBufHead++;
+      const quint64 after=tcpBufHead-tcpBufTail;
+      if ((before/storChunkSamples)!=(after/storChunkSamples)) dataReady.wakeOne();
     }
+   }
 
-    const int frames = blockBytes / frameSz;
-
-    TcpSample tcpS(ampCount,physChnCount);
-    for (int i = 0; i < frames; ++i) {
-      const char* one = blockPtr + i*frameSz;
-
-      rxOuterBlocks.fetch_add(1, std::memory_order_relaxed);
-
-      // Use the SAME low-level call style as PP uses (deserializeRaw)
-      if (!tcpS.deserializeRaw(one,frameSz,physChnCount,ampCount)) {
-        // count/log
-        rxFramesBad.fetch_add(1, std::memory_order_relaxed);
-        continue;
-      }
-      rxFramesOk.fetch_add(1, std::memory_order_relaxed);
-
-      // Push into ring (NO DROP = wait, as you already designed)
-      {
-        QMutexLocker locker(&mutex);
-        while ((tcpBufHead-tcpBufTail)>=tcpBufSize) {
-          spaceReady.wait(&mutex);
-        }
-        const quint64 before=tcpBufHead-tcpBufTail;
-        tcpBuffer[tcpBufHead%tcpBufSize]=tcpS; tcpBufHead++;
-        const quint64 after=tcpBufHead-tcpBufTail;
-        if ((before/storChunkSamples)!=(after/storChunkSamples)) dataReady.wakeOne();
-      }
+   const qint64 now=QDateTime::currentMSecsSinceEpoch();
+   if (now-lastMsLog>=1000) {
+    lastMsLog=now;
+    static quint64 lastHead=0; static quint64 lastTail=0; quint64 h,t;
+    {
+      QMutexLocker lk(&mutex);
+      h=tcpBufHead; t=tcpBufTail;
     }
-
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - lastMsLog >= 1000) {
-     lastMsLog = now;
-     static quint64 lastHead = 0;
-     static quint64 lastTail = 0;
-     quint64 h, t;
-     {
-       QMutexLocker lk(&mutex);
-       h = tcpBufHead;
-       t = tcpBufTail;
-     }
-       const quint64 used = h - t;
-       const quint64 dh = h - lastHead;
-       const quint64 dt = t - lastTail;
-       lastHead=h; lastTail = t;
-       qInfo().noquote() << QString("[STOR:RATES] dHead=%1 dTail=%2 dUsed=%3 used=%4")
-         .arg((qulonglong)dh)
-         .arg((qulonglong)dt)
-         .arg((qlonglong)dh - (qlonglong)dt)
-         .arg((qulonglong)(h - t));
-       qInfo().noquote() << QString("[STOR:RX] outer=%1 badBlk=%2 ok=%3 bad=%4 inbuf=%5 rd=%6 frameSz=%7 used=%8/%9 (%10%)")
-         .arg((qulonglong)rxOuterBlocks.exchange(0))
-         .arg((qulonglong)rxBadBlocks.load())
-         .arg((qulonglong)rxFramesOk.exchange(0))
-         .arg((qulonglong)rxFramesBad.exchange(0))
-         .arg(inbuf.size())
-         .arg(rd)
-         .arg(frameSz)
-         .arg((qulonglong)used)
-         .arg(tcpBufSize)
-         .arg(100.0 * double(used) / double(tcpBufSize), 0, 'f', 1);
+    const quint64 used=h-t; const quint64 dh=h-lastHead; const quint64 dt=t-lastTail;
+    lastHead=h; lastTail=t;
+    qInfo().noquote() << QString("[STOR:RATES] dHead=%1 dTail=%2 dUsed=%3 used=%4")
+     .arg((qulonglong)dh)
+     .arg((qulonglong)dt)
+     .arg((qlonglong)dh-(qlonglong)dt)
+     .arg((qulonglong)(h-t));
+    qInfo().noquote() << QString("[STOR:RX] outer=%1 badBlk=%2 ok=%3 bad=%4 inbuf=%5 rd=%6 frameSz=%7 used=%8/%9 (%10%)")
+     .arg((qulonglong)rxOuterBlocks.exchange(0))
+     .arg((qulonglong)rxBadBlocks.load())
+     .arg((qulonglong)rxFramesOk.exchange(0))
+     .arg((qulonglong)rxFramesBad.exchange(0))
+     .arg(inbuf.size())
+     .arg(rd)
+     .arg(frameSz)
+     .arg((qulonglong)used)
+     .arg(tcpBufSize)
+     .arg(100.0*double(used)/double(tcpBufSize),0,'f',1);
    }
   }
-
   compact_if_needed();
   if (rd==inbuf.size()) { inbuf.clear(); rd=0; }
  }
