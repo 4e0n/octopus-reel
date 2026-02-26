@@ -51,8 +51,9 @@ struct SamplePP {
  void initSizeOnly(size_t chnCount) {
   trigger=0; offset=0;
   data.resize(chnCount);
-  dataBP.resize(chnCount);
-  dataN.resize(chnCount);
+  dataBP.resize(chnCount); dataN.resize(chnCount);
+  //dataD.resize(chnCount,0.0f); dataT.resize(chnCount,0.0f); dataA.resize(chnCount,0.0f);
+  //dataB.resize(chnCount,0.0f); dataG.resize(chnCount,0.0f);
  }
 
  SamplePP(size_t chnCount=0) { init(chnCount); }
@@ -121,6 +122,11 @@ struct SamplePP {
   std::memcpy(data.data(),  src.data.data(),  src.data.size()*sizeof(float));
   std::memcpy(dataBP.data(),src.dataBP.data(),src.dataBP.size()*sizeof(float));
   std::memcpy(dataN.data(), src.dataN.data(), src.dataN.size()*sizeof(float));
+  //std::memcpy(dataD.data(), src.dataD.data(), src.dataD.size()*sizeof(float));
+  //std::memcpy(dataT.data(), src.dataT.data(), src.dataT.size()*sizeof(float));
+  //std::memcpy(dataA.data(), src.dataA.data(), src.dataA.size()*sizeof(float));
+  //std::memcpy(dataB.data(), src.dataB.data(), src.dataB.size()*sizeof(float));
+  //std::memcpy(dataG.data(), src.dataG.data(), src.dataG.size()*sizeof(float));
   trigger=src.trigger; offset=src.offset;
  }
 };

@@ -31,7 +31,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QDataStream>
 #include <QDir>
-#include "../common/version.h"
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/tcp_commands.h"
@@ -66,16 +65,16 @@ class StorDaemon: public QObject {
    conf->ampCount=sList[0].toInt(); // (ACTUAL) AMPCOUNT
    conf->eegRate=sList[1].toInt();  // EEG SAMPLERATE
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
-   conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
-   //conf->physChnCount=sList[4].toInt();
-   //conf->totalChnCount=sList[5].toInt();
-   //conf->totalCount=sList[6].toInt();
+   conf->physChnCount=sList[4].toInt();
+   conf->totalChnCount=sList[5].toInt();
+   conf->totalCount=sList[6].toInt();
    conf->refGain=sList[7].toFloat();
    conf->bipGain=sList[8].toFloat();
    conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+   conf->frameBytesIn=sList[10].toInt();
 
    // CHANNELS
    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
@@ -87,9 +86,9 @@ class StorDaemon: public QObject {
     sList2=sList[chnIdx].split(",");
     chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
     chn.type=(bool)sList2[6].toInt();
-    conf->chns.append(chn);
+    conf->chnInfo.append(chn);
    }
-   conf->chnCount=conf->chns.size();
+   conf->chnCount=conf->chnInfo.size();
 
    // Constants or calculated global settings upon the ones read from config file
    conf->tcpBuffer=QVector<TcpSample>(conf->tcpBufSize,TcpSample(conf->ampCount,conf->chnCount));
@@ -99,9 +98,9 @@ class StorDaemon: public QObject {
     return true;
    }
 
-   //for (int idx=0;idx<conf->chns.size();idx++) {
+   //for (int idx=0;idx<conf->chnInfo.size();idx++) {
    // QString x="";
-   // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chns[idx].interMode[j])+",");
+   // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
    // qCritical() << x.toUtf8();
    //}
 

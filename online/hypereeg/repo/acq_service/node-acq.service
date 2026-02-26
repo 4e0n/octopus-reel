@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-
 User=octopus
 Group=octopus
 UMask=0002
@@ -21,6 +20,12 @@ Restart=always
 RestartSec=120
 StartLimitIntervalSec=0
 
+# Realtime permissions
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
+AmbientCapabilities=CAP_SYS_NICE CAP_IPC_LOCK
+CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK
+
 # Clean shutdown handling
 KillSignal=SIGTERM
 TimeoutStopSec=10
@@ -31,3 +36,6 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
+
+
+

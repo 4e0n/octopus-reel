@@ -77,7 +77,8 @@ class ConfParam : public QObject {
     connect(pllTimer,&QTimer::timeout,this,&ConfParam::onPllTick);
    }
    // 1ms polling is fine; PLL gate will only allow ~20ms ticks anyway
-   pllTimer->start(1);
+   //pllTimer->start(1);
+   pllTimer->start(pllTargetPeriodMs/2);
   }
 
   QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) { // Upstream command
@@ -175,6 +176,9 @@ class ConfParam : public QObject {
   QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
   QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
 
+ 
+  unsigned int tickSamples=0;           // chosen per wake/tick (shared by all consumers)
+  unsigned int scrMaxUpdateSamples=200; // cap per tick (you already added)
   unsigned int scrAvailableSamples,scrUpdateSamples; int eegSweepSpeedIdx=0;
   unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegBand; QWaitCondition eegSweepWait;
 
@@ -361,19 +365,32 @@ class ConfParam : public QObject {
    const qint64 nowPll=pllT.elapsed();
    {
      QMutexLocker locker(&mutex);
+
      const quint64 avail=tcpBufHead-tcpBufTail;
      const bool wantWake=(avail>=scrAvailableSamples) && (eegSweepUpdating==0);
      if (!wantWake) return;
-     if (nowPll<pllNextMs) {
-      gateSkip=true;
-     } else {
-      eegSweepUpdating=ampCount;
-      for (auto &v:eegSweepPending) v=true;
-      doWake=true;
-      wakeIssued.fetch_add(1,std::memory_order_relaxed);
-      // no catch-up storm
-      pllNextMs=nowPll+pllTargetPeriodMs;
+
+     //if (nowPll<pllNextMs) {
+     // gateSkip=true;
+     //} else {
+     // eegSweepUpdating=ampCount;
+     // for (auto &v:eegSweepPending) v=true;
+     // doWake=true;
+ 
+     // decide how many samples THIS tick will consume (shared)
+     unsigned int n=scrUpdateSamples; // minimum (e.g. 20)
+     const unsigned int cap=scrMaxUpdateSamples; // e.g. 200
+     if (avail>n) {
+      const quint64 capped=(avail>cap) ? cap:avail;
+      n=unsigned(capped);
+      if (n<scrUpdateSamples) n=scrUpdateSamples;
      }
+     tickSamples=n; eegSweepUpdating=ampCount;
+     for (auto &v:eegSweepPending) v=true;
+     doWake=true;
+     wakeIssued.fetch_add(1,std::memory_order_relaxed);
+     // no catch-up storm
+     pllNextMs=nowPll+pllTargetPeriodMs;
    }
    if (gateSkip) wakeGateSkip.fetch_add(1,std::memory_order_relaxed);
    if (doWake) eegSweepWait.wakeAll();

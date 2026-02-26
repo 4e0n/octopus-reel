@@ -32,7 +32,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QtGlobal>
 #include <QDateTime>
 #include <cstdio>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <sys/stat.h>
+#include <linux/ioprio.h>
 #include "../common/globals.h"
 #include "confparam.h"
 #include "configparser.h"
@@ -40,6 +43,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/messagehandler.h"
 
 const QString CFGPATH="/etc/octopus/hypereeg.conf";
+
+static void setIOPriority() {
+ int prio=IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE,0); // best-effort, highest prio
+ syscall(SYS_ioprio_set,IOPRIO_WHO_PROCESS,0,prio);
+}
 
 bool conf_init_pre(ConfParam *conf) { QString cfgPath=CFGPATH;
  if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
@@ -59,7 +67,7 @@ void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
  qInfo() << "Channels Info:";
  qInfo() << "--------------";
- for (auto& chn:conf->chns) qInfo() << chn.physChn << chn.chnName << chn.type;
+ for (auto& chn:conf->chnInfo) qInfo() << chn.physChn << chn.chnName << chn.type;
  qInfo() << "===============================================================";
  qInfo() << "Networking Summary:";
  qInfo() << "-------------------";
@@ -70,6 +78,8 @@ void conf_info(ConfParam *conf) {
 
 int main(int argc,char* argv[]) {
  ConfParam conf;
+
+ setIOPriority();
 
  qInstallMessageHandler(qtMessageHandler);
  setvbuf(stdout,nullptr,_IOLBF,0); // Avoid buffering

@@ -27,6 +27,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutex>
 #include <QDebug>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <cmath>
 #include <atomic>
 #include <deque>
@@ -34,6 +35,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "bvwav.h"
+
+//#include <sched.h>
+//static void setAffinity(int cpu) {
+// cpu_set_t set;
+// CPU_ZERO(&set);
+// CPU_SET(cpu, &set);
+// sched_setaffinity(0,sizeof(set),&set);
+//}
+//setAffinity(2);
 
 class RecThread : public QThread {
   Q_OBJECT
@@ -74,7 +84,9 @@ class RecThread : public QThread {
 
  protected:
   void run() override {
-   N=conf->eegSamplesInTick; eegChunk.resize(N);
+   N=conf->storChunkSamples;
+   //N=conf->eegSamplesInTick;
+   eegChunk.resize(N);
 
    while (!isInterruptionRequested()) {
 
@@ -108,7 +120,7 @@ class RecThread : public QThread {
      bv.channelNames.reserve(int(conf->ampCount*conf->chnCount+48));
      // EEG: amp-major, channel-minor (as you already do)
      for (uint32_t a=0;a<conf->ampCount;++a) for (uint32_t c=0;c<conf->chnCount;++c) {
-      bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->chns[c].chnName);
+      bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->chnInfo[c].chnName);
      }
      // AUD: appended after all EEG channels
      for (int i=0;i<48;++i) {
@@ -140,21 +152,27 @@ class RecThread : public QThread {
      }
     }
 
-    // Phase A (wait for N samples, copy-out under mutex)
+    // Phase A+C (wait for N samples, copy-out under mutex && commit tail under mutex, wake producer)
     quint64 tail0=0;
     {
-     QMutexLocker locker(&conf->mutex);
-     while (!isInterruptionRequested()) {
-      const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
-      if (avail>=(quint64)N) break;
-      conf->dataReady.wait(&conf->mutex,50);
-     }
-     if (isInterruptionRequested()) break;
-
-     tail0=conf->tcpBufTail;
-     for (int i=0; i<N;++i)
-      eegChunk[i]=conf->tcpBuffer[(tail0+i)%conf->tcpBufSize];
+      QMutexLocker locker(&conf->mutex);
+      while (!isInterruptionRequested()) {
+       const quint64 avail = conf->tcpBufHead - conf->tcpBufTail;
+       if (avail >= quint64(N)) break;
+       //conf->dataReady.wait(&conf->mutex); // no timeout (event-driven) vs. 50ms: avoid pathological sleeps
+       conf->dataReady.wait(&conf->mutex,50); // no timeout (event-driven) vs. 50ms: avoid pathological sleeps
+      }
+      if (isInterruptionRequested()) break;
+      // Dont reserve more data; let the top-of-loop STOP handle cleanup.
+      if (stopReq.load(std::memory_order_acquire)) continue;
+      tail0 = conf->tcpBufTail;
+      // reserve these N samples NOW
+      conf->tcpBufTail = tail0 + quint64(N);
+      // wake producer (space freed)
+      conf->spaceReady.wakeOne();
     }
+    // copy OUTSIDE mutex
+    for (int i=0; i<N; ++i) eegChunk[i] = conf->tcpBuffer[(tail0 + quint64(i)) % conf->tcpBufSize];
 
     // ***ALARM*** (sequence integrity check)
     bool okSeq=true;
@@ -177,30 +195,31 @@ class RecThread : public QThread {
 
     // Phase B (write outside mutex)
     if (recOn) {
+     QElapsedTimer tm; tm.start();
      QString err;
-     if (!recorder.writeChunk_FromTcpSamples(eegChunk,conf->ampCount,conf->chnCount,&err)) {
+     const bool ok = recorder.writeChunk_FromTcpSamples(eegChunk, conf->ampCount, conf->chnCount, &err);
+     const qint64 ms = tm.elapsed();
+     qInfo().noquote() << QString("[STOR:REC] writeChunk ms=%1 N=%2").arg(ms).arg(N);
+     if (!ok) {
       qCritical() << "<RecThread> STOR[REC] writeChunk failed:" << err;
-
       QString err2;
       if (!recorder.stop(&err2))
        qCritical() << "<RecThread> STOR[REC] stop after write failure failed:" << err2;
-
       recOn=false;
      } else {
-      bvSampleIndex+=uint64_t(N);
+      bvSampleIndex += uint64_t(N);
      }
     }
 
-    // Phase C (commit tail under mutex, wake producer)
-    bool freed=false;
-    {
-     QMutexLocker locker(&conf->mutex);
-     const quint64 oldTail = conf->tcpBufTail;
-     const quint64 wantTail = tail0 + (quint64)N;
-     if (conf->tcpBufTail < wantTail) conf->tcpBufTail = wantTail;
-     freed = (conf->tcpBufTail != oldTail);
+    static qint64 lastMs=0;
+    const qint64 now=QDateTime::currentMSecsSinceEpoch();
+    if (now-lastMs>=1000) {
+     lastMs=now;
+     quint64 h,t;
+     { QMutexLocker lk(&conf->mutex); h=conf->tcpBufHead; t=conf->tcpBufTail; }
+       qInfo().noquote() << QString("[STOR:REC] recOn=%1 N=%2 head=%3 tail=%4 ring=%5")
+         .arg(recOn?1:0).arg(N).arg((qulonglong)h).arg((qulonglong)t).arg((qulonglong)(h-t));
     }
-    if (freed) conf->spaceReady.wakeOne();
    }
 
    // ---- Shutdown cleanup ----

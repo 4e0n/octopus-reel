@@ -63,7 +63,6 @@ class PPDaemon: public QObject {
    conf->ampCount=sList[0].toInt(); // (ACTUAL) AMPCOUNT
    conf->eegRate=sList[1].toInt();  // EEG SAMPLERATE
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
-   conf->halfTcpBufSize=conf->tcpBufSize/2;  // (for fast-checks of population)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
    conf->physChnCount=sList[4].toInt();

@@ -128,7 +128,7 @@ class ConfigParser {
       opts=sect.split("=");
       if (opts[0].trimmed()=="PAST") {
        conf->tcpBufSize=opts[1].toInt();
-       if (!(conf->tcpBufSize>=5 && conf->tcpBufSize<=20)) {
+       if (!(conf->tcpBufSize>=1 && conf->tcpBufSize<=200)) {
         qCritical() << "<ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
         return true;
        }

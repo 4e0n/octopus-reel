@@ -56,110 +56,139 @@ class ConfParam : public QObject {
   QMutex mutex;
   QWaitCondition dataReady;   // already exists
   QWaitCondition spaceReady;  // NEW: signals that producer can push
-  QVector<StorChnInfo> chns;
+  QVector<StorChnInfo> chnInfo;
 
-  //std::atomic<quint64> tcpBufHead,tcpBufTail;
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSample> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick; float refGain,bipGain;
-
-  std::atomic<bool> recordingActive{false};
-
-  QFile hEEGFile; QDataStream hEEGStream; QString rHour,rMin,rSec;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int physChnCount,totalChnCount,totalCount; int frameBytesIn;
+  float refGain,bipGain;
 
   QTcpServer storCommServer;
 
+  QFile hEEGFile; QDataStream hEEGStream; QString rHour,rMin,rSec;
+  std::atomic<bool> recordingActive{false};
+
+  std::atomic<quint64> rxOuterBlocks{0};
+  std::atomic<quint64> rxBadBlocks{0};
+  std::atomic<quint64> rxFramesOk{0};
+  std::atomic<quint64> rxFramesBad{0};
+
+  unsigned int storChunkSamples=1000; // 1s at 1kHz (tune)
+
  public slots:
-  void onStrmDataReady() {
-   static quint64 prodBlocks=0;
-   static quint64 prodSamples=0;
-   static quint64 prodDeserializeFail=0;
-   static quint64 prodBlocked=0;
-   static qint64 lastBlockLogMs=0;
-   static qint64 lastLogMs=0;
-   //static quint64 lastSamples=0;
-   static QByteArray buffer;
-   static quint64 maxAvail=0;
-   buffer.append(acqStrmSocket->readAll());
 
-   while (buffer.size()>=4) {
-    QDataStream sizeStream(buffer);
-    sizeStream.setByteOrder(QDataStream::LittleEndian);
+ void onStrmDataReady() {
+  static QByteArray inbuf;
+  static int rd = 0;
+  static qint64 lastMsLog = 0;
+  //static quint64 lastUsed = 0;
 
-    quint32 blockSize=0; sizeStream >> blockSize;
+  inbuf.append(acqStrmSocket->readAll());
 
-    if ((quint32)buffer.size()<4u+blockSize) break;
+  auto compact_if_needed = [&]() {
+    if (rd > (1<<20) || (rd > 0 && rd > inbuf.size()/2)) {
+      inbuf.remove(0, rd);
+      rd = 0;
+    }
+  };
 
-    QByteArray block=buffer.mid(4,blockSize);
+  static constexpr quint32 MAX_BLOCK = 8u*1024u*1024u;
 
-    TcpSample tcpS;
-    if (tcpS.deserialize(block,chnCount)) {
-     {
-      QMutexLocker locker(&mutex);
+  // One-frame serialized size (raw TcpSample, NOT PP)
+  const int frameSz=TcpSample::serializedSizeFor(ampCount,physChnCount);
 
-      // NO DROP: wait for free space
-      while ((tcpBufHead - tcpBufTail) >= tcpBufSize) {
-       prodBlocked++;
-       const qint64 nowB = QDateTime::currentMSecsSinceEpoch();
-       if (nowB - lastBlockLogMs >= 1000) {
-        lastBlockLogMs = nowB;
-        qCritical() << "<Producer> STOR[ALARM] RING FULL: producer blocked!"
-                    << "head=" << tcpBufHead
-                    << "tail=" << tcpBufTail
-                    << "used=" << (tcpBufHead - tcpBufTail)
-                    << "bufSize=" << tcpBufSize;
-       }
-       spaceReady.wait(&mutex,5); // or 50, but 5 reduces event-loop freeze
-      }
+  while ((inbuf.size() - rd) >= 4) {
+    const uchar* p0 = reinterpret_cast<const uchar*>(inbuf.constData() + rd);
+    const quint32 blockSize =
+      (quint32)p0[0] | ((quint32)p0[1] << 8) | ((quint32)p0[2] << 16) | ((quint32)p0[3] << 24);
 
-      tcpBuffer[tcpBufHead%tcpBufSize]=tcpS;
-      tcpBufHead++;
-
-      const quint64 availableSamples=tcpBufHead-tcpBufTail;
-      if (availableSamples>maxAvail) maxAvail=availableSamples;
-
-      if (availableSamples>=(quint64)eegSamplesInTick) dataReady.wakeOne();
-     }
-
-     prodBlocks++;
-     prodSamples++;
-
-     const qint64 now=QDateTime::currentMSecsSinceEpoch();
-     if (now-lastLogMs >= 1000) {
-//      const quint64 sps=prodSamples-lastSamples;
-      //lastSamples=prodSamples;
-      lastLogMs=now;
-
-      //quint64 headSnap=0,tailSnap;
-      //availSnap=0;
-      //{
-      // QMutexLocker locker(&mutex);
-      // headSnap=tcpBufHead;
-      // tailSnap=tcpBufTail;
-      // availSnap=headSnap-tailSnap;
-      //}
-
-      //const quint64 maxA=maxAvail;
-      maxAvail=0;
-//      qInfo().noquote()
-//        << QString("<Producer> STOR[PROD] +%1 samp/s, total=%2, blocked=%3, head=%4 tail=%5 avail=%6 lastOff=%7 magic=0x%8 maxAvail=%9")
-//            .arg(sps)
-//            .arg(prodSamples)
-//            .arg(prodBlocked)
-//            .arg(headSnap)
-//            .arg(tailSnap)
-//            .arg(availSnap)
-//            .arg((qulonglong)tcpS.offset)
-//            .arg(QString::number(tcpS.MAGIC,16))
-//            .arg(maxA);
-     }
-    } else {
-      prodDeserializeFail++;
-      if ((prodDeserializeFail%100)==1)
-        qWarning() << "<Producer> STOR[PROD] deserialize failed. count=" << prodDeserializeFail;
+    if (blockSize == 0 || blockSize > MAX_BLOCK) {
+      qWarning() << "[STOR:RX] bad blockSize=" << blockSize << "clearing buffer";
+      inbuf.clear();
+      rd = 0;
+      return;
     }
 
-    buffer.remove(0, 4 + blockSize);
+    if ((inbuf.size() - rd) < (4 + (int)blockSize))
+      break;
+
+    const char* blockPtr = inbuf.constData() + rd + 4;
+    const int blockBytes = (int)blockSize;
+    rd += 4 + blockBytes;
+
+    if ((blockBytes % frameSz) != 0) {
+      rxBadBlocks.fetch_add(1, std::memory_order_relaxed);
+      qWarning() << "[STOR:RX] block remainder not multiple of frameSz"
+                 << "blockBytes=" << blockBytes << "frameSz=" << frameSz;
+      compact_if_needed();
+      continue;
+    }
+
+    const int frames = blockBytes / frameSz;
+
+    TcpSample tcpS(ampCount,physChnCount);
+    for (int i = 0; i < frames; ++i) {
+      const char* one = blockPtr + i*frameSz;
+
+      rxOuterBlocks.fetch_add(1, std::memory_order_relaxed);
+
+      // Use the SAME low-level call style as PP uses (deserializeRaw)
+      if (!tcpS.deserializeRaw(one,frameSz,physChnCount,ampCount)) {
+        // count/log
+        rxFramesBad.fetch_add(1, std::memory_order_relaxed);
+        continue;
+      }
+      rxFramesOk.fetch_add(1, std::memory_order_relaxed);
+
+      // Push into ring (NO DROP = wait, as you already designed)
+      {
+        QMutexLocker locker(&mutex);
+        while ((tcpBufHead-tcpBufTail)>=tcpBufSize) {
+          spaceReady.wait(&mutex);
+        }
+        const quint64 before=tcpBufHead-tcpBufTail;
+        tcpBuffer[tcpBufHead%tcpBufSize]=tcpS; tcpBufHead++;
+        const quint64 after=tcpBufHead-tcpBufTail;
+        if ((before/storChunkSamples)!=(after/storChunkSamples)) dataReady.wakeOne();
+      }
+    }
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - lastMsLog >= 1000) {
+     lastMsLog = now;
+     static quint64 lastHead = 0;
+     static quint64 lastTail = 0;
+     quint64 h, t;
+     {
+       QMutexLocker lk(&mutex);
+       h = tcpBufHead;
+       t = tcpBufTail;
+     }
+       const quint64 used = h - t;
+       const quint64 dh = h - lastHead;
+       const quint64 dt = t - lastTail;
+       lastHead=h; lastTail = t;
+       qInfo().noquote() << QString("[STOR:RATES] dHead=%1 dTail=%2 dUsed=%3 used=%4")
+         .arg((qulonglong)dh)
+         .arg((qulonglong)dt)
+         .arg((qlonglong)dh - (qlonglong)dt)
+         .arg((qulonglong)(h - t));
+       qInfo().noquote() << QString("[STOR:RX] outer=%1 badBlk=%2 ok=%3 bad=%4 inbuf=%5 rd=%6 frameSz=%7 used=%8/%9 (%10%)")
+         .arg((qulonglong)rxOuterBlocks.exchange(0))
+         .arg((qulonglong)rxBadBlocks.load())
+         .arg((qulonglong)rxFramesOk.exchange(0))
+         .arg((qulonglong)rxFramesBad.exchange(0))
+         .arg(inbuf.size())
+         .arg(rd)
+         .arg(frameSz)
+         .arg((qulonglong)used)
+         .arg(tcpBufSize)
+         .arg(100.0 * double(used) / double(tcpBufSize), 0, 'f', 1);
    }
   }
+
+  compact_if_needed();
+  if (rd==inbuf.size()) { inbuf.clear(); rd=0; }
+ }
 };

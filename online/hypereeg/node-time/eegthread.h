@@ -194,10 +194,25 @@ class EEGThread:public QThread {
       if (conf->quitPending || isInterruptionRequested()) { threadActive=false; break; }
       //if (conf->quitPending) { threadActive=false; break; }
  
-      tailSnap=conf->tcpBufTail; NSnap=conf->scrUpdateSamples;
+      tailSnap=conf->tcpBufTail;
+      unsigned int n=conf->scrUpdateSamples; // minimum per tick (e.g. 20)
+      const unsigned int cap=conf->scrMaxUpdateSamples;
+      // dynamic catch-up: consume more if backlog is large
+      const quint64 avail=conf->tcpBufHead-conf->tcpBufTail;
+      if (avail>quint64(n)) {
+       const quint64 want=avail; // “drain all” desire
+       const quint64 capped=(want>cap) ? cap:want;
+       n=(unsigned int)(capped);
+       if (n<conf->scrUpdateSamples) n=conf->scrUpdateSamples;
+      }
+      //NSnap=n;
+      NSnap=conf->tickSamples; // shared decision from producer
+
       conf->eegSweepPending[ampNo]=false; conf->eegSweepUpdating--;
       const bool last=(conf->eegSweepUpdating==0);
-      if (last) conf->tcpBufTail+=conf->scrUpdateSamples;
+
+      //if (last) conf->tcpBufTail+=conf->scrUpdateSamples;
+      if (last) conf->tcpBufTail+=NSnap;
     }
     QElapsedTimer tDraw; tDraw.start();
 
@@ -248,7 +263,7 @@ class EEGThread:public QThread {
       const double fillPct=conf->tcpBufSize ? (100.0*double(used)/double(conf->tcpBufSize)):0.0;
 
       qInfo().noquote()
-        << QString("[TIME:CONS] ticks=%1/s avgDraw=%2 ms | cons=%3 smp/s | wake=%4/s gateSkip=%5/s | ring=%6/%7 (%8%)")
+        << QString("[TIME:CONS] ticks=%1/s avgDraw=%2 ms | cons=%3 smp/s | wake=%4/s gateSkip=%5/s | ring=%6/%7 (%8%) | Ticksamples=%9")
              .arg((qulonglong)d_ticks)
              .arg(avgMs,0,'f',2)
              .arg((qulonglong)d_cons)
@@ -256,7 +271,8 @@ class EEGThread:public QThread {
              .arg((qulonglong)d_skip)
              .arg((qulonglong)used)
              .arg((qulonglong)conf->tcpBufSize)
-             .arg(fillPct,0,'f',1);
+             .arg(fillPct,0,'f',1)
+             .arg(conf->tickSamples);
      }
     }
    }
