@@ -258,7 +258,7 @@ struct AudioAmp {
    constexpr double SLEW_PER_FETCH=0.0015; // ±0.15%per fetch (48 samples)
 
    // Peak detection
-   float peakL=0.0f; int16_t peakR_i16=0;
+   //float peakL=0.0f; int16_t peakR_i16=0;
 
    auto zero_out=[&]{
     for (unsigned i=0;i<OUT;i++) dstN[i]=0.0f; // OUT=48
@@ -469,40 +469,23 @@ struct AudioAmp {
     const double f=pos-double(i0);
 
     // LEFT channel: interpolate -> gain -> clamp
-    const float L0=i16_to_f32(sampleChan(i0,0));
+    const float L0=i16_to_f32(sampleChan(i0+0,0));
     const float L1=i16_to_f32(sampleChan(i0+1,0));
     float L=L0+float(f)*(L1-L0);
-    peakL=std::max(peakL,std::fabs(L));
-
     L*=SWGAIN;
     L=std::clamp(L,-1.0f,1.0f);
     dstN[n]=L;
 
-    // RIGHT channel: interpolate -> gain -> clamp
-    const float R0=i16_to_f32(sampleChan(i0,1));
-    const float R1=i16_to_f32(sampleChan(i0+1,1));
-    float R=R0+float(f)*(R1-R0);
-    R=std::clamp(R,-1.0f,1.0f);
-    const int16_t rr=std::abs(int16_t(R*32768.0));
+    //peakL=std::max(peakL,std::fabs(L));
 
-//    // RIGHT channel: raw int16 peak (for diagnostic)
-//    const int16_t r=sampleChan(i0,1);
-//    const int16_t rr=int16_t(std::abs(int(r)));
-//    //peakR_i16=std::max<int16_t>(peakR_i16,int16_t(std::abs(int(r))));
-
+    // RIGHT channel: raw int16 peak (for diagnostic)
+    const int16_t R0=std::abs(sampleChan(i0+0,1));
+    const int16_t R1=std::abs(sampleChan(i0+1,1));
     // Trigger detect on RIGHT
-    if (conf->triggerPending) {
-     conf->trigVal_r=rr;
-     if (conf->audTrigDebCounter==0 || trigOff==UINT_MAX) {
-      if (rr>=int16_t(threshold)) {
-       trigOff=n;
-       conf->audTrigDebCounter=500;
-      }
-     }
-    }
-
+    if (conf->triggerPending && trigOff==UINT_MAX &&
+        R0>=int16_t(threshold) && R1>=int16_t(threshold)) trigOff=n;
    }
-   if (conf->audTrigDebCounter>0) --conf->audTrigDebCounter;
+   //if (conf->audTrigDebCounter>0) --conf->audTrigDebCounter;
 
    //if (trigOff!=UINT_MAX) {
    // qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << conf->trigVal_r << "/" << threshold;
