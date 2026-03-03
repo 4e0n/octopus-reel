@@ -1,24 +1,26 @@
 [Unit]
 Description=Octopus node-acq (EEG acquisition)
-After=network-online.target
-Wants=network-online.target
+After=network-online.target sound.target dev-snd-controlC1.device
+Wants=network-online.target sound.target dev-snd-controlC1.device
+Requires=dev-snd-controlC1.device
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 User=octopus
 Group=octopus
 UMask=0002
+SupplementaryGroups=octopus audio dialout
 WorkingDirectory=/var/lib/octopus
+Environment=HOME=/var/lib/octopus
+TimeoutStartSec=90
 
-# Give USB Audio a moment to settle during boot
-ExecStartPre=/bin/sleep 15
-
-ExecStart=/opt/octopus/bin/node-acq
-
-# Restart policy: retry forever, calmly
-Restart=always
-RestartSec=120
-StartLimitIntervalSec=0
+# Scheduling
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=20
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
+#Nice=-10
 
 # Realtime permissions
 LimitRTPRIO=99
@@ -26,9 +28,19 @@ LimitMEMLOCK=infinity
 AmbientCapabilities=CAP_SYS_NICE CAP_IPC_LOCK
 CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK
 
-# Clean shutdown handling
+# Give USB Audio a moment to settle during boot
+#ExecStartPre=/bin/sleep 15
+#ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
+ExecStartPre=/usr/bin/udevadm settle
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do /usr/bin/timeout 2s /usr/bin/arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
+ExecStart=/opt/octopus/bin/node-acq
+# Restart policy: retry forever, calmly
+Restart=always
+RestartSec=30
+
+# Clean shutdown
 KillSignal=SIGTERM
-TimeoutStopSec=10
+TimeoutStopSec=20
 
 # Logging
 StandardOutput=journal
@@ -36,6 +48,3 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-
-
-

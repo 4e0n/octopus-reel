@@ -460,8 +460,6 @@ struct AudioAmp {
    };
 
    unsigned trigOff=UINT_MAX;
-   //bool trigUp=false;
-
    const int16_t threshold=(int16_t)conf->audTrigThr;
    double pos=rs_srcPos;
    for (unsigned n=0;n<OUT;++n,pos+=stepUse) {
@@ -475,7 +473,6 @@ struct AudioAmp {
     L*=SWGAIN;
     L=std::clamp(L,-1.0f,1.0f);
     dstN[n]=L;
-
     //peakL=std::max(peakL,std::fabs(L));
 
     // RIGHT channel: raw int16 peak (for diagnostic)
@@ -483,24 +480,22 @@ struct AudioAmp {
     const int16_t R1=std::abs(sampleChan(i0+1,1));
     // Trigger detect on RIGHT
     if (conf->triggerPending && trigOff==UINT_MAX &&
-        R0>=int16_t(threshold) && R1>=int16_t(threshold)) trigOff=n;
+        R0>=int16_t(threshold) && R1>=int16_t(threshold)) {
+     trigOff=n;
+     //qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << R0 << "/" << threshold;
+    }
    }
-   //if (conf->audTrigDebCounter>0) --conf->audTrigDebCounter;
 
-   //if (trigOff!=UINT_MAX) {
-   // qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << conf->trigVal_r << "/" << threshold;
-   //}
-
-#ifdef AUDIO_VERBOSE
-   static uint64_t lastLogNs=0;
-   uint64_t now=now_ns();
-   if (now-lastLogNs>200'000'000ULL) { // 5 Hz
-    qInfo() << "[AUDCHK] peakL=" << peakL
-            << " peakR_i16=" << peakR_i16
-            << " trigOff=" << (trigOff==UINT_MAX ? -1 : int(trigOff));
-    lastLogNs=now;
-   }
-#endif
+//#ifdef AUDIO_VERBOSE
+//   static uint64_t lastLogNs=0;
+//   uint64_t now=now_ns();
+//   if (now-lastLogNs>200'000'000ULL) { // 5 Hz
+//    qInfo() << "[AUDCHK] peakL=" << peakL
+//            << " peakR_i16=" << peakR_i16
+//            << " trigOff=" << (trigOff==UINT_MAX ? -1 : int(trigOff));
+//    lastLogNs=now;
+//   }
+//#endif
 
    rs_srcPos=pos;
    return trigOff;

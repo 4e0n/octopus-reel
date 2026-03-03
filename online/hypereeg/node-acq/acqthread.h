@@ -70,6 +70,7 @@ class AcqThread:public QThread {
    conf=c; eeAmpsOrig=ee; audioAmp=aud; serDev=ser;
 
    uniTrig.init(conf->ampCount);
+   syncSeenAtAmpPivotIdx.assign(conf->ampCount,0);
 
    smp=Sample(conf->physChnCount); tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
    tcpBufSize=conf->tcpBufSize; tcpBuffer=&(conf->tcpBuffer);
@@ -126,7 +127,10 @@ class AcqThread:public QThread {
 #ifdef EEMAGINE
      if (syncOn) {
       if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
-       if (uniTrig.noteSyncSeen(ampIdx,uint64_t(baseIdx)+smpIdx)) {
+       const uint64_t idxAmp=uint64_t(baseIdx)+uint64_t(smpIdx); // amp-local stream index
+       if (uniTrig.noteSyncSeen(ampIdx,idxAmp)) {
+        const uint64_t idxPivot=idxAmp-uint64_t(uniTrig.ampAlignOffset[ampIdx]); // convert to pivot timebase
+        syncSeenAtAmpPivotIdx[ampIdx]=idxPivot;
         qInfo("<AmpSync> SYNC received by AMP#%u @bufidx=%llu",
               unsigned(ampIdx+1),(unsigned long long)uniTrig.syncSeenAtAmpLocalIdx[ampIdx]);
        }
@@ -160,7 +164,7 @@ class AcqThread:public QThread {
         !audSyncSeen && audioTrigOffsets[i]!=UINT_MAX) {
      audSyncSeen=true; audSyncSeenLocalIdx=uint64_t(cBufPivotPrev)+uint64_t(i);
      audSyncSeenOff=unsigned(audioTrigOffsets[i]); // sample index in 0..47
-     qInfo("<AudSync>[AUDIO:TRIG] seen @localIdx=%llu off=%u",(unsigned long long)audSyncSeenLocalIdx,audSyncSeenOff);
+     qInfo("<AudSync>SYNC received by AUDIO @bufIdx=%llu (intra-offset=%u/48)",(unsigned long long)audSyncSeenLocalIdx,audSyncSeenOff);
     }
    }
 
@@ -352,6 +356,7 @@ class AcqThread:public QThread {
    conf->triggerPending=true;
    audSyncSeen=false; audSyncSeenLocalIdx=0; audSyncSeenOff=0;
    const uint64_t syncTimeoutSamples=uint64_t(conf->eegRate)/2; // Timeout=0.5s at 1000 sps
+   std::fill(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end(),0);
    // localIdx "now" must be in same timebase as noteSyncSeen(baseIdx+smpIdx).
    // cBufPivot is min head among amps and is in that baseIdx space.
    uniTrig.beginSync(uint64_t(cBufPivot),syncTimeoutSamples);
@@ -369,11 +374,26 @@ class AcqThread:public QThread {
       for (size_t a=0;a<uniTrig.ampAlignOffset.size();++a) {
        qInfo(" AMP#%u -> +%u",unsigned(a+1),unsigned(uniTrig.ampAlignOffset[a]));
       }
+      if (audSyncSeen) { // ---- Audio alignment (in EEG samples, same convention as amps)
+       const uint64_t minAmpPivot=*std::min_element(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end());
+       const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpPivot);
+       // Convention: +N means "shift forward by N samples"
+       const int64_t audioAlign=-d;
+       qInfo(" AUDIO -> %+lld",(long long)audioAlign);
+      }
+
       qInfo("<AmpSync> SUCCESS in %llusamp",(unsigned long long)(uint64_t(cBufPivot)-uniTrig.syncBeginLocalIdx));
 
       if (audSyncSeen) {
-       const uint64_t minAmpIdx=*std::min_element(uniTrig.syncSeenAtAmpLocalIdx.begin(),uniTrig.syncSeenAtAmpLocalIdx.end());
-       const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpIdx);
+       //const uint64_t minAmpIdx=*std::min_element(uniTrig.syncSeenAtAmpLocalIdx.begin(),uniTrig.syncSeenAtAmpLocalIdx.end());
+       //const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpIdx);
+
+       for (size_t a=0;a<syncSeenAtAmpPivotIdx.size();++a) {
+        if (syncSeenAtAmpPivotIdx[a]==0) qWarning("<AmpSync> AMP#%u pivotIdx not recorded", unsigned(a+1));
+       }
+
+       const uint64_t minAmpPivot=*std::min_element(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end());
+       const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpPivot);
        qInfo("<AudSync> audio-minAmp delta=%lld EEG samples, audioOff=%u",(long long)d,audSyncSeenOff);
       } else {
        qWarning("<AudSync> audio trigger NOT seen in sync window");
@@ -433,6 +453,8 @@ class AcqThread:public QThread {
    audSyncSeen=false;
    audSyncSeenLocalIdx=0;
    audSyncSeenOff=0;
+
+   std::fill(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end(),0);
 
    // Send SYNC
    const uint64_t syncTimeoutSamples=uint64_t(conf->eegRate)/2; // Timeout=0.5s at 1000 sps
@@ -509,7 +531,7 @@ class AcqThread:public QThread {
   bool audSyncSeen=false;
   uint64_t audSyncSeenLocalIdx=0;
   unsigned audSyncSeenOff=0; // 0..47
-
+  std::vector<uint64_t> syncSeenAtAmpPivotIdx; // pivot-time indices of AMPSYNC per amp (debug/diagnostic)
 
   SerialDevice *serDev;
 

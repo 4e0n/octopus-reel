@@ -1,0 +1,4 @@
+#SUBSYSTEM=="tty", KERNEL=="ttyACM*", ENV{ID_VENDOR_ID}=="1b4f", ENV{ID_MODEL_ID}=="9206", MODE="0660", GROUP="octopus", SYMLINK+="octopushsync%n"
+#SUBSYSTEM=="tty", KERNEL=="ttyACM*", ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9206", MODE="0660", GROUP="octopus", SYMLINK+="octopushsync%n"
+#SUBSYSTEM=="tty", KERNEL=="ttyACM*", ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9206", OWNER:="root", GROUP:="octopus", MODE:="0660", SYMLINK+="octopushsync%n", RUN+="/bin/sh -c 'chgrp octopus $env{DEVNAME}; chmod 0660 $env{DEVNAME}'"
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", ENV{ID_VENDOR_ID}=="1b4f", ENV{ID_MODEL_ID}=="9206", SYMLINK+="octopushsync%n"
