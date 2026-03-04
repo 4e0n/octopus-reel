@@ -1,0 +1,45 @@
+[Unit]
+Description=Octopus node-acq-pp (HyperEEG Acquisition Preprocessor Daemon)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=octopus
+Group=octopus
+Umask=0002
+SupplementaryGroups=octopus
+WorkingDirectory=/var/lib/octopus
+Environment=HOME=/var/lib/octopus
+TimeoutStartSec=90
+
+# Scheduling
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=20
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
+#Nice=-10
+
+# Realtime permissions
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
+AmbientCapabilities=CAP_SYS_NICE CAP_IPC_LOCK
+CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK
+
+# Start command
+ExecStart=/opt/octopus/bin/node-acq-pp
+# Retry policy - keep trying forever every 30 seconds
+Restart=always
+RestartSec=30
+StartLimitIntervalSec=0
+
+# Clean shutdown
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

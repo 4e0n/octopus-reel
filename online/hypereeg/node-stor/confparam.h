@@ -80,16 +80,18 @@ class ConfParam : public QObject {
 
  void onStrmDataReady() {
   static QByteArray inbuf;
-  static int rd = 0;
-  static qint64 lastMsLog = 0;
+  static int rd=0;
+#ifdef PLL_VERBOSE
+  static qint64 lastMsLog=0;
+#endif
 
   inbuf.append(acqStrmSocket->readAll());
 
   auto compact_if_needed = [&]() {
-    if (rd > (1<<20) || (rd > 0 && rd > inbuf.size()/2)) {
-      inbuf.remove(0, rd);
-      rd = 0;
-    }
+   if (rd>(1<<20) || (rd>0 && rd>inbuf.size()/2)) {
+    inbuf.remove(0,rd);
+    rd=0;
+   }
   };
 
   static constexpr quint32 MAX_BLOCK = 8u*1024u*1024u;
@@ -147,6 +149,7 @@ class ConfParam : public QObject {
     }
    }
 
+#ifdef PLL_VERBOSE
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
    if (now-lastMsLog>=1000) {
     lastMsLog=now;
@@ -174,6 +177,7 @@ class ConfParam : public QObject {
      .arg(tcpBufSize)
      .arg(100.0*double(used)/double(tcpBufSize),0,'f',1);
    }
+#endif
   }
   compact_if_needed();
   if (rd==inbuf.size()) { inbuf.clear(); rd=0; }

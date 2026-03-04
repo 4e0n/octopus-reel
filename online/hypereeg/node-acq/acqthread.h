@@ -46,6 +46,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <cmath>
 #include <climits>
 #include <atomic>
+#include <sched.h>
 
 #include "confparam.h"
 #include "../common/globals.h"
@@ -352,20 +353,11 @@ class AcqThread:public QThread {
                << " pivPrev=" << cBufPivotPrev << " piv=" << cBufPivot;
    }
 
-   // Send SYNC
-   conf->triggerPending=true;
-   audSyncSeen=false; audSyncSeenLocalIdx=0; audSyncSeenOff=0;
-   const uint64_t syncTimeoutSamples=uint64_t(conf->eegRate)/2; // Timeout=0.5s at 1000 sps
-   std::fill(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end(),0);
-   // localIdx "now" must be in same timebase as noteSyncSeen(baseIdx+smpIdx).
-   // cBufPivot is min head among amps and is in that baseIdx space.
-   uniTrig.beginSync(uint64_t(cBufPivot),syncTimeoutSamples);
-   sendAmpSyncByte();
-   qInfo("<AmpSync> SYNC sent.. timeout=%llusamp", (unsigned long long)syncTimeoutSamples);
-
    while (!isInterruptionRequested()) {
     const bool fd=fetchData(); if (!fd) { ; }
     const bool btb=buildTcpBlock(); if (!btb) { ; }
+
+    if (counter1==conf->eegRate) requestAmpSync(); // Initial Sync (after ~one second)
 
     // 1) If all seen -> finalize
     if (uniTrig.syncOngoing.load(std::memory_order_acquire) && uniTrig.syncSeenAtAmpCount==conf->ampCount && audSyncSeen) {
@@ -385,20 +377,15 @@ class AcqThread:public QThread {
       qInfo("<AmpSync> SUCCESS in %llusamp",(unsigned long long)(uint64_t(cBufPivot)-uniTrig.syncBeginLocalIdx));
 
       if (audSyncSeen) {
-       //const uint64_t minAmpIdx=*std::min_element(uniTrig.syncSeenAtAmpLocalIdx.begin(),uniTrig.syncSeenAtAmpLocalIdx.end());
-       //const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpIdx);
-
        for (size_t a=0;a<syncSeenAtAmpPivotIdx.size();++a) {
         if (syncSeenAtAmpPivotIdx[a]==0) qWarning("<AmpSync> AMP#%u pivotIdx not recorded", unsigned(a+1));
        }
-
        const uint64_t minAmpPivot=*std::min_element(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end());
        const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpPivot);
        qInfo("<AudSync> audio-minAmp delta=%lld EEG samples, audioOff=%u",(long long)d,audSyncSeenOff);
       } else {
        qWarning("<AudSync> audio trigger NOT seen in sync window");
       }
-
       conf->triggerPending=false;
      }
     }
@@ -460,8 +447,6 @@ class AcqThread:public QThread {
    const uint64_t syncTimeoutSamples=uint64_t(conf->eegRate)/2; // Timeout=0.5s at 1000 sps
    // localIdx "now" must be in same timebase as noteSyncSeen(baseIdx+smpIdx).
    // cBufPivot is min head among amps and is in that baseIdx space.
-   //uint64_t nowLocal=uint64_t(cBufPivot); // default
-   //if (!cBufPivotList.empty()) { nowLocal=*std::min_element(cBufPivotList.begin(),cBufPivotList.end()); }
    uniTrig.beginSync(uint64_t(cBufPivot),syncTimeoutSamples); // sets syncOngoing=true, resets arrays
    sendAmpSyncByte(); // actually write to SparkFun/amps
    conf->triggerPending=true;

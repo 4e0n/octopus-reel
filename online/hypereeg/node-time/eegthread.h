@@ -225,6 +225,7 @@ class EEGThread:public QThread {
 
     emit updateEEGFrame();
 
+#ifdef PLL_VERBOSE
     // --- 1 Hz consumer log (print only from ampNo==0 to avoid spam) ---
     if (ampNo==0) {
      static qint64 lastMs=0;
@@ -274,6 +275,7 @@ class EEGThread:public QThread {
             .arg(conf->tickSamples);
      }
     }
+#endif
    }
    qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
   }

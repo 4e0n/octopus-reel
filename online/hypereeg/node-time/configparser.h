@@ -389,8 +389,8 @@ class ConfigParser {
         conf->guiAmpW=opts2[2].toInt(); conf->guiAmpH=opts2[3].toInt();
         if ((!(conf->guiAmpX >= -4000 && conf->guiAmpX <= 4000)) ||
             (!(conf->guiAmpY >= -3000 && conf->guiAmpY <= 3000)) ||
-            (!(conf->guiAmpW >=   400 && conf->guiAmpW <= 4000)) ||
-            (!(conf->guiAmpH >=   800 && conf->guiAmpH <= 4000))) {
+            (!(conf->guiAmpW >=   200 && conf->guiAmpW <= 4000)) ||
+            (!(conf->guiAmpH >=   200 && conf->guiAmpH <= 4000))) {
          qDebug() << "node-time: <ConfigParser> <GUI> <STRM> ERROR: Window size settings not in appropriate range!";
 	 return true;
         }

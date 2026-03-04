@@ -196,8 +196,10 @@ class RecThread : public QThread {
      QElapsedTimer tm; tm.start();
      QString err;
      const bool ok=recorder.writeChunk_FromTcpSamples(eegChunk,conf->ampCount,conf->chnCount, &err);
+#ifdef REC_VERBOSE
      const qint64 ms=tm.elapsed();
      qInfo().noquote() << QString("[STOR:REC] writeChunk ms=%1 N=%2").arg(ms).arg(N);
+#endif
      if (!ok) {
       qCritical() << "<RecThread> STOR[REC] writeChunk failed:" << err;
       QString err2;
@@ -209,6 +211,7 @@ class RecThread : public QThread {
      }
     }
 
+#ifdef REC_VERBOSE
     static qint64 lastMs=0;
     const qint64 now=QDateTime::currentMSecsSinceEpoch();
     if (now-lastMs>=1000) {
@@ -221,6 +224,7 @@ class RecThread : public QThread {
      qInfo().noquote() << QString("[STOR:REC] recOn=%1 N=%2 head=%3 tail=%4 ring=%5")
       .arg(recOn?1:0).arg(N).arg((qulonglong)h).arg((qulonglong)t).arg((qulonglong)(h-t));
     }
+#endif
    }
 
    // ---- Shutdown cleanup ----

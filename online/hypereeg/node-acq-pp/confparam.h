@@ -194,6 +194,7 @@ public slots:
     const qint64 now=QDateTime::currentMSecsSinceEpoch();
     if (now-lastMsLog>=1000) {
      lastMsLog=now;
+#ifdef PLL_VERBOSE
      qInfo().noquote() << QString("[PP:RX] outer=%1 bad=%2 drop=%3 compQ=%4 inbuf=%5 rd=%6")
                            .arg((qulonglong)rxOuterBlocks.exchange(0))
                            .arg((qulonglong)rxBadBlocks.load())
@@ -201,6 +202,7 @@ public slots:
                            .arg(compQueue.size())
                            .arg(inbuf.size())
                            .arg(rd);
+#endif
     }
    }
    compact_if_needed();

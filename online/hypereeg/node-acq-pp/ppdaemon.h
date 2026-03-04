@@ -285,7 +285,9 @@ class PPDaemon: public QObject {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (now - lastTx >= 1000) {
      lastTx = now;
+#ifdef PLL_VERBOSE
      qInfo() << "[PP:TX] bytesToWrite=" << client->bytesToWrite();
+#endif
     }
    }
   }

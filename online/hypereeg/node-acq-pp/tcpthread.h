@@ -126,7 +126,9 @@ protected:
     }
     // 1Hz ring log (no mutex required; uses snapped head/tail)
     static quint64 lastH=0,lastT=0; static qint64 lastMs=0;
+#ifdef PLL_VERBOSE
     log_ring_1hz("PP:SEND",headSnap,tailAfter,lastH,lastT,lastMs);
+#endif
     return true;
    };
 

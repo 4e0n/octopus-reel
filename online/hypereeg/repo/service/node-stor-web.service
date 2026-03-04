@@ -1,5 +1,5 @@
 [Unit]
-Description=Octopus Storage Node ZIP download web helper
+Description=Octopus Storage Server ZIP download web helper
 After=network.target
 
 [Service]

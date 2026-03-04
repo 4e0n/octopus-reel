@@ -215,9 +215,9 @@ class ConfParam : public QObject {
   // --- perf / logging (producer + consumer) ---
   std::atomic<quint64> time_okFrames{0};  // successful deserializations
   std::atomic<quint64> time_badFrames{0}; // deserialize fail OR payLen%frameBytes!=0
+  std::atomic<quint64> ringOverruns{0};   // if a "drop" policy is added later; kept for completeness
   std::atomic<quint64> wakeIssued{0};     // producer scheduled a tick
   std::atomic<quint64> wakeGateSkip{0};   // producer wanted to wake but PLL gate blocked
-  std::atomic<quint64> ringOverruns{0};   // if a "drop" policy is added later; kept for completeness
 
   // consumer-side counters (all amps combined)
   std::atomic<quint64> consTicks{0};      // how many tick renders happened (all amps)
@@ -235,21 +235,26 @@ class ConfParam : public QObject {
  public slots:
   void onStrmDataReady() {
    if (quitPending) return;
+
    static quint64 outerOk=0;
-   static qint64 timeLastMsRx=0;
    static qint64 perfLastMs=0;
+#ifdef PLL_VERBOSE
+   static qint64 timeLastMsRx=0;
    static quint64 perf_last_ok=0,perf_last_bad=0,perf_last_wake=0,perf_last_skip=0;
+#endif
 
    static QByteArray inbuf;
    inbuf.append(acqStrmSocket->readAll());
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
 
+#ifdef PLL_VERBOSE
    // RX backlog log 1 Hz
    if (timeLastMsRx==0) timeLastMsRx=now;
    if (now-timeLastMsRx>=1000) {
     timeLastMsRx=now;
     qInfo().noquote() << QString("[TIME:RX] inbuf=%1 bytes").arg(inbuf.size());
    }
+#endif
 
    while (inbuf.size()>=4) {
     const uchar *p0=reinterpret_cast<const uchar*>(inbuf.constData());
@@ -296,6 +301,7 @@ class ConfParam : public QObject {
    if (perfLastMs==0) perfLastMs=now;
    if (now-perfLastMs>=1000) {
     perfLastMs=now;
+#ifdef PLL_VERBOSE
     const quint64 ok=time_okFrames.load(std::memory_order_relaxed);
     const quint64 bad=time_badFrames.load(std::memory_order_relaxed);
     const quint64 wk=wakeIssued.load(std::memory_order_relaxed);
@@ -305,6 +311,7 @@ class ConfParam : public QObject {
       QMutexLocker locker(&mutex);
       hSnap=tcpBufHead; tSnap=tcpBufTail;
     }
+
     const quint64 used=hSnap-tSnap;
     const double fillPct=tcpBufSize ? (100.0*double(used)/double(tcpBufSize)):0.0;
 
@@ -321,6 +328,7 @@ class ConfParam : public QObject {
      .arg((qulonglong)used)
      .arg((qulonglong)tcpBufSize)
      .arg(fillPct,0,'f',1);
+#endif
    }
   }
 

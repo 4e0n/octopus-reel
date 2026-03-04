@@ -50,7 +50,7 @@ static constexpr unsigned AUDIO_SAMPLE_RATE=48000;
 static constexpr unsigned AUDIO_NUM_CHANNELS=2;    // L: Audio, R: Analog Trigger
 static constexpr unsigned AUDIO_CBUF_SECONDS=10;
 
-const float SWGAIN=2.0f; // Software Audio Gain (multiplier)
+const float SWGAIN=1.0f; // Software Audio Gain (multiplier)
 
 static inline uint64_t now_ns() {
  using namespace std::chrono;
@@ -233,13 +233,14 @@ struct AudioAmp {
    if (handle) { snd_pcm_drop(handle); snd_pcm_close(handle); handle=nullptr; }
   }
 
-  unsigned fetchN(float* dstN,int wait_ms=10) {
+  unsigned fetchN(float* dstN,int wait_ms=20) { // 10ms
    constexpr unsigned OUT=48;
    constexpr unsigned SAFETY_MARGIN=96;
    constexpr unsigned LAG_SOFT_CLAMP=OUT+16;
 
    // ---- Servo tuning ----
-   constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion
+   //constexpr double TARGET_LAG_FRAMES=3.0*OUT; // 144 frames cushion
+   constexpr double TARGET_LAG_FRAMES=10.0*OUT; // 480 frames cushion (10ms)
    constexpr double LAG_DEADBAND=12.0;         // ±12 frames
 
    // PI (very small)
@@ -267,7 +268,8 @@ struct AudioAmp {
    // Init on first call
    if (!rs_inited) {
     const uint64_t prod=audioFrameCounter.load(std::memory_order_acquire);
-    const uint64_t back=512; // ~10.7 ms @ 48 kHz
+    //const uint64_t back=512; // ~10.7 ms @ 48 kHz
+    const uint64_t back=2048; // ~42.7 ms @ 48 kHz
     const uint64_t start=(prod>back)?(prod-back):0;
     rs_lastProd=prod;
     rs_srcPos=double(start);
@@ -482,7 +484,7 @@ struct AudioAmp {
     if (conf->triggerPending && trigOff==UINT_MAX &&
         R0>=int16_t(threshold) && R1>=int16_t(threshold)) {
      trigOff=n;
-     //qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << R0 << "/" << threshold;
+     qInfo() << "<AudioAmp>[TRIG] Audio trigger ->" << R0 << "/" << threshold;
     }
    }
 
