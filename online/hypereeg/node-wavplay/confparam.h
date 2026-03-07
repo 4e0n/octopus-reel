@@ -23,18 +23,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <QDateTime>
+#include <QTcpServer>
 
-static void qtMessageHandler(QtMsgType type,const QMessageLogContext&,const QString& msg) {
- const char* level="INFO";
- switch (type) {
-  case QtDebugMsg:    level="DEBUG"; break;
-  case QtInfoMsg:     level="INFO";  break;
-  case QtWarningMsg:  level="WARN";  break;
-  case QtCriticalMsg: level="ERROR"; break;
-  case QtFatalMsg:    level="FATAL"; break;
- }
- const QByteArray timestamp=QDateTime::currentDateTime().toString(Qt::ISODateWithMs).toUtf8();
- fprintf(stderr,"%s [%s] %s\n",timestamp.constData(),level,msg.toUtf8().constData());
- if (type==QtFatalMsg) { abort(); }
-}
+class ConfParam : public QObject {
+ Q_OBJECT
+ public:
+  ConfParam() {};
+
+  QString wavPlayIpAddr; quint32 wavPlayCommPort; // We're server
+
+  QTcpServer wavPlayCommServer;
+
+  QString wavDir="/opt/octopus/stim/wav"; // default
+  QString alsaDev="octopusdac";           // static ALSA device name
+
+ private:
+};

@@ -23,36 +23,32 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
+// common
+const QString CMD_QUIT="QUIT";
+const QString CMD_REBOOT="REBOOT";
+const QString CMD_SHUTDOWN="SHUTDOWN";
+const QString CMD_DISCONNECT="DISCONNECT";
+const QString CMD_STATUS="STATUS";
+
 // node-acq
 const QString CMD_ACQ_ACQINFO="ACQINFO";
 const QString CMD_ACQ_AMPSYNC="AMPSYNC";
-const QString CMD_ACQ_STATUS="STATUS";
-const QString CMD_ACQ_DISCONNECT="DISCONNECT";
 const QString CMD_ACQ_GETCONF="GETCONF";
 const QString CMD_ACQ_GETCHAN="GETCHAN";
 const QString CMD_ACQ_COMPCHAN="COMPCHAN";
-//const QString CMD_ACQ_S_TRIG_1000="STRIG1000";
 const QString CMD_ACQ_S_TRIG_1="STRIG1";
 const QString CMD_ACQ_S_TRIG_2="STRIG2";
 const QString CMD_ACQ_DUMPON="DUMP=1";
 const QString CMD_ACQ_DUMPOFF="DUMP=0";
-const QString CMD_ACQ_QUIT="QUIT";
-const QString CMD_ACQ_REBOOT="REBOOT";
-const QString CMD_ACQ_SHUTDOWN="SHUTDOWN";
 const QString CMD_ACQ_TRIGGER="TRIG";
 //const QString CMD_ACQ_STOP_EEGSTRM="STOPEEGSTRM";
 
 // node-stor
-const QString CMD_STOR_STATUS="STATUS";
 const QString CMD_STOR_REC_ON="RECSTART";
 const QString CMD_STOR_REC_OFF="RECSTOP";
 
 // node-time
-const QString CMD_TIME_ACQINFO="ACQINFO";
-const QString CMD_TIME_TRIGGER="TRIGGER";
-const QString CMD_TIME_AMPSYNC="AMPSYNC";
-const QString CMD_TIME_STATUS="STATUS";
-const QString CMD_TIME_STOP_EEGSTRM="STOPEEGSTRM";
-const QString CMD_TIME_DISCONNECT="DISCONNECT";
-const QString CMD_TIME_GETCONF="GETCONF";
-const QString CMD_TIME_GETCHAN="GETCHAN";
+const QString CMD_WAVPLAY_PLAY="PLAY";
+const QString CMD_WAVPLAY_STOP="STOP";
+const QString CMD_WAVPLAY_SETSINK="SETSINK";
+const QString CMD_WAVPLAY_LIST="LIST";
