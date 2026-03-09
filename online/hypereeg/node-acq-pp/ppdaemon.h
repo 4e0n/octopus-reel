@@ -212,10 +212,10 @@ class PPDaemon: public QObject {
                     QString::number(ch.type).toUtf8()+","+ \
                     interMode.toUtf8()+"\n");
      }
-    } else if (cmd==CMD_ACQ_STATUS) {
+    } else if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Amp(s) status..";
      client->write("Amp(s) streaming EEG.\n");
-    } else if (cmd==CMD_ACQ_DISCONNECT) { 
+    } else if (cmd==CMD_DISCONNECT) { 
      qInfo() << "<Comm> Disconnecting client..";
      client->write("Disconnecting...\n");
      client->disconnectFromHost();

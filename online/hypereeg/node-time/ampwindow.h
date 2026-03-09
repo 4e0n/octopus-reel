@@ -243,9 +243,9 @@ class AmpWindow : public QMainWindow {
    cmd.append(QString::number(conf->chnInfo[x].type)+",");
    cmd.append(QString::number(conf->chnInfo[x].physChn)+",");
    cmd.append(QString::number(conf->chnInfo[x].interMode[ampNo]));
-   QString commResponse=conf->commandToDaemon(conf->acqCommSocket,cmd.toUtf8());
+   QString commResponse=conf->commandToDaemon(conf->acqPPCommSocket,cmd.toUtf8());
    QStringList sList=commResponse.split(",");
-   //qDebug() << commResponse;
+   //qInfo() << commResponse;
    // Imprint commResponse to current state
    for (int idx=0;idx<conf->chnInfo.size();idx++) {
     conf->chnInfo[idx].interMode[ampNo]=sList[idx].toInt();
@@ -420,13 +420,13 @@ class AmpWindow : public QMainWindow {
 //  void slotLoadReal() {
 //   QString fileName=QFileDialog::getOpenFileName(this,"Load Real Coordset File",".","Object Files (*.orc)");
 //   if (!fileName.isEmpty()) { p->loadReal(fileName); }
-//   else { qDebug("An error has been occured while loading measured coords!"); }
+//   else { qWarning("An error has been occured while loading measured coords!"); }
 //  }
 
 //  void slotSaveReal() {
 //   QString fileName=QFileDialog::getSaveFileName(this,"Save Real Coordset File",".","Object Files (*.orc)");
 //   if (!fileName.isEmpty()) { p->saveReal(fileName+".orc"); }
-//   else { qDebug("An error has been occured while saving measured coords!"); }
+//   else { qWarning("An error has been occured while saving measured coords!"); }
 //  }
 
 //  void slotToggleFrame()     { p->hwFrameV   =(p->hwFrameV)   ? false:true; }

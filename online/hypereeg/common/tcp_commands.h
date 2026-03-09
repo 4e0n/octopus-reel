@@ -41,7 +41,8 @@ const QString CMD_ACQ_S_TRIG_2="STRIG2";
 const QString CMD_ACQ_DUMPON="DUMP=1";
 const QString CMD_ACQ_DUMPOFF="DUMP=0";
 const QString CMD_ACQ_TRIGGER="TRIG";
-//const QString CMD_ACQ_STOP_EEGSTRM="STOPEEGSTRM";
+const QString CMD_ACQ_OPEVT="OPEVT";
+const QString CMD_ACQ_SUBEVT="SUBEVT";
 
 // node-stor
 const QString CMD_STOR_REC_ON="RECSTART";

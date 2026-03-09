@@ -40,7 +40,7 @@ class FramedStreamReader {
                     |((quint32)p0[2]<<16)
                     |((quint32)p0[3]<<24);
     if (Lo>4*1024*1024) { inbuf.clear(); return; } // corruption guard
-    // Drop one byte and resync (or clear buffer; your choice)
+    // Drop one byte and resync (or clear buffer)
     if (Lo>maxPayloadBytes) { inbuf.remove(0,1); continue; }
     if (inbuf.size()<4+(int)Lo) break;
     const char *pay=inbuf.constData()+4;

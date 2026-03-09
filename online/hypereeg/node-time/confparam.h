@@ -124,7 +124,7 @@ class ConfParam : public QObject {
         t[0]=opts2[j*3+0].toInt()-1; t[1]=opts2[j*3+1].toInt()-1; t[2]=opts2[j*3+2].toInt()-1; glGizmo[k].tri.append(t);
        }
       } else { gError=true;
-       qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
+       qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
       }
      } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
       if (opts2.size()%2==0) {
@@ -133,10 +133,10 @@ class ConfParam : public QObject {
 	glGizmo[k].lin.append(ll);
        }
       } else { gError=true;
-       qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
+       qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
       }
      }
-    } else { gError=true; qDebug() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
+    } else { gError=true; qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
    } if (!gError) glGizmoLoaded=true;
   }
 
@@ -155,15 +155,16 @@ class ConfParam : public QObject {
    }
    for (auto *t:threads) if (t) t->requestInterruption();
    if (pllTimer) pllTimer->stop();
-   if (acqStrmSocket) {
-    acqStrmSocket->blockSignals(true);
-    disconnect(acqStrmSocket,nullptr,this,nullptr);
-    acqStrmSocket->close();
+   if (acqPPStrmSocket) {
+    acqPPStrmSocket->blockSignals(true);
+    disconnect(acqPPStrmSocket,nullptr,this,nullptr);
+    acqPPStrmSocket->close();
    }
    eegSweepWait.wakeAll();
   }
 
   QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
+  QString acqPPIpAddr; quint32 acqPPCommPort,acqPPStrmPort; QTcpSocket *acqPPCommSocket,*acqPPStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
   QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize; quint64 tcpBufHead,tcpBufTail; int frameBytes;
@@ -177,7 +178,10 @@ class ConfParam : public QObject {
   unsigned int tickSamples=0;           // chosen per wake/tick (shared by all consumers)
   unsigned int scrMaxUpdateSamples=200; // cap per tick (already added)
   unsigned int scrAvailableSamples,scrUpdateSamples; int eegSweepSpeedIdx=0;
-  unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs,eegBand; QWaitCondition eegSweepWait;
+  unsigned int eegSweepRefreshRate,eegSweepFrameTimeMs; QWaitCondition eegSweepWait;
+#ifdef EEGBANDSCOMP
+  unsigned int eegBand;
+#endif
 
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
   int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
@@ -244,7 +248,7 @@ class ConfParam : public QObject {
 #endif
 
    static QByteArray inbuf;
-   inbuf.append(acqStrmSocket->readAll());
+   inbuf.append(acqPPStrmSocket->readAll());
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
 
 #ifdef PLL_VERBOSE

@@ -83,6 +83,26 @@ class AcqThread:public QThread {
    for (unsigned i=0;i<tcpBufSize;++i) (*tcpBuffer)[i].initSizeOnly(conf->ampCount,conf->physChnCount);
   }
 
+  bool setPendingOpEvt(unsigned int v) {
+   if (v==0) return false;
+   const quint64 now=quint64(QDateTime::currentMSecsSinceEpoch());
+   QMutexLocker locker(&evtMutex);
+   if (lastAcceptedOpEvtMs!=0 && (now-lastAcceptedOpEvtMs)<evtRefractoryMs) return false;
+   pendingOpEvt=v; // latest accepted wins
+   lastAcceptedOpEvtMs=now;
+   return true;
+  }
+
+  bool setPendingSubEvt(unsigned int v) {
+   if (v==0) return false;
+   const quint64 now=quint64(QDateTime::currentMSecsSinceEpoch());
+   QMutexLocker locker(&evtMutex);
+   if (lastAcceptedSubEvtMs!=0 && (now-lastAcceptedSubEvtMs)<evtRefractoryMs) return false;
+   pendingSubEvt=v; // latest accepted wins
+   lastAcceptedSubEvtMs=now;
+   return true;
+  }
+
   // --------
 
   // fetchData() defines what's pending
@@ -202,6 +222,11 @@ class AcqThread:public QThread {
 #endif
    for (quint64 i=0;i<tcpDataSize;++i) {
     TcpSample &s=(*tcpBuffer)[(start+i)%tcpBufSize];
+ 
+    // Handle Operator and Participant Events
+    unsigned int opEvt=0,subEvt=0;
+    { QMutexLocker locker(&evtMutex); opEvt=pendingOpEvt; pendingOpEvt=0; subEvt=pendingSubEvt; pendingSubEvt=0; }
+    s.opEvt=opEvt; s.subEvt=subEvt;
 
     const unsigned trigOff=audioTrigOffsets[size_t(i)];
     s.audioTrigEvent=(trigOff==UINT_MAX) ? 0u:(uint32_t((trigOff&0xFFu)+1u));
@@ -223,8 +248,7 @@ class AcqThread:public QThread {
     }
     const unsigned hwTrig=uniTrig.mergeTriggers(tbuf,unsigned(eeAmps.size()));
     s.trigger=hwTrig;
-    s.userEvent=0;
-
+    
 #ifdef AUDIO_VERBOSE
     static std::vector<int> deltas; static int lastEegTrig=INT_MIN; static int lastAudTrig=INT_MIN;
     const int eegIndex=int(counter0+i); // or (start+i), but be consistent
@@ -527,4 +551,9 @@ class AcqThread:public QThread {
 
   static constexpr int syncCooldownMs=1000; // 1s of SYNC debouncing/cooling
   unsigned int droppedSamples=0;
+
+  // Operator and Participant Event Refractory Periods
+  QMutex evtMutex; unsigned int pendingOpEvt=0; unsigned int pendingSubEvt=0;
+  quint64 lastAcceptedOpEvtMs=0; quint64 lastAcceptedSubEvtMs=0;
+  static constexpr quint64 evtRefractoryMs=1000;
 };

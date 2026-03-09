@@ -37,15 +37,15 @@ struct TcpSample {
  std::vector<Sample> amp;
  float audioN[AUDIO_N];
  unsigned int ampCount=0,chnCount=0;
- unsigned int trigger=0;
- quint32 userEvent=0;
+ unsigned int trigger=0; unsigned int opEvt=0; unsigned int subEvt=0;
  quint32 audioTrigEvent=0;
  int16_t audioNR[AUDIO_N];
 
  TcpSample(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  void init(size_t aCount,size_t cCount) {
-  ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=0;
+  ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=opEvt=subEvt=0;
+  audioTrigEvent=0;
   amp.resize(ampCount); for (auto &s:amp) s.init(chnCount);
   for (size_t i=0;i<AUDIO_N;++i) { audioN[i]=0.f; audioNR[i]=0; }
  }
@@ -54,14 +54,14 @@ struct TcpSample {
   ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; amp.resize(ampCount);
   for (auto& s:amp) s.initSizeOnly(chnCount);
   // audioN contents to be overwritten later
-  trigger=0; offset=0; timestampMs=0;
+  trigger=opEvt=subEvt=0; offset=0; timestampMs=0; audioTrigEvent=0;
  }
 
  static inline int wireSizeBytes(int ampCount,int chnCount) {
-  // header: MAGIC(4)+offset(8)+timestamp(8)+trigger(4)+ampCount(4)=28
+  // header: MAGIC(4)+offset(8)+timestamp(8)+trigger(4)+opEvt(4)+subEvt(4)+ampCount(4)=28+8
   // amp: ampCount*chnCount*float(4)
   // audio: AUDIO_N*float(4)
-  return 28+(ampCount*chnCount*4)+(AUDIO_N*4);
+  return 28+8+(ampCount*chnCount*4)+(AUDIO_N*4);
  }
 
  bool serializeRaw(char* dst,int cap,int* written=nullptr) const {
@@ -71,13 +71,13 @@ struct TcpSample {
   wr_u32_le(p,MAGIC);
   wr_u64_le(p,offset);
   wr_u64_le(p,timestampMs);
-  wr_u32_le(p,quint32(trigger));
+  wr_u32_le(p,quint32(trigger)); wr_u32_le(p,quint32(opEvt)); wr_u32_le(p,quint32(subEvt));
   wr_u32_le(p,quint32(ampCount));
   // amps
   for (unsigned a=0;a<ampCount;++a) {
-   // assume amp[a].data size == chnCount
+   // assume amp[a].data size==chnCount
    const auto& v=amp[a].data;
-   // You can keep this assert during stabilization
+   // keep during stabilization
    // Q_ASSERT(v.size() == chnCount);
    for (unsigned c=0;c<chnCount;++c) {
     wr_f32_le(p,v[c]);
@@ -103,7 +103,9 @@ struct TcpSample {
   out.setFloatingPointPrecision(QDataStream::SinglePrecision);
   out << static_cast<quint32>(MAGIC);
   out << static_cast<quint64>(offset) << static_cast<quint64>(timestampMs);
-  out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
+  out << static_cast<quint32>(trigger)
+      << static_cast<quint32>(opEvt) << static_cast<quint32>(subEvt)
+      << static_cast<quint32>(amp.size());
   for (const Sample& s:amp) { s.serialize(out); }
   for (size_t audIndex=0;audIndex<AUDIO_N;audIndex++) { out << static_cast<float>(audioN[audIndex]); }
   return ba;
@@ -111,9 +113,9 @@ struct TcpSample {
 
  // Deterministic size for given shape (matches deserializeRaw layout)
  static inline int serializedSizeFor(size_t aCount,size_t cCount) {
-  return 4            // MAGIC
-       + 8+8          // offset, timestampMs
-       + 4+4          // trigger, ampCount
+  return 4       // MAGIC
+       + 8+8     // offset,timestampMs
+       + 4+4+4+4 // trigger,opEvt,subEvt,ampCount
        + int(aCount)*int(cCount)*4
        + AUDIO_N*4;
  }
@@ -134,7 +136,7 @@ struct TcpSample {
   wr_u32_le(p,MAGIC);
   wr_u64_le(p,quint64(offset));
   wr_u64_le(p,quint64(timestampMs));
-  wr_u32_le(p,quint32(trigger));
+  wr_u32_le(p,quint32(trigger)); wr_u32_le(p,quint32(opEvt)); wr_u32_le(p,quint32(subEvt));
   wr_u32_le(p,aCount);
   // amp floats (same order as Sample::serialize(QDataStream): for each Sample, for each float)
   for (quint32 a=0;a<aCount;++a) {
@@ -156,10 +158,10 @@ struct TcpSample {
 
   const char* p=data; const char* end=data+len;
 
-  auto need=[&](int n) -> bool { return (p + n)<=end; };
+  auto need=[&](int n) -> bool { return (p+n)<=end; };
 
   if (!need(4)) return false; // MAGIC
-  const quint32 magic=rd_u32_le(p); p+=4; if (magic != MAGIC) return false;
+  const quint32 magic=rd_u32_le(p); p+=4; if (magic!=MAGIC) return false;
 
   if (!need(8)) return false; // offset
   offset=rd_u64_le(p); p+=8;
@@ -169,6 +171,10 @@ struct TcpSample {
 
   if (!need(4)) return false; // trigger
   trigger=rd_u32_le(p); p+=4;
+  if (!need(4)) return false; // opEvt
+  opEvt=rd_u32_le(p); p+=4;
+  if (!need(4)) return false; // subEvt
+  subEvt=rd_u32_le(p); p+=4;
 
   if (!need(4)) return false; // ampCount
   const quint32 aCount=rd_u32_le(p); p+=4;

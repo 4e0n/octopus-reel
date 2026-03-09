@@ -87,7 +87,7 @@ class HeadModel {
 //     opts.removeFirst(); p=opts[0].toInt(); c=-1;
 //     for (int i=0;i<acqChannels.size();i++) for (int j=0;j<acqChannels[i].size();j++) {
 //      if (p==acqChannels[i][j]->physChn) { c=i; break; }
-////    if (c!=-1) printf("%d - %d\n",p,c); else qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Channel does not exist!";
+////    if (c!=-1) printf("%d - %d\n",p,c); else qWarning() << "octopus_acq_client: <AcqMaster> <LoadReal> Channel does not exist!";
 //      acqChannels[i][c]->real[0]=opts[1].toFloat();
 //      acqChannels[i][c]->real[1]=opts[2].toFloat();
 //      acqChannels[i][c]->real[2]=opts[3].toFloat();
@@ -95,7 +95,7 @@ class HeadModel {
 //      acqChannels[i][c]->realS[1]=opts[5].toFloat();
 //      acqChannels[i][c]->realS[2]=opts[6].toFloat();
 //     }
-//    } else { qDebug() << "octopus_acq_client: <AcqMaster> <LoadReal> Erroneous real coord file.." << opts.size(); break; }
+//    } else { qWarning() << "octopus_acq_client: <AcqMaster> <LoadReal> Erroneous real coord file.." << opts.size(); break; }
 //   } emit repaintGL(4); // Repaint Real coords
 //  }
 

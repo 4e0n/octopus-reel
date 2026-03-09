@@ -39,7 +39,7 @@ bool readExactN(std::ifstream& ifs, void* dst, std::streamsize n) {
 
 inline int16_t floatToInt16(float x) {
     // Expect input roughly in [-1, 1]. Clip to int16 range.
-    // If your floats are in a different scale, adjust the gain here.
+    // If floats are in a different scale, adjust the gain here.
     const float s = std::max(-1.0f, std::min(1.0f, x));
     const int v = static_cast<int>(std::lrintf(s * 32767.0f));
     // lrintf may return 32768 for s=1.0 due to rounding; clamp.

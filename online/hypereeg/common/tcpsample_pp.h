@@ -38,13 +38,12 @@ struct TcpSamplePP {
  std::vector<SamplePP> amp;
  float audioN[AUDIO_N];
  unsigned int ampCount=0,chnCount=0;
- unsigned int trigger=0;
- quint32 userEvent=0;
+ unsigned int trigger=0; unsigned int opEvt=0; unsigned int subEvt=0;
 
  TcpSamplePP(size_t ampCount=0,size_t chnCount=0) { init(ampCount,chnCount); }
 
  void init(size_t aCount,size_t cCount) {
-  ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=0;
+  ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; offset=0; timestampMs=0; trigger=opEvt=subEvt=0;
   amp.resize(ampCount); for (auto &s:amp) s.init(chnCount);
   for (size_t i=0;i<AUDIO_N;++i) audioN[i]=0.f;
  }
@@ -53,18 +52,22 @@ struct TcpSamplePP {
   ampCount=(unsigned)aCount; chnCount=(unsigned)cCount; amp.resize(ampCount);
   for (auto& s:amp) s.initSizeOnly(chnCount);
   // audioN contents to be overwritten later
-  trigger=0; offset=0; timestampMs=0;
+  trigger=opEvt=subEvt=0; offset=0; timestampMs=0;
  }
  
  static inline int serializedSizeFor(size_t aCount,size_t cCount) {
-  // header: MAGIC(4)+offset(8)+timestamp(8)+trigger(4)+ampCount(4)=28
+  // header: MAGIC(4)+offset(8)+timestamp(8)+trigger(4)+opEvt(4)+subEvt(4)+ampCount(4)=28+4+4
   // per-amp: (data+dataBP+dataN)=3*chnCount float32
   // audio: AUDIO_N float32
-  return 28+int(aCount)*int(cCount)*3*4+AUDIO_N*4;
+#ifdef EEGBANDSCOMP
+  return 28+8+int(aCount)*int(cCount)*(3+5)*4+AUDIO_N*4;
+#else
+  return 28+8+int(aCount)*int(cCount)*3*4+AUDIO_N*4;
+#endif
  }
 
  static inline int wireSizeBytes(int ampCount,int chnCount) {
-  return serializedSizeFor(size_t(ampCount), size_t(chnCount));
+  return serializedSizeFor(size_t(ampCount),size_t(chnCount));
  }
 
  bool serializeRaw(char* dst,int cap,int* written=nullptr) const {
@@ -74,13 +77,20 @@ struct TcpSamplePP {
   wr_u32_le(p,MAGIC);
   wr_u64_le(p,offset);
   wr_u64_le(p,timestampMs);
-  wr_u32_le(p,quint32(trigger));
+  wr_u32_le(p,quint32(trigger)); wr_u32_le(p,quint32(opEvt)); wr_u32_le(p,quint32(subEvt));
   wr_u32_le(p,quint32(ampCount));
   // amps: data, dataBP, dataN
   for (unsigned a=0;a<ampCount;++a) {
    const auto& v=amp[a].data;
    const auto& vBP=amp[a].dataBP;
    const auto& vN=amp[a].dataN;
+#ifdef EEGBANDSCOMP
+   const auto& vD=amp[a].dataD;
+   const auto& vT=amp[a].dataT;
+   const auto& vA=amp[a].dataA;
+   const auto& vB=amp[a].dataB;
+   const auto& vG=amp[a].dataG;
+#endif
    // Assumption: sizes are fixed/stable (preferred in runtime)
    // Keep asserts during stabilization:
    // Q_ASSERT(v.size()==chnCount);
@@ -89,6 +99,13 @@ struct TcpSamplePP {
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,v[c]);
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vBP[c]);
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vN[c]);
+#ifdef EEGBANDSCOMP
+   for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vD[c]);
+   for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vT[c]);
+   for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vA[c]);
+   for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vB[c]);
+   for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vG[c]);
+#endif
   }
   // audio
   for (int i=0;i<AUDIO_N;++i) wr_f32_le(p,audioN[i]);
@@ -110,7 +127,8 @@ struct TcpSamplePP {
   out.setFloatingPointPrecision(QDataStream::SinglePrecision);
   out << static_cast<quint32>(MAGIC);
   out << static_cast<quint64>(offset) << static_cast<quint64>(timestampMs);
-  out << static_cast<quint32>(trigger) << static_cast<quint32>(amp.size());
+  out << static_cast<quint32>(trigger) << static_cast<quint32>(opEvt) << static_cast<quint32>(subEvt)
+      << static_cast<quint32>(amp.size());
   for (const SamplePP& s:amp) { s.serialize(out); }
   for (size_t audIndex=0;audIndex<AUDIO_N;audIndex++) { out << static_cast<float>(audioN[audIndex]); }
   return ba;
@@ -132,7 +150,7 @@ struct TcpSamplePP {
   wr_u32_le(p,MAGIC);
   wr_u64_le(p,quint64(offset));
   wr_u64_le(p,quint64(timestampMs));
-  wr_u32_le(p,quint32(trigger));
+  wr_u32_le(p,quint32(trigger)); wr_u32_le(p,quint32(opEvt)); wr_u32_le(p,quint32(subEvt));
   wr_u32_le(p,aCount);
 
   // amps: for each amp => data,dataBP,dataN
@@ -140,6 +158,13 @@ struct TcpSamplePP {
    const auto& v=amp[int(a)].data;
    const auto& vBP=amp[int(a)].dataBP;
    const auto& vN=amp[int(a)].dataN;
+#ifdef EEGBANDSCOMP
+   const auto& vD=amp[int(a)].dataD;
+   const auto& vT=amp[int(a)].dataT;
+   const auto& vA=amp[int(a)].dataA;
+   const auto& vB=amp[int(a)].dataB;
+   const auto& vG=amp[int(a)].dataG;
+#endif
 
    const int want=int(chnCount);
 
@@ -147,6 +172,13 @@ struct TcpSamplePP {
    const int n=(int(v.size())<want)     ? int(v.size())   : want;
    const int nBP=(int(vBP.size())<want) ? int(vBP.size()) : want;
    const int nN=(int(vN.size())<want)   ? int(vN.size())  : want;
+#ifdef EEGBANDSCOMP
+   const int nD=(int(vD.size())<want)   ? int(vD.size())  : want;
+   const int nT=(int(vT.size())<want)   ? int(vT.size())  : want;
+   const int nA=(int(vA.size())<want)   ? int(vA.size())  : want;
+   const int nB=(int(vB.size())<want)   ? int(vB.size())  : want;
+   const int nG=(int(vG.size())<want)   ? int(vG.size())  : want;
+#endif
 
    for (int i=0;i<n;++i) wr_f32_le(p,v[size_t(i)]);
    for (int i=n;i<want;++i) wr_f32_le(p,0.0f);
@@ -156,6 +188,23 @@ struct TcpSamplePP {
 
    for (int i=0;i<nN;++i) wr_f32_le(p,vN[size_t(i)]);
    for (int i=nN;i<want;++i) wr_f32_le(p,0.0f);
+
+#ifdef EEGBANDSCOMP
+   for (int i=0;i<nD;++i) wr_f32_le(p,vD[size_t(i)]);
+   for (int i=nD;i<want;++i) wr_f32_le(p,0.0f);
+
+   for (int i=0;i<nT;++i) wr_f32_le(p,vT[size_t(i)]);
+   for (int i=nT;i<want;++i) wr_f32_le(p,0.0f);
+
+   for (int i=0;i<nA;++i) wr_f32_le(p,vA[size_t(i)]);
+   for (int i=nA;i<want;++i) wr_f32_le(p,0.0f);
+
+   for (int i=0;i<nB;++i) wr_f32_le(p,vB[size_t(i)]);
+   for (int i=nB;i<want;++i) wr_f32_le(p,0.0f);
+
+   for (int i=0;i<nG;++i) wr_f32_le(p,vG[size_t(i)]);
+   for (int i=nG;i<want;++i) wr_f32_le(p,0.0f);
+#endif
   }
 
   for (int i=0;i<AUDIO_N;++i) wr_f32_le(p, audioN[i]);
@@ -166,14 +215,19 @@ struct TcpSamplePP {
  // Ensure internal storage exists and is correctly sized; not to be cleared every time.
  void ensureShape(size_t aCount,size_t cCount) {
   if (ampCount==aCount && chnCount==cCount && amp.size()==aCount) {
-   if (!amp.empty() && amp[0].data.size()==cCount && amp[0].dataBP.size()==cCount && amp[0].dataN.size()==cCount) {
+   if (!amp.empty() && amp[0].data.size()==cCount && amp[0].dataBP.size()==cCount && amp[0].dataN.size()==cCount
+#ifdef EEGBANDSCOMP
+      && amp[0].dataD.size()==cCount
+      && amp[0].dataT.size()==cCount && amp[0].dataA.size()==cCount && amp[0].dataB.size()==cCount
+      && amp[0].dataG.size()==cCount
+#endif
+      ) {
     return;
    }
   }
 
   ampCount=unsigned(aCount); chnCount=unsigned(cCount); amp.resize(ampCount);
   for (unsigned a=0;a<ampCount;++a) {
-   // Prefer initSizeOnly style (no fill) if you add it.
    // With current SamplePP::init, this will fill zeros once on shape change only.
    amp[a].initSizeOnly(chnCount);
   }
@@ -190,8 +244,14 @@ struct TcpSamplePP {
   offset=rd_u64_le(p); p+=8;
   if (!need(8)) return false; // timestampMs
   timestampMs=rd_u64_le(p); p+=8;
+
   if (!need(4)) return false; // trigger
   trigger=rd_u32_le(p); p+=4;
+  if (!need(4)) return false; // opEvt
+  opEvt=rd_u32_le(p); p+=4;
+  if (!need(4)) return false; // subEvt
+  subEvt=rd_u32_le(p); p+=4;
+
   if (!need(4)) return false; // ampCount
   const quint32 aCount=rd_u32_le(p); p+=4;
   if (expectedAmpCount!=0 && aCount!=expectedAmpCount) return false;
@@ -210,9 +270,21 @@ struct TcpSamplePP {
    float* d=s.data.data();
    float* dBP=s.dataBP.data();
    float* dN=s.dataN.data();
+#ifdef EEGBANDSCOMP
+   float* dD=s.dataD.data();
+   float* dT=s.dataT.data(); float* dA=s.dataA.data(); float* dB=s.dataB.data();
+   float* dG=s.dataG.data();
+#endif
    for (unsigned c=0;c<chnCount;++c) { d[c]=rd_f32_le(p); p+=4; }
    for (unsigned c=0;c<chnCount;++c) { dBP[c]=rd_f32_le(p); p+=4; }
    for (unsigned c=0;c<chnCount;++c) { dN[c]=rd_f32_le(p); p+=4; }
+#ifdef EEGBANDSCOMP
+   for (unsigned c=0;c<chnCount;++c) { dD[c]=rd_f32_le(p); p+=4; }
+   for (unsigned c=0;c<chnCount;++c) { dT[c]=rd_f32_le(p); p+=4; }
+   for (unsigned c=0;c<chnCount;++c) { dA[c]=rd_f32_le(p); p+=4; }
+   for (unsigned c=0;c<chnCount;++c) { dB[c]=rd_f32_le(p); p+=4; }
+   for (unsigned c=0;c<chnCount;++c) { dG[c]=rd_f32_le(p); p+=4; }
+#endif
   }
   for (int i=0;i<AUDIO_N;++i) { audioN[i]=rd_f32_le(p); p+=4; } // audioN
   // At this point p should equal end due to size check
@@ -224,7 +296,7 @@ struct TcpSamplePP {
  }
 
  void fromTcpSample(const TcpSample &s,size_t cCount) {
-  offset=s.offset; timestampMs=s.timestampMs; trigger=s.trigger;
+  offset=s.offset; timestampMs=s.timestampMs; trigger=s.trigger; opEvt=s.opEvt; subEvt=s.subEvt;
   for (size_t i=0;i<AUDIO_N;++i) audioN[i]=s.audioN[i]; // Audio
 
   ampCount=unsigned(s.amp.size()); chnCount=unsigned(cCount);
@@ -235,7 +307,6 @@ struct TcpSamplePP {
    Q_ASSERT(dst.size()==chnCount);
    Q_ASSERT(src.size()==chnCount);
    std::memcpy(dst.data(),src.data(),chnCount*sizeof(float));
-   // *** do NOT clear dataN/dataBP here.
    // The filter loop will be overwriting for every channel/every sample.
   }
  }

@@ -100,7 +100,6 @@ class EEGThread:public QThread {
 
   void updateBufferTick(quint64 tailSnap,unsigned NSnap) {
    const unsigned N=NSnap; const quint64 tail=tailSnap;
-   // Snapshot needed params (keep lock held in your current design)
    const int speedIdx=conf->eegSweepSpeedIdx;
 
    auto shouldDrawIndex=[&](unsigned i) -> bool {
@@ -138,7 +137,20 @@ class EEGThread:public QThread {
     for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
      const unsigned colIdx=chnIdx/chnPerCol;
      const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
+#ifdef EEGBANDSCOMP
+     float x;
+     switch (conf->eegBand) {
+      case 0:
+      default:x=s.amp[ampNo].dataBP[chnIdx]; break; // (2-40)
+      case 1: x=s.amp[ampNo].dataD[chnIdx];  break; // (2-4)
+      case 2: x=s.amp[ampNo].dataT[chnIdx];  break; // (4-8)
+      case 3: x=s.amp[ampNo].dataA[chnIdx];  break; // (8-12)
+      case 4: x=s.amp[ampNo].dataB[chnIdx];  break; // (12-28)
+      case 5: x=s.amp[ampNo].dataG[chnIdx];  break; // (28-40)
+     }
+#else
      float x=s.amp[ampNo].dataBP[chnIdx]; // for now (2-40)
+#endif
      const int y=baseY-int(x*chnY*conf->eegAmpX[ampNo]);
      // draw line from previous to current at this column
      const int x0=wX[colIdx]-1;
@@ -277,7 +289,7 @@ class EEGThread:public QThread {
     }
 #endif
    }
-   qDebug("octopus_hacq_client: <EEGThread> Exiting thread..");
+   qInfo("octopus_hacq_client: <EEGThread> Exiting thread..");
   }
 
  private:

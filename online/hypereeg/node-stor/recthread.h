@@ -118,11 +118,11 @@ class RecThread : public QThread {
      BrainVisionMeta bv; bv.sampleRateHz=conf->eegRate; bv.unit="uV"; bv.channelResolution=1.0;
 
      bv.channelNames.clear(); bv.channelNames.reserve(int(conf->ampCount*conf->chnCount+48));
-     // EEG: amp-major, channel-minor (as you already do)
+     // EEG -> amp-major, channel-minor
      for (uint32_t a=0;a<conf->ampCount;++a) for (uint32_t c=0;c<conf->chnCount;++c) {
       bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->chnInfo[c].chnName);
      }
-     // AUD: appended after all EEG channels
+     // AUD -> appended after all EEG channels
      for (int i=0;i<48;++i) {
       bv.channelNames << QString("AUD%1").arg(i);
      }

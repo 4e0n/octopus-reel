@@ -46,12 +46,12 @@ class GUIClient: public QObject {
  public:
   explicit GUIClient(QObject *parent=nullptr) : QObject(parent) {
    // Upstream (we're client)
-   conf.acqCommSocket=new QTcpSocket(this);
-   conf.acqCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-   conf.acqStrmSocket=new QTcpSocket(this);
-   conf.acqStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf.acqPPCommSocket=new QTcpSocket(this);
+   conf.acqPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.acqPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf.acqPPStrmSocket=new QTcpSocket(this);
+   conf.acqPPStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.acqPPStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
    // Upstream (we're client)
    conf.storCommSocket=new QTcpSocket(this);
    conf.storCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
@@ -70,8 +70,8 @@ class GUIClient: public QObject {
      // Constants or calculated global settings upon the ones read from config file
 
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "node-time: <ServerIP> is" << conf.acqIpAddr;
-     qInfo() << "node-time: <Comm> listening on AcqServ ports (comm,strm):" << conf.acqCommPort << conf.acqStrmPort;
+     qInfo() << "node-time: <ServerIP> is" << conf.acqPPIpAddr;
+     qInfo() << "node-time: <Comm> listening on AcqServ ports (comm,strm):" << conf.acqPPCommPort << conf.acqPPStrmPort;
      qInfo() << "node-time: <Comm> listening on StorServ ports (comm):" << conf.storCommPort;
      qInfo() << "node-time: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
      qInfo() << "node-time: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
@@ -95,10 +95,10 @@ class GUIClient: public QObject {
       AmpWindow* sWin=new AmpWindow(ampIdx,&conf); ampWindows.append(sWin); sWin->show();
      }
 
-     connect(conf.acqStrmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady); // TCP handler for instream
+     connect(conf.acqPPStrmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady); // TCP handler for instream
 
      // Connect for streaming data -- only safe after handshake and receiving crucial info about streaming
-     conf.acqStrmSocket->connectToHost(conf.acqIpAddr,conf.acqStrmPort); conf.acqStrmSocket->waitForConnected();
+     conf.acqPPStrmSocket->connectToHost(conf.acqPPIpAddr,conf.acqPPStrmPort); conf.acqPPStrmSocket->waitForConnected();
 
      return false;
     } else {
@@ -142,7 +142,7 @@ class GUIClient: public QObject {
 
 //    strmClients.append(client);
 //    connect(client,&QTcpSocket::disconnected,this,[this,client]() {
-//     qDebug() << "node-time: <Strm> client from" << client->peerAddress().toString() << "disconnected.";
+//     qInfo() << "node-time: <Strm> client from" << client->peerAddress().toString() << "disconnected.";
 //     strmClients.removeAll(client);
 //     client->deleteLater();
 //    });

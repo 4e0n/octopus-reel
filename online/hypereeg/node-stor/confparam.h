@@ -37,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "storchninfo.h"
 #include "../common/tcpsample.h"
 
-class ConfParam : public QObject {
+class ConfParam:public QObject {
  Q_OBJECT
  public:
   ConfParam() { recordingActive=false; tcpBufHead=tcpBufTail=0; };

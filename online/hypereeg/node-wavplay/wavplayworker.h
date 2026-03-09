@@ -34,40 +34,35 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 class WavPlayWorker : public QObject {
  Q_OBJECT
  public:
-//  explicit WavPlayWorker(ConfParam* c,QObject* parent=nullptr):QObject(parent),conf(c) {
-//   connect(&player,&QProcess::stateChanged,this,[this](QProcess::ProcessState st){
-//    QMutexLocker lk(&stMx); playing=(st!=QProcess::NotRunning); if (!playing) currentFile.clear();
-//   });
-//  }
+  explicit WavPlayWorker(ConfParam* c,QObject* parent=nullptr):QObject(parent),conf(c) {
+   player=new QProcess(this);
 
-explicit WavPlayWorker(ConfParam* c,QObject* parent=nullptr):QObject(parent),conf(c) {
-  player=new QProcess(this);
-
-  connect(player,&QProcess::stateChanged,this,[this](QProcess::ProcessState st){
-    QMutexLocker lk(&stMx);
-    playing=(st!=QProcess::NotRunning);
-    if (!playing) currentFile.clear();
-  });
-
-  connect(player,
-          QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),
-          this,
-          [this](int exitCode,QProcess::ExitStatus exitStatus){
+   connect(player,&QProcess::stateChanged,this,
+           [this](QProcess::ProcessState st) {
             QMutexLocker lk(&stMx);
-            playing=false;
-            currentFile.clear();
-            qInfo() << "<WavPlay> finished exitCode:" << exitCode
-                    << "exitStatus:" << exitStatus;
-          });
+            playing=(st!=QProcess::NotRunning);
+            if (!playing) currentFile.clear();
+           }
+          );
 
-  connect(player,&QProcess::errorOccurred,this,[this](QProcess::ProcessError e){
-    QMutexLocker lk(&stMx);
-    playing=false;
-    currentFile.clear();
-    qWarning() << "<WavPlay> QProcess error:" << e
-               << (player ? player->errorString() : QString());
-  });
-}
+   connect(player,QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),this,
+          [this](int exitCode,QProcess::ExitStatus exitStatus) {
+           QMutexLocker lk(&stMx);
+           playing=false;
+           currentFile.clear();
+           qInfo() << "<WavPlay> finished exitCode:" << exitCode << "exitStatus:" << exitStatus;
+          }
+         );
+
+   connect(player,&QProcess::errorOccurred,this,
+          [this](QProcess::ProcessError e) {
+           QMutexLocker lk(&stMx);
+           playing=false;
+           currentFile.clear();
+           qWarning() << "<WavPlay> QProcess error:" << e << (player ? player->errorString():QString());
+          }
+         );
+  }
 
  public slots:
   void playAbsFile(const QString& absPath) {
@@ -76,13 +71,10 @@ explicit WavPlayWorker(ConfParam* c,QObject* parent=nullptr):QObject(parent),con
    if (!fi.exists()||!fi.isFile()) { qWarning() << "<WavPlay> file not found:" << absPath; return; }
    QStringList args;
    args << "-D" << conf->alsaDev << fi.absoluteFilePath();
-   player->start("aplay", args);
-
+   player->start("aplay",args);
    if (!player->waitForStarted(200)) {
-    qWarning() << "<WavPlay> Failed to start gst-launch-1.0:" << player->errorString();
-    return;
+    qWarning() << "<WavPlay> Failed to start gst-launch-1.0:" << player->errorString(); return;
    }
-
    {
      QMutexLocker lk(&stMx);
      currentFile=fi.fileName();

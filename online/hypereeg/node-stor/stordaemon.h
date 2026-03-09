@@ -41,7 +41,7 @@ const QString RECROOTDIR="/opt/octopus/stor/heeg";
 class StorDaemon: public QObject {
  Q_OBJECT
  public:
-  explicit StorDaemon(QObject *parent=nullptr,ConfParam *c=nullptr) : QObject(parent) { conf=c; }
+  explicit StorDaemon(QObject *parent=nullptr,ConfParam *c=nullptr):QObject(parent) { conf=c; }
 
   bool start() { QString commResponse; QStringList sList,sList2;
 
@@ -140,7 +140,7 @@ class StorDaemon: public QObject {
    qInfo() << "<Comm> Received command:" << cmd;
    if (!cmd.contains("=")) {
     sList.append(cmd);
-    if (cmd==CMD_STOR_STATUS) {
+    if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Storage Daemon status..";
      client->write("node-stor: Storage server ready.\n");
     } else if (cmd==CMD_STOR_REC_ON) {

@@ -54,7 +54,7 @@ def session_status(session_name: str, files):
     Minimal 'completeness' heuristic:
     - BrainVision trio: .eeg + .vhdr + .vmrk (any basename)
     - plus at least one .wav
-    You can tighten this later if you want strict naming rules.
+    Can be tightened later for strict naming rules.
     """
     has_eeg = any(f[0].lower().endswith(".eeg") for f in files)
     has_vhdr = any(f[0].lower().endswith(".vhdr") for f in files)
@@ -116,7 +116,7 @@ def zip_paths(session_name: str):
             cwd=str(BASE),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=600,   # plenty; adjust if you like
+            timeout=600,   # plenty; adjust...
             check=False,
         )
         if proc.returncode != 0:

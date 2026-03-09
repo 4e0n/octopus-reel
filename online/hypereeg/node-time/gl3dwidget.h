@@ -93,9 +93,9 @@ class GL3DWidget : public QGLWidget {
 
  protected:
   void initializeGL() override {
-   qDebug() << "GL VENDOR:" << reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-   qDebug() << "RENDERER:"  << reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-   qDebug() << "VERSION:"   << reinterpret_cast<const char*>(glGetString(GL_VERSION));
+   qInfo() << "GL VENDOR:" << reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+   qInfo() << "RENDERER:"  << reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+   qInfo() << "VERSION:"   << reinterpret_cast<const char*>(glGetString(GL_VERSION));
    frame=makeFrame(); grid=makeGrid();
 //   if (acqM->digExists[ampNo]) dig=makeDigitizer();
    parametric=makeParametric();
@@ -213,8 +213,8 @@ class GL3DWidget : public QGLWidget {
    GLint vh=GLint(std::lround(h*dpr));
    glViewport(0,0,vw,vh);
 
-   qDebug() << "[resizeGL] widget size =" << w << "x" << h
-            << " dpr=" << dpr << " -> viewport =" << vw << "x" << vh;
+   qInfo() << "[resizeGL] widget size =" << w << "x" << h
+           << " dpr=" << dpr << " -> viewport =" << vw << "x" << vh;
 
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
@@ -228,7 +228,7 @@ class GL3DWidget : public QGLWidget {
 //    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 //
 //    GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
-//    qDebug() << "[paintGL] viewport =" << vp[2] << "x" << vp[3];
+//    qInfo() << "[paintGL] viewport =" << vp[2] << "x" << vp[3];
 //    // draw your grid/frame...
 //}
 
@@ -320,9 +320,9 @@ class GL3DWidget : public QGLWidget {
   void electrodeAvg(int chn,int idx,float r,float th,float ph,float eR) { float elecR,zPt,c,m;
    QVector<QVector<float>> *evts=&(conf->chnInfo[chn].avgData[ampNo]); //int sz=data->size();
 //   QColor evtColor=conf->acqEvents[idx]->color;
-   //qDebug() << chn << idx << r << th << ph << eR << sz;
-   //    for (int t=0;t<sz;t++)
-   //     qDebug() << (*data)[t];
+   //qInfo() << chn << idx << r << th << ph << eR << sz;
+   //for (int t=0;t<sz;t++)
+   // qInfo() << (*data)[t];
    if (chn==conf->headModel[ampNo].currentElectrode) elecR=eR*3; else elecR=eR;
    glPushMatrix();
     glRotatef(ph,0,0,1); glRotatef(th,0,1,0);
@@ -390,7 +390,7 @@ class GL3DWidget : public QGLWidget {
      if (chnIdx==conf->headModel[ampNo].currentElectrode) { r=r*3; qglColor(QColor(255,255,255,144)); } // Hilite
      else qglColor(conf->chnInfo[chnIdx].cmColor);
      //if (ampNo==0)
-     // qDebug() << conf->headModel[ampNo].scalpParamR << conf->chnInfo[chnIdx].param.y << conf->chnInfo[chnIdx].param.z << r << h;
+     // qInfo() << conf->headModel[ampNo].scalpParamR << conf->chnInfo[chnIdx].param.y << conf->chnInfo[chnIdx].param.z << r << h;
      electrode(conf->headModel[ampNo].scalpParamR,conf->chnInfo[chnIdx].param.y,conf->chnInfo[chnIdx].param.z,r,h); // theta,phi
     } glDisable(GL_BLEND);
    glEndList(); return list;
@@ -414,7 +414,7 @@ class GL3DWidget : public QGLWidget {
          if (conf->chnInfo[chnIdx].physChn-1==conf->glGizmo[gizIdx].tri[triIdx][2]) v2=chnIdx;
 	}
        }
-       //qDebug() << gizIdx << "(" << v0 << "," << v1 << "," << v2 << ")";
+       //qInfo() << gizIdx << "(" << v0 << "," << v1 << "," << v2 << ")";
        if (conf->headModel[ampNo].gizmoOnReal) {
         // Realistic Head
         v0c0S=conf->chnInfo[v0].real[0]; v0c1S=conf->chnInfo[v0].real[1]; v0c2S=conf->chnInfo[v0].real[2];

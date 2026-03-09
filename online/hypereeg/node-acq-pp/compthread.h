@@ -142,11 +142,11 @@ class CompThread : public QThread {
        tcpSPP.amp[ampIdx].dataN[chnIdx]=xN;
        tcpSPP.amp[ampIdx].dataBP[chnIdx]=xBP;
 #ifdef EEGBANDSCOMP
-       tcpSPP.amp[ampIdx].dataD[chnIdx]=xBP;
-       tcpSPP.amp[ampIdx].dataT[chnIdx]=xBP;
-       tcpSPP.amp[ampIdx].dataA[chnIdx]=xBP;
-       tcpSPP.amp[ampIdx].dataB[chnIdx]=xBP;
-       tcpSPP.amp[ampIdx].dataG[chnIdx]=xBP;
+       tcpSPP.amp[ampIdx].dataD[chnIdx]=xD;
+       tcpSPP.amp[ampIdx].dataT[chnIdx]=xT;
+       tcpSPP.amp[ampIdx].dataA[chnIdx]=xA;
+       tcpSPP.amp[ampIdx].dataB[chnIdx]=xB;
+       tcpSPP.amp[ampIdx].dataG[chnIdx]=xG;
 #endif
        const unsigned interMode=conf->chnInfo[chnIdx].interMode[ampIdx];
        if (interMode==2) {

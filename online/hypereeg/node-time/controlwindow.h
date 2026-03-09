@@ -73,7 +73,7 @@ class ControlWindow : public QMainWindow {
    shutdownAction=new QAction("&Shutdown Servers",this);
    aboutAction=new QAction("&About..",this);
    quitAction=new QAction("&Quit",this);
-   rebootAction->setStatusTip("Reboot node_acqd via hwd server");
+   rebootAction->setStatusTip("Reboot node-acq via hwd server");
    shutdownAction->setStatusTip("Shutdown ACQuisition host computer");
    aboutAction->setStatusTip("About HyperStream GUI..");
    quitAction->setStatusTip("Quit HyperStream GUI");
@@ -98,19 +98,13 @@ class ControlWindow : public QMainWindow {
    manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
    connect(manualSyncButton,SIGNAL(clicked()),this,SLOT(slotManualSync()));
 
-   manualTrigButton=new QPushButton("PING",cntWidget);
-   manualTrigButton->setGeometry(550,mainTabWidget->height()-54,60,20);
-   connect(manualTrigButton,SIGNAL(clicked()),this,SLOT(slotManualTrig(13)));
-
-   synthTrig1Button=new QPushButton("TRIG(1)",cntWidget);
-   synthTrig1Button->setGeometry(640,mainTabWidget->height()-54,60,20);
-   connect(synthTrig1Button,SIGNAL(clicked()),this,SLOT(slotSynthTrig1()));
-   synthTrig2Button=new QPushButton("TRIG(2)",cntWidget);
-   synthTrig2Button->setGeometry(730,mainTabWidget->height()-54,60,20);
-   connect(synthTrig2Button,SIGNAL(clicked()),this,SLOT(slotSynthTrig2()));
+   opEvtButton=new QPushButton("OPEVT",cntWidget);
+   opEvtButton->setGeometry(550,mainTabWidget->height()-54,60,20);
+   connect(opEvtButton,SIGNAL(clicked()),this,SLOT(slotOpEvt()));
 
    QPushButton *dummyButton;
 
+#ifdef EEGBANDSCOMP
    eegBandBG=new QButtonGroup();
    eegBandBG->setExclusive(true);
    for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
@@ -125,6 +119,7 @@ class ControlWindow : public QMainWindow {
    eegBandBG->button(4)->setText("Beta");
    eegBandBG->button(5)->setText("Gamma"); eegBandBG->button(0)->setChecked(true);
    connect(eegBandBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGBand(int)));
+#endif
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
@@ -135,11 +130,11 @@ class ControlWindow : public QMainWindow {
     dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
     scrSpeedBG->addButton(dummyButton,speedIdx);
    }
-   scrSpeedBG->button(0)->setText("10");
-   scrSpeedBG->button(1)->setText("5");
+   scrSpeedBG->button(0)->setText("1");
+   scrSpeedBG->button(1)->setText("2");
    scrSpeedBG->button(2)->setText("4");
-   scrSpeedBG->button(3)->setText("2");
-   scrSpeedBG->button(4)->setText("1"); scrSpeedBG->button(0)->setChecked(true);
+   scrSpeedBG->button(3)->setText("5");
+   scrSpeedBG->button(4)->setText("10"); scrSpeedBG->button(0)->setChecked(true);
    connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
@@ -170,8 +165,8 @@ class ControlWindow : public QMainWindow {
    conf->requestQuit();
    for (auto *t:conf->threads)
     if (t) t->wait();
-   if (conf->acqStrmSocket->state()!=QAbstractSocket::UnconnectedState)
-    conf->acqStrmSocket->waitForDisconnected(1000); // timeout in ms
+   if (conf->acqPPStrmSocket->state()!=QAbstractSocket::UnconnectedState)
+    conf->acqPPStrmSocket->waitForDisconnected(1000); // timeout in ms
    QApplication::quit();
   }
 
@@ -185,19 +180,22 @@ class ControlWindow : public QMainWindow {
    }
   }
 
-  void slotManualSync() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_AMPSYNC); }
-  void slotManualTrig(int trig) { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_TRIGGER+"="+QString::number(trig)); }
-  void slotSynthTrig1() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_1); }
-  void slotSynthTrig2() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_S_TRIG_2); }
+  void slotManualSync() { conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_AMPSYNC); }
+  void slotOpEvt(int opEvt) { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_OPEVT+"="+QString::number(opEvt)); }
 
   void slotScrollSpeed(int x) { conf->eegSweepSpeedIdx=x; }
+#ifdef EEGBANDSCOMP
   void slotEEGBand(int x) { conf->eegBand=x; }
+#endif
 
  private:
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
-  QPushButton *manualSyncButton,*manualTrigButton,*synthTrig1Button,*synthTrig2Button;
+  QPushButton *manualSyncButton,*opEvtButton;
   QPushButton *toggleRecordingButton;
-  QButtonGroup *eegBandBG,*scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
+#ifdef EEGBANDSCOMP
+  QButtonGroup *eegBandBG;
+#endif
+  QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };

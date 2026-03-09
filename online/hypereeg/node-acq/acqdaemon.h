@@ -125,10 +125,10 @@ class AcqDaemon : public QObject {
                     QString::number(ch.type).toUtf8()+","+ \
                     interMode.toUtf8()+"\n");
      }
-    } else if (cmd==CMD_ACQ_STATUS) {
+    } else if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Amp(s) status..";
      client->write("Amp(s) streaming EEG.\n");
-    } else if (cmd==CMD_ACQ_DISCONNECT) { 
+    } else if (cmd==CMD_DISCONNECT) { 
      qInfo() << "<Comm> Disconnecting client..";
      client->write("Disconnecting...\n");
      client->disconnectFromHost();
@@ -153,7 +153,7 @@ class AcqDaemon : public QObject {
      qInfo() << "<Comm> SYNC requested";
      QMetaObject::invokeMethod(acqThread,"requestAmpSync",Qt::QueuedConnection);
      client->write("OK: AMPSYNC requested\n");
-    } else if (cmd==CMD_ACQ_QUIT) {
+    } else if (cmd==CMD_QUIT) {
      client->write("Bye!\r\n");
      client->disconnectFromHost();
     }
@@ -193,6 +193,24 @@ class AcqDaemon : public QObject {
      response.remove(response.size()-1,1);
      client->write(response.toUtf8());
      //client->write("Channel to be computed.\n");
+    } else if (sList[0]==CMD_ACQ_OPEVT) {
+     bool ok=false;
+     const uint v=sList[1].toUInt(&ok);
+     if (ok && v>0) {
+      if (acqThread->setPendingOpEvt(v)) client->write("OK.\n");
+      //else client->write("IGNORED: OPEVT refractory\n");
+     } else {
+      client->write("ERR: invalid OPEVT value\n");
+     }
+    } else if (sList[0]==CMD_ACQ_SUBEVT) {
+     bool ok=false;
+     const uint v=sList[1].toUInt(&ok);
+     if (ok && v>0) {
+      if (acqThread->setPendingSubEvt(v)) client->write("OK.\n");
+      //else client->write("IGNORED: SUBEVT refractory\n");
+     } else {
+      client->write("ERR: invalid SUBEVT value\n");
+     }
     } else {
      qWarning() << "<Comm> Unknown command received..";
      client->write("node-acq: Unknown command..\n");
