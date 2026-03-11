@@ -207,6 +207,23 @@ class RecThread : public QThread {
        qCritical() << "<RecThread> STOR[REC] stop after write failure failed:" << err2;
       recOn=false;
      } else {
+      QString mkErr;
+      for (int i=0;i<N;++i) {
+       const TcpSample &t=eegChunk[size_t(i)];
+       const uint64_t pos=bvSampleIndex+uint64_t(i); // BrainVision is 1-based
+       if (t.trigger!=0) {
+        if (!recorder.addMarker("Stimulus",QString("S%1").arg(t.trigger),pos,&mkErr))
+         qCritical() << "<RecThread> STOR[REC] addMarker(trigger) failed:" << mkErr;
+       }
+       if (t.opEvt!=0) {
+        if (!recorder.addMarker("Comment",QString("OpEvt_%1").arg(t.opEvt),pos,&mkErr))
+         qCritical() << "<RecThread> STOR[REC] addMarker(opEvt) failed:" << mkErr;
+       }
+       if (t.subEvt!=0) {
+        if (!recorder.addMarker("Comment",QString("SubEvt_%1").arg(t.subEvt),pos,&mkErr))
+         qCritical() << "<RecThread> STOR[REC] addMarker(subEvt) failed:" << mkErr;
+       }
+      }
       bvSampleIndex+=uint64_t(N);
      }
     }

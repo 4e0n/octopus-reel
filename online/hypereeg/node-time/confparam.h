@@ -163,7 +163,8 @@ class ConfParam : public QObject {
    eegSweepWait.wakeAll();
   }
 
-  QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket;
+  QString acqIpAddr; quint32 acqCommPort; QTcpSocket *acqCommSocket;
+  QString wavPlayIpAddr; quint32 wavPlayCommPort; QTcpSocket *wavPlayCommSocket;
   QString acqPPIpAddr; quint32 acqPPCommPort,acqPPStrmPort; QTcpSocket *acqPPCommSocket,*acqPPStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
@@ -174,6 +175,8 @@ class ConfParam : public QObject {
 
   QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
   QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
+
+  unsigned int currentWav=0;
  
   unsigned int tickSamples=0;           // chosen per wake/tick (shared by all consumers)
   unsigned int scrMaxUpdateSamples=200; // cap per tick (already added)

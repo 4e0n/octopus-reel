@@ -109,10 +109,11 @@ class AmpWindow : public QMainWindow {
    eegWidget=new QWidget(mainTabWidget); eegWidget->setGeometry(2,2,tabW-4,tabH-4); 
    eegFrame=new EEGFrame(conf,ampNo,eegWidget);
    eegFrame->setGeometry(2,2,conf->sweepFrameW,conf->sweepFrameH); 
+
    eegAmpBG=new QButtonGroup(); eegAmpBG->setExclusive(true);
    for (int btnIdx=0;btnIdx<6;btnIdx++) { // EEG Multiplier
     dummyButton=new QPushButton(eegWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(100+btnIdx*60,tabH-12,60,40);
+    dummyButton->setGeometry(10+btnIdx*60,tabH-12,60,40);
     eegAmpBG->addButton(dummyButton,btnIdx);
    }
    eegAmpBG->button(0)->setText("1mV");   eegAmpBG->button(1)->setText("500uV");

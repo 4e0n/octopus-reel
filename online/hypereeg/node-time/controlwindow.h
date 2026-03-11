@@ -87,29 +87,52 @@ class ControlWindow : public QMainWindow {
    sysMenu->addAction(aboutAction); sysMenu->addSeparator();
    sysMenu->addAction(quitAction);
 
-   // *** BUTTONS AT THE TOP ***
+   // *** WIDGETS ***
 
    toggleRecordingButton=new QPushButton("RECORD",cntWidget);
    toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,100,20);
    toggleRecordingButton->setCheckable(true);
    connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
 
-   manualSyncButton=new QPushButton("SYNC",cntWidget);
-   manualSyncButton->setGeometry(460,mainTabWidget->height()-54,60,20);
-   connect(manualSyncButton,SIGNAL(clicked()),this,SLOT(slotManualSync()));
-
-   opEvtButton=new QPushButton("OPEVT",cntWidget);
-   opEvtButton->setGeometry(550,mainTabWidget->height()-54,60,20);
-   connect(opEvtButton,SIGNAL(clicked()),this,SLOT(slotOpEvt()));
-
    QPushButton *dummyButton;
 
+   // WAVPLAY BUTTONS
+   wavPlayBG=new QButtonGroup(); wavPlayBG->setExclusive(true);
+   for (int wavIdx=0;wavIdx<5;wavIdx++) { // WAV#
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(160+wavIdx*25,mainTabWidget->height()-54,20,20);
+    wavPlayBG->addButton(dummyButton,wavIdx);
+   }
+   wavPlayBG->button(0)->setText("S");
+   wavPlayBG->button(1)->setText("1");
+   wavPlayBG->button(2)->setText("2");
+   wavPlayBG->button(3)->setText("3");
+   wavPlayBG->button(4)->setText("4"); wavPlayBG->button(0)->setChecked(true);
+   connect(wavPlayBG,SIGNAL(buttonClicked(int)),this,SLOT(slotWavPlay(int)));
+
+   // OPERATOR EVENT BUTTONS
+   opEvtBG=new QButtonGroup(); opEvtBG->setExclusive(false);
+   for (int evtIdx=0;evtIdx<5;evtIdx++) { // WAV#
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(false);
+    dummyButton->setGeometry(340+evtIdx*30,mainTabWidget->height()-54,26,20);
+    opEvtBG->addButton(dummyButton,evtIdx);
+   }
+   opEvtBG->button(0)->setText("O1");
+   opEvtBG->button(1)->setText("O2");
+   opEvtBG->button(2)->setText("O3");
+   opEvtBG->button(3)->setText("O4");
+   opEvtBG->button(4)->setText("O5");
+   connect(opEvtBG,SIGNAL(buttonClicked(int)),this,SLOT(slotOpEvt(int)));
+
+   syncButton=new QPushButton("SYNC",cntWidget);
+   syncButton->setGeometry(540,mainTabWidget->height()-54,60,20);
+   connect(syncButton,SIGNAL(clicked()),this,SLOT(slotSync()));
+
 #ifdef EEGBANDSCOMP
-   eegBandBG=new QButtonGroup();
-   eegBandBG->setExclusive(true);
+   eegBandBG=new QButtonGroup(); eegBandBG->setExclusive(true);
    for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-760+bandIdx*70,mainTabWidget->height()-54,70,20);
+    dummyButton->setGeometry(660+bandIdx*70,mainTabWidget->height()-54,70,20);
     eegBandBG->addButton(dummyButton,bandIdx);
    }
    eegBandBG->button(0)->setText("2-40Hz");
@@ -123,18 +146,17 @@ class ControlWindow : public QMainWindow {
 
    // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
-   scrSpeedBG=new QButtonGroup();
-   scrSpeedBG->setExclusive(true);
+   scrSpeedBG=new QButtonGroup(); scrSpeedBG->setExclusive(true);
    for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG Scroll speed/resolution
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
     dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
     scrSpeedBG->addButton(dummyButton,speedIdx);
    }
-   scrSpeedBG->button(0)->setText("1");
-   scrSpeedBG->button(1)->setText("2");
-   scrSpeedBG->button(2)->setText("4");
-   scrSpeedBG->button(3)->setText("5");
-   scrSpeedBG->button(4)->setText("10"); scrSpeedBG->button(0)->setChecked(true);
+   scrSpeedBG->button(0)->setText("x1");
+   scrSpeedBG->button(1)->setText("x2");
+   scrSpeedBG->button(2)->setText("x4");
+   scrSpeedBG->button(3)->setText("x5");
+   scrSpeedBG->button(4)->setText("x10"); scrSpeedBG->button(0)->setChecked(true);
    connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
    setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
@@ -180,8 +202,17 @@ class ControlWindow : public QMainWindow {
    }
   }
 
-  void slotManualSync() { conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_AMPSYNC); }
-  void slotOpEvt(int opEvt) { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_OPEVT+"="+QString::number(opEvt)); }
+  void slotSync() { conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_AMPSYNC); }
+
+  void slotWavPlay(int x) {
+   conf->currentWav=x;
+   if (x) conf->commandToDaemon(conf->wavPlayCommSocket,CMD_WAVPLAY_PLAY+"="+QString::number(x+1)+"x.wav");
+   else qInfo() << "Wav Stop.";
+  }
+
+  void slotOpEvt(int x) {
+   conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_OPEVT+"="+QString::number(x+1));
+  }
 
   void slotScrollSpeed(int x) { conf->eegSweepSpeedIdx=x; }
 #ifdef EEGBANDSCOMP
@@ -192,10 +223,10 @@ class ControlWindow : public QMainWindow {
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;
-  QPushButton *manualSyncButton,*opEvtButton;
+  QPushButton *syncButton;
   QPushButton *toggleRecordingButton;
 #ifdef EEGBANDSCOMP
   QButtonGroup *eegBandBG;
 #endif
-  QButtonGroup *scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
+  QButtonGroup *wavPlayBG,*opEvtBG,*scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
 };

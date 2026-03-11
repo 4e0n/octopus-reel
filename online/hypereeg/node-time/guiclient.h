@@ -46,6 +46,14 @@ class GUIClient: public QObject {
  public:
   explicit GUIClient(QObject *parent=nullptr) : QObject(parent) {
    // Upstream (we're client)
+   conf.acqCommSocket=new QTcpSocket(this);
+   conf.acqCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.acqCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   // Upstream (we're client)
+   conf.wavPlayCommSocket=new QTcpSocket(this);
+   conf.wavPlayCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.wavPlayCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   // Upstream (we're client)
    conf.acqPPCommSocket=new QTcpSocket(this);
    conf.acqPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
    conf.acqPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);

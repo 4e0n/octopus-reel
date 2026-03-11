@@ -88,14 +88,12 @@ class ConfigParser {
       opts=sect.split("=");
 
       if (opts[0].trimmed()=="ACQ") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==3) {
+       opts2=opts[1].split(","); // IP and command port
+       if (opts2.size()==2) {
         QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->acqIpAddr=acqHostInfo.addresses().first().toString();
         conf->acqCommPort=opts2[1].toInt();
-        conf->acqStrmPort=opts2[2].toInt();
-        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
-            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
+        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999))) { // Simple port validation
          qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
@@ -103,9 +101,9 @@ class ConfigParser {
         qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) count of STRM|IN params!";
         return true;
        }
-       qInfo() << "node-time:" << conf->acqIpAddr << conf->acqCommPort << conf->acqStrmPort;
+       qInfo() << "node-time:" << conf->acqIpAddr << conf->acqCommPort;
       } else if (opts[0].trimmed()=="ACQPP") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
+       opts2=opts[1].split(","); // IP, command port and stream port
        if (opts2.size()==3) {
         QHostInfo acqPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
         conf->acqPPIpAddr=acqPPHostInfo.addresses().first().toString();
@@ -121,6 +119,21 @@ class ConfigParser {
         return true;
        }
        qInfo() << "node-time:" << conf->acqPPIpAddr << conf->acqPPCommPort << conf->acqPPStrmPort;
+      } else if (opts[0].trimmed()=="WAVPLAY") {
+       opts2=opts[1].split(","); // IP, command port and stream port
+       if (opts2.size()==2) {
+        QHostInfo wavPlayHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->wavPlayIpAddr=wavPlayHostInfo.addresses().first().toString();
+        conf->wavPlayCommPort=opts2[1].toInt();
+        if ((!(conf->wavPlayCommPort >= 65000 && conf->wavPlayCommPort < 65999))) { // Simple port validation
+         qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) hostname/IP/port settings!";
+         return true;
+        }
+       } else {
+        qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) count of STRM|IN params!";
+        return true;
+       }
+       qInfo() << "node-time:" << conf->wavPlayIpAddr << conf->wavPlayCommPort;
       } else if (opts[0].trimmed()=="STOR") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==2) {
@@ -169,6 +182,9 @@ class ConfigParser {
 
     // Setup ACQ command socket -- For sending operator events
     conf->acqCommSocket->connectToHost(conf->acqIpAddr,conf->acqCommPort); conf->acqCommSocket->waitForConnected();
+
+    // Setup WAVPlay command socket -- For sending operator events
+    conf->wavPlayCommSocket->connectToHost(conf->wavPlayIpAddr,conf->wavPlayCommPort); conf->wavPlayCommSocket->waitForConnected();
 
     // Setup ACQPP command socket
     conf->acqPPCommSocket->connectToHost(conf->acqPPIpAddr,conf->acqPPCommPort); conf->acqPPCommSocket->waitForConnected();

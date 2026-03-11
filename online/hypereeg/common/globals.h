@@ -28,7 +28,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #define EEGBANDSCOMP
 
 #define HSYNC_VERBOSE
-#define PLL_VERBOSE
+//#define PLL_VERBOSE
 //#define EEG_VERBOSE
 //#define AUDIO_VERBOSE
 //#define HSYNC_VERBOSE2
