@@ -32,6 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDataStream>
 #include <QDir>
 #include <QIntValidator>
+#include <QProcess>
 #include "../common/globals.h"
 #include "../common/tcpsample.h"
 #include "../common/tcp_commands.h"
@@ -218,6 +219,18 @@ class PPDaemon: public QObject {
     } else if (cmd==CMD_DISCONNECT) { 
      qInfo() << "<Comm> Disconnecting client..";
      client->write("Disconnecting...\n");
+     client->disconnectFromHost();
+    } else if (cmd==CMD_REBOOT) {
+     const int delaySec=20;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     client->disconnectFromHost();
+    } else if (cmd==CMD_SHUTDOWN) {
+     const int delaySec=20;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     }
    } else { // command with parameter

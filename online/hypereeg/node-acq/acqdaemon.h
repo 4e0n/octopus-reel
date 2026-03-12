@@ -30,6 +30,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QIntValidator>
 #include <QDateTime>
 #include <QDir>
+#include <QProcess>
 #include "../common/globals.h"
 #include "../common/sample.h"
 #include "../common/tcpsample.h"
@@ -153,8 +154,20 @@ class AcqDaemon : public QObject {
      qInfo() << "<Comm> SYNC requested";
      QMetaObject::invokeMethod(acqThread,"requestAmpSync",Qt::QueuedConnection);
      client->write("OK: AMPSYNC requested\n");
-    } else if (cmd==CMD_QUIT) {
+    } else if (cmd==CMD_DISCONNECT) {
      client->write("Bye!\r\n");
+     client->disconnectFromHost();
+    } else if (cmd==CMD_REBOOT) {
+     const int delaySec=30;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     client->disconnectFromHost();
+    } else if (cmd==CMD_SHUTDOWN) {
+     const int delaySec=30;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     }
    } else { // command with parameter

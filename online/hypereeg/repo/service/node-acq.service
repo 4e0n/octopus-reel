@@ -30,9 +30,15 @@ CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK
 
 # Give USB Audio a moment to settle during boot
 #ExecStartPre=/bin/sleep 15
-#ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
 ExecStartPre=/usr/bin/udevadm settle
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do /usr/bin/timeout 2s /usr/bin/arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
+#ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
+#ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do /usr/bin/timeout 2s /usr/bin/arecord -D hw:1,0 -f S16_LE -r 48000 -c 1 -d 1 >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1'
+ExecStartPre=/bin/sh -c '\
+for i in $(seq 1 60); do \
+ /usr/bin/timeout 2s /usr/bin/arecord -D plughw:CARD=CODEC,DEV=0 -f S16_LE -r 48000 -d 1 >/dev/null 2>&1 && exit 0; \
+ sleep 1; \
+done; \
+exit 1'
 ExecStart=/opt/octopus/bin/node-acq
 # Restart policy: retry forever, calmly
 Restart=always

@@ -32,6 +32,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDir>
 #include <QIntValidator>
 #include <QThread>
+#include <QProcess>
 #include "../common/globals.h"
 #include "../common/tcp_commands.h"
 #include "wavplayworker.h"
@@ -111,6 +112,20 @@ class WavPlayDaemon: public QObject {
      QString resp=QString("%1 DEV=%2 DIR=%3").arg(st).arg(conf->alsaDev).arg(conf->wavDir);
      client->write(resp.toUtf8()); client->write("\n");
     } else if (cmd==CMD_QUIT) {
+     client->write("Bye!\r\n");
+     client->disconnectFromHost();
+    } else if (cmd==CMD_REBOOT) {
+     const int delaySec=5;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     client->disconnectFromHost();
+    } else if (cmd==CMD_SHUTDOWN) {
+     const int delaySec=5;
+     const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
+     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     client->disconnectFromHost();
     }
    } else { // command with parameter
     sList=cmd.split("=");

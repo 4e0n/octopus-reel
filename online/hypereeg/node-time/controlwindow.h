@@ -90,7 +90,7 @@ class ControlWindow : public QMainWindow {
    // *** WIDGETS ***
 
    toggleRecordingButton=new QPushButton("RECORD",cntWidget);
-   toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,100,20);
+   toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,80,20);
    toggleRecordingButton->setCheckable(true);
    connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
 
@@ -100,7 +100,7 @@ class ControlWindow : public QMainWindow {
    wavPlayBG=new QButtonGroup(); wavPlayBG->setExclusive(true);
    for (int wavIdx=0;wavIdx<5;wavIdx++) { // WAV#
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(160+wavIdx*25,mainTabWidget->height()-54,20,20);
+    dummyButton->setGeometry(110+wavIdx*22,mainTabWidget->height()-54,20,20);
     wavPlayBG->addButton(dummyButton,wavIdx);
    }
    wavPlayBG->button(0)->setText("S");
@@ -114,7 +114,7 @@ class ControlWindow : public QMainWindow {
    opEvtBG=new QButtonGroup(); opEvtBG->setExclusive(false);
    for (int evtIdx=0;evtIdx<5;evtIdx++) { // WAV#
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(false);
-    dummyButton->setGeometry(340+evtIdx*30,mainTabWidget->height()-54,26,20);
+    dummyButton->setGeometry(250+evtIdx*28,mainTabWidget->height()-54,26,20);
     opEvtBG->addButton(dummyButton,evtIdx);
    }
    opEvtBG->button(0)->setText("O1");
@@ -125,22 +125,22 @@ class ControlWindow : public QMainWindow {
    connect(opEvtBG,SIGNAL(buttonClicked(int)),this,SLOT(slotOpEvt(int)));
 
    syncButton=new QPushButton("SYNC",cntWidget);
-   syncButton->setGeometry(540,mainTabWidget->height()-54,60,20);
+   syncButton->setGeometry(410,mainTabWidget->height()-54,60,20);
    connect(syncButton,SIGNAL(clicked()),this,SLOT(slotSync()));
 
 #ifdef EEGBANDSCOMP
    eegBandBG=new QButtonGroup(); eegBandBG->setExclusive(true);
    for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(660+bandIdx*70,mainTabWidget->height()-54,70,20);
+    dummyButton->setGeometry(500+bandIdx*40,mainTabWidget->height()-54,38,20);
     eegBandBG->addButton(dummyButton,bandIdx);
    }
-   eegBandBG->button(0)->setText("2-40Hz");
-   eegBandBG->button(1)->setText("Delta");
-   eegBandBG->button(2)->setText("Theta");
-   eegBandBG->button(3)->setText("Alpha");
-   eegBandBG->button(4)->setText("Beta");
-   eegBandBG->button(5)->setText("Gamma"); eegBandBG->button(0)->setChecked(true);
+   eegBandBG->button(0)->setText("EEG");
+   eegBandBG->button(1)->setText("Del");
+   eegBandBG->button(2)->setText("The");
+   eegBandBG->button(3)->setText("Alp");
+   eegBandBG->button(4)->setText("Bet");
+   eegBandBG->button(5)->setText("Gam"); eegBandBG->button(0)->setChecked(true);
    connect(eegBandBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGBand(int)));
 #endif
 
@@ -149,7 +149,7 @@ class ControlWindow : public QMainWindow {
    scrSpeedBG=new QButtonGroup(); scrSpeedBG->setExclusive(true);
    for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG Scroll speed/resolution
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-310+speedIdx*60,mainTabWidget->height()-54,60,20);
+    dummyButton->setGeometry(mainTabWidget->width()-220+speedIdx*42,mainTabWidget->height()-54,40,20);
     scrSpeedBG->addButton(dummyButton,speedIdx);
    }
    scrSpeedBG->button(0)->setText("x1");
@@ -172,8 +172,14 @@ class ControlWindow : public QMainWindow {
 
   // *** MENUS ***
 
-  void slotReboot() {}
-  void slotShutdown() {}
+  void slotReboot() {
+  }
+  void slotShutdown() {
+   conf->commandToDaemon(conf->storCommSocket,CMD_SHUTDOWN);
+   conf->commandToDaemon(conf->acqPPCommSocket,CMD_SHUTDOWN);
+   conf->commandToDaemon(conf->acqCommSocket,CMD_SHUTDOWN);
+   slotQuit();
+  }
 
   void slotAbout() {
    QMessageBox::about(this,"About Octopus-ReEL HyperEEG Streamer GUI Client Node",
@@ -206,8 +212,13 @@ class ControlWindow : public QMainWindow {
 
   void slotWavPlay(int x) {
    conf->currentWav=x;
-   if (x) conf->commandToDaemon(conf->wavPlayCommSocket,CMD_WAVPLAY_PLAY+"="+QString::number(x+1)+"x.wav");
-   else qInfo() << "Wav Stop.";
+   if (x) {
+    conf->commandToDaemon(conf->wavPlayCommSocket,CMD_WAVPLAY_PLAY+"="+QString::number(x)+"x.wav");
+    qInfo() << "Requested WAV for playing (CMD_WAVPLAY_PLAY="+QString::number(x)+"x.wav).";
+   } else {
+    conf->commandToDaemon(conf->wavPlayCommSocket,CMD_WAVPLAY_STOP);
+    qInfo() << "Requested WAV to stop (CMD_WAVPLAY_STOP).";
+   }
   }
 
   void slotOpEvt(int x) {

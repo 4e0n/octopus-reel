@@ -24,10 +24,10 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #pragma once
 
 // common
+const QString CMD_DISCONNECT="DISCONNECT"; // DISCONNECT and QUIT are essentially identical
 const QString CMD_QUIT="QUIT";
 const QString CMD_REBOOT="REBOOT";
 const QString CMD_SHUTDOWN="SHUTDOWN";
-const QString CMD_DISCONNECT="DISCONNECT";
 const QString CMD_STATUS="STATUS";
 
 // node-acq
