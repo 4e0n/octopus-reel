@@ -48,7 +48,7 @@ const QString CMD_ACQ_SUBEVT="SUBEVT";
 const QString CMD_STOR_REC_ON="RECSTART";
 const QString CMD_STOR_REC_OFF="RECSTOP";
 
-// node-time
+// node-wavplay
 const QString CMD_WAVPLAY_PLAY="PLAY";
 const QString CMD_WAVPLAY_STOP="STOP";
 const QString CMD_WAVPLAY_SETSINK="SETSINK";

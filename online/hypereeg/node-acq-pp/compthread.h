@@ -113,54 +113,60 @@ class CompThread : public QThread {
      // Compute for ONE sample (outside ring lock)
      tcpSPP.fromTcpSample(tcpS,conf->chnCount);
 
+     // ==============================================================================================================
+     // ==============================================================================================================
+     // NODE-COMP STYLE GENERIC COMPUTATION TO BE IMPLEMENTED HERE!!
+     // ==============================================================================================================
+     // ==============================================================================================================
+
      // OpenMP: parallelize over amps only (lower overhead than nested)
      // If ampCount is 1, omp adds overhead -> guard it.
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) if(conf->ampCount>=2)
 #endif
+
+     // Apply pre-filter before neighbor-interpolation
+     for (int ampIdx=0;ampIdx<int(conf->ampCount);++ampIdx) for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
+      const float x=tcpSPP.amp[ampIdx].data[chnIdx];
+      // notch-filtered version is master
+      auto &notch=conf->filterListN[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataN[chnIdx]=notch.filterSample(x);
+     }
+
+     // Channels' interpolation on Notch filtered version
      for (int ampIdx=0;ampIdx<int(conf->ampCount);++ampIdx) {
       for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-       auto &notch=conf->filterListN[ampIdx][chnIdx];
-       auto &bp=conf->filterListBP[ampIdx][chnIdx];
-#ifdef EEGBANDSCOMP
-       auto &delta=conf->filterListD[ampIdx][chnIdx];
-       auto &theta=conf->filterListT[ampIdx][chnIdx];
-       auto &alpha=conf->filterListA[ampIdx][chnIdx];
-       auto &beta=conf->filterListB[ampIdx][chnIdx];
-       auto &gamma=conf->filterListG[ampIdx][chnIdx];
-#endif
-       const float x=tcpSPP.amp[ampIdx].data[chnIdx];
-       const float xN=notch.filterSample(x);
-       const float xBP=bp.filterSample(xN);
-#ifdef EEGBANDSCOMP
-       const float xD=delta.filterSample(xN);
-       const float xT=theta.filterSample(xN);
-       const float xA=alpha.filterSample(xN);
-       const float xB=beta.filterSample(xN);
-       const float xG=gamma.filterSample(xN);
-#endif
-       tcpSPP.amp[ampIdx].dataN[chnIdx]=xN;
-       tcpSPP.amp[ampIdx].dataBP[chnIdx]=xBP;
-#ifdef EEGBANDSCOMP
-       tcpSPP.amp[ampIdx].dataD[chnIdx]=xD;
-       tcpSPP.amp[ampIdx].dataT[chnIdx]=xT;
-       tcpSPP.amp[ampIdx].dataA[chnIdx]=xA;
-       tcpSPP.amp[ampIdx].dataB[chnIdx]=xB;
-       tcpSPP.amp[ampIdx].dataG[chnIdx]=xG;
-#endif
        const unsigned interMode=conf->chnInfo[chnIdx].interMode[ampIdx];
-       if (interMode==2) {
-        float sum=0.f;
+       float xN=tcpSPP.amp[ampIdx].dataN[chnIdx];
+       // Default is 1
+       if (interMode==2) { // INTERPOLATE
         const int eSz=conf->chnInfo[chnIdx].interElec.size();
-        for (int ei=0;ei<eSz;++ei) {
-         sum+=tcpSPP.amp[ampIdx].dataN[ conf->chnInfo[chnIdx].interElec[ei] ];
+	if (eSz>0) {
+         float sum=0.f; for (int ei=0;ei<eSz;++ei) sum+=tcpSPP.amp[ampIdx].dataN[ conf->chnInfo[chnIdx].interElec[ei] ];
+	 xN=sum/float(eSz);
+         //tcpSPP.amp[ampIdx].dataN[chnIdx]=sum/float(eSz);
         }
-        tcpSPP.amp[ampIdx].dataN[chnIdx]=(eSz>0) ? (sum/float(eSz)):0.f;
-       } else if (interMode==0) {
-        tcpSPP.amp[ampIdx].dataN[chnIdx]=0.f;
+       } else if (interMode==0) { // OFF
+        xN=0.f;
+        //tcpSPP.amp[ampIdx].dataN[chnIdx]=0.f;
        }
+       // Now filter further the interpolated version
+       auto &bp=conf->filterListBP[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataBP[chnIdx]=bp.filterSample(xN);
+#ifdef EEGBANDSCOMP
+       auto &delta=conf->filterListD[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataD[chnIdx]=delta.filterSample(xN);
+       auto &theta=conf->filterListT[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataT[chnIdx]=theta.filterSample(xN);
+       auto &alpha=conf->filterListA[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataA[chnIdx]=alpha.filterSample(xN);
+       auto &beta=conf->filterListB[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataB[chnIdx]=beta.filterSample(xN);
+       auto &gamma=conf->filterListG[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataG[chnIdx]=gamma.filterSample(xN);
+#endif
       }
      }
+
+     // ==============================================================================================================
+     // ==============================================================================================================
+     // END OF COMPUTATION
+     // ==============================================================================================================
+     // ==============================================================================================================
+
      // Push ONE sample into ring
      bool ringFull=false;
      {

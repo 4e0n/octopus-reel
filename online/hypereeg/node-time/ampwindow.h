@@ -244,7 +244,10 @@ class AmpWindow : public QMainWindow {
    cmd.append(QString::number(conf->chnInfo[x].type)+",");
    cmd.append(QString::number(conf->chnInfo[x].physChn)+",");
    cmd.append(QString::number(conf->chnInfo[x].interMode[ampNo]));
-   QString commResponse=conf->commandToDaemon(conf->acqPPCommSocket,cmd.toUtf8());
+   // The selection among the following two lines decides whether channel policy will be volatile,
+   // i.e. for the current session only, or permanent to the BV recordings as well
+   //QString commResponse=conf->commandToDaemon(conf->acqCommSocket,cmd.toUtf8()); // Write to master
+   QString commResponse=conf->commandToDaemon(conf->acqPPCommSocket,cmd.toUtf8()); // Write to PP
    QStringList sList=commResponse.split(",");
    //qInfo() << commResponse;
    // Imprint commResponse to current state

@@ -171,10 +171,17 @@ class ControlWindow : public QMainWindow {
  private slots:
 
   // *** MENUS ***
-
-  void slotReboot() {
+  //
+  void slotReboot() { if (!confirmAndProceed("Reboot")) return;
+   conf->commandToDaemon(conf->wavPlayCommSocket,CMD_REBOOT);
+   conf->commandToDaemon(conf->storCommSocket,CMD_REBOOT);
+   conf->commandToDaemon(conf->acqPPCommSocket,CMD_REBOOT);
+   conf->commandToDaemon(conf->acqCommSocket,CMD_REBOOT);
+   slotQuit();
   }
-  void slotShutdown() {
+
+  void slotShutdown() { if (!confirmAndProceed("Shutdown")) return;
+   conf->commandToDaemon(conf->wavPlayCommSocket,CMD_SHUTDOWN);
    conf->commandToDaemon(conf->storCommSocket,CMD_SHUTDOWN);
    conf->commandToDaemon(conf->acqPPCommSocket,CMD_SHUTDOWN);
    conf->commandToDaemon(conf->acqCommSocket,CMD_SHUTDOWN);
@@ -191,8 +198,7 @@ class ControlWindow : public QMainWindow {
 
   void slotQuit() {
    conf->requestQuit();
-   for (auto *t:conf->threads)
-    if (t) t->wait();
+   for (auto *t:conf->threads) { if (t) t->wait(); }
    if (conf->acqPPStrmSocket->state()!=QAbstractSocket::UnconnectedState)
     conf->acqPPStrmSocket->waitForDisconnected(1000); // timeout in ms
    QApplication::quit();
@@ -231,6 +237,28 @@ class ControlWindow : public QMainWindow {
 #endif
 
  private:
+  bool confirmAndProceed(const QString &actionWord) {
+   if (conf->ctrlRecordingActive) {
+    QMessageBox::critical(this,"Operation blocked","Recording is currently active.\n\n"+actionWord+" is aborted.");
+    return false;
+   }
+   // Add more blockers here later, for example:
+   // if (conf->wavPlayActive) { ... return false; }
+   // if (...) { ... return false; }
+
+   // Confirmation
+   QMessageBox msgBox(this);
+   msgBox.setIcon(QMessageBox::Warning);
+   msgBox.setWindowTitle(actionWord);
+   msgBox.setText(actionWord+" all server nodes?");
+   msgBox.setInformativeText("Normally it is supposed to be after today's scheduled experiments are complete.");
+   QPushButton *yesBtn=msgBox.addButton(actionWord,QMessageBox::AcceptRole);
+   msgBox.addButton(QMessageBox::Cancel);
+   msgBox.setDefaultButton(QMessageBox::Cancel);
+   msgBox.exec();
+   return (msgBox.clickedButton()==yesBtn);
+  }
+
   QTabWidget *mainTabWidget; QWidget *cntWidget;
   QStatusBar *ctrlStatusBar; QMenuBar *menuBar;
   QAction *rebootAction,*shutdownAction,*aboutAction,*quitAction;

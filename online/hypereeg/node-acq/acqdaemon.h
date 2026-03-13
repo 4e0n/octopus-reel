@@ -114,9 +114,9 @@ class AcqDaemon : public QObject {
     } else if (cmd==CMD_ACQ_GETCHAN) {
      qInfo() << "<Comm> Sending Channels' Parameters..";
      for (const auto& ch:conf->chnInfo) {
-      QString interMode="";
-      for (int idx=0;idx<ch.interMode.size();idx++) interMode.append(QString::number(ch.interMode[idx])+",");
-      interMode.remove(interMode.size()-1,1);
+      const int ieSize=ch.interElec.size(); QString interElec="";
+      for (int idx=0;idx<ieSize;idx++) interElec.append(QString::number(ch.interElec[idx])+",");
+      interElec.remove(ieSize-1,1);
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
                     QString::number(ch.topoTheta).toUtf8()+","+ \
@@ -124,7 +124,8 @@ class AcqDaemon : public QObject {
                     QString::number(ch.topoX).toUtf8()+","+ \
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.type).toUtf8()+","+ \
-                    interMode.toUtf8()+"\n");
+                    QString::number(ieSize).toUtf8()+","+ // Count of elecs
+                    interElec.toUtf8()+"\n"); // Elecs
      }
     } else if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Amp(s) status..";
@@ -158,16 +159,16 @@ class AcqDaemon : public QObject {
      client->write("Bye!\r\n");
      client->disconnectFromHost();
     } else if (cmd==CMD_REBOOT) {
-     const int delaySec=30;
+     const int delaySec=15;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     //bool ok=QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     } else if (cmd==CMD_SHUTDOWN) {
-     const int delaySec=30;
+     const int delaySec=15;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     //bool ok=QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     }
    } else { // command with parameter
@@ -183,29 +184,9 @@ class AcqDaemon : public QObject {
       qWarning() << "<Comm> Error! **Non-hardware** trigger is out of (256,65535] range. Trigger not conveyed.";
       client->write("node-acq: <Comm> Error! **Non-hardware** trigger is out of (256,65535] range. Trigger not conveyed.\n");
      }
-    } else if (sList[0]==CMD_ACQ_COMPCHAN) {
-     QStringList params=sList[1].split(",");
-     unsigned int amp=params[0].toInt()-1;
-     unsigned int type=params[1].toInt();
-     unsigned int chn=params[2].toInt();
-     unsigned int state=params[3].toInt();
-     {
-      QMutexLocker locker(&(conf->chnInterMutex));
-      for (int chIdx=0;chIdx<conf->chnInfo.size();chIdx++) {
-       if (conf->chnInfo[chIdx].type==type && conf->chnInfo[chIdx].physChn==chn) {
-        conf->chnInfo[chIdx].interMode[amp]=state;
-       }
-      }
-     }
-     //conf->generateElecLists();
-     //qInfo() << "<Comm> Channel to be computed.. amp:" << amp+1 << "ctype:" << type << "chn:" << chn << "inter:" << state;
-     QString response;
-     for (int chIdx=0;chIdx<conf->chnInfo.size();chIdx++) {
-      response+=QString::number(conf->chnInfo[chIdx].interMode[amp])+",";
-     }
-     response.remove(response.size()-1,1);
-     client->write(response.toUtf8());
-     //client->write("Channel to be computed.\n");
+     // Now there's no CMP_ACQ_COMPCHAN exists in node-acq, as we don't want to deal
+     // with pre-computational tasks. This went through separation of concerns, and now
+     // handled by node-acq-pp
     } else if (sList[0]==CMD_ACQ_OPEVT) {
      bool ok=false;
      const uint v=sList[1].toUInt(&ok);

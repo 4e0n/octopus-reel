@@ -94,7 +94,12 @@ class PPDaemon: public QObject {
     chn.topoX=sList2[4].toInt();
     chn.topoY=sList2[5].toInt();
     chn.type=sList2[6].toInt();
-    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) chn.interMode[ampIdx]=sList2[7+ampIdx].toInt();
+    const int ieCount=sList2[7].toInt();
+    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
+     // Electrodes are all have their value originally, later can be changed via node-time operator input
+     chn.interMode[ampIdx]=1;
+     for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
+    }
     conf->chnInfo.append(chn);
    }
    conf->chnCount=conf->chnInfo.size();
@@ -211,7 +216,7 @@ class PPDaemon: public QObject {
                     QString::number(ch.topoX).toUtf8()+","+ \
                     QString::number(ch.topoY).toUtf8()+","+ \
                     QString::number(ch.type).toUtf8()+","+ \
-                    interMode.toUtf8()+"\n");
+                    interMode.toUtf8()+"\n"); // interMode status of that channel for individual amps
      }
     } else if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Amp(s) status..";
@@ -221,21 +226,19 @@ class PPDaemon: public QObject {
      client->write("Disconnecting...\n");
      client->disconnectFromHost();
     } else if (cmd==CMD_REBOOT) {
-     const int delaySec=20;
+     const int delaySec=5;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     } else if (cmd==CMD_SHUTDOWN) {
-     const int delaySec=20;
+     const int delaySec=5;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     }
    } else { // command with parameter
     sList=cmd.split("=");
-    if (sList[0]==CMD_ACQ_COMPCHAN) {
+    if (sList[0]==CMD_ACQ_COMPCHAN) { // Handle online operator demands of electrode interpolation/disabling related changes
      QStringList params=sList[1].split(",");
      unsigned int amp=params[0].toInt()-1;
      unsigned int type=params[1].toInt();
@@ -249,15 +252,13 @@ class PPDaemon: public QObject {
        }
       }
      }
-     //conf->generateElecLists();
-     //qInfo() << "<Comm> Channel to be computed.. amp:" << amp+1 << "ctype:" << type << "chn:" << chn << "inter:" << state;
+     qInfo() << "<Comm> Channel to be computed.. amp:" << amp+1 << "ctype:" << type << "chn:" << chn << "inter:" << state;
      QString response;
      for (int chIdx=0;chIdx<conf->chnInfo.size();chIdx++) {
       response+=QString::number(conf->chnInfo[chIdx].interMode[amp])+",";
      }
      response.remove(response.size()-1,1);
      client->write(response.toUtf8());
-     //client->write("Channel to be computed.\n");
     } else {
      qWarning() << "<Comm> Unknown command received..";
      client->write("node-acq: Unknown command..\n");

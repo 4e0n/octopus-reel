@@ -27,7 +27,8 @@ struct AcqChnInfo {
  unsigned int physChn; QString chnName;
  unsigned int type; // 0:ref,1:bipolar,2:meta;
  float topoTheta,topoPhi; unsigned int topoX,topoY;
- QVector<unsigned int> interMode; // for each amp
+ // Intermodes are not defined in node-acq, but only in node-acq-pp
+ // Only neighborhood info is conveyed.
  QVector<unsigned int> interElec; // Neighboring electrodes
 
  // Involved channels

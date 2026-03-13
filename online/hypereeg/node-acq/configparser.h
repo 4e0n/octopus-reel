@@ -200,8 +200,10 @@ class ConfigParser {
           qCritical() << "<ConfigParser> <CHN> ERROR: Invalid channel type in APPEND parameters!";
 	  return true;
          }
-	 dummyChnInfo.interMode.resize(conf->ampCount);
-	 for (unsigned int idx=0;idx<conf->ampCount;idx++) dummyChnInfo.interMode[idx]=1;
+	 // Intermodes are decided to be irrelevant within node-acq.
+	 // node-acq only predefines the neighborhood of each electrode via its config file
+	 // and conveys this information to node-acq-pp. Hence the recordings will only have
+	 // the original/not-interpolated EEG data; as node-stor relies on node-acq but not node-acq-pp.
         }
        } else {
         qCritical() << "<ConfigParser> <CHN> ERROR: Invalid count of parameters in APPEND line!";

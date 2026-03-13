@@ -167,16 +167,14 @@ class StorDaemon: public QObject {
      recThread->requestStopRecording();
      client->write("node-stor: RECSTOP accepted.\n");
     } else if (cmd==CMD_REBOOT) {
-     const int delaySec=20;
+     const int delaySec=5;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl reboot -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     } else if (cmd==CMD_SHUTDOWN) {
-     const int delaySec=20;
+     const int delaySec=5;
      const QString cmd=QString("sleep %1; /usr/bin/systemctl poweroff -i").arg(delaySec);
-     //QProcess::startDetached("/bin/sh",QStringList() << "-c" << cmd);
-     bool ok=QProcess::startDetached("/bin/sh", {"-c",cmd});
+     QProcess::startDetached("/bin/sh", {"-c",cmd});
      client->disconnectFromHost();
     }
    }
