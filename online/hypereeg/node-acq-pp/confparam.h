@@ -92,7 +92,8 @@ class ConfParam : public QObject {
    return QString::fromUtf8(socket->readAll()).trimmed();
   }
 
-  void initFilters() {
+  void initialize() {
+   // Initialize filters
    filterListBP.resize(ampCount); filterListN.resize(ampCount);
 #ifdef EEGBANDSCOMP
    filterListD.resize(ampCount); filterListT.resize(ampCount);
@@ -117,6 +118,11 @@ class ConfParam : public QObject {
 #endif
     }
    }
+   // Initialize CMlevels computation
+   latestCMLevels.resize(ampCount);
+   for (auto &v:latestCMLevels) {
+    v.resize(chnCount); for (int i=0;i<v.size();i++) v[i]=0.0f;
+   }
   }
 
   QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket; // We're client
@@ -125,11 +131,11 @@ class ConfParam : public QObject {
   QMutex mutex,chnInterMutex;
   QWaitCondition dataReady;  // already exists
   QWaitCondition spaceReady; // NEW: signals that producer can push
-  QVector<PPChnInfo> chnInfo;
+  QVector<PPChnInfo> refChns,bipChns,metaChns;
 
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
   unsigned int physChnCount,totalChnCount,totalCount;
   float refGain,bipGain;
 
@@ -140,6 +146,13 @@ class ConfParam : public QObject {
 #ifdef EEGBANDSCOMP
   std::vector<std::vector<IIRFilter>> filterListD,filterListT,filterListA,filterListB,filterListG;
 #endif
+
+  // CM Levels
+  QMutex cmMutex;
+  QVector<QVector<float>> latestCMLevels; // [amp][chn]
+  bool cmLevelsValid=false;
+  unsigned int cmWindowSamples=1000;      // e.g. 1 sec at 1000 sps
+  unsigned int cmUpdateStepSamples=500;   // recompute 2 times/sec
 
   // --- compute queue (producer: readyRead, consumer: CompThread)
   QMutex compMutex;
@@ -157,8 +170,6 @@ class ConfParam : public QObject {
   };
 
   QQueue<CompBlock> compQueue;
-
- public slots:
 
 public slots:
   void onStrmDataReady() {

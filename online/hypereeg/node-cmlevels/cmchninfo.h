@@ -1,6 +1,6 @@
 /*
 Octopus-ReEL - Realtime Encephalography Laboratory Network
-   Copyright (C) 2007-2025 Barkin Ilhan
+   Copyright (C) 2007-2026 Barkin Ilhan
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -21,20 +21,18 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-#include <QApplication>
-#include "../common/globals.h"
-#include "cmodclient.h"
+#pragma once
 
-int main(int argc,char* argv[]) {
- QApplication app(argc,argv);
- CModClient cModClient;
+struct GUIChnInfo {
+ //GUIChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
+ //QColor cmColor; // Instantly computed line noise level..
 
- omp_diag();
+ unsigned int physChn; QString chnName;
+ unsigned int type; // 0:ref,1:bipolar,2:meta
+ unsigned int topoX,topoY;
 
- if (cModClient.initialize()) {
-  qCritical("hnode_cmod_gui: <FatalError> Failed to initialize Octopus-ReEL EEG HyperAcquisition Common-Mode GUI Client.");
-  return 1;
- }
+ // -------------------------------------------------------------------------------------------
 
- return app.exec();
-}
+ //float cmLevel;
+
+};

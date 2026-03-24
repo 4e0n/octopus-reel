@@ -83,6 +83,8 @@ class AcqThread:public QThread {
    for (unsigned i=0;i<tcpBufSize;++i) (*tcpBuffer)[i].initSizeOnly(conf->ampCount,conf->physChnCount);
   }
 
+  // -------------------------------------------------------------------------------------------------------------
+
   bool setPendingOpEvt(unsigned int v) {
    if (v==0) return false;
    const quint64 now=quint64(QDateTime::currentMSecsSinceEpoch());
@@ -103,9 +105,8 @@ class AcqThread:public QThread {
    return true;
   }
 
-  // --------
+  // -------------------------------------------------------------------------------------------------------------
 
-  // fetchData() defines what's pending
   bool fetchData() {
 #ifdef EEMAGINE
    using namespace eemagine::sdk;
@@ -113,25 +114,27 @@ class AcqThread:public QThread {
    using namespace eesynth;
 #endif
 
-   // Fetch EEG
+   // --------------------------------------
+   //              Fetch EEG
+   // --------------------------------------
    std::size_t ampIdx=0;
    for (auto& ee:eeAmps) {
     try {
      ee.buf=ee.str->getData();
-     chnCount=ee.buf.getChannelCount();
+     ampChnCount=ee.buf.getChannelCount(); // <Amp's chn. count>=<Physiol.channels>+<Trigger>+<Sample offset> (EEG+BP+2)
      ee.smpCount=ee.buf.getSampleCount();
-     if (chnCount!=conf->totalChnCount)
-      qWarning() << "<fetchData> Warning!!! Channel count mismatch!!!" << chnCount << conf->totalChnCount;
+     if (ampChnCount!=conf->totalChnCount) // Amp's chn.count -> by default 64+2+2=68
+      qWarning() << "<fetchData> Warning!!! Channel count mismatch!!!" << ampChnCount << conf->totalChnCount;
     } catch (const exceptions::internalError& ex) {
      std::cout << "Exception" << ex.what() << std::endl;
     }
     cBufPivotList[ampIdx]=ee.cBufIdx;
     // -----
-    const int eegCh=int(chnCount-2); const unsigned baseIdx=ee.cBufIdx;
+    const int physiolChns=int(ampChnCount-2); const unsigned baseIdx=ee.cBufIdx;
 
     // Get Raw EEG Samples
-//    #pragma omp parallel for schedule(static) if(eegCh>=8)
-    for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
+//    #pragma omp parallel for schedule(static) if(physiolChns>=8)
+    for (int chnIdx=0;chnIdx<physiolChns;++chnIdx) {
      for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) {
       auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
       dst.data[chnIdx]=ee.buf.getSample(chnIdx,smpIdx); // Raw data
@@ -143,8 +146,8 @@ class AcqThread:public QThread {
 #endif
     for (unsigned smpIdx=0;smpIdx<ee.smpCount;++smpIdx) { // set trigger/offset serially
      auto &dst=ee.cBuf[(baseIdx+smpIdx)%cBufSz];
-     dst.trigger=ee.buf.getSample(chnCount-2,smpIdx);
-     dst.offset=ee.smpIdx=ee.buf.getSample(chnCount-1,smpIdx)-ee.baseSmpIdx;
+     dst.trigger=ee.buf.getSample(ampChnCount-2,smpIdx);
+     dst.offset=ee.smpIdx=ee.buf.getSample(ampChnCount-1,smpIdx)-ee.baseSmpIdx;
 #ifdef EEMAGINE
      if (syncOn) {
       if (dst.trigger==(unsigned)TRIG_AMPSYNC) {
@@ -167,32 +170,40 @@ class AcqThread:public QThread {
    cBufPivot=*std::min_element(cBufPivotList.begin(),cBufPivotList.end());
 
    pendingTcpDataSize=cBufPivot-cBufPivotPrev;
-   if (pendingTcpDataSize==0) return false;
+   if (pendingTcpDataSize==0) { qInfo() << "[ACQ] <AcqThread> No data from fetchData()."; return false; }
 
-   // Fetch audio
 
-   // ensure capacity once; resize can still happen if pendingTcpDataSize grows,
-   // but it wont do nested heap churn per sample.
+   // --------------------------------------
+   //              Fetch Audio
+   // --------------------------------------
+
+   // Ensure capacity once; i.e. resize can still happen if pendingTcpDataSize grows,
+   // but it won't do nested heap churn per sample.
    audioBlock.resize(size_t(pendingTcpDataSize)*AUDIO_N);
    audioTrigOffsets.resize(size_t(pendingTcpDataSize),UINT_MAX);
 
    for (quint64 i=0;i<pendingTcpDataSize;++i) {
     float* dst=audioBlock.data()+size_t(i)*AUDIO_N;
     // audioBlock holds AUDIO_N samples per EEG sample (aligned by acquisition cadence)
-    // fills 48 floats, or zeros on miss + capture trigger
+    // fills e.g. AUDIO_N=48 floats, or zeros on miss + capture trigger
     audioTrigOffsets[size_t(i)]=audioAmp->fetchN(dst,2); // Should not be more than 1-2 ms
     if (uniTrig.syncOngoing.load(std::memory_order_acquire) && conf->triggerPending &&
         !audSyncSeen && audioTrigOffsets[i]!=UINT_MAX) {
      audSyncSeen=true; audSyncSeenLocalIdx=uint64_t(cBufPivotPrev)+uint64_t(i);
-     audSyncSeenOff=unsigned(audioTrigOffsets[i]); // sample index in 0..47
-     qInfo("<AudSync>SYNC received by AUDIO @bufIdx=%llu (intra-offset=%u/48)",(unsigned long long)audSyncSeenLocalIdx,audSyncSeenOff);
+     audSyncSeenOff=unsigned(audioTrigOffsets[i]); // e.g. by default; sample index in 0..47
+     qInfo("<AudSync>SYNC received by AUDIO @bufIdx=%llu (intra-offset=%u/48)",
+           (unsigned long long)audSyncSeenLocalIdx,audSyncSeenOff);
     }
    }
+
+   // --------------------------------------
 
    return true;
   }
 
-  // buildTcpBlock() consumes and advances
+  // --------------------------------------
+  //           CONSUME + ADVANCE
+  // --------------------------------------
   bool buildTcpBlock() {
    const quint64 tcpDataSize=pendingTcpDataSize;
    if (tcpDataSize==0) { cBufPivotPrev=cBufPivot; return false; }
@@ -204,34 +215,39 @@ class AcqThread:public QThread {
      const quint64 used=head-tail; const quint64 free=quint64(tcpBufSize)-used;
      if (tcpDataSize>free) {
       // POLICY CHOICE:
-      // A) block until free (true no-overwrite, but risks upstream loss if hardware buffers overflow)
-      // B) -> drop oldest (keeps newest real-time, but causes losing historical samples)
-      // C) drop newest (keeps continuity, but causes losing current samples)
+      // I.  Block until free: True no-overwrite; risks upstream loss if hw buffers overflow
+      // II. Drop oldest: Keep newest; causes losing oldest samples
+      // III.Drop newest: Keep continuity; causes losing current samples
       const quint64 need=tcpDataSize-free;
       conf->tcpBufTail+=need;
       droppedSamples+=need; // add this counter in ConfParam
-      qWarning() << "[RING] overflow: dropped oldest" << need
-                 << " used=" << used << " size=" << tcpBufSize;
+      qWarning() << "[RING] overflow: dropped oldest" << need << " used=" << used << " size=" << tcpBufSize;
      }
      start=head; newHead=head+tcpDataSize;
    }
 
-   // no mutex: fill slots
+   // Fill slots
 #ifdef EEMAGINE
    const bool syncOn=uniTrig.syncOngoing.load(std::memory_order_acquire);
 #endif
    for (quint64 i=0;i<tcpDataSize;++i) {
     TcpSample &s=(*tcpBuffer)[(start+i)%tcpBufSize];
  
-    // Handle Operator and Participant Events
+    // -----------------------------------------------
+    //     Handle Operator and Participant Events
+    // -----------------------------------------------
     unsigned int opEvt=0,subEvt=0;
     { QMutexLocker locker(&evtMutex); opEvt=pendingOpEvt; pendingOpEvt=0; subEvt=pendingSubEvt; pendingSubEvt=0; }
     s.opEvt=opEvt; s.subEvt=subEvt;
 
+
+    // -----------------------------------------------------
+    //     Handle Trigger over EEG amps and Audio Device
+    // -----------------------------------------------------
     const unsigned trigOff=audioTrigOffsets[size_t(i)];
     s.audioTrigEvent=(trigOff==UINT_MAX) ? 0u:(uint32_t((trigOff&0xFFu)+1u));
 
-    unsigned tbuf[EE_MAX_AMPCOUNT]; // stack
+    unsigned trigBuf[EE_MAX_AMPCOUNT]; // stack
 
     for (unsigned ampIdx=0;ampIdx<eeAmps.size();++ampIdx) {
      const Sample &src=eeAmps[ampIdx].cBuf[(cBufPivotPrev+i+quint64(uniTrig.ampAlignOffset[ampIdx]))%cBufSz];
@@ -244,9 +260,9 @@ class AcqThread:public QThread {
       if (pickTrigWithLookaroundExpected(eeAmps[ampIdx].cBuf.data(),rawIdx,cBufSz,unsigned(TRIG_AMPSYNC))) t=unsigned(TRIG_AMPSYNC);
      }
 #endif
-     tbuf[ampIdx]=t;
+     trigBuf[ampIdx]=t;
     }
-    const unsigned hwTrig=uniTrig.mergeTriggers(tbuf,unsigned(eeAmps.size()));
+    const unsigned hwTrig=uniTrig.mergeTriggers(trigBuf,unsigned(eeAmps.size()));
     s.trigger=hwTrig;
     
 #ifdef AUDIO_VERBOSE
@@ -272,13 +288,15 @@ class AcqThread:public QThread {
     s.offset=counter0++; s.timestampMs=0;
    }
 
+   // ------------------------------
+   //        PRODUCER MUTEX
+   // ------------------------------
    {
      QMutexLocker locker(&conf->mutex);
      conf->tcpBufHead=newHead;
 #if defined(EEG_VERBOSE) || defined(HSYNC_VERBOSE)
      static qint64 lastMsRing=0; const qint64 nowMs=QDateTime::currentMSecsSinceEpoch();
      if (nowMs-lastMsRing >= 1000) {
-      //bool didLog=false;
 #ifdef EEG_VERBOSE
       static quint64 lastH=0,lastT=0;
       const quint64 H=conf->tcpBufHead; const quint64 T=conf->tcpBufTail;
@@ -290,7 +308,6 @@ class AcqThread:public QThread {
        (unsigned long long)dH,(unsigned long long)dT,(unsigned long long)droppedSamples
       );
       lastH=H; lastT=T;
-      //didLog=true;
 #endif
 
 #ifdef HSYNC_VERBOSE2
@@ -307,13 +324,13 @@ class AcqThread:public QThread {
       if (dMis||dMiss) {
        qWarning("<AmpSync>[TRIG] problems: mismatch/s=%llu missing/s=%llu",(unsigned long long)dMis,(unsigned long long)dMiss);
       }
-      //didLog=true;
 #endif
-      //if (didLog) lastMsRing=nowMs;
       lastMsRing=nowMs;
      }
 #endif
    }
+   // ------------------------------
+   // ------------------------------
 
    cBufPivotPrev=cBufPivot; pendingTcpDataSize=0;
     
@@ -323,6 +340,10 @@ class AcqThread:public QThread {
 
   void run() override {
    lastSyncSendMs=0;
+
+   // --------------------
+   //   SCHEDULING SETUP
+   // --------------------
 
 #ifdef __linux__
 #ifdef EEMAGINE
@@ -338,9 +359,15 @@ class AcqThread:public QThread {
    using namespace eesynth;
 #endif
 
-   // --- Initial setup ---
+   // ----------------------
+   //   AUDIO DEVICE SETUP
+   // ----------------------
 
    audioAmp->start();
+
+   // ------------------------
+   //   EEG AMPLIFIERS SETUP
+   // ------------------------
 
    // Construct main EE structure
    quint64 rMask,bMask; // Create channel selection masks -- subsequent channels assumed..
@@ -358,46 +385,56 @@ class AcqThread:public QThread {
 
    cBufPivotList.resize(conf->ampCount);
 
-   // Initialize EEG streams of amps.
+   // Initialize EEG streams from amps
 #ifndef EEMAGINE
    eesynth::set_block_msec(unsigned(conf->eegProbeMsecs));
 #endif
    for (auto& e:eeAmps) e.str=e.OpenEegStream(conf->eegRate,conf->refGain,conf->bipGain,e.chnList);
    qInfo() << "<AcqThread_Switch2EEG> EEG upstream started..";
 
-   // EEG stream
-   // -----------------------------------------------------------------------------------------------------------------
-   // The first round of acquisition - to preadjust certain things
-   const bool fd=fetchData(); if (!fd) { ; }
+   // ----------------------
+   //   EEG STREAM STARTED
+   // ----------------------
 
-   // Cheap sanity check
+   // The first round of acquisition - to preadjust certain things
+   const bool fd=fetchData();
+   if (!fd) qWarning() << "[ACQ] <AcqThread> fetchData(): Initial round unsuccessful.";
+
+   // Sanity check for Data Integrity
    const quint64 tcpDataSize=pendingTcpDataSize;
    if (tcpDataSize>quint64(conf->eegRate)*2) {
     qWarning() << "[ACQ] suspicious tcpDataSize=" << tcpDataSize
                << " pivPrev=" << cBufPivotPrev << " piv=" << cBufPivot;
    }
 
+   // ---------------------------------------
+   //   MAIN CONSUMPTION (ACQUISITION) LOOP
+   // ---------------------------------------
    while (!isInterruptionRequested()) {
-    const bool fd=fetchData(); if (!fd) { ; }
-    const bool btb=buildTcpBlock(); if (!btb) { ; }
+    const bool fd=fetchData();
+    if (!fd) qWarning() << "[ACQ] <AcqThreadLoop> fetchData(): Unsuccessful.";
+    const bool btb=buildTcpBlock();
+    if (!btb) qWarning() << "[ACQ] <AcqThreadLoop> buildTcpBlock() unsuccessful.";
 
-    if (counter1==conf->eegRate) requestAmpSync(); // Initial Sync (after ~one second)
+    // -----------------------
+    //   INITIAL SYNC SIGNAL
+    // -----------------------
+    if (counter1==conf->eegRate) requestAmpSync(); // After 1 second of acquisition
 
-    // 1) If all seen -> finalize
+    // I. If all amps received SYNC -> FINALIZE
     if (uniTrig.syncOngoing.load(std::memory_order_acquire) && uniTrig.syncSeenAtAmpCount==conf->ampCount && audSyncSeen) {
      if (uniTrig.tryFinalizeIfReady()) {
       qInfo("<AmpSync> aligment offsets (samples):");
       for (size_t a=0;a<uniTrig.ampAlignOffset.size();++a) {
        qInfo(" AMP#%u -> +%u",unsigned(a+1),unsigned(uniTrig.ampAlignOffset[a]));
       }
-      if (audSyncSeen) { // ---- Audio alignment (in EEG samples, same convention as amps)
+      if (audSyncSeen) { // ----> Audio alignment (same convention as EEG amps)
        const uint64_t minAmpPivot=*std::min_element(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end());
        const int64_t d=int64_t(audSyncSeenLocalIdx)-int64_t(minAmpPivot);
        // Convention: +N means "shift forward by N samples"
        const int64_t audioAlign=-d;
        qInfo(" AUDIO -> %+lld",(long long)audioAlign);
       }
-
       qInfo("<AmpSync> SUCCESS in %llusamp",(unsigned long long)(uint64_t(cBufPivot)-uniTrig.syncBeginLocalIdx));
 
       if (audSyncSeen) {
@@ -412,13 +449,12 @@ class AcqThread:public QThread {
       }
       conf->triggerPending=false;
      }
-    }
-    // 2) Else if deadline passed -> timeout
-    else if (uniTrig.syncOngoing.load(std::memory_order_acquire)) {
-     // we can use current pivot as "now"
+    // II. If "deadline passed" -> TIMEOUT
+    } else if (uniTrig.syncOngoing.load(std::memory_order_acquire)) {
+     // Use current pivot as "now"
      const uint64_t nowLocal=uint64_t(cBufPivot);
      if (nowLocal>=uniTrig.syncDeadlineLocalIdx) {
-      // timeout: report which amps didn't see it
+      // timeout: report which amps didn't receive SYNC
       qWarning("<AmpSync> TIMEOUT after %llusamp. Seen=%u/%u",
                (unsigned long long)(nowLocal-uniTrig.syncBeginLocalIdx),
                unsigned(uniTrig.syncSeenAtAmpCount),unsigned(uniTrig.syncSeenAtAmp.size()));
@@ -426,7 +462,7 @@ class AcqThread:public QThread {
        if (!uniTrig.syncSeenAtAmp[a]) qWarning("<AmpSync> missing AMP#%u",unsigned(a+1));
        else qInfo("<AmpSync> seen AMP#%u @%llu",unsigned(a+1),(unsigned long long)uniTrig.syncSeenAtAmpLocalIdx[a]);
       }
-      // abort the window (so re-requests can happen)
+      // Abort the window (so future requests can happen)
       uniTrig.syncOngoing.store(false,std::memory_order_release);
       uniTrig.syncSeenAtAmpCount=0;
       conf->triggerPending=false;
@@ -438,32 +474,29 @@ class AcqThread:public QThread {
 #endif
 
     counter1++;
-   } // EEG stream
+   } //  MAIN LOOP
 
    audioAmp->stop();
-   for (auto& e:eeAmps) { delete e.str; delete e.amp; } // EEG stream stops..
+   for (auto& e:eeAmps) { delete e.str; delete e.amp; } // ..EEG stream stops..
    qInfo("<AcqThread> Exiting thread..");
   }
 
  public slots:
   void requestAmpSync() {
-   // If already in a sync window, dont allow re-triggering.
+   // If a previous SYNC is pending, dont allow re-triggering
    if (uniTrig.syncOngoing.load(std::memory_order_acquire)) {
     qInfo() << "<AmpSync> request ignored: sync already ongoing";
     return;
    }
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
    if (lastSyncSendMs!=0 && (now-lastSyncSendMs)<syncCooldownMs) {
-    qInfo() << "<AmpSync> request ignored: cooldown"
-            << (syncCooldownMs-(now-lastSyncSendMs)) << "ms remaining";
+    qInfo() << "<AmpSync> request ignored: cooldown" << (syncCooldownMs-(now-lastSyncSendMs)) << "ms remaining";
     return;
    }
    lastSyncSendMs=now;
 
    // Reset Audio Triggering
-   audSyncSeen=false;
-   audSyncSeenLocalIdx=0;
-   audSyncSeenOff=0;
+   audSyncSeen=false; audSyncSeenLocalIdx=0; audSyncSeenOff=0;
 
    std::fill(syncSeenAtAmpPivotIdx.begin(),syncSeenAtAmpPivotIdx.end(),0);
 
@@ -474,9 +507,10 @@ class AcqThread:public QThread {
    uniTrig.beginSync(uint64_t(cBufPivot),syncTimeoutSamples); // sets syncOngoing=true, resets arrays
    sendAmpSyncByte(); // actually write to SparkFun/amps
    conf->triggerPending=true;
-   qInfo("<AmpSync> SYNC sent.. timeout=%llusamp", (unsigned long long)syncTimeoutSamples);
+   qInfo("<AmpSync> SYNC sent.. timeout=%llusamp",(unsigned long long)syncTimeoutSamples);
   }
 
+  // Synthetic trigger mimicking a real hardware trigger. For debugging purposes.
   void requestSynthTrig(uint32_t t) {
    Q_UNUSED(t);
 #ifndef OCTO_DIAG_TRIG
@@ -499,7 +533,7 @@ class AcqThread:public QThread {
  private:
   static inline unsigned pickTrigWithLookaroundExpected(const Sample* buf,quint64 idx,unsigned cBufSz,unsigned expected) {
    const unsigned t0=buf[idx%cBufSz].trigger; if (t0==expected) return expected;
-   // ±1 sample grace (cheap and deterministic)
+   // ±1 sample grace
    const unsigned tPrev=buf[(idx+cBufSz-1)%cBufSz].trigger; if (tPrev==expected) return expected;
    const unsigned tNext=buf[(idx+1)%cBufSz].trigger; if (tNext==expected) return expected;
    return 0;
@@ -524,15 +558,14 @@ class AcqThread:public QThread {
 
   ConfParam *conf;
 
-  TcpSample tcpEEG; Sample smp;
-  QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
+  TcpSample tcpEEG; Sample smp; QVector<TcpSample> *tcpBuffer; unsigned int tcpBufSize;
 
-  std::vector<EEAmp> eeAmps; unsigned int cBufSz,smpCount,chnCount;
+  std::vector<EEAmp> eeAmps; unsigned int cBufSz,ampChnCount;
   quint64 cBufPivotPrev,cBufPivot; std::vector<unsigned int> cBufPivotList;
 
   quint64 counter0,counter1;
 
-  // --- Hardware pointers -- coming from the sky
+  // --- Hardware pointers -- coming from the sky..
   std::vector<amplifier*> *eeAmpsOrig;
   AudioAmp *audioAmp; std::vector<float> audioBlock;
   std::vector<unsigned> audioTrigOffsets; // -> audTrigOffsets for tcpData count of TcpSamples.

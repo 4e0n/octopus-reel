@@ -49,6 +49,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDateTime>
 #include <cstdio>
 #include <vector>
+#include <sys/stat.h>
 #include "configparser.h"
 #include "audioamp.h"
 #include "serialdevice.h"
@@ -78,6 +79,7 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
    // Constants or calculated global settings upon the ones read from config file
    conf->refChnMaxCount=REF_CHN_MAXCOUNT; conf->bipChnMaxCount=BIP_CHN_MAXCOUNT;
    conf->physChnCount=conf->refChnCount+conf->bipChnCount; conf->totalChnCount=conf->physChnCount+2;
+   conf->chnCount=conf->refChnCount+conf->bipChnCount+conf->metaChnCount;
    conf->totalCount=conf->ampCount*conf->totalChnCount;
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
    conf->frameBytes=TcpSample(conf->ampCount,conf->physChnCount).serialize().size();
@@ -88,7 +90,6 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
     qCritical() << "Cannot start TCP server on <Comm> port:" << conf->acqCommPort;
     return true;
    }
-   qInfo() << "<Comm> listening on port" << conf->acqCommPort;
    if (!conf->acqStrmServer.listen(QHostAddress::Any,conf->acqStrmPort)) {
     qCritical() << "Cannot start TCP server on <Strm> port:" << conf->acqStrmPort;
     return true;
@@ -110,32 +111,55 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
 
 void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
- qInfo() << "Detailed channels info:";
- qInfo() << "-----------------------";
+ qInfo() << "                    DETAILED CHANNELS INFO";
+ qInfo() << "===============================================================";
  QString interElec;
- for (const auto& ch:conf->chnInfo) {
-  interElec=""; for (int i=0;i<ch.interElec.size();i++) interElec.append(QString::number(ch.interElec[i])+" ");
-  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] ChnType=%d, Inter=%s",ch.physChn,qUtf8Printable(ch.chnName),
-                                                                  ch.topoTheta,ch.topoPhi,ch.topoX,ch.topoY,ch.type,
-                                                                  interElec.toUtf8().constData());
+ qInfo() << "---------------------------";
+ qInfo() << "EEG (referential) channels:";
+ qInfo() << "---------------------------"; if (conf->refChnCount==0) qInfo() << "None.";
+ for (const auto& c:conf->refChns) {
+  interElec=""; for (int i=0;i<c.interElec.size();i++) interElec.append(QString::number(c.interElec[i])+" ");
+  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] - Neighbors=%s",c.physChn,qUtf8Printable(c.chnName),
+                                                            c.topoTheta,c.topoPhi,c.topoX,c.topoY,
+                                                            interElec.toUtf8().constData());
+ }
+ qInfo() << "--------------------------------";
+ qInfo() << "BiPolar (differential) channels:";
+ qInfo() << "--------------------------------"; if (conf->bipChnCount==0) qInfo() << "None.";
+ for (const auto& c:conf->bipChns) {
+  interElec=""; for (int i=0;i<c.interElec.size();i++) interElec.append(QString::number(c.interElec[i])+" ");
+  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] - Neighbors=%s",c.physChn,qUtf8Printable(c.chnName),
+                                                            c.topoTheta,c.topoPhi,c.topoX,c.topoY,
+                                                            interElec.toUtf8().constData());
+ }
+ qInfo() << "------------------------------";
+ qInfo() << "Meta (only-computed) channels:";
+ qInfo() << "------------------------------"; if (conf->metaChnCount==0) qInfo() << "None.";
+ for (const auto& c:conf->metaChns) {
+  interElec=""; for (int i=0;i<c.interElec.size();i++) interElec.append(QString::number(c.interElec[i])+" ");
+  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] - Neighbors=%s",c.physChn,qUtf8Printable(c.chnName),
+                                                            c.topoTheta,c.topoPhi,c.topoX,c.topoY,
+                                                            interElec.toUtf8().constData());
  }
  qInfo() << "===============================================================";
- qInfo() << "Acquisition Parameters Summary:";
- qInfo() << "-------------------------------";
+ qInfo() << "                ACQUISITION PARAMETERS SUMMARY";
+ qInfo() << "===============================================================";
  qInfo() << "Connected # of amplifier(s):" << conf->ampCount;
  qInfo() << "Sample Rate->" << conf->eegRate << "sps";
  qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
  qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
  qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
+ qInfo("Per-amp All Channel (with Meta) #: %d (%d+%d+%d)",conf->chnCount,conf->refChnCount,conf->bipChnCount,conf->metaChnCount);
  qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
  qInfo() << "Total Channel# from all amps:" << conf->totalCount;
  qInfo() << "Referential channels gain:" << conf->refGain;
  qInfo() << "Bipolar channels gain:" << conf->bipGain;
  qInfo() << "AudioCard (analog) trigger threshold:" << conf->audTrigThr;
  qInfo() << "===============================================================";
- qInfo() << "Networking Summary:";
- qInfo() << "-----------------------------";
+ qInfo() << "                      NETWORKING SUMMARY";
+ qInfo() << "===============================================================";
  qInfo() << "<ServerIP> is" << conf->acqIpAddr;
+ qInfo() << "<Comm> listening on port" << conf->acqCommPort;
  qInfo() << "<Strm> listening on port" << conf->acqStrmPort;
 }
 
@@ -157,9 +181,12 @@ int main(int argc,char *argv[]) {
 
  QCoreApplication app(argc,argv);
 
+ umask(0002);
+
+ qInfo() << "===============================================================";
+ qInfo() << "                  OPENMP INITIALIZATION STATUS";
  qInfo() << "===============================================================";
  omp_diag();
- qInfo() << "===============================================================";
 
  if (conf_init(&conf)) {
   qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG Hyperacquisition daemon node.");
@@ -175,29 +202,29 @@ int main(int argc,char *argv[]) {
 #endif
 
  qInfo() << "===============================================================";
- qInfo() << "Hardware connection status...";
- qInfo() << "-----------------------------";
+ qInfo() << "                  HARDWARE CONNECTION STATUS";
+ qInfo() << "===============================================================";
 
- qInfo() << "Audio Device...";
- qInfo() << "---------------";
+ qInfo() << "-------------";
+ qInfo() << "Audio Device:";
+ qInfo() << "-------------";
  if (audio_check(&audioAmp)) {
   qCritical() << "<Audio> AudioAmp ALSA init FAILURE!";
   return 1;
  }
  qInfo() << "<Audio> AudioAmp ALSA initialized successfully.";
- qInfo() << "---------------------------------------------------------------";
 
- qInfo() << "EEG Amplifiers...";
- qInfo() << "-----------------";
+ qInfo() << "---------------";
+ qInfo() << "EEG Amplifiers:";
+ qInfo() << "---------------";
  if (eegamps_check(&eeAmps,conf.ampCount)) {
   qCritical() << "<AmpProbe> At least one  of the amplifiers is offline!";
   return 1;
  }
-
- qInfo() << "<AmpProbe> Amplifiers are initialized successfully.";
+ qInfo() << "<EEGs><AmpProbe> Amplifiers are initialized successfully.";
 
  // Sort amplifiers for their serial numbers
- qInfo() << "Sorting according to their IDs...";
+ qInfo() << "<EEGs> Sorting according to their IDs...";
  std::vector<unsigned int> sUnsorted,sSorted;
  for (auto& ee:eeAmps) sUnsorted.push_back(stoi(ee->getSerialNumber()));
  sSorted=sUnsorted; std::sort(sSorted.begin(),sSorted.end());
@@ -207,25 +234,25 @@ int main(int argc,char *argv[]) {
    ampIdx++;
   }
  }
- qInfo() << "Before:";
- for (auto& ee:eeAmps) qInfo() << stoi(ee->getSerialNumber());
- qInfo() << "After:";
- for (auto& ee:eeAmpsSorted) qInfo() << stoi(ee->getSerialNumber());
+ QString s,ss;
+ s=""; for (auto& ee:eeAmps) { s.append(ss.setNum(stoi(ee->getSerialNumber()))).append(" "); } s.chop(1);
+ qInfo() << "<EEGs> Before:" << s;
+ s=""; for (auto& ee:eeAmpsSorted) { s.append(ss.setNum(stoi(ee->getSerialNumber()))).append(" "); } s.chop(1);
+ qInfo() << "<EEGs> After:" << s;
 
 // On/off check -- no need for synthetic amp. We know that they're always on.
 #ifdef  EEMAGINE
- qInfo() << "---------------------------------------------------------------";
- qInfo() << "<AmpProbe> Checking amplifiers on/off status...";
-
+ qInfo() << "-----------------------------------------------------";
+ qInfo() << "<EEGs><AmpProbe> Checking amplifiers on/off status...";
  // Check whether the amplifiers are on and ready to stream.;
  int ampIdx=0; std::vector<bool> ampStatus;
  for (auto& amp:eeAmpsSorted) {
   try {
    stream *test=amp->OpenImpedanceStream(); delete test; ampStatus.push_back(true);
-   qInfo() << "<AmpProbe> EEG Amplifier" << ampIdx << "is on for streaming.";
+   qInfo() << "<EEGs><AmpProbe> EEG Amplifier" << ampIdx << "is on for streaming.";
   } catch (const exceptions::incorrectValue& ex) {
    ampStatus.push_back(false);
-   qWarning() << "<AmpProbe> EEG Amplifier" << ampIdx << "is connected but not switched on!";
+   qWarning() << "<EEGs><AmpProbe> EEG Amplifier" << ampIdx << "is connected but not switched on!";
   }
   ampIdx++;
  }
@@ -236,14 +263,13 @@ int main(int argc,char *argv[]) {
    return 1;
   }
  }
-
- qInfo() << "---------------------------------------------------------------";
 #endif
 
 // We're not checking HyperSync if we're not on real EEG amps.
 #ifdef EEMAGINE
- qInfo() << "HyperSync Serial Device...";
- qInfo() << "--------------------------";
+ qInfo() << "------------------------";
+ qInfo() << "HyperSync Serial Device:";
+ qInfo() << "------------------------";
  if (serDev.init()) {
   qCritical() << "<HyperSync> Device init FAILURE!";
   return 1;
@@ -253,11 +279,12 @@ int main(int argc,char *argv[]) {
  
  conf_info(&conf);
 
- qInfo() << "====================== Thread Runtime =========================";
- qInfo() << "===============================================================";
-
  // Passing a nullptr for serDev if not on real EEG amps
  AcqDaemon acqDaemon(nullptr,&conf,&eeAmpsSorted,&audioAmp,&serDev);
+
+ qInfo() << "===============================================================";
+ qInfo() << "                 THREAD RUNTIME LOOP STARTED";
+ qInfo() << "===============================================================";
 
  return app.exec();
 }

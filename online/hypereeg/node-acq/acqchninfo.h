@@ -30,7 +30,4 @@ struct AcqChnInfo {
  // Intermodes are not defined in node-acq, but only in node-acq-pp
  // Only neighborhood info is conveyed.
  QVector<unsigned int> interElec; // Neighboring electrodes
-
- // Involved channels
- // Operation (avg,gfp,difference, etc.)
 };

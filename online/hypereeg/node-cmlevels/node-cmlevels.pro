@@ -1,5 +1,5 @@
 # Octopus-ReEL - Realtime Encephalography Laboratory Network
-#       Copyright (C) 2007-2025 Barkin Ilhan
+#       Copyright (C) 2007-2026 Barkin Ilhan
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-gui-cmod
+TARGET = node-cmlevels
 INCLUDEPATH += .
-LIBS += -lGLU
+LIBS += -lGLU -lX11
 LIBS += -fopenmp
-QT += core gui widgets network multimedia opengl
+QT += core gui widgets network multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -32,13 +32,12 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 QMAKE_CXXFLAGS += -fopenmp
 
 # Input
-HEADERS += cmodclient.h \
-           cmodwindow.h \
-           cmodframe.h \
-           cmodthread.h \
+HEADERS += cmclient.h \
+           cmwindow.h \
+           cmframe.h \
            configparser.h \
            confparam.h \
-           chninfo.h \
+           cmchninfo.h \
            ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

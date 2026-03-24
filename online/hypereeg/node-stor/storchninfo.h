@@ -26,6 +26,5 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 struct StorChnInfo {
  StorChnInfo() {}
  unsigned int physChn; QString chnName;
- unsigned int type; // 0:ref,1:bipolar,2:meta
- float topoTheta,topoPhi; unsigned int topoX,topoY;
+ unsigned int type; // 0:ref,1:bipolar
 };

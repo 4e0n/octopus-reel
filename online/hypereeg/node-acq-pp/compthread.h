@@ -27,6 +27,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMutexLocker>
 #include <QDateTime>
 #include <QElapsedTimer>
+#include <cmath>
 #include "confparam.h"
 #include "../common/logring.h"
 #include "../common/rt_bootstrap.h"
@@ -56,14 +57,45 @@ class CompThread : public QThread {
    omp_set_num_threads(2);
 #endif
 
-   const int eegCh=int(conf->chnCount-2);
-   TcpSample tcpS(conf->ampCount,conf->physChnCount);
-   TcpSamplePP tcpSPP(conf->ampCount,conf->physChnCount);
+   const unsigned int ampCount=conf->ampCount;
+   const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount;
+   const unsigned int metaChnCount=conf->metaChnCount;
+   const unsigned int chnCount=conf->chnCount; const unsigned int physChnCount=conf->physChnCount;
+
+   const auto& refChns=conf->refChns; const auto& bipChns=conf->bipChns; const auto& metaChns=conf->metaChns;
+   auto& filterListN=conf->filterListN; auto& filterListBP=conf->filterListBP;
+#ifdef EEGBANDSCOMP
+   auto& filterListD=conf->filterListD; auto& filterListT=conf->filterListT;
+   auto& filterListA=conf->filterListA; auto& filterListB=conf->filterListB;
+   auto& filterListG=conf->filterListG;
+#endif
+
+   if (conf->cmWindowSamples==0||conf->cmUpdateStepSamples==0) {
+    qCritical() << "[PP:COMP] Invalid CM configuration.";
+    return;
+   }
+
+   // Initialize CMlevels ringbuffer
+   const unsigned int cmRingSize=conf->cmWindowSamples;
+   QVector<QVector<QVector<float>>> cmDiffRing;
+   cmDiffRing.resize(ampCount);
+   for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+    cmDiffRing[ampIdx].resize(chnCount);
+    for (unsigned int chnIdx=0;chnIdx<chnCount;++chnIdx) {
+     cmDiffRing[ampIdx][chnIdx].resize(cmRingSize);
+     for (unsigned int i=0;i<cmRingSize;i++) cmDiffRing[ampIdx][chnIdx][i]=0.0f;
+    }
+   }
+   unsigned int cmRingPos=0; unsigned int cmValidSamples=0; quint64 cmSinceLastCompute=0;
+
+   // Initialize main stream processing
+   TcpSample tcpS(ampCount,physChnCount); // Ref+Bip Channels
+   TcpSamplePP tcpSPP(ampCount,chnCount); // Ref+Bip+Meta Channels
 
    // Simple guard: when output ring is "near full", pause briefly.
    // This prevents burning CPU while SEND drains.
-   const quint64 outNearFullThreshold=(conf->tcpBufSize > quint64(conf->eegSamplesInTick))
-        ? (conf->tcpBufSize-quint64(conf->eegSamplesInTick)):(conf->tcpBufSize);
+   const quint64 outNearFullThreshold=(conf->tcpBufSize > quint64(conf->eegSamplesInTick)) ?
+                                       (conf->tcpBufSize-quint64(conf->eegSamplesInTick)):(conf->tcpBufSize);
 
    while (!isInterruptionRequested() && !conf->compStop.load()) {
     // 1) Wait for work (blocking)
@@ -109,9 +141,9 @@ class CompThread : public QThread {
      }
      if (isInterruptionRequested()||conf->compStop.load()) break;
      const char* one=base+i*sz;
-     if (!tcpS.deserializeRaw(one,sz,conf->chnCount,conf->ampCount)) continue;
+     if (!tcpS.deserializeRaw(one,sz,physChnCount,ampCount)) continue;
      // Compute for ONE sample (outside ring lock)
-     tcpSPP.fromTcpSample(tcpS,conf->chnCount);
+     tcpSPP.fromTcpSample(tcpS,physChnCount);
 
      // ==============================================================================================================
      // ==============================================================================================================
@@ -122,41 +154,118 @@ class CompThread : public QThread {
      // OpenMP: parallelize over amps only (lower overhead than nested)
      // If ampCount is 1, omp adds overhead -> guard it.
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) if(conf->ampCount>=2)
+#pragma omp parallel for schedule(static) if(ampCount>=2)
 #endif
-
-     // Apply pre-filter before neighbor-interpolation
-     for (int ampIdx=0;ampIdx<int(conf->ampCount);++ampIdx) for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
+     // Apply pre-filter (and the notch magnitudes) before neighbor-interpolation
+     for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) for (unsigned int chnIdx=0; chnIdx<chnCount; ++chnIdx) {
       const float x=tcpSPP.amp[ampIdx].data[chnIdx];
       // notch-filtered version is master
-      auto &notch=conf->filterListN[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataN[chnIdx]=notch.filterSample(x);
+      auto &notch=filterListN[ampIdx][chnIdx];
+      const float xN=notch.filterSample(x); tcpSPP.amp[ampIdx].dataN[chnIdx]=xN;
+      // CM rolling buffer stores the removed CM (mostly mains) component
+      cmDiffRing[ampIdx][chnIdx][cmRingPos]=x-xN;
+     }
+     // Update CM index
+     cmRingPos++; if (cmRingPos>=cmRingSize) cmRingPos=0;
+     if (cmValidSamples<cmRingSize) cmValidSamples++;
+     cmSinceLastCompute++;
+
+     // Recompute actual CM values
+     if (cmValidSamples>=conf->cmWindowSamples && cmSinceLastCompute>=conf->cmUpdateStepSamples) {
+      QVector<QVector<float>> newCM; newCM.resize(ampCount);
+      for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+       newCM[ampIdx].resize(chnCount);
+       for (unsigned int chnIdx=0;chnIdx<chnCount;++chnIdx) {
+        double acc=0.0;
+        for (unsigned int k=0;k<cmRingSize;++k) {
+         const float d=cmDiffRing[ampIdx][chnIdx][k]; acc+=double(d)*double(d);
+        }
+        newCM[ampIdx][chnIdx]=std::sqrt(acc/double(conf->cmWindowSamples));
+       }
+      }
+
+      {
+        QMutexLocker lk(&conf->cmMutex);
+        conf->latestCMLevels=std::move(newCM);
+        conf->cmLevelsValid=true;
+      }
+      cmSinceLastCompute=0;
      }
 
+     // -----------------------------------------------------------------------------------------
+
      // Channels' interpolation on Notch filtered version
-     for (int ampIdx=0;ampIdx<int(conf->ampCount);++ampIdx) {
-      for (int chnIdx=0;chnIdx<eegCh;++chnIdx) {
-       const unsigned interMode=conf->chnInfo[chnIdx].interMode[ampIdx];
+     for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+
+      for (unsigned int chnIdx=0;chnIdx<refChnCount;++chnIdx) { // Should be refChnCount as it is only EEG
+       const unsigned interMode=refChns[chnIdx].interMode[ampIdx];
        float xN=tcpSPP.amp[ampIdx].dataN[chnIdx];
        // Default is 1
        if (interMode==2) { // INTERPOLATE
-        const int eSz=conf->chnInfo[chnIdx].interElec.size();
+        const int eSz=refChns[chnIdx].interElec.size();
 	if (eSz>0) {
-         float sum=0.f; for (int ei=0;ei<eSz;++ei) sum+=tcpSPP.amp[ampIdx].dataN[ conf->chnInfo[chnIdx].interElec[ei] ];
+         float sum=0.f; for (int ei=0;ei<eSz;++ei) sum+=tcpSPP.amp[ampIdx].dataN[ refChns[chnIdx].interElec[ei] ];
 	 xN=sum/float(eSz);
-         //tcpSPP.amp[ampIdx].dataN[chnIdx]=sum/float(eSz);
         }
        } else if (interMode==0) { // OFF
         xN=0.f;
-        //tcpSPP.amp[ampIdx].dataN[chnIdx]=0.f;
        }
        // Now filter further the interpolated version
-       auto &bp=conf->filterListBP[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataBP[chnIdx]=bp.filterSample(xN);
+       auto &bp=filterListBP[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataBP[chnIdx]=bp.filterSample(xN);
 #ifdef EEGBANDSCOMP
-       auto &delta=conf->filterListD[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataD[chnIdx]=delta.filterSample(xN);
-       auto &theta=conf->filterListT[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataT[chnIdx]=theta.filterSample(xN);
-       auto &alpha=conf->filterListA[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataA[chnIdx]=alpha.filterSample(xN);
-       auto &beta=conf->filterListB[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataB[chnIdx]=beta.filterSample(xN);
-       auto &gamma=conf->filterListG[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataG[chnIdx]=gamma.filterSample(xN);
+       auto &delta=filterListD[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataD[chnIdx]=delta.filterSample(xN);
+       auto &theta=filterListT[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataT[chnIdx]=theta.filterSample(xN);
+       auto &alpha=filterListA[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataA[chnIdx]=alpha.filterSample(xN);
+       auto &beta=filterListB[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataB[chnIdx]=beta.filterSample(xN);
+       auto &gamma=filterListG[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataG[chnIdx]=gamma.filterSample(xN);
+#endif
+      }
+
+      for (unsigned int chnIdx=0;chnIdx<bipChnCount;++chnIdx) {
+       const unsigned interMode=bipChns[chnIdx].interMode[ampIdx];
+       float xN=tcpSPP.amp[ampIdx].dataN[refChnCount+chnIdx];
+       // Default is 1
+       if (interMode==2) { // INTERPOLATE
+        const int eSz=bipChns[chnIdx].interElec.size();
+	if (eSz>0) {
+         float sum=0.f; for (int ei=0;ei<eSz;++ei) sum+=tcpSPP.amp[ampIdx].dataN[refChnCount + bipChns[chnIdx].interElec[ei] ];
+	 xN=sum/float(eSz);
+        }
+       } else if (interMode==0) { // OFF
+        xN=0.f;
+       }
+       // Now filter further the interpolated version
+       auto &bp=filterListBP[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataBP[refChnCount+chnIdx]=bp.filterSample(xN);
+#ifdef EEGBANDSCOMP
+       auto &delta=filterListD[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataD[refChnCount+chnIdx]=delta.filterSample(xN);
+       auto &theta=filterListT[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataT[refChnCount+chnIdx]=theta.filterSample(xN);
+       auto &alpha=filterListA[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataA[refChnCount+chnIdx]=alpha.filterSample(xN);
+       auto &beta=filterListB[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataB[refChnCount+chnIdx]=beta.filterSample(xN);
+       auto &gamma=filterListG[ampIdx][refChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataG[refChnCount+chnIdx]=gamma.filterSample(xN);
+#endif
+      }
+
+      for (unsigned int chnIdx=0;chnIdx<metaChnCount;++chnIdx) {
+       const unsigned interMode=metaChns[chnIdx].interMode[ampIdx];
+       float xN=tcpSPP.amp[ampIdx].dataN[physChnCount+chnIdx];
+       // Default is 1
+       if (interMode==2) { // INTERPOLATE
+        const int eSz=metaChns[chnIdx].interElec.size();
+	if (eSz>0) {
+         float sum=0.f; for (int ei=0;ei<eSz;++ei) sum+=tcpSPP.amp[ampIdx].dataN[physChnCount + metaChns[chnIdx].interElec[ei] ];
+	 xN=sum/float(eSz);
+        }
+       } else if (interMode==0) { // OFF
+        xN=0.f;
+       }
+       // Now filter further the interpolated version
+       auto &bp=filterListBP[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataBP[physChnCount+chnIdx]=bp.filterSample(xN);
+#ifdef EEGBANDSCOMP
+       auto &delta=filterListD[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataD[physChnCount+chnIdx]=delta.filterSample(xN);
+       auto &theta=filterListT[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataT[physChnCount+chnIdx]=theta.filterSample(xN);
+       auto &alpha=filterListA[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataA[physChnCount+chnIdx]=alpha.filterSample(xN);
+       auto &beta=filterListB[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataB[physChnCount+chnIdx]=beta.filterSample(xN);
+       auto &gamma=filterListG[ampIdx][physChnCount+chnIdx]; tcpSPP.amp[ampIdx].dataG[physChnCount+chnIdx]=gamma.filterSample(xN);
 #endif
       }
      }

@@ -37,22 +37,34 @@ class EEGFrame : public QFrame {
    conf=c; ampNo=a;
    sweepBuffer=QImage(conf->sweepFrameW,conf->sweepFrameH,QImage::Format_RGB32);
 
-   chnCount=conf->chnInfo.size();
-   //colCount=std::ceil((float)(chnCount)/(float)(chnCount/2));
-   //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   physChnCount=conf->physChnCount;
+   //colCount=std::ceil((float)(physChnCount)/(float)(physChnCount/2));
+   //chnPerCol=std::ceil((float)(physChnCount)/(float)(colCount));
    chnPerCol=66;
-   colCount=std::ceil((float)(chnCount)/(float)(chnPerCol));
+   colCount=std::ceil((float)(physChnCount)/(float)(chnPerCol));
 
    chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+								      //
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }
-   if (chnCount<16) chnFont=QFont("Helvetica",16,QFont::Bold);
-   else if (chnCount>16 && chnCount<32) chnFont=QFont("Helvetica",14,QFont::Bold);
-   else if (chnCount>96) chnFont=QFont("Helvetica",12);
-   chnTextCache.clear(); chnTextCache.reserve(chnCount);
-   for (unsigned int i=0;i<chnCount;i++) {
-    int chnNo=conf->chnInfo[i].physChn;
-    const QString& chnName=conf->chnInfo[i].chnName;
+
+   chnFont=QFont("Helvetica",13,QFont::Bold);
+   if (physChnCount<16) chnFont=QFont("Helvetica",16,QFont::Bold);
+   else if (physChnCount<32) chnFont=QFont("Helvetica",14,QFont::Bold);
+   else if (physChnCount>96) chnFont=QFont("Helvetica",12);
+
+   chnTextCache.clear(); chnTextCache.reserve(physChnCount);
+   for (unsigned int i=0;i<conf->refChnCount;i++) {
+    int chnNo=conf->refChns[i].physChn;
+    const QString& chnName=conf->refChns[i].chnName;
+    QString label=QString::number(chnNo)+" "+chnName;
+    QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
+    staticLabel.setTextWidth(-1);  // No width constraint
+    chnTextCache.append(staticLabel);
+   }
+   for (unsigned int i=0;i<conf->bipChnCount;i++) {
+    int chnNo=conf->bipChns[i].physChn;
+    const QString& chnName=conf->bipChns[i].chnName;
     QString label=QString::number(chnNo)+" "+chnName;
     QStaticText staticLabel(label); staticLabel.setTextFormat(Qt::PlainText);
     staticLabel.setTextWidth(-1);  // No width constraint
@@ -75,12 +87,12 @@ class EEGFrame : public QFrame {
     mainPainter.drawRect(cr);
     // Channel names
     mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
-    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) { // 2 audio channels
+    for (unsigned int chnIdx=0;chnIdx<physChnCount;chnIdx++) { // 2 audio channels
      unsigned int colIdx=chnIdx/chnPerCol;
      scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
      mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
      mainPainter.setPen(Qt::black);
-     //if (chnIdx==chnCount-1) mainPainter.drawLine(width()/2,0,width()/2,height()-1);
+     //if (chnIdx==physChnCount-1) mainPainter.drawLine(width()/2,0,width()/2,height()-1);
     }
     mainPainter.setPen(Qt::blue);
     const int frameH=conf->sweepFrameH; const int audH=conf->audWaveH/2;
@@ -93,6 +105,6 @@ class EEGFrame : public QFrame {
  private:
   ConfParam *conf; unsigned int ampNo; QPainter mainPainter; QImage sweepBuffer;
   EEGThread *eegThread;
-  unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
+  unsigned int physChnCount,colCount,chnPerCol,scrCurY; float chnY;
   QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont; QStaticText audLabel;
 };

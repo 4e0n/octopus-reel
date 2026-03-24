@@ -22,9 +22,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* This is the HyperEEG "Time Domain GUI" Node.
- * Its main purpose is to handle a graphic view including OpenGL widgets,
- * for the EEG streaming over TCP from another producer node. In most
- * native configurations, this node would be the node-acq itself.
+ * Its main purpose is to handle a graphic view for the EEG streaming
+ * over TCP from another producer node such as node-acq-pp.
  */
 
 #include <QApplication>
@@ -32,13 +31,13 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "guiclient.h"
 
 int main(int argc,char* argv[]) {
- QSurfaceFormat fmt;
- fmt.setRenderableType(QSurfaceFormat::OpenGL);
- fmt.setProfile(QSurfaceFormat::NoProfile);  // important for GL 2.1
- fmt.setVersion(2,1);
- fmt.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
- fmt.setSwapInterval(0);
- QSurfaceFormat::setDefaultFormat(fmt);
+ //QSurfaceFormat fmt;
+ //fmt.setRenderableType(QSurfaceFormat::OpenGL);
+ //fmt.setProfile(QSurfaceFormat::NoProfile);  // important for GL 2.1
+ //fmt.setVersion(2,1);
+ //fmt.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+ //fmt.setSwapInterval(0);
+ //QSurfaceFormat::setDefaultFormat(fmt);
 
  QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
  //QApplication::setAttribute(Qt::AA_UseOpenGLES);

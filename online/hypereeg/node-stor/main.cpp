@@ -22,25 +22,27 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 */
 
 /* This is the HyperEEG "File recording/storage operations" Node.
- * Its main purpose is to record the EEG+audio data broadcast by
+ * Its main purpose is to record the **raw** EEGs+audio data broadcast by
  * the node-acq to disk. Starting and stopping of recording is held
- * by proper commands from node-time.
+ * by proper remote commands (mostly via GUI clients s.a. node-time).
  */
 
 #include <QCoreApplication>
 #include <QSurfaceFormat>
 #include <QtGlobal>
 #include <QDateTime>
+#include <QString>
+#include <QFile>
 #include <cstdio>
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/stat.h>
 #include <linux/ioprio.h>
 #include "../common/globals.h"
+#include "../common/messagehandler.h"
 #include "confparam.h"
 #include "configparser.h"
 #include "stordaemon.h"
-#include "../common/messagehandler.h"
 
 const QString CFGPATH="/etc/octopus/hypereeg.conf";
 
@@ -65,14 +67,36 @@ bool conf_init_pre(ConfParam *conf) { QString cfgPath=CFGPATH;
 
 void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
- qInfo() << "Channels Info:";
- qInfo() << "--------------";
- for (auto& chn:conf->chnInfo) qInfo() << chn.physChn << chn.chnName << chn.type;
+ qInfo() << "                    DETAILED CHANNELS INFO";
  qInfo() << "===============================================================";
- qInfo() << "Networking Summary:";
- qInfo() << "-------------------";
- qInfo() << "<ServerIP> is" << conf->acqIpAddr;
- qInfo() << "<Comm> downstreaming on ports (comm,strm):" << conf->acqCommPort << conf->acqStrmPort;
+ qInfo() << "---------------------------";
+ qInfo() << "EEG (referential) channels:";
+ qInfo() << "---------------------------"; if (conf->refChnCount==0) qInfo() << "None.";
+ for (const auto& c:conf->refChns) qInfo("%d -> %s",c.physChn,qUtf8Printable(c.chnName));
+ qInfo() << "--------------------------------";
+ qInfo() << "BiPolar (differential) channels:";
+ qInfo() << "--------------------------------"; if (conf->bipChnCount==0) qInfo() << "None.";
+ for (const auto& c:conf->bipChns) qInfo("%d -> %s",c.physChn,qUtf8Printable(c.chnName));
+ qInfo() << "--------------------------------";
+ qInfo() << ">> Please note that Chn interpolation & Meta chns not (currently) defined fornode-stor. <<";
+ qInfo() << "===============================================================";
+ qInfo() << "                ACQUISITION PARAMETERS SUMMARY";
+ qInfo() << "              (some are as relayed from node-acq)";
+ qInfo() << "===============================================================";
+ qInfo() << "# of amplifier(s):" << conf->ampCount;
+ qInfo() << "Sample Rate->" << conf->eegRate << "sps";
+ qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
+ qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
+ qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
+ qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
+ qInfo() << "Total Channel# from all amps:" << conf->totalCount;
+ qInfo() << "Referential channels gain:" << conf->refGain;
+ qInfo() << "Bipolar channels gain:" << conf->bipGain;
+ qInfo() << "===============================================================";
+ qInfo() << "                      NETWORKING SUMMARY";
+ qInfo() << "===============================================================";
+ qInfo() << "<ServerIP> node-acq IP is" << conf->acqIpAddr;
+ qInfo() << "<Comm> Downstreaming via ports (comm,strm):" << conf->acqCommPort << conf->acqStrmPort;
  qInfo() << "<Comm> listening on port(comm)" << conf->storCommPort;
 }
 
@@ -85,31 +109,39 @@ int main(int argc,char* argv[]) {
  setvbuf(stdout,nullptr,_IOLBF,0); // Avoid buffering
  setvbuf(stderr,nullptr,_IONBF,0);
 
+//#ifdef __linux__
+// // 1) Avoid swapping/pagefault stalls
+// lock_memory_or_warn(); // needs CAP_IPC_LOCK (or high memlock ulimit)
+//
+// // 2) Help scheduler a bit
+// set_process_nice(-10); // needs CAP_SYS_NICE
+//#endif
+
  QCoreApplication app(argc,argv);
 
  umask(0002);
 
  qInfo() << "===============================================================";
- omp_diag();
+ qInfo() << "                  OPENMP INITIALIZATION STATUS";
  qInfo() << "===============================================================";
+ omp_diag();
 
  if (conf_init_pre(&conf)) {
-  qCritical("<FatalError> Failed to initialize Octopus-ReEL EEG data storage daemon node.");
+  qCritical("<FatalError> Failed to initialize Octopus-ReEL recording/storage daemon node.");
   return 1;
  }
 
  StorDaemon storDaemon(nullptr,&conf);
 
  if (storDaemon.start()) {
-  qCritical("<FatalError> Failed to start Octopus-ReEL EEG data storage daemon node.");
+  qCritical("<FatalError> Failed to start Octopus-ReEL recording/storage daemon node.");
   return 1;
  }
 
  conf_info(&conf);
 
- // Any (e.g. hardware probing related) intermediate checks in the future to come.
-
- qInfo() << "====================== Thread Runtime =========================";
+ qInfo() << "===============================================================";
+ qInfo() << "                 THREAD RUNTIME LOOP STARTED";
  qInfo() << "===============================================================";
 
  return app.exec();

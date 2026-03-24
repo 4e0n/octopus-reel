@@ -45,8 +45,8 @@ class ConfigParser {
    } else {
     cfgStream.setDevice(&cfgFile);
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
-     cfgLine=cfgStream.readLine(MAX_LINE_SIZE); // Should not start with #, should contain "|"
-     if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
+     cfgLine=cfgStream.readLine(MAX_LINE_SIZE).trimmed(); // Should not start with #, should contain "|"
+     if (!cfgLine.isEmpty() && !cfgLine.startsWith('#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
 

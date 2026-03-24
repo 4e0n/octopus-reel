@@ -23,12 +23,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include "../../../common/vec3.h"
-#include "../../../common/coord3d.h"
+//#include "../../../common/vec3.h"
+//#include "../../../common/coord3d.h"
 
 struct GUIChnInfo {
- GUIChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
- QColor cmColor; // Instantly computed line noise level..
+ //GUIChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
+ //QColor cmColor; // Instantly computed line noise level..
 
  unsigned int physChn; QString chnName;
  unsigned int type; // 0:ref,1:bipolar,2:meta
@@ -37,10 +37,10 @@ struct GUIChnInfo {
 
  // -------------------------------------------------------------------------------------------
 
- float rejLev; QVector<int> rejRef; // Channels as reference for rejection (mean of them)
- Coord3D param; Vec3 real,realS; // Realistic coords - if set externally.
- QVector<QVector<QVector<float>>> avgData;
- float cmLevel;
+ //float rejLev; QVector<int> rejRef; // Channels as reference for rejection (mean of them)
+ //Coord3D param; Vec3 real,realS; // Realistic coords - if set externally.
+ //QVector<QVector<QVector<float>>> avgData;
+ //float cmLevel;
 
  // Continuous and Average visibility and recording flags exist as strings
  // in the constructor, which is how they are read from the config file..

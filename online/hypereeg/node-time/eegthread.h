@@ -31,8 +31,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QStaticText>
 #include <QVector>
 #include <QElapsedTimer>
-#include <thread>
 #include <QDateTime>
+#include <thread>
+#include <cmath>
 #include "confparam.h"
 #include "../common/sample.h"
 #include "../common/octo_omp.h"
@@ -55,16 +56,18 @@ class EEGThread:public QThread {
  Q_OBJECT
  public:
   explicit EEGThread(ConfParam *c=nullptr,unsigned int a=0,QImage *sb=nullptr,QObject *parent=nullptr):QThread(parent) {
-   conf=c; ampNo=a; sweepBuffer=sb; trigger=0; threadActive=true;
+   conf=c; ampNo=a; sweepBuffer=sb; threadActive=true;
 
-   chnCount=conf->chnInfo.size();
-   //colCount=std::ceil((float)chnCount/(float)(33.));
-   //chnPerCol=std::ceil((float)(chnCount)/(float)(colCount));
+   physChnCount=conf->physChnCount;
+   //colCount=std::ceil((float)physChnCount/(float)(33.));
+   //chnPerCol=std::ceil((float)(physChnCount)/(float)(colCount));
    chnPerCol=66;
-   colCount=std::ceil((float)(chnCount)/(float)(chnPerCol));
+   colCount=std::ceil((float)(physChnCount)/(float)(chnPerCol));
 
-   prevY.resize(chnCount);
-   for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+
+   prevY.resize(physChnCount);
+   for (unsigned chnIdx=0;chnIdx<physChnCount;++chnIdx) {
     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
     prevY[int(chnIdx)]=baseY;
    }
@@ -76,20 +79,15 @@ class EEGThread:public QThread {
    wn.append(conf->sweepFrameW-1);
 
    tcpBuffer=&conf->tcpBuffer; tcpBufSize=conf->tcpBufSize; scrAvailSmp=conf->scrAvailableSamples;
-   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
 
-   evtFont=QFont("Helvetica",14,QFont::Bold);
-   rTransform.rotate(-90);
-
-   rBuffer=QImage(120,24,QImage::Format_RGB32); rBuffer.fill(Qt::transparent);
-   rBufferC=QImage(); // cached - empty until first use
+   evtFont=QFont("Helvetica",18,QFont::Bold);
 
    resetScrollBuffer();
   }
 
   void resetScrollBuffer() {
    sweepBuffer->fill(Qt::white);
-   for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+   for (unsigned chnIdx=0;chnIdx<physChnCount;++chnIdx) {
     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
     prevY[int(chnIdx)]=baseY;
    }
@@ -112,13 +110,22 @@ class EEGThread:public QThread {
     }
    };
 
+   bool pendingTrig=false; bool pendingOpEvt=false; bool pendingSubEvt=false;
+
    sweepPainter.begin(sweepBuffer);
    sweepPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
    // We will draw one column per selected i, advancing wX each time
    for (unsigned i=0;i<N;++i) {
-    if (!shouldDrawIndex(i)) continue;
     const TcpSamplePP &s=(*tcpBuffer)[(tail+i)%tcpBufSize];
+
+    if (s.trigger>0) { pendingTrig=true; trigVal=s.trigger; trigX=wX[0]+24; trigRepeat=MARKER_REPEAT_COUNT; }
+    if (s.opEvt>0) { pendingOpEvt=true; opVal=s.opEvt; opX=wX[0]+24; opRepeat=MARKER_REPEAT_COUNT; }
+    if (s.subEvt>0) { pendingSubEvt=true; subVal=s.subEvt; subX=wX[0]+24; subRepeat=MARKER_REPEAT_COUNT; }
+
+    //if (s.opEvt!=0) qDebug() << "CHUNK" << i << s.offset << s.opEvt;
+
+    if (!shouldDrawIndex(i)) continue;
 
     // Clear cursor lines once per column (per colIdx)
     for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
@@ -134,7 +141,7 @@ class EEGThread:public QThread {
 
     // EEG channels
     sweepPainter.setPen(Qt::black);
-    for (unsigned chnIdx=0;chnIdx<chnCount;++chnIdx) {
+    for (unsigned chnIdx=0;chnIdx<physChnCount;++chnIdx) {
      const unsigned colIdx=chnIdx/chnPerCol;
      const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
 #ifdef EEGBANDSCOMP
@@ -171,11 +178,45 @@ class EEGThread:public QThread {
     }
     prevYA=yA;
 
-    // Trigger marker
-    if (s.trigger>0) {
-     sweepPainter.setPen(Qt::blue);
-     for (unsigned colIdx=0;colIdx<colCount;++colIdx)
-      sweepPainter.drawLine(wX[colIdx],0,wX[colIdx],conf->sweepFrameH-1);
+    // Event / trigger markers
+    const int markerTextY=conf->sweepFrameH-6; // just above audio region
+    const int markerLineY0=0;
+    //const int markerLineY1=conf->sweepFrameH-conf->audWaveH-2; // stop before audio region
+    const int markerLineY1=conf->sweepFrameH-1; // whole vertical line
+
+    if (pendingTrig) {
+     for (unsigned colIdx=0;colIdx<colCount;++colIdx) { const int x=wX[colIdx];
+      sweepPainter.setPen(Qt::red);
+      sweepPainter.drawLine(x,markerLineY0,x,markerLineY1);
+     }
+     pendingTrig=false;
+    }
+    if (pendingOpEvt) {
+     for (unsigned colIdx=0;colIdx<colCount;++colIdx) { const int x=wX[colIdx];
+      sweepPainter.setPen(Qt::blue);
+      sweepPainter.drawLine(x,markerLineY0,x,markerLineY1);
+     }
+     pendingOpEvt=false;
+    }
+    if (pendingSubEvt) {
+     for (unsigned colIdx=0;colIdx<colCount;++colIdx) { const int x=wX[colIdx];
+      sweepPainter.setPen(Qt::darkGreen);
+      sweepPainter.drawLine(x,markerLineY0,x,markerLineY1);
+     }
+     pendingSubEvt=false;
+    }
+
+    if (trigRepeat>0 && trigX>=0) {
+     drawRotatedMarker(sweepPainter,trigX,markerTextY,QString("Trigger #%1").arg(trigVal),Qt::red);
+     --trigRepeat;
+    }
+    if (opRepeat>0 && opX>=0) {
+     drawRotatedMarker(sweepPainter,opX,markerTextY-18,QString("Operator Event #%1").arg(opVal),Qt::blue);
+     --opRepeat;
+    }
+    if (subRepeat>0 && subX>=0) {
+     drawRotatedMarker(sweepPainter,subX,markerTextY-36,QString("Subject Event #%1").arg(subVal),Qt::darkGreen);
+     --subRepeat;
     }
 
     // -- One column drawn, advance x one column
@@ -198,13 +239,11 @@ class EEGThread:public QThread {
       QMutexLocker locker(&conf->mutex);
 
       // Sleep until producer signals
-      //while (!conf->eegSweepPending[ampNo]) { conf->eegSweepWait.wait(&conf->mutex); }
       while (!conf->eegSweepPending[ampNo] && !conf->quitPending && !isInterruptionRequested()) {
        conf->eegSweepWait.wait(&conf->mutex);
       }
 
       if (conf->quitPending || isInterruptionRequested()) { threadActive=false; break; }
-      //if (conf->quitPending) { threadActive=false; break; }
  
       tailSnap=conf->tcpBufTail;
       unsigned int n=conf->scrUpdateSamples; // minimum per tick (e.g. 20)
@@ -217,13 +256,11 @@ class EEGThread:public QThread {
        n=(unsigned int)(capped);
        if (n<conf->scrUpdateSamples) n=conf->scrUpdateSamples;
       }
-      //NSnap=n;
       NSnap=conf->tickSamples; // shared decision from producer
 
       conf->eegSweepPending[ampNo]=false; conf->eegSweepUpdating--;
       const bool last=(conf->eegSweepUpdating==0);
 
-      //if (last) conf->tcpBufTail+=conf->scrUpdateSamples;
       if (last) conf->tcpBufTail+=NSnap;
     }
     QElapsedTimer tDraw; tDraw.start();
@@ -293,16 +330,23 @@ class EEGThread:public QThread {
   }
 
  private:
+  void drawRotatedMarker(QPainter &p,int x,int y,const QString &text,const QColor &color) {
+   p.save();
+    p.translate(x,y); p.rotate(-90.0); p.setPen(color); p.setFont(evtFont); p.drawText(0,0,text);
+   p.restore();
+  }
+
   ConfParam *conf; unsigned int ampNo; QImage *sweepBuffer; QVector<int> w0,wn,wX;
-  unsigned int chnCount,colCount,chnPerCol,scrCurY; float chnY;
+  unsigned int physChnCount,colCount,chnPerCol,scrCurY; float chnY;
   QVector<TcpSamplePP> *tcpBuffer; unsigned int tcpBufSize,scrAvailSmp;
   bool threadActive;
 
-  QFont chnFont,evtFont; QImage rBuffer,rBufferC; QTransform rTransform;
-  QPainter sweepPainter,rotPainter; QVector<QStaticText> chnTextCache;
-
-  int trigger;
+  QFont evtFont;
+  QPainter sweepPainter; QVector<QStaticText> chnTextCache;
 
   QVector<int> prevY; // Previous y pixel of EEG channels
   int prevYA=0;       // Previous y pixel of Audio channel
+
+  int trigX=-1,opX=-1,subX=-1; unsigned trigVal=0,opVal=0,subVal=0; int trigRepeat=0,opRepeat=0,subRepeat=0;
+  static constexpr int MARKER_REPEAT_COUNT=30;
 };

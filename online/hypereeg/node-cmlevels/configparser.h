@@ -27,10 +27,9 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QColor>
 #include "confparam.h"
-#include "../common/tcp_commands.h"
 
 const int MAX_LINE_SIZE=160; // chars
-const QString NODE_TEXT="STOR";
+const QString NODE_TEXT="CMODE";
 
 class ConfigParser {
  public:
@@ -38,17 +37,15 @@ class ConfigParser {
 
   bool parse(ConfParam *conf) { QString commResponse; QStringList sList,sList2;
    QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
-   QStringList bufSection;
-
+   QStringList bufSection,pltSection,evtSection,guiSection,headSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qCritical() << "<ConfigParser> ERROR: Cannot load" << cfgPath;
+    qWarning() << "node-cmlevels: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
      cfgLine=cfgStream.readLine(MAX_LINE_SIZE).trimmed(); // Should not start with #, should contain "|"
-     //if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
      if (!cfgLine.isEmpty() && !cfgLine.startsWith('#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
@@ -58,7 +55,7 @@ class ConfigParser {
      if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
     }
     if (idx1<0) {
-     qCritical() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     qWarning() << "node-cmlevels: <ConfigParser> ERROR: NODE section does not exist in config file!";
      return true;
     }
     idx1++;
@@ -70,9 +67,9 @@ class ConfigParser {
     for (int idx=idx1;idx<idx2;idx++) {
      opts=cfgLines[idx].split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
-     else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
+     else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else {
-      qCritical() << "<ConfigParser> ERROR: Unknown section in config file!";
+      qWarning() << "node-cmlevels: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -83,65 +80,72 @@ class ConfigParser {
     if (netSection.size()>0) {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
-      if (opts[0].trimmed()=="ACQ") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
-       if (opts2.size()==3) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->acqIpAddr=acqHostInfo.addresses().first().toString();
-        conf->acqCommPort=opts2[1].toInt();
-        conf->acqStrmPort=opts2[2].toInt();
-        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
-            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
-         qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) hostname/IP/port settings!";
-         return true;
-        }
-       } else {
-        qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) count of NET|IN params!";
-        return true;
-       }
-      } else if (opts[0].trimmed()=="STOR") {
-       opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
+
+      if (opts[0].trimmed()=="ACQPP") {
+       opts2=opts[1].split(","); // IP, command port and stream port
        if (opts2.size()==2) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->storIpAddr=acqHostInfo.addresses().first().toString();
-        conf->storCommPort=opts2[1].toInt();
-        if ((!(conf->storCommPort >= 65000 && conf->storCommPort < 65999))) { // Simple port validation
-         qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
+        QHostInfo acqPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->acqPPIpAddr=acqPPHostInfo.addresses().first().toString();
+        conf->acqPPCommPort=opts2[1].toInt();
+        if ((!(conf->acqPPCommPort >= 65000 && conf->acqPPCommPort < 65999))) { // Simple port validation
+         qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qCritical() << "<ConfigParser> <NET> ERROR: Invalid count of NET|OUT params!";
+        qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid (serving) count of STRM|IN params!";
         return true;
        }
+       qInfo() << "node-cmlevels:" << conf->acqPPIpAddr << conf->acqPPCommPort;
+      } else if (opts[0].trimmed()=="CMODE") {
+       opts2=opts[1].split(",");
+       if (opts2.size()==2) {
+        conf->cmCommPort=opts2[1].toInt();
+        if (!(conf->cmCommPort >= 65000 && conf->cmCommPort < 65999)) {
+         qWarning() << "node-cmlevels: <ConfigParser> <COMM> ERROR: Invalid local command port!";
+         return true;
+        }
+       } else {
+        qWarning() << "node-cmlevels: <ConfigParser> <COMM> ERROR: Invalid parameter count!";
+        return true;
+       }
+       qInfo() << "node-cmlevels:" << conf->acqPPIpAddr << conf->acqPPCommPort;
       } else {
-       qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP(v4) address!";
+       qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid hostname/IP(v4) address!";
        return true;
       }
      }
     } else {
-     qCritical() << "<ConfigParser> <NET> ERROR: No parameters in section!";
+     qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: No parameters in section!";
      return true;
     }
 
-    // BUF section
-    if (bufSection.size()>0) {
-     for (const auto& sect:bufSection) {
+    // GUI section
+    if (guiSection.size()>0) {
+     for (const auto& sect:guiSection) {
       opts=sect.split("=");
-      if (opts[0].trimmed()=="PAST") {
-       conf->tcpBufSize=opts[1].toInt();
-       if (!(conf->tcpBufSize>=1 && conf->tcpBufSize<=200)) {
-        qCritical() << "<ConfigParser> <BUF> ERROR: PAST not within inclusive (5,20) seconds range!";
+      if (opts[0].trimmed()=="MAIN") {
+       opts2=opts[1].split(",");
+       if (opts2.size()==4) {
+        conf->guiX=opts2[0].toInt(); conf->guiY=opts2[1].toInt();
+        conf->guiW=opts2[2].toInt(); conf->guiH=opts2[3].toInt();
+        if ((!(conf->guiX >= -4000 && conf->guiX <= 4000)) ||
+            (!(conf->guiY >= -3000 && conf->guiY <= 3000)) ||
+            (!(conf->guiW >=   400 && conf->guiW <= 4000)) ||
+            (!(conf->guiH >=    60 && conf->guiH <= 2800))) {
+         qWarning() << "node-cmlevels: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
+         return true;
+        }
+       } else {
+        qWarning() << "node-cmlevels: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
         return true;
        }
-      } else {
-       qCritical() << "<ConfigParser> <BUF> ERROR: Invalid section command!";
-       return true;
       }
      }
     } else {
-     qCritical() << "<ConfigParser> <BUF> ERROR: No parameters in section!";
+     qWarning() << "node-cmlevels: <ConfigParser> <GUI> ERROR: No parameters in section!";
      return true;
     }
+
    } // File open
    return false;
   }

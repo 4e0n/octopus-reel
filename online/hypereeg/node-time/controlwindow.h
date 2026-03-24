@@ -77,7 +77,6 @@ class ControlWindow : public QMainWindow {
    shutdownAction->setStatusTip("Shutdown ACQuisition host computer");
    aboutAction->setStatusTip("About HyperStream GUI..");
    quitAction->setStatusTip("Quit HyperStream GUI");
-   //connect(rebootAction,&QAction::triggered,this,[=](){ctrlStatusBar->setText("Status: Quit Action");});
    connect(rebootAction,SIGNAL(triggered()),this,SLOT(slotReboot()));
    connect(shutdownAction,SIGNAL(triggered()),this,SLOT(slotShutdown()));
    connect(aboutAction,SIGNAL(triggered()),this,SLOT(slotAbout()));
@@ -199,8 +198,10 @@ class ControlWindow : public QMainWindow {
   void slotQuit() {
    conf->requestQuit();
    for (auto *t:conf->threads) { if (t) t->wait(); }
-   if (conf->acqPPStrmSocket->state()!=QAbstractSocket::UnconnectedState)
+   if (conf->acqPPStrmSocket && conf->acqPPStrmSocket->state()!=QAbstractSocket::UnconnectedState) {
+    conf->acqPPStrmSocket->disconnectFromHost();
     conf->acqPPStrmSocket->waitForDisconnected(1000); // timeout in ms
+   }
    QApplication::quit();
   }
 
@@ -214,7 +215,7 @@ class ControlWindow : public QMainWindow {
    }
   }
 
-  void slotSync() { conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_AMPSYNC); }
+  void slotSync() { conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_AMPSYNC); }
 
   void slotWavPlay(int x) {
    conf->currentWav=x;
@@ -242,7 +243,7 @@ class ControlWindow : public QMainWindow {
     QMessageBox::critical(this,"Operation blocked","Recording is currently active.\n\n"+actionWord+" is aborted.");
     return false;
    }
-   // Add more blockers here later, for example:
+   // Will add more blockers here later, for example:
    // if (conf->wavPlayActive) { ... return false; }
    // if (...) { ... return false; }
 

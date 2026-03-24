@@ -56,7 +56,7 @@ class ConfParam:public QObject {
   QMutex mutex;
   QWaitCondition dataReady;   // already exists
   QWaitCondition spaceReady;  // NEW: signals that producer can push
-  QVector<StorChnInfo> chnInfo;
+  QVector<StorChnInfo> refChns,bipChns;
 
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSample> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
 

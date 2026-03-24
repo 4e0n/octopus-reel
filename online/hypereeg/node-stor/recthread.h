@@ -50,7 +50,7 @@ class RecThread : public QThread {
  public:
   explicit RecThread(ConfParam *c,QObject *parent=nullptr):QThread(parent) {
    conf=c;
-   tcpEEG=TcpSample(conf->ampCount,conf->chnCount);
+   tcpEEG=TcpSample(conf->ampCount,conf->physChnCount);
    tcpBufSize=conf->tcpBufSize; tcpBuffer=&conf->tcpBuffer;
    eegChunk.resize(conf->eegSamplesInTick);
    conf->tcpBufTail=0;
@@ -115,19 +115,41 @@ class RecThread : public QThread {
       recOn=false;
      }
 
-     BrainVisionMeta bv; bv.sampleRateHz=conf->eegRate; bv.unit="uV"; bv.channelResolution=1.0;
-
-     bv.channelNames.clear(); bv.channelNames.reserve(int(conf->ampCount*conf->chnCount+48));
+     BrainVisionMeta bv; bv.sampleRateHz=conf->eegRate;
+     const int nTot=int(conf->ampCount*conf->physChnCount+48);
+     bv.channelNames.clear(); bv.channelUnits.clear(); bv.channelResolutions.clear();
+     bv.channelNames.reserve(nTot); bv.channelUnits.reserve(nTot); bv.channelResolutions.reserve(size_t(nTot));
      // EEG -> amp-major, channel-minor
-     for (uint32_t a=0;a<conf->ampCount;++a) for (uint32_t c=0;c<conf->chnCount;++c) {
-      bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->chnInfo[c].chnName);
+     for (uint32_t a=0;a<conf->ampCount;++a) {
+      for (uint32_t c=0;c<conf->refChnCount;++c) {
+       bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->refChns[c].chnName);
+       bv.channelUnits << "uV";
+       bv.channelResolutions.push_back(1.0);
+      }
+      for (uint32_t c=0;c<conf->bipChnCount;++c) {
+       bv.channelNames << ("A"+QString::number(a+1)+"_"+conf->bipChns[c].chnName);
+       bv.channelUnits << "uV";
+       bv.channelResolutions.push_back(1.0);
+      }
      }
      // AUD -> appended after all EEG channels
-     for (int i=0;i<48;++i) {
+     for (int i=0; i<48; ++i) {
       bv.channelNames << QString("AUD%1").arg(i);
+      bv.channelUnits << "V";
+      bv.channelResolutions.push_back(1.0);
      }
 
      WavMeta wav; wav.sampleRate=48000; wav.numChannels=1;
+
+     if (bv.channelNames.size()!=nTot || bv.channelUnits.size()!=nTot || bv.channelResolutions.size()!=size_t(nTot)) {
+      qCritical() << "<RecThread> STOR[REC] BV metadata size mismatch:"
+                  << "names=" << bv.channelNames.size()
+                  << "units=" << bv.channelUnits.size()
+                  << "res=" << bv.channelResolutions.size()
+                  << "expected=" << nTot;
+      recOn=false;
+      continue;
+     }
 
      QString err;
      if (!recorder.setup(base,bv,wav,&err)) {
@@ -195,7 +217,7 @@ class RecThread : public QThread {
     if (recOn) {
      QElapsedTimer tm; tm.start();
      QString err;
-     const bool ok=recorder.writeChunk_FromTcpSamples(eegChunk,conf->ampCount,conf->chnCount, &err);
+     const bool ok=recorder.writeChunk_FromTcpSamples(eegChunk,conf->ampCount,conf->physChnCount,&err);
 #ifdef REC_VERBOSE
      const qint64 ms=tm.elapsed();
      qInfo().noquote() << QString("[STOR:REC] writeChunk ms=%1 N=%2").arg(ms).arg(N);

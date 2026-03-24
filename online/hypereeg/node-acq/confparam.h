@@ -37,7 +37,8 @@ struct ConfParam {
  unsigned int ampCount,eegRate,tcpBufSize,eegProbeMsecs;
  float refGain,bipGain;
  QString acqIpAddr; unsigned int acqCommPort,acqStrmPort;
- unsigned int refChnCount,bipChnCount,physChnCount,metaChnCount; // refChnCount+bipChnCount
+ unsigned int refChnCount,bipChnCount,physChnCount,metaChnCount; // physChnCount=refChnCount+bipChnCount
+ unsigned int chnCount; // refChnCount+bipChnCount+metaChnCount;
  unsigned int refChnMaxCount,bipChnMaxCount,physChnMaxCount;
  unsigned int totalChnCount; // refChnCount+bipChnCount+2
  unsigned int totalCount; // Chncount among all connected amplifiers, i.e. [ampCount x totalChnCount]
@@ -48,7 +49,7 @@ struct ConfParam {
  QMutex mutex,chnInterMutex;
  quint64 tcpBufHead,tcpBufTail;
  QVector<TcpSample> tcpBuffer;
- QVector<AcqChnInfo> chnInfo;
+ QVector<AcqChnInfo> refChns,bipChns,metaChns;
  QTcpServer acqCommServer,acqStrmServer;
  int frameBytes;
  unsigned int audTrigThr=0;

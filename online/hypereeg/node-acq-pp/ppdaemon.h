@@ -66,26 +66,33 @@ class PPDaemon: public QObject {
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
-   conf->physChnCount=sList[4].toInt();
-   conf->totalChnCount=sList[5].toInt();
-   conf->totalCount=sList[6].toInt();
-   conf->refGain=sList[7].toFloat();
-   conf->bipGain=sList[8].toFloat();
-   conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   conf->metaChnCount=sList[4].toInt();
+   conf->physChnCount=sList[5].toInt();
+   conf->chnCount=sList[6].toInt();
+   conf->totalChnCount=sList[7].toInt();
+   conf->totalCount=sList[8].toInt();
+   conf->refGain=sList[9].toFloat();
+   conf->bipGain=sList[10].toFloat();
+   conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-   conf->frameBytesIn=sList[10].toInt();
+   conf->frameBytesIn=sList[12].toInt();
 
-   conf->frameBytesOut=TcpSamplePP(conf->ampCount,conf->physChnCount).serialize().size();
+   const unsigned int ampCount=conf->ampCount; const unsigned int chnCount=conf->chnCount;
+   const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount; 
+   const unsigned int metaChnCount=conf->metaChnCount; const unsigned int physChnCount=conf->physChnCount; 
+
+   conf->frameBytesOut=TcpSamplePP(ampCount,chnCount).serialize().size();
 
    // CHANNELS
-
+   //
    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
    if (!commResponse.isEmpty()) qInfo() << "<GetChannelListFromAcqDaemon> ChannelList received."; // << commResponse;
    else qCritical() << "<GetChannelListFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
-   sList=commResponse.split("\n"); PPChnInfo chn;
-
-   chn.interMode.resize(conf->ampCount);
-   for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
+   sList=commResponse.split("\n");
+   
+   //qDebug() << "sList.size()=" << sList.size() << "chnCount:" << chnCount;
+   for (unsigned int chnIdx=0;chnIdx<refChnCount;chnIdx++) { // Individual CHANNELs information
+    PPChnInfo chn; chn.interMode.resize(ampCount);
     sList2=sList[chnIdx].split(",");
     chn.physChn=sList2[0].toInt();
     chn.chnName=sList2[1];
@@ -95,22 +102,52 @@ class PPDaemon: public QObject {
     chn.topoY=sList2[5].toInt();
     chn.type=sList2[6].toInt();
     const int ieCount=sList2[7].toInt();
-    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
-     // Electrodes are all have their value originally, later can be changed via node-time operator input
-     chn.interMode[ampIdx]=1;
-     for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
-    }
-    conf->chnInfo.append(chn);
+    // Electrodes all have their value originally, later can be changed via node-time operator input
+    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) chn.interMode[ampIdx]=1;
+    chn.interElec.clear();
+    for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
+    conf->refChns.append(chn);
    }
-   conf->chnCount=conf->chnInfo.size();
+   for (unsigned int chnIdx=0;chnIdx<bipChnCount;chnIdx++) { // Individual CHANNELs information
+    PPChnInfo chn; chn.interMode.resize(ampCount);
+    sList2=sList[refChnCount+chnIdx].split(",");
+    chn.physChn=sList2[0].toInt();
+    chn.chnName=sList2[1];
+    chn.topoTheta=sList2[2].toFloat();
+    chn.topoPhi=sList2[3].toFloat();
+    chn.topoX=sList2[4].toInt();
+    chn.topoY=sList2[5].toInt();
+    chn.type=sList2[6].toInt();
+    const int ieCount=sList2[7].toInt();
+    // Electrodes all have their value originally, later can be changed via node-time operator input
+    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) chn.interMode[ampIdx]=0;
+    chn.interElec.clear();
+    for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
+    conf->bipChns.append(chn);
+   }
+   for (unsigned int chnIdx=0;chnIdx<metaChnCount;chnIdx++) { // Individual CHANNELs information
+    PPChnInfo chn; chn.interMode.resize(ampCount);
+    sList2=sList[physChnCount+chnIdx].split(",");
+    chn.physChn=sList2[0].toInt();
+    chn.chnName=sList2[1];
+    chn.topoTheta=sList2[2].toFloat();
+    chn.topoPhi=sList2[3].toFloat();
+    chn.topoX=sList2[4].toInt();
+    chn.topoY=sList2[5].toInt();
+    chn.type=sList2[6].toInt();
+    const int ieCount=sList2[7].toInt();
+    // Electrodes all have their value originally, later can be changed via node-time operator input
+    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) chn.interMode[ampIdx]=0;
+    chn.interElec.clear();
+    for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
+    conf->metaChns.append(chn);
+   }
 
-   qDebug() << "[PP] ampCount=" << conf->ampCount
-            << "chnCount=" << conf->chnCount
-            << "physChnCount=" << conf->physChnCount
-            << "frameBytesIn=" << conf->frameBytesIn;
+   qDebug() << "[PP] ampCount=" << ampCount << "chnCount=" << chnCount
+            << "physChnCount=" << conf->physChnCount << "frameBytesIn=" << conf->frameBytesIn;
 
    // Constants or calculated global settings upon the ones read from config file
-   conf->tcpBuffer=QVector<TcpSamplePP>(conf->tcpBufSize,TcpSamplePP(conf->ampCount,conf->chnCount));
+   conf->tcpBuffer=QVector<TcpSamplePP>(conf->tcpBufSize,TcpSamplePP(ampCount,chnCount));
 
    if (!conf->acqppCommServer.listen(QHostAddress::Any,conf->acqppCommPort)) {
     qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf->acqppCommPort;
@@ -121,13 +158,13 @@ class PPDaemon: public QObject {
     return true;
    }
 
-   //for (int idx=0;idx<conf->chnInfo.size();idx++) {
+   //for (int idx=0;idx<conf->refChns.size();idx++) {
    // QString x="";
-   // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
+   // for (int j=0;j<ampCount;j++) x.append(QString::number(conf->refChns[idx].interMode[j])+",");
    // qCritical() << x.toUtf8();
    //}
 
-   conf->initFilters();
+   conf->initialize();
 
    // We're server
    connect(&(conf->acqppCommServer),&QTcpServer::newConnection,this,&PPDaemon::onNewCommClient);
@@ -177,8 +214,8 @@ class PPDaemon: public QObject {
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
-   QStringList sList; QIntValidator trigV(256,65535,this);
-   qInfo() << "<Comm> Received command:" << cmd;
+   QStringList sList;
+   //qInfo() << "<Comm> Received command:" << cmd;
    if (!cmd.contains("=")) {
     sList.append(cmd);
     if (cmd==CMD_ACQ_ACQINFO) {
@@ -186,6 +223,7 @@ class PPDaemon: public QObject {
      client->write("-> EEG Samplerate: "+QString::number(conf->eegRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf->refChnCount).toUtf8()+"\n");
      client->write("-> Bipolar channel(s)#: "+QString::number(conf->bipChnCount).toUtf8()+"\n");
+     client->write("-> Meta (computed) channel(s)#: "+QString::number(conf->metaChnCount).toUtf8()+"\n");
      client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf->physChnCount).toUtf8()+"\n");
      client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(conf->totalChnCount).toUtf8()+"\n");
      client->write("-> Grand total channels# from all amps: "+QString::number(conf->totalCount).toUtf8()+"\n");
@@ -196,7 +234,9 @@ class PPDaemon: public QObject {
                    QString::number(conf->eegRate).toUtf8()+","+ \
                    QString::number(conf->refChnCount).toUtf8()+","+ \
                    QString::number(conf->bipChnCount).toUtf8()+","+ \
+                   QString::number(conf->metaChnCount).toUtf8()+","+ \
                    QString::number(conf->physChnCount).toUtf8()+","+ \
+                   QString::number(conf->chnCount).toUtf8()+","+ \
                    QString::number(conf->totalChnCount).toUtf8()+","+ \
                    QString::number(conf->totalCount).toUtf8()+","+ \
                    QString::number(conf->refGain).toUtf8()+","+ \
@@ -205,10 +245,10 @@ class PPDaemon: public QObject {
                    QString::number(conf->frameBytesOut).toUtf8()+"\n");
     } else if (cmd==CMD_ACQ_GETCHAN) {
      qInfo() << "<Comm> Sending Channels' Parameters..";
-     for (const auto& ch:conf->chnInfo) {
+     for (const auto& ch:conf->refChns) {
       QString interMode="";
       for (int idx=0;idx<ch.interMode.size();idx++) interMode.append(QString::number(ch.interMode[idx])+",");
-      interMode.remove(interMode.size()-1,1);
+      if (!interMode.isEmpty()) interMode.chop(1);
       client->write(QString::number(ch.physChn).toUtf8()+","+ \
                     QString(ch.chnName).toUtf8()+","+ \
                     QString::number(ch.topoTheta).toUtf8()+","+ \
@@ -218,6 +258,47 @@ class PPDaemon: public QObject {
                     QString::number(ch.type).toUtf8()+","+ \
                     interMode.toUtf8()+"\n"); // interMode status of that channel for individual amps
      }
+     for (const auto& ch:conf->bipChns) {
+      QString interMode="";
+      for (int idx=0;idx<ch.interMode.size();idx++) interMode.append(QString::number(ch.interMode[idx])+",");
+      if (!interMode.isEmpty()) interMode.chop(1);
+      client->write(QString::number(ch.physChn).toUtf8()+","+ \
+                    QString(ch.chnName).toUtf8()+","+ \
+                    QString::number(ch.topoTheta).toUtf8()+","+ \
+                    QString::number(ch.topoPhi).toUtf8()+","+ \
+                    QString::number(ch.topoX).toUtf8()+","+ \
+                    QString::number(ch.topoY).toUtf8()+","+ \
+                    QString::number(ch.type).toUtf8()+","+ \
+                    interMode.toUtf8()+"\n"); // interMode status of that channel for individual amps
+     }
+     for (const auto& ch:conf->metaChns) {
+      QString interMode="";
+      for (int idx=0;idx<ch.interMode.size();idx++) interMode.append(QString::number(ch.interMode[idx])+",");
+      if (!interMode.isEmpty()) interMode.chop(1);
+      client->write(QString::number(ch.physChn).toUtf8()+","+ \
+                    QString(ch.chnName).toUtf8()+","+ \
+                    QString::number(ch.topoTheta).toUtf8()+","+ \
+                    QString::number(ch.topoPhi).toUtf8()+","+ \
+                    QString::number(ch.topoX).toUtf8()+","+ \
+                    QString::number(ch.topoY).toUtf8()+","+ \
+                    QString::number(ch.type).toUtf8()+","+ \
+                    interMode.toUtf8()+"\n"); // interMode status of that channel for individual amps
+     }
+    } else if (cmd==CMD_ACQPP_GETCMLEVELS) {
+     QStringList vals;
+     {
+       QMutexLocker lk(&conf->cmMutex);
+       if (!conf->cmLevelsValid) { client->write("\n"); client->flush(); return; }
+       for (unsigned int ampIdx=0;ampIdx<conf->ampCount;++ampIdx) {
+       if (ampIdx>=unsigned(conf->latestCMLevels.size())) break;
+       for (unsigned int chnIdx=0;chnIdx<conf->chnCount;++chnIdx) {
+        if ((int)chnIdx>=conf->latestCMLevels[(int)ampIdx].size()) break;
+        vals << QString::number(conf->latestCMLevels[int(ampIdx)][chnIdx],'f',6);
+       }
+      }
+     }
+     client->write(vals.join(",").toUtf8() + "\n");
+     client->flush();
     } else if (cmd==CMD_STATUS) {
      qInfo() << "<Comm> Sending Amp(s) status..";
      client->write("Amp(s) streaming EEG.\n");
@@ -240,24 +321,31 @@ class PPDaemon: public QObject {
     sList=cmd.split("=");
     if (sList[0]==CMD_ACQ_COMPCHAN) { // Handle online operator demands of electrode interpolation/disabling related changes
      QStringList params=sList[1].split(",");
-     unsigned int amp=params[0].toInt()-1;
-     unsigned int type=params[1].toInt();
-     unsigned int chn=params[2].toInt();
-     unsigned int state=params[3].toInt();
+     if (params.size()!=4) { client->write("ERR: invalid params\n"); return; }
+     const unsigned int amp=params[0].toInt()-1;
+     if (amp >= conf->ampCount) { client->write("ERR: invalid amp index\n"); return; }
+     const unsigned int type=params[1].toInt();
+     const unsigned int chn=params[2].toInt();
+     const unsigned int state=params[3].toInt();
+     QString response;
      {
-      QMutexLocker locker(&(conf->chnInterMutex));
-      for (int chIdx=0;chIdx<conf->chnInfo.size();chIdx++) {
-       if (conf->chnInfo[chIdx].type==type && conf->chnInfo[chIdx].physChn==chn) {
-        conf->chnInfo[chIdx].interMode[amp]=state;
+       QMutexLocker locker(&(conf->chnInterMutex));
+       QVector<PPChnInfo>* chns=nullptr;
+       switch (type) {
+        case 0: chns=&conf->refChns; break;
+        case 1: chns=&conf->bipChns; break;
+        case 2: chns=&conf->metaChns; break; // This doesn't make much sense but let it stay for now
+        default: client->write("ERR: invalid channel type\n"); return;
        }
-      }
+       if (chns) {
+        for (int chnIdx=0;chnIdx<chns->size();++chnIdx) {
+         if ((*chns)[chnIdx].physChn==chn) { (*chns)[chnIdx].interMode[amp]=state; break; }
+        }
+        for (int chnIdx=0;chnIdx<chns->size();++chnIdx) response+=QString::number((*chns)[chnIdx].interMode[amp])+",";
+       }
      }
      qInfo() << "<Comm> Channel to be computed.. amp:" << amp+1 << "ctype:" << type << "chn:" << chn << "inter:" << state;
-     QString response;
-     for (int chIdx=0;chIdx<conf->chnInfo.size();chIdx++) {
-      response+=QString::number(conf->chnInfo[chIdx].interMode[amp])+",";
-     }
-     response.remove(response.size()-1,1);
+     if (!response.isEmpty()) response.chop(1);
      client->write(response.toUtf8());
     } else {
      qWarning() << "<Comm> Unknown command received..";
@@ -307,6 +395,21 @@ class PPDaemon: public QObject {
   }
 
  private:
+  QString buildCMLevelsReply(unsigned int ampCount,unsigned int chnCount,quint64 pollCounter) {
+   QStringList vals;
+   for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
+    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+     int v=0;
+     // Alternating ascending / descending debug pattern
+     if ((pollCounter%2)==0) v=(int(ampIdx)*40+int(chnIdx)*8)%256;
+     else v=(255-((int(ampIdx)*40+int(chnIdx)*8)%256));
+     vals << QString::number(v);
+    }
+   }
+   return vals.join(",")+"\n";
+  }
+  quint64 cmPollCounter=0;
+
   QVector<QTcpSocket*> strmClients;
   CompThread *compThread; TcpThread *tcpThread;
 };

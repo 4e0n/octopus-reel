@@ -34,7 +34,10 @@ class ConfigParser {
  public:
   ConfigParser(QString cp) { cfgPath=cp; cfgFile.setFileName(cfgPath); }
 
-  bool parse(ConfParam *conf) { QVector<AcqChnInfo> *chnInfo=&(conf->chnInfo);
+  bool parse(ConfParam *conf) {
+   QVector<AcqChnInfo> *refChns=&(conf->refChns);
+   QVector<AcqChnInfo> *bipChns=&(conf->bipChns);
+   QVector<AcqChnInfo> *metaChns=&(conf->metaChns);
    QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
    QStringList ampSection; AcqChnInfo dummyChnInfo;
 
@@ -44,8 +47,8 @@ class ConfigParser {
    } else {
     cfgStream.setDevice(&cfgFile);
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
-     cfgLine=cfgStream.readLine(MAX_LINE_SIZE); // Should not start with #, should contain "|"
-     if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
+     cfgLine=cfgStream.readLine(MAX_LINE_SIZE).trimmed(); // Should not start with #, should contain "|"
+     if (!cfgLine.isEmpty() && !cfgLine.startsWith('#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
 
@@ -120,7 +123,7 @@ class ConfigParser {
        }
       } else if (opts[0].trimmed()=="AUDTRIGTHR") {
        conf->audTrigThr=opts[1].toInt();
-       if (!(conf->audTrigThr>20 || conf->audTrigThr<32000)) {
+       if (!(conf->audTrigThr>20 && conf->audTrigThr<32000)) {
         qCritical() << "<ConfigParser> <AMP> ERROR: AUDTRIGTHR not among {20,32000}x range!";
         return true;
        }
@@ -182,46 +185,48 @@ class ConfigParser {
             (!((unsigned)opts2[5].toInt()>=1 && (unsigned)opts2[5].toInt()<=11)) || // TopoXY - X
             (!((unsigned)opts2[6].toInt()>=1 && (unsigned)opts2[6].toInt()<=11))) { // TopoXY - Y
          qCritical() << "<ConfigParser> <CHN> ERROR: Invalid parameter!";
-	 return true;
+         return true;
         } else { // Set and append new channel..
-	 dummyChnInfo.physChn=opts2[1].toInt();      // Physical channel
-	 dummyChnInfo.chnName=opts2[2];              // Channel name
-	 dummyChnInfo.topoTheta=opts2[3].toFloat();  // TopoThetaPhi - Theta
-	 dummyChnInfo.topoPhi=opts2[4].toFloat();    // TopoThetaPhi - Phi
-	 dummyChnInfo.topoX=opts2[5].toInt();        // TopoXY - X
-	 dummyChnInfo.topoY=opts2[6].toInt();        // TopoXY - Y
-	 if (opts2[0]=="R") {
-          dummyChnInfo.type=0; conf->refChnCount++;  // referential
-	 } else if (opts2[0]=="B") {
-          dummyChnInfo.type=1; conf->bipChnCount++;  // bipolar
-	 } else if (opts2[0]=="M") {
-          dummyChnInfo.type=2; conf->metaChnCount++; // meta
-         } else {
+         dummyChnInfo.physChn=opts2[1].toInt();      // Physical channel
+         dummyChnInfo.chnName=opts2[2];              // Channel name
+         dummyChnInfo.topoTheta=opts2[3].toFloat();  // TopoThetaPhi - Theta
+         dummyChnInfo.topoPhi=opts2[4].toFloat();    // TopoThetaPhi - Phi
+         dummyChnInfo.topoX=opts2[5].toInt();        // TopoXY - X
+         dummyChnInfo.topoY=opts2[6].toInt();        // TopoXY - Y
+         if (opts2[0]=="R") dummyChnInfo.type=0; // referential
+         else if (opts2[0]=="B") dummyChnInfo.type=1; // bipolar
+         else if (opts2[0]=="M") dummyChnInfo.type=2; // meta
+         else {
           qCritical() << "<ConfigParser> <CHN> ERROR: Invalid channel type in APPEND parameters!";
-	  return true;
+          return true;
          }
-	 // Intermodes are decided to be irrelevant within node-acq.
-	 // node-acq only predefines the neighborhood of each electrode via its config file
-	 // and conveys this information to node-acq-pp. Hence the recordings will only have
-	 // the original/not-interpolated EEG data; as node-stor relies on node-acq but not node-acq-pp.
+         // Intermodes are decided to be irrelevant within node-acq.
+         // node-acq only predefines the neighborhood of each electrode via its config file
+         // and conveys this information to node-acq-pp. Hence the recordings will only have
+         // the original/not-interpolated EEG data; as node-stor relies on node-acq but not node-acq-pp.
         }
        } else {
         qCritical() << "<ConfigParser> <CHN> ERROR: Invalid count of parameters in APPEND line!";
 	return true;
        }
        opts2=opts[1].split(","); // Interpolation electrodes
-       if (opts2.size()>=1 && opts2.size()<=4) {
+       if (opts2.size()>=1 && opts2.size()<=6) {
         dummyChnInfo.interElec.resize(0);
         if (opts2[0].toInt()==0) {
-         if (dummyChnInfo.type==0) dummyChnInfo.interElec.append(dummyChnInfo.physChn-1);
+         if (dummyChnInfo.type==0) dummyChnInfo.interElec.append(dummyChnInfo.physChn-1); // Only for referential
 	 else dummyChnInfo.interElec.append(0);
 	} else {
 	 for (int idx=0;idx<opts2.size();idx++) dummyChnInfo.interElec.append(opts2[idx].toInt()-1);
 	}
-        chnInfo->append(dummyChnInfo); // add channel to info table
        } else {
         qCritical() << "<ConfigParser> <CHN> ERROR: Invalid count of APPEND (chn interpolation) parameters!";
 	return true;
+       }
+       switch (dummyChnInfo.type) { // Add channel to related info table
+        case 0:
+        default: refChns->append(dummyChnInfo); break;
+        case 1: bipChns->append(dummyChnInfo); break;
+        case 2: metaChns->append(dummyChnInfo); break;
        }
       }
      }
@@ -230,7 +235,13 @@ class ConfigParser {
      return true;
     }
 
-    //for (const auto& ci:chnInfo) qInfo() << ci.physChn << ci.chnName << ci.topoX << ci.topoY;
+    conf->refChnCount=refChns->size(); conf->bipChnCount=bipChns->size(); conf->metaChnCount=metaChns->size();
+    //qInfo() << "EEG channels:" << conf->refChnCount;
+    //for (const auto& c:conf->refChns) qInfo() << c.physChn << c.chnName << c.topoX << c.topoY;
+    //qInfo() << "BP channels:" << conf->bipChnCount;
+    //for (const auto& c:conf->bipChns) qInfo() << c.physChn << c.chnName << c.topoX << c.topoY;
+    //qInfo() << "META channels:" << conf->metaChnCount;
+    //for (const auto& c:conf->metaChns) qInfo() << c.physChn << c.chnName << c.topoX << c.topoY;
 
    } // File open
    return false;

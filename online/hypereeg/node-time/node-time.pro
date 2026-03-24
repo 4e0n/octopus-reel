@@ -22,9 +22,9 @@
 TEMPLATE = app
 TARGET = node-time
 INCLUDEPATH += .
-LIBS += -lGLU -lX11
+LIBS += -lX11
 LIBS += -fopenmp
-QT += core gui widgets network multimedia opengl
+QT += core gui widgets network multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -37,15 +37,9 @@ HEADERS += guiclient.h \
            ampwindow.h \
            eegframe.h \
            eegthread.h \
-           gl3dwidget.h \
-	   gllegendframe.h \
            configparser.h \
            confparam.h \
            guichninfo.h \
-           headmodel.h \
-           ../common/tcp_commands.h \
-           ../../../common/event.h \
-           ../../../common/vec3.h \
-           ../../../common/coord3d.h
+           ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

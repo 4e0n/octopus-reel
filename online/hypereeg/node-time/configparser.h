@@ -27,7 +27,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QColor>
 #include "confparam.h"
-#include "headmodel.h"
 
 const int MAX_LINE_SIZE=160; // chars
 const QString NODE_TEXT="TIME";
@@ -46,8 +45,8 @@ class ConfigParser {
    } else {
     cfgStream.setDevice(&cfgFile);
     while (!cfgStream.atEnd()) { // Populate cfgLines with valid lines
-     cfgLine=cfgStream.readLine(MAX_LINE_SIZE); // Should not start with #, should contain "|"
-     if (!(cfgLine.at(0)=='#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
+     cfgLine=cfgStream.readLine(MAX_LINE_SIZE).trimmed(); // Should not start with #, should contain "|"
+     if (!cfgLine.isEmpty() && !cfgLine.startsWith('#') && cfgLine.contains('|')) cfgLines.append(cfgLine);
     }
     cfgFile.close();
 
@@ -69,11 +68,8 @@ class ConfigParser {
      opts=cfgLines[idx].split("#"); opts=opts[0].split("|"); // Get rid off any following comment.
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="BUF") bufSection.append(opts[1]);
-     else if (opts[0].trimmed()=="PLT") pltSection.append(opts[1]);
-     else if (opts[0].trimmed()=="EVT") evtSection.append(opts[1]);
      else if (opts[0].trimmed()=="CHN") chnSection.append(opts[1]); // AVG merged in CHN
      else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
-     else if (opts[0].trimmed()=="HEAD") headSection.append(opts[1]);
      else {
       qWarning() << "node-time: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
@@ -193,20 +189,24 @@ class ConfigParser {
     if (!commResponse.isEmpty()) qInfo() << "node-time: <GetConfFromAcqDaemon> Reply:" << commResponse;
     else qCritical() << "node-time: <ConfigParser> (TIMEOUT) No response from Acquisition Node!";
     sList=commResponse.split(",");
-    conf->initMultiAmp(sList[0].toInt()); // (ACTUAL) AMPCOUNT
+    conf->ampCount=sList[0].toInt();      // (ACTUAL) AMPCOUNT
     conf->eegRate=sList[1].toInt();       // EEG SAMPLERATE
-    conf->tcpBufSize*=conf->eegRate;
+    conf->initMultiAmp();
+    conf->tcpBufSize*=conf->eegRate;      // TCPBUFSIZE (in SAMPLE#)
     conf->tcpBuffer.resize(conf->tcpBufSize);
+
     conf->refChnCount=sList[2].toInt();
     conf->bipChnCount=sList[3].toInt();
-    conf->physChnCount=sList[4].toInt();
-    conf->totalChnCount=sList[5].toInt();
-    conf->totalCount=sList[6].toInt();
-    conf->refGain=sList[7].toFloat();
-    conf->bipGain=sList[8].toFloat();
-    conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+    conf->metaChnCount=sList[4].toInt();
+    conf->physChnCount=sList[5].toInt();
+    conf->chnCount=sList[6].toInt();      // logical count from node-acq metadata
+    conf->totalChnCount=sList[7].toInt();
+    conf->totalCount=sList[8].toInt();
+    conf->refGain=sList[9].toFloat();
+    conf->bipGain=sList[10].toFloat();
+    conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-    conf->frameBytes=sList[10].toInt();
+    conf->frameBytes=sList[12].toInt();
 
     // # of data to wait for, to be available for screen plot/sweeper
     // (1000sps/50Hz)/(1000/1000)=20ms=20samples
@@ -216,6 +216,11 @@ class ConfigParser {
     conf->eegBand=0;
 #endif
 
+    const unsigned int ampCount=conf->ampCount;
+    const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount;
+    const unsigned int physChnCount=conf->physChnCount; const unsigned int metaChnCount=conf->metaChnCount;
+    const unsigned int chnCount=conf->chnCount;
+
     // CHANNELS
 
     commResponse=conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_GETCHAN);
@@ -223,45 +228,54 @@ class ConfigParser {
     else qCritical() << "node-time: <GetChannelListFromDaemon> (TIMEOUT) No response from Node!";
     sList=commResponse.split("\n"); GUIChnInfo chn;
 
-    chn.interMode.resize(conf->ampCount);
-    for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
+    chn.interMode.resize(ampCount);
+    for (unsigned int chnIdx=0;chnIdx<refChnCount;chnIdx++) { // Individual CHANNELs information
      sList2=sList[chnIdx].split(",");
      chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
-     //chn.topoTheta=sList2[2].toFloat(); chn.topoPhi=sList2[3].toFloat();
-     chn.param.x=1.0; chn.param.y=sList2[2].toFloat(); chn.param.z=sList2[3].toFloat();
      chn.topoX=sList2[4].toInt(); chn.topoY=sList2[5].toInt();
      chn.type=sList2[6].toInt();
-     for (unsigned int imIdx=0;imIdx<conf->ampCount;imIdx++) chn.interMode[imIdx]=sList2[7+imIdx].toInt();
-     //chn.interMode.resize(0); for (unsigned int idx=0;idx<conf->ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
-     conf->chnInfo.append(chn);
+     for (unsigned int imIdx=0;imIdx<ampCount;imIdx++) chn.interMode[imIdx]=sList2[7+imIdx].toInt();
+     //chn.interMode.resize(0); for (unsigned int idx=0;idx<ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
+     conf->refChns.append(chn);
     }
-    conf->chnCount=conf->chnInfo.size();
+    for (unsigned int chnIdx=0;chnIdx<bipChnCount;chnIdx++) { // Individual CHANNELs information
+     sList2=sList[refChnCount+chnIdx].split(",");
+     chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
+     chn.topoX=sList2[4].toInt(); chn.topoY=sList2[5].toInt();
+     chn.type=sList2[6].toInt();
+     for (unsigned int imIdx=0;imIdx<ampCount;imIdx++) chn.interMode[imIdx]=sList2[7+imIdx].toInt();
+     //chn.interMode.resize(0); for (unsigned int idx=0;idx<ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
+     conf->bipChns.append(chn);
+    }
+    for (unsigned int chnIdx=0;chnIdx<metaChnCount;chnIdx++) { // Individual CHANNELs information
+     sList2=sList[physChnCount+chnIdx].split(",");
+     chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
+     chn.topoX=sList2[4].toInt(); chn.topoY=sList2[5].toInt();
+     chn.type=sList2[6].toInt();
+     for (unsigned int imIdx=0;imIdx<ampCount;imIdx++) chn.interMode[imIdx]=sList2[7+imIdx].toInt();
+     //chn.interMode.resize(0); for (unsigned int idx=0;idx<ampCount;idx++) chn.interMode.append(sList2[7+idx].toInt());
+     conf->metaChns.append(chn);
+    }
 
-    qInfo() << "[TIME] ampCount="<<conf->ampCount<<" chnCount="<<conf->chnCount<<" frameBytes="<<conf->frameBytes;
+    qInfo() << "[TIME] ampCount=" << ampCount << " chnCount=" << chnCount << " frameBytes=" << conf->frameBytes;
 
-    //for (int idx=0;idx<conf->chnInfo.size();idx++) {
+    //for (int idx=0;idx<conf->refChns.size();idx++) {
     // QString x="";
-    // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
+    // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->refChns[idx].interMode[j])+",");
     // qInfo() << x.toUtf8();
     //}
 
-    for (auto& chn:conf->chnInfo) qInfo() << chn.physChn << chn.chnName << chn.param.y << chn.param.z << chn.type;
+    qInfo() << "Referential Chns:";
+    for (auto& chn:conf->refChns) qInfo() << chn.physChn << chn.chnName << chn.type;
+    qInfo() << "Differential Chns:";
+    for (auto& chn:conf->bipChns) qInfo() << chn.physChn << chn.chnName << chn.type;
+    qInfo() << "Meta Chns:";
+    for (auto& chn:conf->metaChns) qInfo() << chn.physChn << chn.chnName << chn.type;
 
     // Initialize GUI/sweeping related variables
-    conf->eegSweepPending.resize(conf->ampCount);
-    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
+    conf->eegSweepPending.resize(ampCount);
+    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
      conf->eegSweepPending[ampIdx]=false;
-    }
-
-    conf->headModel.resize(conf->ampCount);
-    conf->glFrameOn.resize(conf->ampCount); conf->glGridOn.resize(conf->ampCount);
-    conf->glGizmoOn.resize(conf->ampCount); conf->glElectrodesOn.resize(conf->ampCount);
-    conf->glScalpOn.resize(conf->ampCount); conf->glSkullOn.resize(conf->ampCount); conf->glBrainOn.resize(conf->ampCount);
-    for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
-     conf->headModel[ampIdx].init();
-     conf->glFrameOn[ampIdx]=conf->glGridOn[ampIdx]=true;
-     conf->glGizmoOn[ampIdx]=conf->glElectrodesOn[ampIdx]=true;
-     conf->glScalpOn[ampIdx]=conf->glSkullOn[ampIdx]=conf->glBrainOn[ampIdx]=true;
     }
 
     // Setup STOR command socket
@@ -271,133 +285,6 @@ class ConfigParser {
     commResponse=conf->commandToDaemon(conf->storCommSocket,CMD_STATUS);
     if (!commResponse.isEmpty()) qInfo() << "node-time: <ConfigParser> Storage Daemon replied:" << commResponse;
     else qWarning() << "node-time: <ConfigParser> (TIMEOUT) No response from Storage Node!";
-
-    // ------------------------------------------------------------------
-
-    // PLT - Color palette entries
-    int colR,colG,colB,colA; 
-    if (pltSection.size()>0) {
-     for (const auto& sect:pltSection) {
-      opts=sect.split("=");
-      if (opts[0].trimmed()=="ADD") {
-       opts2=opts[1].split(",");
-       if (opts2.size()==4) {
-        colR=opts2[0].toInt(); colG=opts2[1].toInt(); colB=opts2[2].toInt(); colA=opts2[3].toInt();
-        if (!(colR>=0 && colR<256) || !(colG>=0 && colG<256) || !(colB>=0 && colB<256) || !(colA>=0 && colA<256)) {
-         qWarning() << "node-time: <ConfigParser> <PLT> ERROR: Invalid RGBcolor parameter!";
-	 return true;
-        } else { // Add to the list of recognized colors.
-	 conf->rgbPalette.append(QColor(colR,colG,colB,colA));
-        }
-       } else {
-        qWarning() << "node-time: <ConfigParser> <PLT> ERROR: Invalid count of RGBcolor parameters!";
-	return true;
-       }
-      } else {
-       qWarning() << "node-time: <ConfigParser> <PLT> ERROR: Invalid section command!";
-       return true;
-      }
-     }
-    } else {
-     qWarning() << "node-time: <ConfigParser> <PLT> ERROR: No parameters in section!";
-     return true;
-    }
-
-    // EVT - Event Space and Hierarchy
-    int evtNo,evtColIdx; QString evtName;
-    if (evtSection.size()>0) {
-     for (const auto& sect:evtSection) {
-      opts=sect.split("=");
-      if (opts[0].trimmed()=="INTERVAL") {
-       opts2=opts[1].split(",");
-       if (opts2.size()==4) {
-        conf->erpRejBwd=opts2[0].toFloat(); conf->erpAvgBwd=opts2[1].toFloat();
-        conf->erpAvgFwd=opts2[2].toFloat(); conf->erpRejFwd=opts2[3].toFloat();
-	//qInfo() << conf->erpRejBwd << conf->erpAvgBwd << conf->erpAvgFwd << conf->erpRejFwd;
-        if (!(conf->erpRejBwd>=-2000 && conf->erpRejBwd<=2000 && conf->erpAvgBwd>=-2000 && conf->erpAvgBwd<=2000 &&
-              conf->erpAvgFwd>=-2000 && conf->erpAvgFwd<=2000 && conf->erpRejFwd>=-2000 && conf->erpRejFwd<=2000) ||
-            conf->erpRejBwd>conf->erpAvgBwd || conf->erpAvgBwd>conf->erpAvgFwd || conf->erpAvgFwd>conf->erpRejFwd) {
-         qWarning() << "node-time: <ConfigParser> <EVT> ERROR: Invalid INTERVAL parameter!";
-         return true;
-        }
-       } else {
-        qWarning() << "node-time: <ConfigParser> <EVT> ERROR: Invalid count of INTERVAL parameters!";
-        return true;
-       }
-      } else if (opts[0].trimmed()=="ADD") {
-       opts2=opts[1].split(",");
-       evtNo=opts2[0].toInt(); evtName=opts2[1].trimmed(); evtColIdx=opts2[2].toInt();
-       if (opts2.size()==3) {
-        if (!(evtNo>0 && evtNo<256) || (evtName.size()>100) || // max 100 chars for name should be more than enough?
-            !(evtColIdx>=0 && evtColIdx<conf->rgbPalette.size())) { // should be within range of present color entries
-         qWarning() << "node-time: <ConfigParser> <EVT> ERROR: Invalid EventNo parameter!";
-         return true;
-        } else { // Add to the list of pre-recognized events.
-	 conf->events.append(Event(evtNo,evtName,evtColIdx));
-        }
-       } else {
-        qWarning() << "node-time: <ConfigParser> <EVT> ERROR: Invalid count of STIM parameters!";
-        return true;
-       }
-      } else {
-       qWarning() << "node-time: <ConfigParser> <EVT> ERROR: Invalid section command!";
-       return true;
-      }
-     }
-    } else {
-     qWarning() << "node-time: <ConfigParser> <EVT> ERROR: No parameters in section!";
-     return true;
-    }
-
-    // HEAD section
-    if (headSection.size()>0) {
-     for (const auto& sect:headSection) {
-      opts=sect.split("=");
-      if (opts[0].trimmed()=="GIZMO") {
-       opts2=opts[1].split(",");
-       if (opts2.size()==1) {
-        if (opts2[0].size()) {
-         conf->loadGizmo(opts2[0].trimmed());
-
-	 //for (int g=0;g<conf->glGizmo.size();g++) {
-         // for (int s=0;s<conf->glGizmo[g].seq.size();s++) std::cout << conf->glGizmo[g].seq[s] << " ";
-	 // std::cout << "\n";
-         // for (int s=0;s<conf->glGizmo[g].tri.size();s++)
-         //  std::cout << "(" << conf->glGizmo[g].tri[s][0] << "," << conf->glGizmo[g].tri[s][1] << "," <<  conf->glGizmo[g].tri[s][2] << ")";
-	 // std::cout << "\n";
-         //}
-
-        } else {
-         qWarning() << "node-time: <ConfigParser> <HEAD> <GIZMO> ERROR: filename error!";
-         return true;
-        }
-       } else {
-        qWarning() << "node-time: <ConfigParser> <HEAD> <GIZMO> ERROR: while parsing parameters!";
-        return true;
-       }
-      } else if (opts[0].trimmed()=="SCALP" || opts[0].trimmed()=="SKULL" || opts[0].trimmed()=="BRAIN") {
-       opts2=opts[1].split(",");
-       if (opts2.size()==2) {
-        int headNo=opts2[0].toInt()-1; 
-        if (!(headNo>=0 && headNo<(int)conf->ampCount)) { // ampCount should be determined by now.
-         qWarning() << "node-time: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: head# overflow!";
-         return true;
-        } else {
-         if (opts[0].trimmed()=="SCALP") {
-          conf->headModel[headNo].loadScalp(opts2[1].trimmed());
-         } else if (opts[0].trimmed()=="SKULL") {
-          conf->headModel[headNo].loadSkull(opts2[1].trimmed());
-         } else if (opts[0].trimmed()=="BRAIN") {
-          conf->headModel[headNo].loadBrain(opts2[1].trimmed());
-         } else {
-          qWarning() << "node-time: <ConfigParser> <HEAD> <SCALP|SKULL|BRAIN> ERROR: while parsing parameters!";
-          return true;
-         }
-        }
-       }
-      }
-     }
-    }
 
     // GUI section
     if (guiSection.size()>0) {

@@ -295,19 +295,20 @@ struct TcpSamplePP {
   return deserializeRaw(ba.constData(),ba.size(),chnCount,expectedAmpCount);
  }
 
- void fromTcpSample(const TcpSample &s,size_t cCount) {
+ void fromTcpSample(const TcpSample &s, size_t srcChnCount) {
   offset=s.offset; timestampMs=s.timestampMs; trigger=s.trigger; opEvt=s.opEvt; subEvt=s.subEvt;
   for (size_t i=0;i<AUDIO_N;++i) audioN[i]=s.audioN[i]; // Audio
 
-  ampCount=unsigned(s.amp.size()); chnCount=unsigned(cCount);
+  ampCount=unsigned(s.amp.size());
+  // We don't set chnCount=srcChnCount -- TcpSamplePP must keep its own logical/output width
   ensureShape(ampCount,chnCount);
   for (unsigned a=0;a<ampCount;++a) { // Copy raw EEG data
    auto &dst=amp[a].data;
    const auto &src=s.amp[a].data;
-   Q_ASSERT(dst.size()==chnCount);
-   Q_ASSERT(src.size()==chnCount);
-   std::memcpy(dst.data(),src.data(),chnCount*sizeof(float));
-   // The filter loop will be overwriting for every channel/every sample.
+   Q_ASSERT(src.size()==int(srcChnCount));
+   Q_ASSERT(dst.size()>=int(srcChnCount));
+   std::memcpy(dst.data(),src.data(),srcChnCount*sizeof(float));
+   for (size_t ch=srcChnCount;ch<size_t(dst.size());++ch) dst[int(ch)] = 0.0f;
   }
  }
 };

@@ -40,11 +40,17 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <errno.h>
 #include <math.h>  // lrintf
 
+//struct BrainVisionMeta {
+// QStringList channelNames;     // size=nChBV (EEG+BP+optional derived channels)
+// double sampleRateHz=1000.0;   // e.g. 1000
+// QString unit="uV";
+// double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
+//};
 struct BrainVisionMeta {
- QStringList channelNames;     // size=nChBV (EEG+optional derived channels)
- double sampleRateHz=1000.0;   // e.g. 1000
- QString unit="uV";
- double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
+ QStringList channelNames;               // size=nChBV (EEG+BP+optional derived channels)
+ QStringList channelUnits;               // size=nChBV
+ std::vector<double> channelResolutions; // size=nChBV
+ double sampleRateHz=1000.0;
 };
 
 struct WavMeta {
@@ -67,6 +73,10 @@ class BVWav {
              const WavMeta& wavMeta,QString* err=nullptr) {
    reset();
    if (bvMeta.channelNames.isEmpty()) return setErr(err,"BV: channelNames empty.");
+   if (bvMeta.channelUnits.size()!=bvMeta.channelNames.size())
+    return setErr(err,"BV: channelUnits size mismatch.");
+   if (bvMeta.channelResolutions.size()!=size_t(bvMeta.channelNames.size()))
+    return setErr(err,"BV: channelResolutions size mismatch.");
    if (bvMeta.sampleRateHz<=0.0) return setErr(err,"BV: Requirement not satisfied: sampleRateHz>0.");
    if (wavMeta.sampleRate<=0) return setErr(err,"WAV: Requirement not satisfied: sampleRate>0.");
    if (wavMeta.numChannels<=0) return setErr(err,"WAV: Requirement not satisfied: numChannels>0.");
@@ -179,19 +189,19 @@ class BVWav {
   // Write N TcpSamples in two big writes:
   //  .eeg: N frames of float32 multiplexed (amp-major, channel-minor) using Sample::data
   //  .wav: N*48 frames of PCM16, currently mono only (numChannels must be 1)
-  bool writeChunk_FromTcpSamples(const std::vector<TcpSample>& chunk,size_t ampCount,size_t chnCount,QString* err=nullptr) {
+  bool writeChunk_FromTcpSamples(const std::vector<TcpSample>& chunk,size_t ampCount,size_t physChnCount,QString* err=nullptr) {
    if (!m_open) return setErr(err, "writeChunk called while not open.");
    if (chunk.empty()) return true;
 
-   //   const size_t nChBV_expected = ampCount * chnCount;
-   const size_t nEEG=ampCount*chnCount;
+   // const size_t nChBV_expected=ampCount*physChnCount;
+   const size_t nPHYS=ampCount*physChnCount;
    const size_t nAUD=48;
-   const size_t nChBV_expected=nEEG+nAUD;
+   const size_t nChBV_expected=nPHYS+nAUD;
 
    if ((size_t)m_nChBV!=nChBV_expected) {
     return setErr(err,QString("BV: channel count mismatch: header says %1, but expected=%2 (EEG=%3 + AUD=%4)")
                       .arg(m_nChBV).arg((qulonglong)nChBV_expected)
-                      .arg((qulonglong)nEEG).arg((qulonglong)nAUD));
+                      .arg((qulonglong)nPHYS).arg((qulonglong)nAUD));
    }
 
    const size_t N=chunk.size();
@@ -201,11 +211,11 @@ class BVWav {
    size_t k=0;
    for (size_t i=0;i<N;++i) {
     const TcpSample& t=chunk[i];
-    // EEG part (132)
+    // EEG part (ampCount*physChnCount)
     for (size_t a=0;a<ampCount;++a) {
      const Sample& s=t.amp[a];
-     for (size_t c=0;c<chnCount;++c) {
-      bvBuf[k++]=s.data[c];
+     for (size_t c=0;c<physChnCount;++c) {
+      bvBuf[k++]=1e6f*s.data[c]; // V -> uV
      }
     }
     // AUD part (48)
@@ -405,11 +415,13 @@ class BVWav {
    for (int i=0;i<m_nChBV;++i) {
     const int chNum=i+1;
     const QString chName=sanitize(m_bvMeta.channelNames.at(i));
+    const QString chUnit=sanitize(m_bvMeta.channelUnits.at(i));
+    const double chRes=m_bvMeta.channelResolutions.at(size_t(i));
     out+=QString("Ch%1=%2,,%3,%4\r\n")
           .arg(chNum)
           .arg(chName)
-          .arg(QString::number(m_bvMeta.channelResolution,'g',12))
-          .arg(sanitize(m_bvMeta.unit));
+          .arg(QString::number(chRes,'g',12))
+          .arg(chUnit);
    }
 
    const QByteArray utf8=out.toUtf8();

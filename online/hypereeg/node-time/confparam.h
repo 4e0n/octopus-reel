@@ -37,14 +37,11 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QLabel>
 #include <QDateTime>
 
+#include <deque>
+
 #include "guichninfo.h"
-#include "headmodel.h"
 #include "../common/tcpsample_pp.h"
 #include "../common/framedstreamreader.h"
-
-#include "../../../common/event.h"
-#include "../../../common/coord3d.h"
-#include "../../../common/gizmo.h"
 
 const int EEG_SCROLL_REFRESH_RATE=50; // 100Hz max.
 
@@ -57,12 +54,13 @@ class ConfParam : public QObject {
    quitPending=false;
   }
 
-  void initMultiAmp(int ampC=0) {
-   ampCount=ampC; eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
+  void initMultiAmp() {
+   eegAmpX.resize(ampCount); erpAmpX.resize(ampCount); threads.resize(ampCount);
    eegSweepPending.resize(ampCount); for (auto &v:eegSweepPending) v=false;
    // tick window (keep existing logic/values)
    scrUpdateSamples=qMax(1u,eegRate/eegSweepRefreshRate);
    scrAvailableSamples=scrUpdateSamples;
+
    // PLL init (no gating applied yet; Step 2 will use it)
    pllT.start();
    pllTargetPeriodMs=int(1000/qMax(1u,eegSweepRefreshRate));
@@ -86,65 +84,7 @@ class ConfParam : public QObject {
    if (!socket->waitForReadyRead(timeoutMs)) return QString(); // timeout or no response
    return QString::fromUtf8(socket->readAll()).trimmed();
   }
-
-  void loadGizmo(QString fn) {
-   QFile file; QTextStream stream; QString line; QStringList lines,validLines,opts,opts2;
-   bool gError=false; QVector<unsigned int> t(3); QVector<unsigned int> ll(2);
-
-   // TODO: here a dry-run would fit.
  
-   // Delete previous if any
-   if (glGizmoLoaded) glGizmo.resize(0);
-   glGizmoLoaded=false;
-
-   file.setFileName(fn); file.open(QIODevice::ReadOnly|QIODevice::Text); stream.setDevice(&file);
-   while (!stream.atEnd()) { line=stream.readLine(250); lines.append(line); }
-   file.close();
-
-   // Get valid lines
-   for (int i=0;i<lines.size();i++)
-    if (!(lines[i].at(0)=='#')&&lines[i].contains('|')) validLines.append(lines[i]);
-
-   // Find the essential line defining gizmo names
-   for (int i=0;i<validLines.size();i++) {
-    opts2=validLines[i].split(" "); opts=opts2[0].split("|"); opts2.removeFirst(); opts2=opts2[0].split(",");
-    if (opts.size()==2 && opts2.size()>0) {
-     // GIZMO|LIST must be prior to others or segfault will occur..
-     if (opts[0].trimmed()=="GIZMO") {
-      if (opts[1].trimmed()=="NAME") {
-       for (int g=0;g<opts2.size();g++) { Gizmo dummyGizmo(opts2[g].trimmed()); glGizmo.append(dummyGizmo); }
-      }
-     } else if (opts[0].trimmed()=="SHAPE") {
-      ;
-     } else if (opts[1].trimmed()=="SEQ") {
-      int k=gizFindIndex(opts[0].trimmed()); for (int j=0;j<opts2.size();j++) glGizmo[k].seq.append(opts2[j].toInt()-1);
-     } else if (opts[1].trimmed()=="TRI") { int k=gizFindIndex(opts[0].trimmed());
-      if (opts2.size()%3==0) {
-       for (int j=0;j<opts2.size()/3;j++) {
-        t[0]=opts2[j*3+0].toInt()-1; t[1]=opts2[j*3+1].toInt()-1; t[2]=opts2[j*3+2].toInt()-1; glGizmo[k].tri.append(t);
-       }
-      } else { gError=true;
-       qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Triangles not multiple of 3 vertices..";
-      }
-     } else if (opts[1].trimmed()=="LIN") { int k=gizFindIndex(opts[0].trimmed());
-      if (opts2.size()%2==0) {
-       for (int j=0;j<opts2.size()/2;j++) {
-        ll[0]=opts2[j*2+0].toInt()-1; ll[1]=opts2[j*2+1].toInt()-1;
-	glGizmo[k].lin.append(ll);
-       }
-      } else { gError=true;
-       qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: Lines not multiple of 2 vertices..";
-      }
-     }
-    } else { gError=true; qWarning() << "node-time: <ConfParam> <LoadGizmo> <OGZ> ERROR: while parsing!"; }
-   } if (!gError) glGizmoLoaded=true;
-  }
-
-  int gizFindIndex(QString s) { int idx=-1;
-   for (int i=0;i<glGizmo.size();i++) if (glGizmo[i].name==s) { idx=i; break; }
-   return idx;
-  }
-  
   void requestQuit() { 
    {
      QMutexLocker locker(&mutex);
@@ -170,10 +110,10 @@ class ConfParam : public QObject {
 
   QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize; quint64 tcpBufHead,tcpBufTail; int frameBytes;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
   unsigned int physChnCount,totalChnCount,totalCount; float refGain,bipGain;
 
-  QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> chnInfo;
+  QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> refChns,bipChns,metaChns;
   QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
 
   unsigned int currentWav=0;
@@ -187,7 +127,7 @@ class ConfParam : public QObject {
 #endif
 
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
-  int sweepFrameW,sweepFrameH, audWaveH, gl3DFrameW,gl3DFrameH;
+  int sweepFrameW,sweepFrameH, audWaveH; //, gl3DFrameW,gl3DFrameH;
 
   bool ctrlRecordingActive;
 
@@ -204,13 +144,6 @@ class ConfParam : public QObject {
                               (1e6/ 100.0),
                               (1e6/  50.0),
                               (1e6/  20.0)};
-
-  QVector<HeadModel> headModel; bool glGizmoLoaded; QVector<Gizmo> glGizmo;
-  QVector<bool> glFrameOn,glGridOn,glScalpOn,glSkullOn,glBrainOn,glGizmoOn,glElectrodesOn;
-
-  QVector<Event> events; bool event; QString curEventName; quint32 curEventType;
-  float erpRejBwd,erpAvgBwd,erpAvgFwd,erpRejFwd; // In terms of milliseconds
-  QVector<QColor> rgbPalette;
 
    // --- PLL/barrier timing (producer-side gate) ---
   QElapsedTimer pllT;
@@ -235,9 +168,11 @@ class ConfParam : public QObject {
 
   // --------------------------------------------------------------------------------------
 
+  //std::vector<std::deque<MarkerOverlay>> markerOverlays; QMutex markerMutex;
+  //static constexpr int MAX_MARKERS_PER_AMP=32;
+  //static constexpr qint64 MARKER_LIFETIME_MS=20000;
+
  signals:
-  void glUpdate();
-  void glUpdateParam(int);
 
  public slots:
   void onStrmDataReady() {
@@ -297,6 +232,12 @@ class ConfParam : public QObject {
      {
        QMutexLocker locker(&mutex);
        tcpBuffer[tcpBufHead%tcpBufSize]=s; tcpBufHead++;
+
+       if ((tcpBufHead-tcpBufTail)>=tcpBufSize) {
+        ringOverruns.fetch_add(1,std::memory_order_relaxed);
+        tcpBufTail=tcpBufHead-tcpBufSize + 1;
+        qWarning() << "[TIME] Buffer overrun: dropping oldest sample.";
+       }
      } 
     }
     // discard the outer packet

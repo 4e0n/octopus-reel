@@ -66,14 +66,16 @@ class StorDaemon: public QObject {
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
-   conf->physChnCount=sList[4].toInt();
-   conf->totalChnCount=sList[5].toInt();
-   conf->totalCount=sList[6].toInt();
-   conf->refGain=sList[7].toFloat();
-   conf->bipGain=sList[8].toFloat();
-   conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   //conf->metaChnCount=sList[4].toInt();
+   conf->physChnCount=sList[5].toInt();
+   conf->chnCount=sList[6].toInt();      // logical count from node-acq metadata
+   conf->totalChnCount=sList[7].toInt();
+   conf->totalCount=sList[8].toInt();
+   conf->refGain=sList[9].toFloat();
+   conf->bipGain=sList[10].toFloat();
+   conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-   conf->frameBytesIn=sList[10].toInt();
+   conf->frameBytesIn=sList[12].toInt();
 
    // CHANNELS
    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
@@ -81,27 +83,27 @@ class StorDaemon: public QObject {
    else qCritical() << "<GetChannelListFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
    sList=commResponse.split("\n"); StorChnInfo chn;
 
-   for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
+   //for (int chnIdx=0;chnIdx<sList.size();chnIdx++) { // Individual CHANNELs information
+   for (unsigned int chnIdx=0;chnIdx<conf->refChnCount;chnIdx++) { // Individual CHANNELs information
     sList2=sList[chnIdx].split(",");
     chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
     chn.type=(bool)sList2[6].toInt();
-    conf->chnInfo.append(chn);
+    conf->refChns.append(chn);
    }
-   conf->chnCount=conf->chnInfo.size();
+   for (unsigned int chnIdx=0;chnIdx<conf->bipChnCount;chnIdx++) { // Individual CHANNELs information
+    sList2=sList[conf->refChnCount+chnIdx].split(",");
+    chn.physChn=sList2[0].toInt(); chn.chnName=sList2[1];
+    chn.type=(bool)sList2[6].toInt();
+    conf->bipChns.append(chn);
+   }
 
    // Constants or calculated global settings upon the ones read from config file
-   conf->tcpBuffer=QVector<TcpSample>(conf->tcpBufSize,TcpSample(conf->ampCount,conf->chnCount));
+   conf->tcpBuffer=QVector<TcpSample>(conf->tcpBufSize,TcpSample(conf->ampCount,conf->physChnCount));
 
    if (!conf->storCommServer.listen(QHostAddress::Any,conf->storCommPort)) {
     qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf->storCommPort;
     return true;
    }
-
-   //for (int idx=0;idx<conf->chnInfo.size();idx++) {
-   // QString x="";
-   // for (int j=0;j<conf->ampCount;j++) x.append(QString::number(conf->chnInfo[idx].interMode[j])+",");
-   // qCritical() << x.toUtf8();
-   //}
 
    // We're server
    connect(&(conf->storCommServer),&QTcpServer::newConnection,this,&StorDaemon::onNewCommClient);
