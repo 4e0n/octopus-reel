@@ -35,10 +35,15 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QStatusBar>
 #include <QMessageBox>
 #include <QDateTime>
+#include <QElapsedTimer>
+#include <QTimer>
 #include <QThread>
 #include "unistd.h"
 #include "confparam.h"
 #include "../common/tcp_commands.h"
+
+
+
 
 class ControlWindow : public QMainWindow {
  Q_OBJECT
@@ -93,13 +98,22 @@ class ControlWindow : public QMainWindow {
    toggleRecordingButton->setCheckable(true);
    connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
 
+   // RECTIMER
+   lblTimer=new QLabel("00:00:00",cntWidget);
+   lblTimer->setGeometry(86,mainTabWidget->height()-54,80,20); lblTimer->setMinimumWidth(80);
+   lblTimer->setAlignment(Qt::AlignCenter);
+   uiTimer=new QTimer(this);
+   connect(uiTimer,&QTimer::timeout,this,&ControlWindow::updateTimerDisplay);
+//   layout->addWidget(recordButton);
+//   layout->addWidget(lblTimer);
+
    QPushButton *dummyButton;
 
    // WAVPLAY BUTTONS
    wavPlayBG=new QButtonGroup(); wavPlayBG->setExclusive(true);
    for (int wavIdx=0;wavIdx<5;wavIdx++) { // WAV#
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(110+wavIdx*22,mainTabWidget->height()-54,20,20);
+    dummyButton->setGeometry(180+wavIdx*22,mainTabWidget->height()-54,20,20);
     wavPlayBG->addButton(dummyButton,wavIdx);
    }
    wavPlayBG->button(0)->setText("S");
@@ -113,7 +127,7 @@ class ControlWindow : public QMainWindow {
    opEvtBG=new QButtonGroup(); opEvtBG->setExclusive(false);
    for (int evtIdx=0;evtIdx<5;evtIdx++) { // WAV#
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(false);
-    dummyButton->setGeometry(250+evtIdx*28,mainTabWidget->height()-54,26,20);
+    dummyButton->setGeometry(300+evtIdx*28,mainTabWidget->height()-54,26,20);
     opEvtBG->addButton(dummyButton,evtIdx);
    }
    opEvtBG->button(0)->setText("O1");
@@ -124,14 +138,14 @@ class ControlWindow : public QMainWindow {
    connect(opEvtBG,SIGNAL(buttonClicked(int)),this,SLOT(slotOpEvt(int)));
 
    syncButton=new QPushButton("SYNC",cntWidget);
-   syncButton->setGeometry(410,mainTabWidget->height()-54,60,20);
+   syncButton->setGeometry(450,mainTabWidget->height()-54,60,20);
    connect(syncButton,SIGNAL(clicked()),this,SLOT(slotSync()));
 
 #ifdef EEGBANDSCOMP
    eegBandBG=new QButtonGroup(); eegBandBG->setExclusive(true);
    for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(500+bandIdx*40,mainTabWidget->height()-54,38,20);
+    dummyButton->setGeometry(520+bandIdx*40,mainTabWidget->height()-54,38,20);
     eegBandBG->addButton(dummyButton,bandIdx);
    }
    eegBandBG->button(0)->setText("EEG");
@@ -168,13 +182,25 @@ class ControlWindow : public QMainWindow {
  signals: void streamData();
 
  private slots:
+  void updateTimerDisplay() {
+   qint64 ms=recTimer.elapsed();
+   int sec=(ms/1000)%60; int min=(ms/60000)%60; int hr=(ms/3600000);
+   QString t=QString("%1:%2:%3")
+              .arg(hr, 2, 10, QChar('0')).arg(min, 2, 10, QChar('0')).arg(sec, 2, 10, QChar('0'));
+   lblTimer->setText(t);
+   // ---- simple logic ----
+   if (ms<530000) // < 530 sec
+    lblTimer->setStyleSheet("QLabel { color: red; font-weight: bold; }");
+   else
+    lblTimer->setStyleSheet("QLabel { color: green; font-weight: bold; }");
+  }
 
   // *** MENUS ***
   //
   void slotReboot() { if (!confirmAndProceed("Reboot")) return;
    conf->commandToDaemon(conf->wavPlayCommSocket,CMD_REBOOT);
    conf->commandToDaemon(conf->storCommSocket,CMD_REBOOT);
-   conf->commandToDaemon(conf->acqPPCommSocket,CMD_REBOOT);
+   conf->commandToDaemon(conf->compPPCommSocket,CMD_REBOOT);
    conf->commandToDaemon(conf->acqCommSocket,CMD_REBOOT);
    slotQuit();
   }
@@ -182,7 +208,7 @@ class ControlWindow : public QMainWindow {
   void slotShutdown() { if (!confirmAndProceed("Shutdown")) return;
    conf->commandToDaemon(conf->wavPlayCommSocket,CMD_SHUTDOWN);
    conf->commandToDaemon(conf->storCommSocket,CMD_SHUTDOWN);
-   conf->commandToDaemon(conf->acqPPCommSocket,CMD_SHUTDOWN);
+   conf->commandToDaemon(conf->compPPCommSocket,CMD_SHUTDOWN);
    conf->commandToDaemon(conf->acqCommSocket,CMD_SHUTDOWN);
    slotQuit();
   }
@@ -198,9 +224,9 @@ class ControlWindow : public QMainWindow {
   void slotQuit() {
    conf->requestQuit();
    for (auto *t:conf->threads) { if (t) t->wait(); }
-   if (conf->acqPPStrmSocket && conf->acqPPStrmSocket->state()!=QAbstractSocket::UnconnectedState) {
-    conf->acqPPStrmSocket->disconnectFromHost();
-    conf->acqPPStrmSocket->waitForDisconnected(1000); // timeout in ms
+   if (conf->compPPStrmSocket && conf->compPPStrmSocket->state()!=QAbstractSocket::UnconnectedState) {
+    conf->compPPStrmSocket->disconnectFromHost();
+    conf->compPPStrmSocket->waitForDisconnected(1000); // timeout in ms
    }
    QApplication::quit();
   }
@@ -208,9 +234,13 @@ class ControlWindow : public QMainWindow {
   void slotToggleRecording() {
    if (!conf->ctrlRecordingActive) {
     conf->commandToDaemon(conf->storCommSocket,CMD_STOR_REC_ON);
+    // START TIMER
+    recTimer.start(); uiTimer->start(200); // update 5 Hz (smooth enough)
     conf->ctrlRecordingActive=true;
    } else {
     conf->commandToDaemon(conf->storCommSocket,CMD_STOR_REC_OFF);
+    // STOP TIMER
+    uiTimer->stop(); updateTimerDisplay(); // freeze final value
     conf->ctrlRecordingActive=false;
    }
   }
@@ -269,4 +299,8 @@ class ControlWindow : public QMainWindow {
   QButtonGroup *eegBandBG;
 #endif
   QButtonGroup *wavPlayBG,*opEvtBG,*scrSpeedBG; QVector<QPushButton*> cntSpeedButtons;
+
+  QLabel *lblTimer;
+  QTimer *uiTimer;
+  QElapsedTimer recTimer;
 };

@@ -1,0 +1,26 @@
+[Unit]
+Description=Octopus-ReEL node-wavplay daemon
+After=network-online.target sound.target systemd-udev-settle.service
+Wants=network-online.target sound.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=octopus
+Group=octopus
+SupplementaryGroups=audio
+UMask=0002
+WorkingDirectory=/opt/octopus/bin
+ExecStartPre=/bin/sh -c 'test -c /dev/snd/controlC2 || test -c /dev/snd/controlC0'
+ExecStart=/opt/octopus/bin/node-wavplay
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# A little grace on stop
+TimeoutStopSec=5
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -98,15 +98,15 @@ class ConfigParser {
         return true;
        }
        qInfo() << "node-time:" << conf->acqIpAddr << conf->acqCommPort;
-      } else if (opts[0].trimmed()=="ACQPP") {
+      } else if (opts[0].trimmed()=="COMPPP") {
        opts2=opts[1].split(","); // IP, command port and stream port
        if (opts2.size()==3) {
-        QHostInfo acqPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->acqPPIpAddr=acqPPHostInfo.addresses().first().toString();
-        conf->acqPPCommPort=opts2[1].toInt();
-        conf->acqPPStrmPort=opts2[2].toInt();
-        if ((!(conf->acqPPCommPort >= 65000 && conf->acqPPCommPort < 65999)) || // Simple port validation
-            (!(conf->acqPPStrmPort >= 65000 && conf->acqPPStrmPort < 65999))) {
+        QHostInfo compPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->compPPIpAddr=compPPHostInfo.addresses().first().toString();
+        conf->compPPCommPort=opts2[1].toInt();
+        conf->compPPStrmPort=opts2[2].toInt();
+        if ((!(conf->compPPCommPort >= 65000 && conf->compPPCommPort < 65999)) || // Simple port validation
+            (!(conf->compPPStrmPort >= 65000 && conf->compPPStrmPort < 65999))) {
          qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
@@ -114,7 +114,7 @@ class ConfigParser {
         qWarning() << "node-time: <ConfigParser> <STRM> ERROR: Invalid (serving) count of STRM|IN params!";
         return true;
        }
-       qInfo() << "node-time:" << conf->acqPPIpAddr << conf->acqPPCommPort << conf->acqPPStrmPort;
+       qInfo() << "node-time:" << conf->compPPIpAddr << conf->compPPCommPort << conf->compPPStrmPort;
       } else if (opts[0].trimmed()=="WAVPLAY") {
        opts2=opts[1].split(","); // IP, command port and stream port
        if (opts2.size()==2) {
@@ -182,10 +182,10 @@ class ConfigParser {
     // Setup WAVPlay command socket -- For sending operator events
     conf->wavPlayCommSocket->connectToHost(conf->wavPlayIpAddr,conf->wavPlayCommPort); conf->wavPlayCommSocket->waitForConnected();
 
-    // Setup ACQPP command socket
-    conf->acqPPCommSocket->connectToHost(conf->acqPPIpAddr,conf->acqPPCommPort); conf->acqPPCommSocket->waitForConnected();
+    // Setup COMPPP command socket
+    conf->compPPCommSocket->connectToHost(conf->compPPIpAddr,conf->compPPCommPort); conf->compPPCommSocket->waitForConnected();
     // Get crucial info from the "acquisition" node we connect to
-    commResponse=conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_GETCONF);
+    commResponse=conf->commandToDaemon(conf->compPPCommSocket,CMD_ACQ_GETCONF);
     if (!commResponse.isEmpty()) qInfo() << "node-time: <GetConfFromAcqDaemon> Reply:" << commResponse;
     else qCritical() << "node-time: <ConfigParser> (TIMEOUT) No response from Acquisition Node!";
     sList=commResponse.split(",");
@@ -223,7 +223,7 @@ class ConfigParser {
 
     // CHANNELS
 
-    commResponse=conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_GETCHAN);
+    commResponse=conf->commandToDaemon(conf->compPPCommSocket,CMD_ACQ_GETCHAN);
     if (!commResponse.isEmpty()) qInfo() << "node-time: <GetChannelListFromDaemon> ChannelList received."; // << commResponse;
     else qCritical() << "node-time: <GetChannelListFromDaemon> (TIMEOUT) No response from Node!";
     sList=commResponse.split("\n"); GUIChnInfo chn;

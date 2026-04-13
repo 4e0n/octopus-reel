@@ -40,7 +40,7 @@ class ConfigParser {
    QStringList bufSection,pltSection,evtSection,guiSection,headSection;
 
    if (!cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qWarning() << "node-cmlevels: <ConfigParser> ERROR: Cannot load" << cfgPath;
+    qWarning() << "node-gui-cmlevels: <ConfigParser> ERROR: Cannot load" << cfgPath;
     return true;
    } else {
     cfgStream.setDevice(&cfgFile);
@@ -55,7 +55,7 @@ class ConfigParser {
      if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
     }
     if (idx1<0) {
-     qWarning() << "node-cmlevels: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     qWarning() << "node-gui-cmlevels: <ConfigParser> ERROR: NODE section does not exist in config file!";
      return true;
     }
     idx1++;
@@ -69,7 +69,7 @@ class ConfigParser {
           if (opts[0].trimmed()=="NET") netSection.append(opts[1]);
      else if (opts[0].trimmed()=="GUI") guiSection.append(opts[1]);
      else {
-      qWarning() << "node-cmlevels: <ConfigParser> ERROR: Unknown section in config file!";
+      qWarning() << "node-gui-cmlevels: <ConfigParser> ERROR: Unknown section in config file!";
       return true;
      }
     }
@@ -81,41 +81,41 @@ class ConfigParser {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
 
-      if (opts[0].trimmed()=="ACQPP") {
+      if (opts[0].trimmed()=="COMP") {
        opts2=opts[1].split(","); // IP, command port and stream port
        if (opts2.size()==2) {
-        QHostInfo acqPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->acqPPIpAddr=acqPPHostInfo.addresses().first().toString();
-        conf->acqPPCommPort=opts2[1].toInt();
-        if ((!(conf->acqPPCommPort >= 65000 && conf->acqPPCommPort < 65999))) { // Simple port validation
-         qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid (serving) hostname/IP/port settings!";
+        QHostInfo compPPHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->compPPIpAddr=compPPHostInfo.addresses().first().toString();
+        conf->compPPCommPort=opts2[1].toInt();
+        if ((!(conf->compPPCommPort >= 65000 && conf->compPPCommPort < 65999))) { // Simple port validation
+         qWarning() << "node-gui-cmlevels: <ConfigParser> <COMP> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
        } else {
-        qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid (serving) count of STRM|IN params!";
+        qWarning() << "node-gui-cmlevels: <ConfigParser> <COMP> ERROR: Invalid (serving) count of STRM|IN params!";
         return true;
        }
-       qInfo() << "node-cmlevels:" << conf->acqPPIpAddr << conf->acqPPCommPort;
+       qInfo() << "node-gui-cmlevels:" << conf->compPPIpAddr << conf->compPPCommPort;
       } else if (opts[0].trimmed()=="CMODE") {
        opts2=opts[1].split(",");
        if (opts2.size()==2) {
         conf->cmCommPort=opts2[1].toInt();
         if (!(conf->cmCommPort >= 65000 && conf->cmCommPort < 65999)) {
-         qWarning() << "node-cmlevels: <ConfigParser> <COMM> ERROR: Invalid local command port!";
+         qWarning() << "node-gui-cmlevels: <ConfigParser> <COMM> ERROR: Invalid local command port!";
          return true;
         }
        } else {
-        qWarning() << "node-cmlevels: <ConfigParser> <COMM> ERROR: Invalid parameter count!";
+        qWarning() << "node-gui-cmlevels: <ConfigParser> <COMM> ERROR: Invalid parameter count!";
         return true;
        }
-       qInfo() << "node-cmlevels:" << conf->acqPPIpAddr << conf->acqPPCommPort;
+       qInfo() << "node-gui-cmlevels:" << conf->compPPIpAddr << conf->compPPCommPort;
       } else {
-       qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: Invalid hostname/IP(v4) address!";
+       qWarning() << "node-gui-cmlevels: <ConfigParser> <COMP> ERROR: Invalid hostname/IP(v4) address!";
        return true;
       }
      }
     } else {
-     qWarning() << "node-cmlevels: <ConfigParser> <ACQPP> ERROR: No parameters in section!";
+     qWarning() << "node-gui-cmlevels: <ConfigParser> <COMP> ERROR: No parameters in section!";
      return true;
     }
 
@@ -132,17 +132,17 @@ class ConfigParser {
             (!(conf->guiY >= -3000 && conf->guiY <= 3000)) ||
             (!(conf->guiW >=   400 && conf->guiW <= 4000)) ||
             (!(conf->guiH >=    60 && conf->guiH <= 2800))) {
-         qWarning() << "node-cmlevels: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
+         qWarning() << "node-gui-cmlevels: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
          return true;
         }
        } else {
-        qWarning() << "node-cmlevels: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
+        qWarning() << "node-gui-cmlevels: <ConfigParser> <GUI> ERROR: Invalid count of parameters!";
         return true;
        }
       }
      }
     } else {
-     qWarning() << "node-cmlevels: <ConfigParser> <GUI> ERROR: No parameters in section!";
+     qWarning() << "node-gui-cmlevels: <ConfigParser> <GUI> ERROR: No parameters in section!";
      return true;
     }
 

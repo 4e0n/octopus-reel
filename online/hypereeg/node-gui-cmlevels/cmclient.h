@@ -52,26 +52,26 @@ class CMClient: public QObject {
 
   bool start() { QString commResponse; QStringList sList,sList2;
 
-   // We're client of node-acq-pp
-   conf->acqPPCommSocket=new QTcpSocket(this);
-   conf->acqPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf->acqPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   // We're client of node-comp-pp
+   conf->compPPCommSocket=new QTcpSocket(this);
+   conf->compPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf->compPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
 
-   // Setup ACQPP command socket
-   conf->acqPPCommSocket->connectToHost(conf->acqPPIpAddr,conf->acqPPCommPort);
-   if (!conf->acqPPCommSocket->waitForConnected(2000)) {
-    qCritical() << "node-cmlevels: <ConfigParser> Cannot connect to node-acq-pp:" << conf->acqPPCommSocket->errorString();
+   // Setup COMPPP command socket
+   conf->compPPCommSocket->connectToHost(conf->compPPIpAddr,conf->compPPCommPort);
+   if (!conf->compPPCommSocket->waitForConnected(2000)) {
+    qCritical() << "node-gui-cmlevels: <ConfigParser> Cannot connect to node-comp-pp:" << conf->compPPCommSocket->errorString();
     return true;
    }
    // Get crucial info from the "acquisition" node we connect to
-   commResponse=conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_GETCONF);
+   commResponse=conf->commandToDaemon(conf->compPPCommSocket,CMD_ACQ_GETCONF);
    if (commResponse.isEmpty()) {
-    qCritical() << "node-cmlevels: <ConfigParser> No response from Acquisition Node!";
+    qCritical() << "node-gui-cmlevels: <ConfigParser> No response from Acquisition Node!";
     return true;
    }
    sList=commResponse.split(",");
    if (sList.size()<9) { // or 13 if you expect full GETCONF payload
-    qCritical() << "node-cmlevels: <ConfigParser> Bad GETCONF reply:" << commResponse;
+    qCritical() << "node-gui-cmlevels: <ConfigParser> Bad GETCONF reply:" << commResponse;
     return true;
    }
    conf->ampCount=sList[0].toInt(); // (ACTUAL) AMPCOUNT
@@ -87,8 +87,8 @@ class CMClient: public QObject {
    const auto refChnCount=conf->refChnCount; const auto bipChnCount=conf->bipChnCount;
    const auto metaChnCount=conf->metaChnCount; const auto physChnCount=conf->physChnCount;
 
-   commResponse=conf->commandToDaemon(conf->acqPPCommSocket,CMD_ACQ_GETCHAN);
-   if (commResponse.isEmpty()) qCritical() << "node-cmlevels: <GetChannelListFromDaemon> (TIMEOUT) No response from Node!";
+   commResponse=conf->commandToDaemon(conf->compPPCommSocket,CMD_ACQ_GETCHAN);
+   if (commResponse.isEmpty()) qCritical() << "node-gui-cmlevels: <GetChannelListFromDaemon> (TIMEOUT) No response from Node!";
    sList=commResponse.split("\n"); GUIChnInfo chn;
 
    conf->refChns.clear();
@@ -126,11 +126,11 @@ class CMClient: public QObject {
 
    connect(&(conf->cmCommServer),&QTcpServer::newConnection,this,&CMClient::slotNewCommClient);
 
-   connect(conf->acqPPCommSocket,&QTcpSocket::readyRead,this,&CMClient::slotReadyRead);
-   connect(conf->acqPPCommSocket,&QTcpSocket::disconnected,this,&CMClient::slotDisconnected);
+   connect(conf->compPPCommSocket,&QTcpSocket::readyRead,this,&CMClient::slotReadyRead);
+   connect(conf->compPPCommSocket,&QTcpSocket::disconnected,this,&CMClient::slotDisconnected);
 
    if (!conf->cmCommServer.listen(QHostAddress::Any,conf->cmCommPort)) {
-    qCritical() << "node-cmlevels: <Comm> Cannot start command server on port:" << conf->cmCommPort;
+    qCritical() << "node-gui-cmlevels: <Comm> Cannot start command server on port:" << conf->cmCommPort;
     return true;
    }
 
@@ -184,32 +184,32 @@ class CMClient: public QObject {
      client->deleteLater();
     });
 
-    qInfo() << "node-cmlevels: <Comm> Client connected from" << client->peerAddress().toString();
+    qInfo() << "node-gui-cmlevels: <Comm> Client connected from" << client->peerAddress().toString();
    }
   }
 
   void handleCommand(const QString &cmd,QTcpSocket *client) {
-   qInfo() << "node-cmlevels: <Comm> Received command:" << cmd;
+   qInfo() << "node-gui-cmlevels: <Comm> Received command:" << cmd;
    if (cmd==CMD_STATUS) {
-    client->write("node-cmlevels: ready.\n");
+    client->write("node-gui-cmlevels: ready.\n");
    } else if (cmd==CMD_GUI_SHOW) {
     if (cmWindow) cmWindow->show();
-    client->write("node-cmlevels: gui shown.\n");
+    client->write("node-gui-cmlevels: gui shown.\n");
    } else if (cmd==CMD_GUI_HIDE) {
     if (cmWindow) cmWindow->hide();
-    client->write("node-cmlevels: gui hidden.\n");
+    client->write("node-gui-cmlevels: gui hidden.\n");
    } else if (cmd==CMD_GUI_RAISE) {
     if (cmWindow) {
      cmWindow->show(); cmWindow->raise(); cmWindow->activateWindow();
     }
-    client->write("node-cmlevels: gui raised.\n");
+    client->write("node-gui-cmlevels: gui raised.\n");
    } else if (cmd==CMD_GUI_REFRESH) {
     if (cmWindow) cmWindow->updateCMFrames();
-    client->write("node-cmlevels: refreshed.\n");
+    client->write("node-gui-cmlevels: refreshed.\n");
    } else if (cmd==CMD_GUI_START) {
     conf->pollingActive=true;
     if (pollTimer && !pollTimer->isActive()) pollTimer->start(conf->cmRefreshMs);
-    client->write("node-cmlevels: polling started.\n");
+    client->write("node-gui-cmlevels: polling started.\n");
    } else if (cmd.startsWith(CMD_GUI_SETREFRESH)) {
     QStringList parts=cmd.split("=");
     if (parts.size()==2) {
@@ -220,12 +220,12 @@ class CMClient: public QObject {
        pollTimer->stop();
        pollTimer->start(conf->cmRefreshMs);
       }
-      client->write(QString("node-cmlevels: refresh set to %1 ms\n").arg(ms).toUtf8());
+      client->write(QString("node-gui-cmlevels: refresh set to %1 ms\n").arg(ms).toUtf8());
      } else {
-      client->write("node-cmlevels: invalid refresh range (50–5000 ms)\n");
+      client->write("node-gui-cmlevels: invalid refresh range (50–5000 ms)\n");
      }
     } else {
-     client->write("node-cmlevels: usage GUISETREFRESH=ms\n");
+     client->write("node-gui-cmlevels: usage GUISETREFRESH=ms\n");
     }
    } else if (cmd.startsWith(CMD_GUI_PALETTE)) {
     QStringList parts=cmd.split("=");
@@ -233,41 +233,41 @@ class CMClient: public QObject {
      QString mode=parts[1].trimmed().toUpper();
      if (mode=="MEAN" || mode=="MEDIAN") {
       if (cmWindow) cmWindow->setPaletteMode(mode);
-      client->write(QString("node-cmlevels: palette set to %1\n").arg(mode).toUtf8());
+      client->write(QString("node-gui-cmlevels: palette set to %1\n").arg(mode).toUtf8());
      } else {
-      client->write("node-cmlevels: use MEAN or MEDIAN\n");
+      client->write("node-gui-cmlevels: use MEAN or MEDIAN\n");
      }
     } else {
-     client->write("node-cmlevels: usage GUIPALETTE=MEAN|MEDIAN\n");
+     client->write("node-gui-cmlevels: usage GUIPALETTE=MEAN|MEDIAN\n");
     }
    } else if (cmd==CMD_GUI_STOP) {
     conf->pollingActive=false;
     if (pollTimer && pollTimer->isActive()) pollTimer->stop();
-    client->write("node-cmlevels: polling stopped.\n");
+    client->write("node-gui-cmlevels: polling stopped.\n");
    } else if (cmd==CMD_QUIT) {
-    client->write("node-cmlevels: quitting.\n");
+    client->write("node-gui-cmlevels: quitting.\n");
     client->flush();
     requestShutdown(); // graceful shutdown
    } else {
-    client->write("node-cmlevels: unknown command.\n");
+    client->write("node-gui-cmlevels: unknown command.\n");
    }
   }
 
   void slotPoll() {
    if (!conf->pollingActive) return;
-   if (!conf->acqPPCommSocket) return;
-   if (conf->acqPPCommSocket->state()!=QAbstractSocket::ConnectedState) return;
+   if (!conf->compPPCommSocket) return;
+   if (conf->compPPCommSocket->state()!=QAbstractSocket::ConnectedState) return;
    if (requestPending) return;
 
-   conf->acqPPCommSocket->write(QString(CMD_ACQPP_GETCMLEVELS+QString("\n")).toUtf8());
-   //conf->acqPPCommSocket->write(QByteArray(CMD_ACQPP_GETCMLEVELS)+"\n");
-   //conf->acqPPCommSocket->flush();
+   conf->compPPCommSocket->write(QString(CMD_COMPPP_GETCMLEVELS+QString("\n")).toUtf8());
+   //conf->compPPCommSocket->write(QByteArray(CMD_COMPPP_GETCMLEVELS)+"\n");
+   //conf->compPPCommSocket->flush();
    requestPending=true; replyTimer->start(CM_REPLY_TIMEOUT_MS);
    ++pollCounter;
   }
 
   void slotReadyRead() {
-   rxBuffer+=conf->acqPPCommSocket->readAll();
+   rxBuffer+=conf->compPPCommSocket->readAll();
    int nlIdx;
    while ((nlIdx=rxBuffer.indexOf('\n'))>=0) {
     QByteArray line=rxBuffer.left(nlIdx).trimmed();
@@ -277,7 +277,7 @@ class CMClient: public QObject {
     QStringList vals=reply.split(",",Qt::SkipEmptyParts);
     const int expected=int(conf->ampCount)*int(conf->chnCount);
     if (vals.size()!=expected) {
-     qWarning() << "node-cmlevels: <Parse> Bad reply size:" << vals.size() << "expected:" << expected;
+     qWarning() << "node-gui-cmlevels: <Parse> Bad reply size:" << vals.size() << "expected:" << expected;
      requestPending=false;
      if (replyTimer->isActive()) replyTimer->stop();
      continue;
@@ -297,14 +297,14 @@ class CMClient: public QObject {
 
   void slotReplyTimeout() {
    if (!requestPending) return;
-   qWarning() << "node-cmlevels: <PollTimeout> No CMLEVELS reply within timeout.";
+   qWarning() << "node-gui-cmlevels: <PollTimeout> No CMLEVELS reply within timeout.";
    requestPending=false;
    // For current simple line-based protocol this is acceptable.
    rxBuffer.clear();
   }
 
   void slotDisconnected() {
-   qWarning() << "node-cmlevels: <Socket> Disconnected from node-acq-pp.";
+   qWarning() << "node-gui-cmlevels: <Socket> Disconnected from node-comp-pp.";
    requestPending=false;
    rxBuffer.clear();
    if (replyTimer->isActive()) replyTimer->stop();
@@ -312,15 +312,15 @@ class CMClient: public QObject {
 
  private:
   void requestShutdown() {
-   qInfo() << "node-cmlevels: <Shutdown> Requested.";
+   qInfo() << "node-gui-cmlevels: <Shutdown> Requested.";
    conf->quitPending=true; conf->cmCommServer.close();
    if (pollTimer && pollTimer->isActive()) pollTimer->stop(); // stop polling
    requestPending=false;
    if (replyTimer && replyTimer->isActive()) replyTimer->stop(); // stop reply timer
-   if (conf->acqPPCommSocket) conf->acqPPCommSocket->disconnectFromHost(); // disconnect upstream
+   if (conf->compPPCommSocket) conf->compPPCommSocket->disconnectFromHost(); // disconnect upstream
    const auto clients=conf->cmClients;
    for (auto *c:clients) { // disconnect all command clients
-    if (c) { c->write("node-cmlevels: server shutting down.\n"); c->flush(); c->disconnectFromHost(); }
+    if (c) { c->write("node-gui-cmlevels: server shutting down.\n"); c->flush(); c->disconnectFromHost(); }
    }
    conf->cmClients.clear();
    QTimer::singleShot(0,[](){ QCoreApplication::quit(); }); // quit event loop (safe, no qApp needed)

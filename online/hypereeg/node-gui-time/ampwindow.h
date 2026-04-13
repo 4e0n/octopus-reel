@@ -177,7 +177,7 @@ class AmpWindow : public QMainWindow {
    cmd.append(QString::number(chns[x].type)+",");
    cmd.append(QString::number(chns[x].physChn)+",");
    cmd.append(QString::number(chns[x].interMode[ampNo]));
-   QString commResponse=conf->commandToDaemon(conf->acqPPCommSocket,cmd);
+   QString commResponse=conf->commandToDaemon(conf->compPPCommSocket,cmd);
    if (commResponse.isEmpty()) { qWarning() << "Empty COMPCHAN reply."; return; }
    QStringList sList=commResponse.split(",",Qt::KeepEmptyParts);
    if (sList.size()!=chns.size()) {

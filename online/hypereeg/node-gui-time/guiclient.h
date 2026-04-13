@@ -55,12 +55,12 @@ class GUIClient: public QObject {
    conf.wavPlayCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
    conf.wavPlayCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
    // Upstream (we're client)
-   conf.acqPPCommSocket=new QTcpSocket(this);
-   conf.acqPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-   conf.acqPPStrmSocket=new QTcpSocket(this);
-   conf.acqPPStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf.acqPPStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf.compPPCommSocket=new QTcpSocket(this);
+   conf.compPPCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.compPPCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf.compPPStrmSocket=new QTcpSocket(this);
+   conf.compPPStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf.compPPStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
    // Upstream (we're client)
    conf.storCommSocket=new QTcpSocket(this);
    conf.storCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
@@ -76,8 +76,8 @@ class GUIClient: public QObject {
      // Constants or calculated global settings upon the ones read from config file
 
      qInfo() << "---------------------------------------------------------------";
-     qInfo() << "node-time: <ServerIP> is" << conf.acqPPIpAddr;
-     qInfo() << "node-time: <Comm> listening on AcqServ ports (comm,strm):" << conf.acqPPCommPort << conf.acqPPStrmPort;
+     qInfo() << "node-time: <ServerIP> is" << conf.compPPIpAddr;
+     qInfo() << "node-time: <Comm> listening on AcqServ ports (comm,strm):" << conf.compPPCommPort << conf.compPPStrmPort;
      qInfo() << "node-time: <Comm> listening on StorServ ports (comm):" << conf.storCommPort;
      qInfo() << "node-time: <GUI> Ctrl (X,Y,W,H):" << conf.guiCtrlX << conf.guiCtrlY << conf.guiCtrlW << conf.guiCtrlH;
      qInfo() << "node-time: <GUI> Amp (X,Y,W,H):" << conf.guiAmpX << conf.guiAmpY << conf.guiAmpW << conf.guiAmpH;
@@ -88,10 +88,10 @@ class GUIClient: public QObject {
       AmpWindow* sWin=new AmpWindow(ampIdx,&conf); ampWindows.append(sWin); sWin->show();
      }
 
-     connect(conf.acqPPStrmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady); // TCP handler for instream
+     connect(conf.compPPStrmSocket,&QTcpSocket::readyRead,&conf,&ConfParam::onStrmDataReady); // TCP handler for instream
 
      // Connect for streaming data -- only safe after handshake and receiving crucial info about streaming
-     conf.acqPPStrmSocket->connectToHost(conf.acqPPIpAddr,conf.acqPPStrmPort); conf.acqPPStrmSocket->waitForConnected();
+     conf.compPPStrmSocket->connectToHost(conf.compPPIpAddr,conf.compPPStrmPort); conf.compPPStrmSocket->waitForConnected();
 
      return false;
     } else {

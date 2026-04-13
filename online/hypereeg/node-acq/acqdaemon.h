@@ -75,11 +75,36 @@ class AcqDaemon : public QObject {
 //    client->write("Type HELP for commands. Example: AMPSYNC\r\n");
 //    sendPrompt(client);
 
-    connect(client,&QTcpSocket::readyRead,this,[this,client]() {
-     QByteArray cmd=client->readAll().trimmed();
-     handleCommand(QString::fromUtf8(cmd),client);
-    });
-    connect(client,&QTcpSocket::disconnected,client,&QObject::deleteLater);
+connect(client,&QTcpSocket::readyRead,this,[this,client]() {
+ QByteArray &buf = commRxBuffers[client];
+ buf += client->readAll();
+
+ int nl;
+ while ((nl = buf.indexOf('\n')) >= 0) {
+  QByteArray line = buf.left(nl);
+  buf.remove(0, nl + 1);
+
+  if (!line.isEmpty() && line.endsWith('\r'))
+   line.chop(1);
+
+  QByteArray trimmed = line.trimmed();
+  if (!trimmed.isEmpty()) {
+   qInfo() << "<Comm> Received full command:" << QString::fromUtf8(trimmed);
+   handleCommand(QString::fromUtf8(trimmed),client);
+  }
+ }
+});
+
+connect(client,&QTcpSocket::disconnected,this,[this,client]() {
+ if (commRxBuffers.contains(client) && !commRxBuffers[client].trimmed().isEmpty()) {
+  qWarning() << "<Comm> Discarding unterminated command tail from"
+             << client->peerAddress().toString()
+             << ":" << QString::fromUtf8(commRxBuffers[client]);
+ }
+ commRxBuffers.remove(client);
+ client->deleteLater();
+});
+
     qInfo() << "<Comm> Client connected from" << client->peerAddress().toString();
    }
   }
@@ -168,8 +193,8 @@ class AcqDaemon : public QObject {
      // to be defined, and accordingly the whole serialization pipeline will
      // change. So still thinking on strategies about it.
     } else if (cmd==CMD_STATUS) {
-     qInfo() << "<Comm> Sending Amp(s) status..";
-     client->write("Amp(s) streaming EEG.\n");
+     //qInfo() << "<Comm> Sending Amp(s) status..";
+     client->write("OK\n");
     } else if (cmd==CMD_DISCONNECT) { 
      qInfo() << "<Comm> Disconnecting client..";
      client->write("Disconnecting...\n");
@@ -285,4 +310,6 @@ class AcqDaemon : public QObject {
  private:
   QVector<QTcpSocket*> strmClients;
   AcqThread *acqThread; TcpThread *tcpThread;
+
+  QHash<QTcpSocket*,QByteArray> commRxBuffers;
 };

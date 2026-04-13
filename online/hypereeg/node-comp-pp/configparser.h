@@ -30,7 +30,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/tcp_commands.h"
 
 const int MAX_LINE_SIZE=160; // chars
-const QString NODE_TEXT="ACQPP";
+const QString NODE_TEXT="COMP";
 
 class ConfigParser {
  public:
@@ -56,7 +56,7 @@ class ConfigParser {
      if (opts[0].trimmed()=="NODE" && opts[1].trimmed()==NODE_TEXT) { idx1=idx; break; }
     }
     if (idx1<0) {
-     qCritical() << "node_acq: <ConfigParser> ERROR: NODE section does not exist in config file!";
+     qCritical() << "node-comp: <ConfigParser> ERROR: NODE section does not exist in config file!";
      return true;
     }
     idx1++;
@@ -81,14 +81,14 @@ class ConfigParser {
     if (netSection.size()>0) {
      for (const auto& sect:netSection) {
       opts=sect.split("=");
-      if (opts[0].trimmed()=="ACQ") {
+      if (opts[0].trimmed()=="ORIG") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==3) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->acqIpAddr=acqHostInfo.addresses().first().toString();
-        conf->acqCommPort=opts2[1].toInt(); conf->acqStrmPort=opts2[2].toInt();
-        if ((!(conf->acqCommPort >= 65000 && conf->acqCommPort < 65999)) || // Simple port validation
-            (!(conf->acqStrmPort >= 65000 && conf->acqStrmPort < 65999))) {
+        QHostInfo origHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->origIpAddr=origHostInfo.addresses().first().toString();
+        conf->origCommPort=opts2[1].toInt(); conf->origStrmPort=opts2[2].toInt();
+        if ((!(conf->origCommPort >= 65000 && conf->origCommPort < 65999)) || // Simple port validation
+            (!(conf->origStrmPort >= 65000 && conf->origStrmPort < 65999))) {
          qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) hostname/IP/port settings!";
          return true;
         }
@@ -96,14 +96,14 @@ class ConfigParser {
         qCritical() << "<ConfigParser> <NET> ERROR: Invalid (serving) count of NET|IN params!";
         return true;
        }
-      } else if (opts[0].trimmed()=="ACQPP") {
+      } else if (opts[0].trimmed()=="COMP") {
        opts2=opts[1].split(","); // IP, command port, stream port and commonmode port are separated by ","
        if (opts2.size()==3) {
-        QHostInfo acqHostInfo=QHostInfo::fromName(opts2[0].trimmed());
-        conf->acqppIpAddr=acqHostInfo.addresses().first().toString();
-        conf->acqppCommPort=opts2[1].toInt(); conf->acqppStrmPort=opts2[2].toInt();
-        if ((!(conf->acqppCommPort >= 65000 && conf->acqppCommPort < 65999)) || // Simple port validation
-            (!(conf->acqppStrmPort >= 65000 && conf->acqppStrmPort < 65999))) {
+        QHostInfo origHostInfo=QHostInfo::fromName(opts2[0].trimmed());
+        conf->compIpAddr=origHostInfo.addresses().first().toString();
+        conf->compCommPort=opts2[1].toInt(); conf->compStrmPort=opts2[2].toInt();
+        if ((!(conf->compCommPort >= 65000 && conf->compCommPort < 65999)) || // Simple port validation
+            (!(conf->compStrmPort >= 65000 && conf->compStrmPort < 65999))) {
          qCritical() << "<ConfigParser> <NET> ERROR: Invalid hostname/IP/port settings!";
          return true;
         }

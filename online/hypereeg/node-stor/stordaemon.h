@@ -144,8 +144,8 @@ class StorDaemon: public QObject {
    if (!cmd.contains("=")) {
     sList.append(cmd);
     if (cmd==CMD_STATUS) {
-     qInfo() << "<Comm> Sending Storage Daemon status..";
-     client->write("node-stor: Storage server ready.\n");
+     //qInfo() << "<Comm> Sending Storage Daemon status..";
+     client->write("OK\n");
     } else if (cmd==CMD_STOR_REC_ON) {
      qInfo() << "<Comm> Recording on..";
 

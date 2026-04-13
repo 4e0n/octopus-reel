@@ -60,11 +60,12 @@ const QString CMD_ACQ_SUBEVT="SUBEVT";
 const QString CMD_STOR_REC_ON="RECSTART";
 const QString CMD_STOR_REC_OFF="RECSTOP";
 
-// node-acq-pp
-const QString CMD_ACQPP_GETCMLEVELS="GETCMLEVELS";
+// node-comp-pp
+const QString CMD_COMPPP_GETCMLEVELS="GETCMLEVELS";
 
 // node-wavplay
 const QString CMD_WAVPLAY_PLAY="PLAY";
 const QString CMD_WAVPLAY_STOP="STOP";
 const QString CMD_WAVPLAY_SETSINK="SETSINK";
 const QString CMD_WAVPLAY_LIST="LIST";
+const QString CMD_WAVPLAY_PLAYSTAT="PLAYSTAT";

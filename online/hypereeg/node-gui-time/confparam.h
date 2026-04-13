@@ -95,17 +95,17 @@ class ConfParam : public QObject {
    }
    for (auto *t:threads) if (t) t->requestInterruption();
    if (pllTimer) pllTimer->stop();
-   if (acqPPStrmSocket) {
-    acqPPStrmSocket->blockSignals(true);
-    disconnect(acqPPStrmSocket,nullptr,this,nullptr);
-    acqPPStrmSocket->close();
+   if (compPPStrmSocket) {
+    compPPStrmSocket->blockSignals(true);
+    disconnect(compPPStrmSocket,nullptr,this,nullptr);
+    compPPStrmSocket->close();
    }
    eegSweepWait.wakeAll();
   }
 
   QString acqIpAddr; quint32 acqCommPort; QTcpSocket *acqCommSocket;
   QString wavPlayIpAddr; quint32 wavPlayCommPort; QTcpSocket *wavPlayCommSocket;
-  QString acqPPIpAddr; quint32 acqPPCommPort,acqPPStrmPort; QTcpSocket *acqPPCommSocket,*acqPPStrmSocket;
+  QString compPPIpAddr; quint32 compPPCommPort,compPPStrmPort; QTcpSocket *compPPCommSocket,*compPPStrmSocket;
   QString storIpAddr; quint32 storCommPort; QTcpSocket *storCommSocket;
 
   QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize; quint64 tcpBufHead,tcpBufTail; int frameBytes;
@@ -186,7 +186,7 @@ class ConfParam : public QObject {
 #endif
 
    static QByteArray inbuf;
-   inbuf.append(acqPPStrmSocket->readAll());
+   inbuf.append(compPPStrmSocket->readAll());
    const qint64 now=QDateTime::currentMSecsSinceEpoch();
 
 #ifdef PLL_VERBOSE

@@ -106,6 +106,8 @@ class WavPlayDaemon: public QObject {
      client->write(files.join("\n").toUtf8());
      client->write("\n");
     } else if (cmd==CMD_STATUS) {
+     client->write("OK\n");
+    } else if (cmd==CMD_WAVPLAY_PLAYSTAT) {
      QString st;
      QMetaObject::invokeMethod(wavPlayWorker,"statusString",Qt::BlockingQueuedConnection,Q_RETURN_ARG(QString,st));
      //invoke worker -> st (IDLE or PLAYING=file)

@@ -46,18 +46,19 @@ class PPDaemon: public QObject {
 
   bool start() { QString commResponse; QStringList sList,sList2;
 
-   // We're client of node-acq
-   conf->acqCommSocket=new QTcpSocket(this);
-   conf->acqCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf->acqCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
-   conf->acqStrmSocket=new QTcpSocket(this);
-   conf->acqStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
-   conf->acqStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   // We're client of the "origin" node (e.g. node-acq)
+   conf->origCommSocket=new QTcpSocket(this);
+   conf->origCommSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf->origCommSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
+   conf->origStrmSocket=new QTcpSocket(this);
+   conf->origStrmSocket->setSocketOption(QAbstractSocket::LowDelayOption,1);
+   conf->origStrmSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
 
-   conf->acqCommSocket->connectToHost(conf->acqIpAddr,conf->acqCommPort); conf->acqCommSocket->waitForConnected();
+   qDebug() << conf->origIpAddr << conf->origCommPort;
+   conf->origCommSocket->connectToHost(conf->origIpAddr,conf->origCommPort); conf->origCommSocket->waitForConnected();
 
    // Get crucial info from the "master" node we connect to
-   commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCONF);
+   commResponse=conf->commandToDaemon(conf->origCommSocket,CMD_ACQ_GETCONF);
    if (!commResponse.isEmpty()) qInfo() << "<GetConfFromAcqDaemon> Reply:" << commResponse;
    else qCritical() << "<GetConfFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
    sList=commResponse.split(",");
@@ -85,7 +86,7 @@ class PPDaemon: public QObject {
 
    // CHANNELS
    //
-   commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);
+   commResponse=conf->commandToDaemon(conf->origCommSocket,CMD_ACQ_GETCHAN);
    if (!commResponse.isEmpty()) qInfo() << "<GetChannelListFromAcqDaemon> ChannelList received."; // << commResponse;
    else qCritical() << "<GetChannelListFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
    sList=commResponse.split("\n");
@@ -149,12 +150,12 @@ class PPDaemon: public QObject {
    // Constants or calculated global settings upon the ones read from config file
    conf->tcpBuffer=QVector<TcpSamplePP>(conf->tcpBufSize,TcpSamplePP(ampCount,chnCount));
 
-   if (!conf->acqppCommServer.listen(QHostAddress::Any,conf->acqppCommPort)) {
-    qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf->acqppCommPort;
+   if (!conf->compCommServer.listen(QHostAddress::Any,conf->compCommPort)) {
+    qCritical() << "<Comm> Cannot start TCP server on <Comm> port:" << conf->compCommPort;
     return true;
    }
-   if (!conf->acqppStrmServer.listen(QHostAddress::Any,conf->acqppStrmPort)) {
-    qCritical() << "<Comm> Cannot start TCP server on <Strm> port:" << conf->acqppStrmPort;
+   if (!conf->compStrmServer.listen(QHostAddress::Any,conf->compStrmPort)) {
+    qCritical() << "<Comm> Cannot start TCP server on <Strm> port:" << conf->compStrmPort;
     return true;
    }
 
@@ -167,14 +168,14 @@ class PPDaemon: public QObject {
    conf->initialize();
 
    // We're server
-   connect(&(conf->acqppCommServer),&QTcpServer::newConnection,this,&PPDaemon::onNewCommClient);
-   connect(&(conf->acqppStrmServer),&QTcpServer::newConnection,this,&PPDaemon::onNewStrmClient);
+   connect(&(conf->compCommServer),&QTcpServer::newConnection,this,&PPDaemon::onNewCommClient);
+   connect(&(conf->compStrmServer),&QTcpServer::newConnection,this,&PPDaemon::onNewStrmClient);
 
    // Setup data socket -- only safe after handshake and receiving crucial info about streaming
-   connect(conf->acqStrmSocket,&QTcpSocket::readyRead,conf,&ConfParam::onStrmDataReady); // TCP handler for instream
+   connect(conf->origStrmSocket,&QTcpSocket::readyRead,conf,&ConfParam::onStrmDataReady); // TCP handler for instream
 
    // Connect for streaming data -- only safe after handshake and receiving crucial info about streaming
-   conf->acqStrmSocket->connectToHost(conf->acqIpAddr,conf->acqStrmPort); conf->acqStrmSocket->waitForConnected();
+   conf->origStrmSocket->connectToHost(conf->origIpAddr,conf->origStrmPort); conf->origStrmSocket->waitForConnected();
 
    // Threads
    compThread=new CompThread(conf,this);
@@ -200,8 +201,8 @@ class PPDaemon: public QObject {
 
  private slots:
   void onNewCommClient() {
-   while (conf->acqppCommServer.hasPendingConnections()) {
-    QTcpSocket *client=conf->acqppCommServer.nextPendingConnection();
+   while (conf->compCommServer.hasPendingConnections()) {
+    QTcpSocket *client=conf->compCommServer.nextPendingConnection();
     //client->setSocketOption(QAbstractSocket::LowDelayOption,1);
     //client->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption,64*1024);
     connect(client,&QTcpSocket::readyRead,this,[this,client]() {
@@ -300,8 +301,8 @@ class PPDaemon: public QObject {
      client->write(vals.join(",").toUtf8() + "\n");
      client->flush();
     } else if (cmd==CMD_STATUS) {
-     qInfo() << "<Comm> Sending Amp(s) status..";
-     client->write("Amp(s) streaming EEG.\n");
+     //qInfo() << "<Comm> Sending Amp(s) status..";
+     client->write("OK\n");
     } else if (cmd==CMD_DISCONNECT) { 
      qInfo() << "<Comm> Disconnecting client..";
      client->write("Disconnecting...\n");
@@ -349,14 +350,14 @@ class PPDaemon: public QObject {
      client->write(response.toUtf8());
     } else {
      qWarning() << "<Comm> Unknown command received..";
-     client->write("node-acq: Unknown command..\n");
+     client->write("node-comp: Unknown command..\n");
     }
    }
   }
 
   void onNewStrmClient() {
-   while (conf->acqppStrmServer.hasPendingConnections()) {
-    QTcpSocket *client=conf->acqppStrmServer.nextPendingConnection();
+   while (conf->compStrmServer.hasPendingConnections()) {
+    QTcpSocket *client=conf->compStrmServer.nextPendingConnection();
     
     client->setSocketOption(QAbstractSocket::LowDelayOption, 1);   // TCP_NODELAY
     client->setSocketOption(QAbstractSocket::KeepAliveOption,1);

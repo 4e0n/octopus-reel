@@ -20,24 +20,30 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-cmlevels
+TARGET = node-gui-glhead
 INCLUDEPATH += .
 LIBS += -lGLU -lX11
 LIBS += -fopenmp
-QT += core gui widgets network multimedia
+QT += core gui widgets network multimedia opengl
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 #QMAKE_CXXFLAGS += -DOCTO_OMP=1
 QMAKE_CXXFLAGS += -fopenmp
 
+#QMAKE_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
+#QMAKE_LFLAGS   += -fsanitize=address
+
 # Input
-HEADERS += cmclient.h \
-           cmwindow.h \
-           cmframe.h \
+HEADERS += glclient.h \
+           glheadwindow.h \
+           gl3dwidget.h \
            configparser.h \
            confparam.h \
-           cmchninfo.h \
+           guichninfo.h \
+           headmodel.h \
+           ../../../common/vec3.h \
+           ../../../common/coord3d.h \
            ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

@@ -20,9 +20,9 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-time
+TARGET = node-gui-status
 INCLUDEPATH += .
-LIBS += -lX11
+LIBS += -lGLU -lX11
 LIBS += -fopenmp
 QT += core gui widgets network multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -32,14 +32,10 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 QMAKE_CXXFLAGS += -fopenmp
 
 # Input
-HEADERS += guiclient.h \
-           controlwindow.h \
-           ampwindow.h \
-           eegframe.h \
-           eegthread.h \
+HEADERS += statusclient.h \
+           statuswindow.h \
            configparser.h \
            confparam.h \
-           guichninfo.h \
            ../common/tcp_commands.h
 SOURCES += main.cpp
 CONFIG += c++17

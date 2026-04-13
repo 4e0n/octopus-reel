@@ -125,8 +125,8 @@ class ConfParam : public QObject {
    }
   }
 
-  QString acqIpAddr; quint32 acqCommPort,acqStrmPort; QTcpSocket *acqCommSocket,*acqStrmSocket; // We're client
-  QString acqppIpAddr; quint32 acqppCommPort,acqppStrmPort; // We're server
+  QString origIpAddr; quint32 origCommPort,origStrmPort; QTcpSocket *origCommSocket,*origStrmSocket; // We're client
+  QString compIpAddr; quint32 compCommPort,compStrmPort; // We're server
 
   QMutex mutex,chnInterMutex;
   QWaitCondition dataReady;  // already exists
@@ -139,7 +139,7 @@ class ConfParam : public QObject {
   unsigned int physChnCount,totalChnCount,totalCount;
   float refGain,bipGain;
 
-  QTcpServer acqppCommServer,acqppStrmServer;
+  QTcpServer compCommServer,compStrmServer;
 
   // IIR filter states and others.. for each channel of the amplifier
   std::vector<std::vector<IIRFilter>> filterListBP,filterListN;
@@ -174,7 +174,7 @@ class ConfParam : public QObject {
 public slots:
   void onStrmDataReady() {
    static QByteArray inbuf; static int rd=0; static qint64 lastMsLog=0;
-   inbuf.append(acqStrmSocket->readAll());
+   inbuf.append(origStrmSocket->readAll());
 
    auto compact_if_needed=[&]() {
     if (rd>(1<<20) || (rd>0 && rd>inbuf.size()/2)) { inbuf.remove(0,rd); rd=0; }

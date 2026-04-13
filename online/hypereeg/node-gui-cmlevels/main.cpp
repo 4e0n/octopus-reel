@@ -93,8 +93,8 @@ void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
  qInfo() << "                      NETWORKING SUMMARY";
  qInfo() << "===============================================================";
- qInfo() << "<ServerIP> is" << conf->acqPPIpAddr;
- qInfo() << "<Comm> Connected at port (comm):" << conf->acqPPCommPort;
+ qInfo() << "<ServerIP> is" << conf->compPPIpAddr;
+ qInfo() << "<Comm> Connected at port (comm):" << conf->compPPCommPort;
  qInfo() << "<Comm> Listening for commands on port(comm):" << conf->cmCommPort;
  qInfo() << "===============================================================";
  qInfo() << "                           GUI COORDS";
@@ -128,13 +128,13 @@ int main(int argc,char* argv[]) {
  omp_diag();
 
  if (conf_init_pre(&conf)) {
-  qCritical("<FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
+  qCritical("node-gui-cmlevels: <FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
   return 1;
  }
 
  CMClient cmClient(nullptr,&conf);
  if (cmClient.start()) {
-  qCritical("node-cmlevels: <FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
+  qCritical("node-gui-cmlevels: <FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
   return 1;
  }
 

@@ -55,7 +55,7 @@ class ConfParam : public QObject {
 
   unsigned int guiMaxAmpPerLine=0;
 
-  QString acqPPIpAddr; quint32 acqPPCommPort; QTcpSocket *acqPPCommSocket;
+  QString compPPIpAddr; quint32 compPPCommPort; QTcpSocket *compPPCommSocket;
 
   unsigned int ampCount,refChnCount,bipChnCount,metaChnCount;
   unsigned int physChnCount,chnCount,totalChnCount,totalCount;
