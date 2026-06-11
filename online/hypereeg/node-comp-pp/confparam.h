@@ -101,13 +101,13 @@ class ConfParam : public QObject {
    filterListG.resize(ampCount); 
 #endif
    for (unsigned int ampIdx=0;ampIdx<ampCount;ampIdx++) {
-    filterListBP[ampIdx].reserve(chnCount); filterListN[ampIdx].reserve(chnCount);
+    filterListBP[ampIdx].reserve(physChnCount); filterListN[ampIdx].reserve(physChnCount);
 #ifdef EEGBANDSCOMP
-    filterListD[ampIdx].reserve(chnCount); filterListT[ampIdx].reserve(chnCount);
-    filterListA[ampIdx].reserve(chnCount); filterListB[ampIdx].reserve(chnCount);
-    filterListG[ampIdx].reserve(chnCount);
+    filterListD[ampIdx].reserve(physChnCount); filterListT[ampIdx].reserve(physChnCount);
+    filterListA[ampIdx].reserve(physChnCount); filterListB[ampIdx].reserve(physChnCount);
+    filterListG[ampIdx].reserve(physChnCount);
 #endif
-    for (unsigned int chnIdx=0;chnIdx<chnCount;chnIdx++) {
+    for (unsigned int chnIdx=0;chnIdx<physChnCount;chnIdx++) {
 //    filterListBP[ampIdx].emplace_back(b_01_100,a_01_100);
      filterListBP[ampIdx].emplace_back(b_2_40,a_2_40);
      filterListN[ampIdx].emplace_back(b_notch,a_notch);
@@ -121,8 +121,25 @@ class ConfParam : public QObject {
    // Initialize CMlevels computation
    latestCMLevels.resize(ampCount);
    for (auto &v:latestCMLevels) {
-    v.resize(chnCount); for (int i=0;i<v.size();i++) v[i]=0.0f;
+    v.resize(physChnCount); for (int i=0;i<v.size();i++) v[i]=0.0f;
    }
+
+#ifdef EEGBANDSCOMP
+   // Initialize latest power vector for node-gui-glpower
+   latestPowerRMS.resize(ampCount);
+   for (unsigned int ampIdx=0; ampIdx<ampCount; ++ampIdx) {
+    latestPowerRMS[ampIdx].resize(grandChnCount);
+
+    for (unsigned int chnIdx=0; chnIdx<grandChnCount; ++chnIdx) {
+     latestPowerRMS[ampIdx][chnIdx].resize(POWER_BAND_COUNT);
+
+     for (int b=0; b<POWER_BAND_COUNT; ++b)
+      latestPowerRMS[ampIdx][chnIdx][b]=0.0f;
+    }
+   }
+
+   powerValuesValid=false;
+#endif
   }
 
   QString origIpAddr; quint32 origCommPort,origStrmPort; QTcpSocket *origCommSocket,*origStrmSocket; // We're client
@@ -135,8 +152,8 @@ class ConfParam : public QObject {
 
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
-  unsigned int physChnCount,totalChnCount,totalCount;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int physChnCount,totalChnCount,grandChnCount;
   float refGain,bipGain;
 
   QTcpServer compCommServer,compStrmServer;
@@ -154,6 +171,29 @@ class ConfParam : public QObject {
   unsigned int cmWindowSamples=1000;      // e.g. 1 sec at 1000 sps
   unsigned int cmUpdateStepSamples=500;   // recompute 2 times/sec
 
+#ifdef EEGBANDSCOMP
+  // Power/GFP accumulation for node-gui-glpower
+  static constexpr int POWER_BAND_COUNT = 6;
+
+  enum PowerBandIndex {
+   POWER_OVERALL = 0, // dataBP, currently [2-40]
+   POWER_DELTA   = 1,
+   POWER_THETA   = 2,
+   POWER_ALPHA   = 3,
+   POWER_BETA    = 4,
+   POWER_GAMMA   = 5
+  };
+
+  QMutex powerMutex;
+  QVector<QVector<QVector<float>>> latestPowerRMS; // [amp][grandChn][band]
+  bool powerValuesValid=false;
+
+  unsigned int powerWindowSamples=3000;     // 3 s at 1000 Hz
+  unsigned int powerUpdateStepSamples=500;   // publish 2/sec
+  unsigned int powerChnCount=0;
+
+#endif
+
   // --- compute queue (producer: readyRead, consumer: CompThread)
   QMutex compMutex;
   QWaitCondition compReady;
@@ -170,6 +210,8 @@ class ConfParam : public QObject {
   };
 
   QQueue<CompBlock> compQueue;
+
+  std::vector<int> gfpAllIdx,gfpLeftIdx,gfpRightIdx;
 
 public slots:
   void onStrmDataReady() {

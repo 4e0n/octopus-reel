@@ -40,12 +40,6 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <errno.h>
 #include <math.h>  // lrintf
 
-//struct BrainVisionMeta {
-// QStringList channelNames;     // size=nChBV (EEG+BP+optional derived channels)
-// double sampleRateHz=1000.0;   // e.g. 1000
-// QString unit="uV";
-// double channelResolution=1.0; // if values already uV -> 1.0; if volts -> 1e6
-//};
 struct BrainVisionMeta {
  QStringList channelNames;               // size=nChBV (EEG+BP+optional derived channels)
  QStringList channelUnits;               // size=nChBV
@@ -193,7 +187,6 @@ class BVWav {
    if (!m_open) return setErr(err, "writeChunk called while not open.");
    if (chunk.empty()) return true;
 
-   // const size_t nChBV_expected=ampCount*physChnCount;
    const size_t nPHYS=ampCount*physChnCount;
    const size_t nAUD=48;
    const size_t nChBV_expected=nPHYS+nAUD;

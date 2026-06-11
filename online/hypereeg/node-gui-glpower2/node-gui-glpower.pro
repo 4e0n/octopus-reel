@@ -20,7 +20,7 @@
 # Repo:    https://github.com/4e0n/
 
 TEMPLATE = app
-TARGET = node-gui-glhead
+TARGET = node-gui-glpower
 INCLUDEPATH += .
 LIBS += -lGLU -lX11
 LIBS += -fopenmp

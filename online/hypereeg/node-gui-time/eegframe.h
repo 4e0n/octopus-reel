@@ -40,18 +40,18 @@ class EEGFrame : public QFrame {
    physChnCount=conf->physChnCount;
    //colCount=std::ceil((float)(physChnCount)/(float)(physChnCount/2));
    //chnPerCol=std::ceil((float)(physChnCount)/(float)(colCount));
-   chnPerCol=66;
+   chnPerCol=physChnCount;
    colCount=std::ceil((float)(physChnCount)/(float)(chnPerCol));
 
-   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
-								      //
+   chnY=(float)(conf->sweepFrameH-(conf->gfpH+conf->audWaveH))/(float)(chnPerCol); // reserved vertical pixel count per channel
+
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); }
 
-   chnFont=QFont("Helvetica",13,QFont::Bold);
-   if (physChnCount<16) chnFont=QFont("Helvetica",16,QFont::Bold);
-   else if (physChnCount<32) chnFont=QFont("Helvetica",14,QFont::Bold);
-   else if (physChnCount>96) chnFont=QFont("Helvetica",12);
+   chnFont=QFont("Helvetica",9,QFont::Bold);
+   if (physChnCount<16) chnFont=QFont("Helvetica",14,QFont::Bold);
+   else if (physChnCount<32) chnFont=QFont("Helvetica",12,QFont::Bold);
+   else if (physChnCount>96) chnFont=QFont("Helvetica",8);
 
    chnTextCache.clear(); chnTextCache.reserve(physChnCount);
    for (unsigned int i=0;i<conf->refChnCount;i++) {
@@ -70,6 +70,7 @@ class EEGFrame : public QFrame {
     staticLabel.setTextWidth(-1);  // No width constraint
     chnTextCache.append(staticLabel);
    }
+   gfpLabel.setText("EEG-GFP");
    audLabel.setText("AUDIO");
    eegThread=new EEGThread(conf,ampNo,&sweepBuffer,this);
    conf->threads[ampNo]=eegThread;
@@ -86,17 +87,20 @@ class EEGFrame : public QFrame {
     mainPainter.setPen(Qt::black);
     mainPainter.drawRect(cr);
     // Channel names
+    mainPainter.setPen(Qt::blue);
     mainPainter.setPen(QColor(50,50,150)); mainPainter.setFont(chnFont);
     for (unsigned int chnIdx=0;chnIdx<physChnCount;chnIdx++) { // 2 audio channels
      unsigned int colIdx=chnIdx/chnPerCol;
-     scrCurY=(int)(-8+chnY/2.0+chnY*(chnIdx%chnPerCol));
-     mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
-     mainPainter.setPen(Qt::black);
+     scrCurY=(int)(10-4+chnY/2.0+chnY*(chnIdx%chnPerCol));
+     if (chnIdx%2) mainPainter.drawStaticText(conf->sweepFrameW-50+w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
+     else mainPainter.drawStaticText(w0[colIdx]+4,scrCurY,chnTextCache[chnIdx]);
+     //mainPainter.setPen(Qt::black);
      //if (chnIdx==physChnCount-1) mainPainter.drawLine(width()/2,0,width()/2,height()-1);
     }
-    mainPainter.setPen(Qt::blue);
-    const int frameH=conf->sweepFrameH; const int audH=conf->audWaveH/2;
+    const int frameH=conf->sweepFrameH; const int gfpH=conf->gfpH/2+conf->audWaveH; const int audH=conf->audWaveH/2;
+    mainPainter.setPen(Qt::black);
     for (unsigned int colIdx=0;colIdx<colCount;colIdx++) {
+     mainPainter.drawStaticText(w0[colIdx]+4,frameH-gfpH,gfpLabel);
      mainPainter.drawStaticText(w0[colIdx]+4,frameH-audH,audLabel);
     }
    mainPainter.end();
@@ -106,5 +110,5 @@ class EEGFrame : public QFrame {
   ConfParam *conf; unsigned int ampNo; QPainter mainPainter; QImage sweepBuffer;
   EEGThread *eegThread;
   unsigned int physChnCount,colCount,chnPerCol,scrCurY; float chnY;
-  QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont; QStaticText audLabel;
+  QVector<int> w0; QVector<QStaticText> chnTextCache; QFont chnFont; QStaticText gfpLabel,audLabel;
 };

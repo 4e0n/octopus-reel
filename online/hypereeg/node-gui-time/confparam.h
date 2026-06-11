@@ -50,7 +50,7 @@ class ConfParam : public QObject {
  public:
   ConfParam() {
    eegSweepRefreshRate=EEG_SCROLL_REFRESH_RATE; eegSweepUpdating=0;
-   ctrlRecordingActive=false; tcpBufHead=tcpBufTail=0; audWaveH=100;
+   ctrlRecordingActive=false; tcpBufHead=tcpBufTail=0; gfpH=100; audWaveH=40;
    quitPending=false;
   }
 
@@ -110,8 +110,8 @@ class ConfParam : public QObject {
 
   QVector<TcpSamplePP> tcpBuffer; quint32 tcpBufSize; quint64 tcpBufHead,tcpBufTail; int frameBytes;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
-  unsigned int physChnCount,totalChnCount,totalCount; float refGain,bipGain;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,metaChnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int physChnCount,totalChnCount; float refGain,bipGain;
 
   QVector<QThread*> threads; QMutex mutex; QVector<GUIChnInfo> refChns,bipChns,metaChns;
   QVector<bool> eegSweepPending; unsigned int eegSweepUpdating; bool quitPending;
@@ -127,7 +127,7 @@ class ConfParam : public QObject {
 #endif
 
   int guiCtrlX,guiCtrlY,guiCtrlW,guiCtrlH, guiAmpX,guiAmpY,guiAmpW,guiAmpH;
-  int sweepFrameW,sweepFrameH, audWaveH; //, gl3DFrameW,gl3DFrameH;
+  int sweepFrameW,sweepFrameH, gfpH, audWaveH;
 
   bool ctrlRecordingActive;
 
@@ -223,7 +223,7 @@ class ConfParam : public QObject {
      // Wrap without copying
      const QByteArray one=QByteArray::fromRawData(framePtr,frameBytes);
      TcpSamplePP s;
-     if (!s.deserialize(one,chnCount)) {
+     if (!s.deserialize(one,physChnCount)) {
       time_badFrames.fetch_add(1,std::memory_order_relaxed);
       continue;
      }

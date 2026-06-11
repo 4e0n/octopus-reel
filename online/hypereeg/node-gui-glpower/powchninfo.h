@@ -23,19 +23,16 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
-#include <QTcpServer>
+struct PowChnInfo {
+ //GUIChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
+ //QColor cmColor; // Instantly computed line noise level..
 
-class ConfParam : public QObject {
- Q_OBJECT
- public:
-  ConfParam() {};
+ unsigned int physChn; QString chnName;
+ unsigned int type; // 0:ref,1:bipolar,2:meta
+ unsigned int topoX,topoY;
 
-  QString wavPlayIpAddr; quint32 wavPlayCommPort; // We're server
+ // -------------------------------------------------------------------------------------------
 
-  QTcpServer wavPlayCommServer;
+ //float cmLevel;
 
-  QString wavDir="/opt/octopus-local/stim/wav"; // default
-  QString alsaDev="octopusdac";           // static ALSA device name
-
- private:
 };

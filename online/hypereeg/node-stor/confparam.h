@@ -60,8 +60,8 @@ class ConfParam:public QObject {
 
   quint64 tcpBufHead,tcpBufTail; QVector<TcpSample> tcpBuffer; quint32 tcpBufSize,halfTcpBufSize;
 
-  unsigned int ampCount,eegRate,refChnCount,bipChnCount,chnCount,eegProbeMsecs,eegSamplesInTick;
-  unsigned int physChnCount,totalChnCount,totalCount; int frameBytesIn;
+  unsigned int ampCount,eegRate,refChnCount,bipChnCount,eegProbeMsecs,eegSamplesInTick;
+  unsigned int physChnCount,totalChnCount; int frameBytesIn;
   float refGain,bipGain;
 
   QTcpServer storCommServer;

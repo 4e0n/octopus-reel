@@ -37,7 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/tcp_commands.h"
 #include "recthread.h"
 
-const QString RECROOTDIR="/opt/octopus/stor/heeg";
+const QString RECROOTDIR="/opt/octopus-local/stor/heeg";
 
 class StorDaemon: public QObject {
  Q_OBJECT
@@ -66,16 +66,13 @@ class StorDaemon: public QObject {
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
-   //conf->metaChnCount=sList[4].toInt();
-   conf->physChnCount=sList[5].toInt();
-   conf->chnCount=sList[6].toInt();      // logical count from node-acq metadata
-   conf->totalChnCount=sList[7].toInt();
-   conf->totalCount=sList[8].toInt();
-   conf->refGain=sList[9].toFloat();
-   conf->bipGain=sList[10].toFloat();
-   conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   conf->physChnCount=conf->refChnCount+conf->bipChnCount;
+   conf->totalChnCount=sList[4].toInt();
+   conf->refGain=sList[5].toFloat();
+   conf->bipGain=sList[6].toFloat();
+   conf->eegProbeMsecs=sList[7].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-   conf->frameBytesIn=sList[12].toInt();
+   conf->frameBytesIn=sList[8].toInt();
 
    // CHANNELS
    commResponse=conf->commandToDaemon(conf->acqCommSocket,CMD_ACQ_GETCHAN);

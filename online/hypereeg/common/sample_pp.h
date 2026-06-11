@@ -26,6 +26,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <vector>
 #include <QDataStream>
 #include <cstring>      // memcpy
+#include <cmath>
 #include "globals.h"  // rd_u32_le()
 #include "le_helper.h"  // rd_u32_le()
 
@@ -39,8 +40,14 @@ struct SamplePP {
  std::vector<float> dataA; // [8-14]Hz IIR filtered Alpha data.
  std::vector<float> dataB; // [14-28]Hz IIR filtered Beta data.
  std::vector<float> dataG; // [28-40]Hz IIR filtered Gamma data.
+			   //
+ std::vector<float> gfp; // [6]:BP,D,T,A,B,G
+ std::vector<float> gfpL;
+ std::vector<float> gfpR;
 #endif
  unsigned int trigger=0, offset=0; // NOT on wire
+
+ //std::vector<float> meta;
 
  void init(size_t chnCount) {
   trigger=0; offset=0;
@@ -51,6 +58,8 @@ struct SamplePP {
   dataD.assign(chnCount,0.0f);
   dataT.assign(chnCount,0.0f); dataA.assign(chnCount,0.0f); dataB.assign(chnCount,0.0f);
   dataG.assign(chnCount,0.0f);
+
+  gfp.assign(6,0.0f); gfpL.assign(6,0.0f); gfpR.assign(6,0.0f);
 #endif
  }
 
@@ -62,6 +71,8 @@ struct SamplePP {
   dataD.resize(chnCount,0.0f);
   dataT.resize(chnCount,0.0f); dataA.resize(chnCount,0.0f); dataB.resize(chnCount,0.0f);
   dataG.resize(chnCount,0.0f);
+
+  gfp.resize(GFP_N); gfpL.resize(GFP_N); gfpR.resize(GFP_N);
 #endif
  }
 
@@ -78,6 +89,10 @@ struct SamplePP {
   for (float f:dataA) out<<f;
   for (float f:dataB) out<<f;
   for (float f:dataG) out<<f;
+
+  for (float f:gfp)  out<<f;
+  for (float f:gfpL) out<<f;
+  for (float f:gfpR) out<<f;
 #endif
  }
 
@@ -87,6 +102,8 @@ struct SamplePP {
   dataD.resize(chnCount);
   dataT.resize(chnCount); dataA.resize(chnCount); dataB.resize(chnCount);
   dataG.resize(chnCount);
+
+  gfp.resize(GFP_N); gfpL.resize(GFP_N); gfpR.resize(GFP_N);
 #endif
 
   for (float &f:data)   in>>f;
@@ -98,7 +115,13 @@ struct SamplePP {
   for (float &f:dataA)  in>>f;
   for (float &f:dataB)  in>>f;
   for (float &f:dataG)  in>>f;
+
+  gfp.resize(GFP_N); gfpL.resize(GFP_N); gfpR.resize(GFP_N);
+  for (float &f:gfp)  in>>f;
+  for (float &f:gfpL) in>>f;
+  for (float &f:gfpR) in>>f;
 #endif
+
   return true;
  }
 
@@ -106,7 +129,14 @@ struct SamplePP {
  bool deserialize(const char* src,int len,int chnCount,int* consumed) {
   if (!src || len<0 || chnCount<0) return false;
 
-  const int needBytes=chnCount*3*4; // data+dataBP+dataN
+#ifdef EEGBANDSCOMP
+  const int vecCount=8;
+#else
+  const int vecCount=3;
+#endif
+  const int needBytes=int((size_t(chnCount)*size_t(vecCount)+size_t(3*GFP_N))*sizeof(float));
+
+  //const int needBytes=chnCount*3*4; // data+dataBP+dataN
   //const int needBytes=chnCount*8*4; // data+dataBP+dataN+dataD+dataT+...
   if (len<needBytes) return false;
 
@@ -130,6 +160,10 @@ struct SamplePP {
   for (int i=0;i<chnCount;++i) rd_f32(dataA[i]);
   for (int i=0;i<chnCount;++i) rd_f32(dataB[i]);
   for (int i=0;i<chnCount;++i) rd_f32(dataG[i]);
+
+  for (int i=0;i<GFP_N;++i) rd_f32(gfp[i]);
+  for (int i=0;i<GFP_N;++i) rd_f32(gfpL[i]);
+  for (int i=0;i<GFP_N;++i) rd_f32(gfpR[i]);
 #endif
 
   if (consumed) *consumed=needBytes;
@@ -154,7 +188,50 @@ struct SamplePP {
   std::memcpy(dataA.data(),src.dataA.data(),src.dataA.size()*sizeof(float));
   std::memcpy(dataB.data(),src.dataB.data(),src.dataB.size()*sizeof(float));
   std::memcpy(dataG.data(),src.dataG.data(),src.dataG.size()*sizeof(float));
+
+  Q_ASSERT(gfp.size()==src.gfp.size()); Q_ASSERT(gfpL.size()==src.gfpL.size()); Q_ASSERT(gfpR.size()==src.gfpR.size());
+  std::memcpy(gfp.data(),src.gfp.data(),src.gfp.size()*sizeof(float));
+  std::memcpy(gfpL.data(),src.gfpL.data(),src.gfpL.size()*sizeof(float));
+  std::memcpy(gfpR.data(),src.gfpR.data(),src.gfpR.size()*sizeof(float));
 #endif
+
   trigger=src.trigger; offset=src.offset;
  }
+
+ enum GfpBandIndex { GFP_BP=0,GFP_D=1,GFP_T=2,GFP_A=3,GFP_B=4,GFP_G=5,GFP_N=6 };
+
+ static inline float computeGfpFromVector(const std::vector<float>& v,const std::vector<int>& indices) {
+  double sum=0.0,sumsq=0.0; unsigned int n=0;
+
+  for (int idx:indices) { const float x=v[size_t(idx)]; sum+=x; sumsq+=double(x)*double(x); ++n; }
+  if (n<2) return 0.0f;
+
+  const double mean=sum/double(n); double var=(sumsq/double(n))-mean*mean;
+  if (var<0.0) var=0.0;
+
+  return float(std::sqrt(var));
+ }
+
+ void computeGFPs(const std::vector<int>& allIdx,const std::vector<int>& leftIdx,const std::vector<int>& rightIdx) {
+  gfp.resize(GFP_N); gfpL.resize(GFP_N); gfpR.resize(GFP_N);
+
+  gfp[GFP_BP]=computeGfpFromVector(dataBP,allIdx);
+  gfpL[GFP_BP]=computeGfpFromVector(dataBP,leftIdx); gfpR[GFP_BP]=computeGfpFromVector(dataBP,rightIdx);
+
+#ifdef EEGBANDSCOMP
+  gfp[GFP_D]=computeGfpFromVector(dataD,allIdx);
+  gfpL[GFP_D]=computeGfpFromVector(dataD,leftIdx); gfpR[GFP_D]=computeGfpFromVector(dataD,rightIdx);
+  gfp[GFP_T]=computeGfpFromVector(dataT,allIdx);
+  gfpL[GFP_T]=computeGfpFromVector(dataT,leftIdx); gfpR[GFP_T]=computeGfpFromVector(dataT,rightIdx);
+  gfp[GFP_A]=computeGfpFromVector(dataA,allIdx);
+  gfpL[GFP_A]=computeGfpFromVector(dataA,leftIdx); gfpR[GFP_A]=computeGfpFromVector(dataA,rightIdx);
+  gfp[GFP_B]=computeGfpFromVector(dataB,allIdx);
+  gfpL[GFP_B]=computeGfpFromVector(dataB,leftIdx); gfpR[GFP_B]=computeGfpFromVector(dataB,rightIdx);
+  gfp[GFP_G]=computeGfpFromVector(dataG,allIdx);
+  gfpL[GFP_G]=computeGfpFromVector(dataG,leftIdx); gfpR[GFP_G]=computeGfpFromVector(dataG,rightIdx);
+#else
+  for (int i=GFP_D;i<GFP_N;++i) { gfp[i]=0.0f; gfpL[i]=0.0f; gfpR[i]=0.0f; }
+#endif
+ }
+
 };

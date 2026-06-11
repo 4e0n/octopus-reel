@@ -70,7 +70,7 @@ protected:
    const int sz = conf->frameBytesOut;
    if (sz<=0) { qWarning() << "[PP:SEND] frameBytesOut not set"; return; }
 
-   const int expectSz=TcpSamplePP::serializedSizeFor(conf->ampCount,conf->physChnCount);
+   const int expectSz=TcpSamplePP::serializedSizeFor(conf->ampCount,conf->grandChnCount);
    if (sz!=expectSz) {
     qWarning() << "[PP:SEND] frameBytesOut mismatch sz=" << sz << " expect=" << expectSz;
     return; // might be good while stabilizing

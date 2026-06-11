@@ -93,76 +93,19 @@ class ControlWindow : public QMainWindow {
 
    // *** WIDGETS ***
 
-   toggleRecordingButton=new QPushButton("RECORD",cntWidget);
-   toggleRecordingButton->setGeometry(2,mainTabWidget->height()-54,80,20);
-   toggleRecordingButton->setCheckable(true);
-   connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
-
-   // RECTIMER
-   lblTimer=new QLabel("00:00:00",cntWidget);
-   lblTimer->setGeometry(86,mainTabWidget->height()-54,80,20); lblTimer->setMinimumWidth(80);
-   lblTimer->setAlignment(Qt::AlignCenter);
-   uiTimer=new QTimer(this);
-   connect(uiTimer,&QTimer::timeout,this,&ControlWindow::updateTimerDisplay);
-//   layout->addWidget(recordButton);
-//   layout->addWidget(lblTimer);
-
    QPushButton *dummyButton;
 
-   // WAVPLAY BUTTONS
-   wavPlayBG=new QButtonGroup(); wavPlayBG->setExclusive(true);
-   for (int wavIdx=0;wavIdx<5;wavIdx++) { // WAV#
-    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(180+wavIdx*22,mainTabWidget->height()-54,20,20);
-    wavPlayBG->addButton(dummyButton,wavIdx);
-   }
-   wavPlayBG->button(0)->setText("S");
-   wavPlayBG->button(1)->setText("1");
-   wavPlayBG->button(2)->setText("2");
-   wavPlayBG->button(3)->setText("3");
-   wavPlayBG->button(4)->setText("4"); wavPlayBG->button(0)->setChecked(true);
-   connect(wavPlayBG,SIGNAL(buttonClicked(int)),this,SLOT(slotWavPlay(int)));
-
-   // OPERATOR EVENT BUTTONS
-   opEvtBG=new QButtonGroup(); opEvtBG->setExclusive(false);
-   for (int evtIdx=0;evtIdx<5;evtIdx++) { // WAV#
-    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(false);
-    dummyButton->setGeometry(300+evtIdx*28,mainTabWidget->height()-54,26,20);
-    opEvtBG->addButton(dummyButton,evtIdx);
-   }
-   opEvtBG->button(0)->setText("O1");
-   opEvtBG->button(1)->setText("O2");
-   opEvtBG->button(2)->setText("O3");
-   opEvtBG->button(3)->setText("O4");
-   opEvtBG->button(4)->setText("O5");
-   connect(opEvtBG,SIGNAL(buttonClicked(int)),this,SLOT(slotOpEvt(int)));
-
+   // SYNC and SWEEP TIMING
+   QLabel *syncLabel=new QLabel("Timing:",cntWidget);
+   syncLabel->setGeometry(10,10,60,20);
    syncButton=new QPushButton("SYNC",cntWidget);
-   syncButton->setGeometry(450,mainTabWidget->height()-54,60,20);
+   syncButton->setGeometry(80,10,60,20);
    connect(syncButton,SIGNAL(clicked()),this,SLOT(slotSync()));
-
-#ifdef EEGBANDSCOMP
-   eegBandBG=new QButtonGroup(); eegBandBG->setExclusive(true);
-   for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
-    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(520+bandIdx*40,mainTabWidget->height()-54,38,20);
-    eegBandBG->addButton(dummyButton,bandIdx);
-   }
-   eegBandBG->button(0)->setText("EEG");
-   eegBandBG->button(1)->setText("Del");
-   eegBandBG->button(2)->setText("The");
-   eegBandBG->button(3)->setText("Alp");
-   eegBandBG->button(4)->setText("Bet");
-   eegBandBG->button(5)->setText("Gam"); eegBandBG->button(0)->setChecked(true);
-   connect(eegBandBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGBand(int)));
-#endif
-
-   // *** EEG & ERP VISUALIZATION BUTTONS AT THE BOTTOM ***
 
    scrSpeedBG=new QButtonGroup(); scrSpeedBG->setExclusive(true);
    for (int speedIdx=0;speedIdx<5;speedIdx++) { // EEG Scroll speed/resolution
     dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(mainTabWidget->width()-220+speedIdx*42,mainTabWidget->height()-54,40,20);
+    dummyButton->setGeometry(180+speedIdx*42,10,40,20);
     scrSpeedBG->addButton(dummyButton,speedIdx);
    }
    scrSpeedBG->button(0)->setText("x1");
@@ -172,7 +115,75 @@ class ControlWindow : public QMainWindow {
    scrSpeedBG->button(4)->setText("x10"); scrSpeedBG->button(0)->setChecked(true);
    connect(scrSpeedBG,SIGNAL(buttonClicked(int)),this,SLOT(slotScrollSpeed(int)));
 
-   setWindowTitle("Octopus HyperEEG/ERP Streaming/GL Client");
+
+   // EEG VISUALIZATION/BANDS
+#ifdef EEGBANDSCOMP
+   QLabel *eegBandLabel=new QLabel("EEG Band:",cntWidget);
+   eegBandLabel->setGeometry(10,10+40,90,20);
+   eegBandBG=new QButtonGroup(); eegBandBG->setExclusive(true);
+   for (int bandIdx=0;bandIdx<6;bandIdx++) { // EEG frequency band
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(120+bandIdx*40,10+40,38,20);
+    eegBandBG->addButton(dummyButton,bandIdx);
+   }
+   eegBandBG->button(0)->setText("All");
+   eegBandBG->button(1)->setText("δ");
+   eegBandBG->button(2)->setText("θ");
+   eegBandBG->button(3)->setText("α");
+   eegBandBG->button(4)->setText("β");
+   eegBandBG->button(5)->setText("γ"); eegBandBG->button(0)->setChecked(true);
+   connect(eegBandBG,SIGNAL(buttonClicked(int)),this,SLOT(slotEEGBand(int)));
+#endif
+
+   // OPERATOR EVENT BUTTONS
+   QLabel *opEvtLabel=new QLabel("Op.Event:",cntWidget);
+   opEvtLabel->setGeometry(10,10+90,100,20);
+   opEvtBG=new QButtonGroup(); opEvtBG->setExclusive(false);
+   for (int evtIdx=0;evtIdx<5;evtIdx++) { // WAV#
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(false);
+    dummyButton->setGeometry(140+evtIdx*28,10+90,26,20);
+    opEvtBG->addButton(dummyButton,evtIdx);
+   }
+   opEvtBG->button(0)->setText("O1");
+   opEvtBG->button(1)->setText("O2");
+   opEvtBG->button(2)->setText("O3");
+   opEvtBG->button(3)->setText("O4");
+   opEvtBG->button(4)->setText("O5");
+   connect(opEvtBG,SIGNAL(buttonClicked(int)),this,SLOT(slotOpEvt(int)));
+
+   // WAVPLAY BUTTONS
+   QLabel *playLabel=new QLabel("Play Wave:",cntWidget);
+   playLabel->setGeometry(10,10+140,130,20);
+   wavPlayBG=new QButtonGroup(); wavPlayBG->setExclusive(true);
+   for (int wavIdx=0;wavIdx<5;wavIdx++) { // WAV#
+    dummyButton=new QPushButton(cntWidget); dummyButton->setCheckable(true);
+    dummyButton->setGeometry(160+wavIdx*22,10+140,20,20);
+    wavPlayBG->addButton(dummyButton,wavIdx);
+   }
+   wavPlayBG->button(0)->setText("S");
+   wavPlayBG->button(1)->setText("1");
+   wavPlayBG->button(2)->setText("2");
+   wavPlayBG->button(3)->setText("3");
+   wavPlayBG->button(4)->setText("4"); wavPlayBG->button(0)->setChecked(true);
+   connect(wavPlayBG,SIGNAL(buttonClicked(int)),this,SLOT(slotWavPlay(int)));
+
+   // RECORDING
+   QLabel *recLabel=new QLabel("Record on STOR:",cntWidget);
+   recLabel->setGeometry(10,10+170,140,20);
+   // Start Stop
+   toggleRecordingButton=new QPushButton("RECORD",cntWidget);
+   toggleRecordingButton->setGeometry(160,10+170,80,20);
+   toggleRecordingButton->setCheckable(true);
+   connect(toggleRecordingButton,SIGNAL(clicked()),this,SLOT(slotToggleRecording()));
+   // Timer
+   lblTimer=new QLabel("00:00:00",cntWidget);
+   lblTimer->setGeometry(244,10+170,80,20); lblTimer->setMinimumWidth(80);
+   lblTimer->setAlignment(Qt::AlignCenter);
+   uiTimer=new QTimer(this);
+   connect(uiTimer,&QTimer::timeout,this,&ControlWindow::updateTimerDisplay);
+
+
+   setWindowTitle("Octopus HyperEEG Streaming Client");
   }
 
   ~ControlWindow() override {}

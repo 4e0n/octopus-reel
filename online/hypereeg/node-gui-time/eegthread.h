@@ -61,17 +61,17 @@ class EEGThread:public QThread {
    physChnCount=conf->physChnCount;
    //colCount=std::ceil((float)physChnCount/(float)(33.));
    //chnPerCol=std::ceil((float)(physChnCount)/(float)(colCount));
-   chnPerCol=66;
+   chnPerCol=physChnCount;
    colCount=std::ceil((float)(physChnCount)/(float)(chnPerCol));
 
-   chnY=(float)(conf->sweepFrameH-conf->audWaveH)/(float)(chnPerCol); // reserved vertical pixel count per channel
+   chnY=(float)(conf->sweepFrameH-(conf->audWaveH+conf->gfpH))/(float)(chnPerCol); // reserved vertical pixel count per channel
 
    prevY.resize(physChnCount);
    for (unsigned chnIdx=0;chnIdx<physChnCount;++chnIdx) {
     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
     prevY[int(chnIdx)]=baseY;
    }
-   prevYA=conf->sweepFrameH-conf->audWaveH/2;
+   prevYA=conf->sweepFrameH-conf->audWaveH;
 
    int ww=(int)((float)(conf->sweepFrameW)/(float)colCount);
    for (unsigned int colIdx=0;colIdx<colCount;colIdx++) { w0.append(colIdx*ww+1); wX.append(colIdx*ww+1); }
@@ -80,7 +80,7 @@ class EEGThread:public QThread {
 
    tcpBuffer=&conf->tcpBuffer; tcpBufSize=conf->tcpBufSize; scrAvailSmp=conf->scrAvailableSamples;
 
-   evtFont=QFont("Helvetica",18,QFont::Bold);
+   evtFont=QFont("Helvetica",16,QFont::Bold);
 
    resetScrollBuffer();
   }
@@ -91,7 +91,7 @@ class EEGThread:public QThread {
     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
     prevY[int(chnIdx)]=baseY;
    }
-   prevYA=conf->sweepFrameH-conf->audWaveH/2;
+   prevYA=conf->sweepFrameH-conf->audWaveH;
    // reset cursors
    for (int colIdx=0;colIdx<wX.size();++colIdx) wX[colIdx]=w0[colIdx];
   }
@@ -143,7 +143,7 @@ class EEGThread:public QThread {
     sweepPainter.setPen(Qt::black);
     for (unsigned chnIdx=0;chnIdx<physChnCount;++chnIdx) {
      const unsigned colIdx=chnIdx/chnPerCol;
-     const int baseY=int(chnY/2.0f+chnY*(chnIdx%chnPerCol));
+     const int baseY=int(10+chnY/2.0f+chnY*(chnIdx%chnPerCol));
 #ifdef EEGBANDSCOMP
      float x;
      switch (conf->eegBand) {
@@ -166,6 +166,20 @@ class EEGThread:public QThread {
      prevY[chnIdx]=y;
     }
 
+    // EEG-GFP
+    const int baseYG=10+conf->sweepFrameH-conf->gfpH;
+    const float gfp=s.amp[ampNo].gfp[conf->eegBand];
+    const float gfpL=s.amp[ampNo].gfpL[conf->eegBand]; const float gfpR=s.amp[ampNo].gfpR[conf->eegBand];
+    const int yG=baseYG+20-int(gfp*conf->eegAmpX[ampNo]*200);
+    const int yGL=baseYG+25-int(gfpL*conf->eegAmpX[ampNo]*200); const int yGR=baseYG+30-int(gfpR*conf->eegAmpX[ampNo]*200);
+    for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
+     const int x0=wX[colIdx]-1; const int x1=wX[colIdx];
+     sweepPainter.setPen(Qt::blue);  if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGL,x1,yGL);
+     sweepPainter.setPen(Qt::red);   if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGR,x1,yGR);
+     sweepPainter.setPen(Qt::black); if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYG,x1,yG);
+    }
+    prevYG=yG; prevYGL=yGL; prevYGR=yGR;
+ 
     // Audio envelope
     const int baseYA=conf->sweepFrameH-conf->audWaveH/2;
     const float env=audioEnvFromN_RMS(s.audioN);
@@ -343,6 +357,9 @@ class EEGThread:public QThread {
 
   QFont evtFont;
   QPainter sweepPainter; QVector<QStaticText> chnTextCache;
+
+  int prevYG=0; //Previous y Pixel of GFP channel
+  int prevYGL=0; int prevYGR=0;
 
   QVector<int> prevY; // Previous y pixel of EEG channels
   int prevYA=0;       // Previous y pixel of Audio channel

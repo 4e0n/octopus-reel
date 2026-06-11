@@ -62,7 +62,7 @@ struct Feeder {
  std::vector<unsigned long long> offs; // [N]
  unsigned left=0;                      // streams left to serve in this cycle
 
- bool openOnce(const char* path="/opt/octopus/data/raweeg/synth-eeg.raw",unsigned fs=1000) {
+ bool openOnce(const char* path="/opt/octopus-local/data/raweeg/synth-eeg.raw",unsigned fs=1000) {
   if (f.is_open()) return true;
   f.open(path, std::ios::binary); if (!f) return false;
   // Mandatory signature
@@ -212,7 +212,7 @@ class stream {
    Feeder& F=feeder(); // Embedded file playback
    const unsigned fs=(dt>0.0) ? unsigned(1.0/dt+0.5):1000u; // derive fs from dt if possible; fallback to 1000 Hz
 
-   if (!F.openOnce("/opt/octopus/data/raweeg/synth-eeg.raw",fs)) { // If no file, output zeros
+   if (!F.openOnce("/opt/octopus-local/data/raweeg/synth-eeg.raw",fs)) { // If no file, output zeros
     const unsigned blockMs=eesynth::_block_msec();
     const unsigned N=std::max(1u,(fs*blockMs)/1000);
     const unsigned eegCh=(chnCount>=2)?chnCount-2:chnCount;

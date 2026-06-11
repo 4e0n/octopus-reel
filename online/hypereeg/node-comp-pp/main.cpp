@@ -44,7 +44,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "configparser.h"
 #include "ppdaemon.h"
 
-const QString CFGPATH="/etc/octopus/hypereeg.conf";
+const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
 
 bool conf_init_pre(ConfParam *conf) { QString cfgPath=CFGPATH;
  if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
@@ -101,9 +101,8 @@ void conf_info(ConfParam *conf) {
  qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
  qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
  qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
- qInfo("Per-amp All Channel (with Meta) #: %d (%d+%d+%d)",conf->chnCount,conf->refChnCount,conf->bipChnCount,conf->metaChnCount);
+ qInfo("Per-amp All Channel (with Meta) #: %d (%d+%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount,conf->metaChnCount);
  qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
- qInfo() << "Total Channel# from all amps:" << conf->totalCount;
  qInfo() << "Referential channels gain:" << conf->refGain;
  qInfo() << "Bipolar channels gain:" << conf->bipGain;
  qInfo() << "===============================================================";

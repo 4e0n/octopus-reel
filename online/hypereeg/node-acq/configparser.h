@@ -37,7 +37,7 @@ class ConfigParser {
   bool parse(ConfParam *conf) {
    QVector<AcqChnInfo> *refChns=&(conf->refChns);
    QVector<AcqChnInfo> *bipChns=&(conf->bipChns);
-   QVector<AcqChnInfo> *metaChns=&(conf->metaChns);
+   //QVector<AcqChnInfo> *metaChns=&(conf->metaChns);
    QTextStream cfgStream; QStringList cfgLines,opts,opts2,netSection,chnSection;
    QStringList ampSection; AcqChnInfo dummyChnInfo;
 
@@ -167,7 +167,7 @@ class ConfigParser {
     }
 
     // CHN section
-    conf->refChnCount=conf->bipChnCount=conf->metaChnCount=0;
+    conf->refChnCount=conf->bipChnCount=0; //conf->metaChnCount=0;
     if (chnSection.size()>0) {
      for (const auto& sect:chnSection) {
       opts=sect.split("=");
@@ -175,7 +175,7 @@ class ConfigParser {
        opts=opts[1].split(">");
        opts2=opts[0].split(",");
        if (opts2.size()==7) {
-        opts2[0]=opts2[0].trimmed(); // Ref vs. Bip vs. Meta
+        opts2[0]=opts2[0].trimmed(); // Ref vs. Bip //vs. Meta
         opts2[2]=opts2[2].trimmed(); // Channel name
         if ((opts2[0].size()!=1) || !(opts2[0]=="R" || opts2[0]=="B" || opts2[0]=="M") ||
             (!((unsigned)opts2[1].toInt()>0  && (unsigned)opts2[1].toInt()<=512)) || // Channel#
@@ -195,7 +195,7 @@ class ConfigParser {
          dummyChnInfo.topoY=opts2[6].toInt();        // TopoXY - Y
          if (opts2[0]=="R") dummyChnInfo.type=0; // referential
          else if (opts2[0]=="B") dummyChnInfo.type=1; // bipolar
-         else if (opts2[0]=="M") dummyChnInfo.type=2; // meta
+         //else if (opts2[0]=="M") dummyChnInfo.type=2; // meta
          else {
           qCritical() << "<ConfigParser> <CHN> ERROR: Invalid channel type in APPEND parameters!";
           return true;
@@ -226,7 +226,7 @@ class ConfigParser {
         case 0:
         default: refChns->append(dummyChnInfo); break;
         case 1: bipChns->append(dummyChnInfo); break;
-        case 2: metaChns->append(dummyChnInfo); break;
+        //case 2: metaChns->append(dummyChnInfo); break;
        }
       }
      }
@@ -235,7 +235,7 @@ class ConfigParser {
      return true;
     }
 
-    conf->refChnCount=refChns->size(); conf->bipChnCount=bipChns->size(); conf->metaChnCount=metaChns->size();
+    conf->refChnCount=refChns->size(); conf->bipChnCount=bipChns->size(); //conf->metaChnCount=metaChns->size();
     //qInfo() << "EEG channels:" << conf->refChnCount;
     //for (const auto& c:conf->refChns) qInfo() << c.physChn << c.chnName << c.topoX << c.topoY;
     //qInfo() << "BP channels:" << conf->bipChnCount;

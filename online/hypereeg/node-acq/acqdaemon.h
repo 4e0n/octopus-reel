@@ -119,10 +119,8 @@ connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      client->write("-> EEG Samplerate: "+QString::number(conf->eegRate).toUtf8()+"sps\n");
      client->write("-> Referential channel(s)#: "+QString::number(conf->refChnCount).toUtf8()+"\n");
      client->write("-> Bipolar channel(s)#: "+QString::number(conf->bipChnCount).toUtf8()+"\n");
-     client->write("-> Meta (computed) channel(s)#: "+QString::number(conf->metaChnCount).toUtf8()+"\n");
      client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf->physChnCount).toUtf8()+"\n");
      client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(conf->totalChnCount).toUtf8()+"\n");
-     client->write("-> Grand total channels# from all amps: "+QString::number(conf->totalCount).toUtf8()+"\n");
      client->write("-> EEG Probe interval (ms): "+QString::number(conf->eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQ_GETCONF) {
      qInfo() << "<Comm> Sending Config Parameters..";
@@ -130,11 +128,7 @@ connect(client,&QTcpSocket::disconnected,this,[this,client]() {
                    QString::number(conf->eegRate).toUtf8()+","+ \
                    QString::number(conf->refChnCount).toUtf8()+","+ \
                    QString::number(conf->bipChnCount).toUtf8()+","+ \
-                   QString::number(conf->metaChnCount).toUtf8()+","+ \
-                   QString::number(conf->physChnCount).toUtf8()+","+ \
-                   QString::number(conf->chnCount).toUtf8()+","+ \
                    QString::number(conf->totalChnCount).toUtf8()+","+ \
-                   QString::number(conf->totalCount).toUtf8()+","+ \
                    QString::number(conf->refGain).toUtf8()+","+ \
                    QString::number(conf->bipGain).toUtf8()+","+ \
                    QString::number(conf->eegProbeMsecs).toUtf8()+","+ \
@@ -171,27 +165,6 @@ connect(client,&QTcpSocket::disconnected,this,[this,client]() {
                     QString::number(ieSize).toUtf8()+","+ \
                     interElec.toUtf8()+"\n");
      }
-     // Even meta channels are also defined to have neighbor interpolation for now
-     // but this part will probably be removed soon.
-     for (const auto& c:conf->metaChns) {
-      const int ieSize=c.interElec.size(); QString interElec="";
-      for (int ieIdx=0;ieIdx<ieSize;ieIdx++) interElec.append(QString::number(c.interElec[ieIdx])+",");
-      if (!interElec.isEmpty()) interElec.chop(1);
-      client->write(QString::number(c.physChn).toUtf8()+","+ \
-                    QString(c.chnName).toUtf8()+","+ \
-                    QString::number(c.topoTheta).toUtf8()+","+ \
-                    QString::number(c.topoPhi).toUtf8()+","+ \
-                    QString::number(c.topoX).toUtf8()+","+ \
-                    QString::number(c.topoY).toUtf8()+","+ \
-                    QString::number(c.type).toUtf8()+","+ \
-                    QString::number(ieSize).toUtf8()+","+ \
-                    interElec.toUtf8()+"\n");
-     }
-     // Soon the structures for referential, differential and meta channels will be
-     // separated and be dedicated for themselves, as they're so different for
-     // on-the-floy post-hoc computations. But this needs for TcpSampleX derivatives
-     // to be defined, and accordingly the whole serialization pipeline will
-     // change. So still thinking on strategies about it.
     } else if (cmd==CMD_STATUS) {
      //qInfo() << "<Comm> Sending Amp(s) status..";
      client->write("OK\n");
@@ -206,7 +179,7 @@ connect(client,&QTcpSocket::disconnected,this,[this,client]() {
      static constexpr char dumpSign[]="OCTOPUS_HEEG"; // 12 bytes, no \0
      QDateTime currentDT(QDateTime::currentDateTime());
      QString tStamp=currentDT.toString("yyyyMMdd-hhmmss-zzz");
-     conf->hEEGFile.setFileName("/opt/octopus/data/raweeg/heegdump-"+tStamp+".raw");
+     conf->hEEGFile.setFileName("/opt/octopus-local/data/raweeg/heegdump-"+tStamp+".raw");
      conf->hEEGFile.open(QIODevice::WriteOnly);
      conf->hEEGStream.setDevice(&(conf->hEEGFile));
      conf->hEEGStream.setVersion(QDataStream::Qt_5_15); // 5_12

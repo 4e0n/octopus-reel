@@ -130,7 +130,7 @@ class AmpWindow : public QMainWindow {
    connect(bipChnBG,SIGNAL(buttonClicked(int)),this,SLOT(slotBipChnInter(int)));
 
    // *** EEG Streaming
-   conf->sweepFrameW=tabW-10; conf->sweepFrameH=tabH-80;
+   conf->sweepFrameW=tabW-10; conf->sweepFrameH=tabH-16;
    eegWidget=new QWidget(mainTabWidget); eegWidget->setGeometry(2,2,tabW-4,tabH-4); 
    eegFrame=new EEGFrame(conf,ampNo,eegWidget);
    eegFrame->setGeometry(6,6,conf->sweepFrameW,conf->sweepFrameH); 
@@ -138,7 +138,7 @@ class AmpWindow : public QMainWindow {
    eegAmpBG=new QButtonGroup(); eegAmpBG->setExclusive(true);
    for (int btnIdx=0;btnIdx<6;btnIdx++) { // EEG Multiplier
     dummyButton=new QPushButton(eegWidget); dummyButton->setCheckable(true);
-    dummyButton->setGeometry(10+btnIdx*60,tabH-12,60,40);
+    dummyButton->setGeometry(10+btnIdx*60,tabH,60,30);
     eegAmpBG->addButton(dummyButton,btnIdx);
    }
    eegAmpBG->button(0)->setText("1mV");   eegAmpBG->button(1)->setText("500uV");
@@ -152,7 +152,7 @@ class AmpWindow : public QMainWindow {
    mainTabWidget->addTab(eegWidget,"TimeDomain EEG");
    mainTabWidget->show();
 
-   setWindowTitle("Octopus Hyper EEG/ERP Amp #"+QString::number(ampNo+1));
+   setWindowTitle("Octopus HyperEEG Amp #"+QString::number(ampNo+1));
   }
 
   ~AmpWindow() override {}

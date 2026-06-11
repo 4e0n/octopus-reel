@@ -60,7 +60,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/rt_bootstrap.h"
 #endif
 
-const QString CFGPATH="/etc/octopus/hypereeg.conf";
+const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
 
 bool eegamps_check(std::vector<amplifier*> *eeAmps,unsigned int ampCount) {
  if (eeAmps->size()<ampCount) return true;
@@ -79,8 +79,6 @@ bool conf_init(ConfParam *conf) { QString cfgPath=CFGPATH;
    // Constants or calculated global settings upon the ones read from config file
    conf->refChnMaxCount=REF_CHN_MAXCOUNT; conf->bipChnMaxCount=BIP_CHN_MAXCOUNT;
    conf->physChnCount=conf->refChnCount+conf->bipChnCount; conf->totalChnCount=conf->physChnCount+2;
-   conf->chnCount=conf->refChnCount+conf->bipChnCount+conf->metaChnCount;
-   conf->totalCount=conf->ampCount*conf->totalChnCount;
    conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
    conf->frameBytes=TcpSample(conf->ampCount,conf->physChnCount).serialize().size();
    //qDebug() << "FrameBytes=" << conf->frameBytes;
@@ -132,15 +130,6 @@ void conf_info(ConfParam *conf) {
                                                             c.topoTheta,c.topoPhi,c.topoX,c.topoY,
                                                             interElec.toUtf8().constData());
  }
- qInfo() << "------------------------------";
- qInfo() << "Meta (only-computed) channels:";
- qInfo() << "------------------------------"; if (conf->metaChnCount==0) qInfo() << "None.";
- for (const auto& c:conf->metaChns) {
-  interElec=""; for (int i=0;i<c.interElec.size();i++) interElec.append(QString::number(c.interElec[i])+" ");
-  qInfo("%d -> %s - (%2.1f,%2.2f) - [%d,%d] - Neighbors=%s",c.physChn,qUtf8Printable(c.chnName),
-                                                            c.topoTheta,c.topoPhi,c.topoX,c.topoY,
-                                                            interElec.toUtf8().constData());
- }
  qInfo() << "===============================================================";
  qInfo() << "                ACQUISITION PARAMETERS SUMMARY";
  qInfo() << "===============================================================";
@@ -149,9 +138,7 @@ void conf_info(ConfParam *conf) {
  qInfo() << "TCP Ringbuffer allocated for" << conf->tcpBufSize << "seconds.";
  qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
  qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
- qInfo("Per-amp All Channel (with Meta) #: %d (%d+%d+%d)",conf->chnCount,conf->refChnCount,conf->bipChnCount,conf->metaChnCount);
  qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
- qInfo() << "Total Channel# from all amps:" << conf->totalCount;
  qInfo() << "Referential channels gain:" << conf->refGain;
  qInfo() << "Bipolar channels gain:" << conf->bipGain;
  qInfo() << "AudioCard (analog) trigger threshold:" << conf->audTrigThr;

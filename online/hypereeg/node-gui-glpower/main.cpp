@@ -21,12 +21,12 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
  Repo:    https://github.com/4e0n/
 */
 
-/* This is the HyperEEG "Common Mode Levels GUI" Node.
+/* This is the HyperEEG "Power Levels GUI" Node.
  * Its main purpose is to provide a simple graphic view for the current
- * state of each electrode on each amplifier during caps being
- * mounted to participants' heads. Rather than continuously receiving
- * the EEG stream, it receives current set of electrode noise levels
- * by command polling over node-acq-pp, with a timer (e.g. each second).
+ * frequency band power levels of GFP and selected individual electrodes
+ * on each amplifier. Similar to CMlevels client, current data vector is
+ * manually fetched regularly (e.g. 2/sec) from node-comp-pp, rather than streaming
+ * continuously.
  */
 
 #include <QApplication>
@@ -41,7 +41,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "../common/messagehandler.h"
 #include "confparam.h"
 #include "configparser.h"
-#include "cmclient.h"
+#include "powclient.h"
 
 const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
 
@@ -94,7 +94,7 @@ void conf_info(ConfParam *conf) {
  qInfo() << "===============================================================";
  qInfo() << "<ServerIP> is" << conf->compPPIpAddr;
  qInfo() << "<Comm> Connected at port (comm):" << conf->compPPCommPort;
- qInfo() << "<Comm> Listening for commands on port(comm):" << conf->cmCommPort;
+ qInfo() << "<Comm> Listening for commands on port(comm):" << conf->powCommPort;
  qInfo() << "===============================================================";
  qInfo() << "                           GUI COORDS";
  qInfo() << "===============================================================";
@@ -127,13 +127,13 @@ int main(int argc,char* argv[]) {
  omp_diag();
 
  if (conf_init_pre(&conf)) {
-  qCritical("node-gui-cmlevels: <FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
+  qCritical("node-gui-glpower: <FatalError> Failed to initialize Octopus-ReEL Power computation node.");
   return 1;
  }
 
- CMClient cmClient(nullptr,&conf);
- if (cmClient.start()) {
-  qCritical("node-gui-cmlevels: <FatalError> Failed to initialize Octopus-ReEL CMLevels noise computation node.");
+ PowClient powClient(nullptr,&conf);
+ if (powClient.start()) {
+  qCritical("node-gui-glpower: <FatalError> Failed to initialize Octopus-ReEL Power computation node.");
   return 1;
  }
 

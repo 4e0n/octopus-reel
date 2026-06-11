@@ -60,7 +60,9 @@ struct TcpSamplePP {
   // per-amp: (data+dataBP+dataN)=3*chnCount float32
   // audio: AUDIO_N float32
 #ifdef EEGBANDSCOMP
-  return 28+8+int(aCount)*int(cCount)*(3+5)*4+AUDIO_N*4;
+  return 28+8+int(aCount)*int(cCount)*(3+5)*4
+         +int(aCount)*3*SamplePP::GFP_N*4
+         +AUDIO_N*4;
 #else
   return 28+8+int(aCount)*int(cCount)*3*4+AUDIO_N*4;
 #endif
@@ -105,8 +107,13 @@ struct TcpSamplePP {
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vA[c]);
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vB[c]);
    for (unsigned c=0;c<chnCount;++c) wr_f32_le(p,vG[c]);
+
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,amp[a].gfp[i]);
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,amp[a].gfpL[i]);
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,amp[a].gfpR[i]);
 #endif
   }
+
   // audio
   for (int i=0;i<AUDIO_N;++i) wr_f32_le(p,audioN[i]);
   if (written) *written=need;
@@ -204,6 +211,12 @@ struct TcpSamplePP {
 
    for (int i=0;i<nG;++i) wr_f32_le(p,vG[size_t(i)]);
    for (int i=nG;i<want;++i) wr_f32_le(p,0.0f);
+
+   const auto& vgfp=amp[int(a)].gfp; const auto& vgfpL=amp[int(a)].gfpL; const auto& vgfpR=amp[int(a)].gfpR;
+
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,i<int(vgfp.size()) ? vgfp[size_t(i)]:0.0f);
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,i<int(vgfpL.size()) ? vgfpL[size_t(i)]:0.0f);
+   for (int i=0;i<SamplePP::GFP_N;++i) wr_f32_le(p,i<int(vgfpR.size()) ? vgfpR[size_t(i)]:0.0f);
 #endif
   }
 
@@ -220,6 +233,9 @@ struct TcpSamplePP {
       && amp[0].dataD.size()==cCount
       && amp[0].dataT.size()==cCount && amp[0].dataA.size()==cCount && amp[0].dataB.size()==cCount
       && amp[0].dataG.size()==cCount
+      && amp[0].gfp.size()==SamplePP::GFP_N
+      && amp[0].gfpL.size()==SamplePP::GFP_N
+      && amp[0].gfpR.size()==SamplePP::GFP_N
 #endif
       ) {
     return;
@@ -284,8 +300,14 @@ struct TcpSamplePP {
    for (unsigned c=0;c<chnCount;++c) { dA[c]=rd_f32_le(p); p+=4; }
    for (unsigned c=0;c<chnCount;++c) { dB[c]=rd_f32_le(p); p+=4; }
    for (unsigned c=0;c<chnCount;++c) { dG[c]=rd_f32_le(p); p+=4; }
+
+   s.gfp.resize(SamplePP::GFP_N); s.gfpL.resize(SamplePP::GFP_N); s.gfpR.resize(SamplePP::GFP_N);
+   for (int i=0;i<SamplePP::GFP_N;++i) { s.gfp[i]=rd_f32_le(p); p+=4; }
+   for (int i=0;i<SamplePP::GFP_N;++i) { s.gfpL[i]=rd_f32_le(p); p+=4; }
+   for (int i=0;i<SamplePP::GFP_N;++i) { s.gfpR[i]=rd_f32_le(p); p+=4; }
 #endif
   }
+
   for (int i=0;i<AUDIO_N;++i) { audioN[i]=rd_f32_le(p); p+=4; } // audioN
   // At this point p should equal end due to size check
   return true;

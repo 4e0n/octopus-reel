@@ -38,7 +38,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "configparser.h"
 #include "wavplaydaemon.h"
 
-const QString CFGPATH="/etc/octopus/hypereeg.conf";
+const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
 
 bool conf_init_pre(ConfParam *conf) { QString cfgPath=CFGPATH;
  if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);

@@ -44,7 +44,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "configparser.h"
 #include "stordaemon.h"
 
-const QString CFGPATH="/etc/octopus/hypereeg.conf";
+const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
 
 static void setIOPriority() {
  int prio=IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE,0); // best-effort, highest prio
@@ -89,7 +89,6 @@ void conf_info(ConfParam *conf) {
  qInfo() << "EEG data fetched every" << conf->eegProbeMsecs << "ms.";
  qInfo("Per-amp Physical Channel#: %d (%d+%d)",conf->physChnCount,conf->refChnCount,conf->bipChnCount);
  qInfo() << "Per-amp Total Channel# (with Trig and Offset):" << conf->totalChnCount;
- qInfo() << "Total Channel# from all amps:" << conf->totalCount;
  qInfo() << "Referential channels gain:" << conf->refGain;
  qInfo() << "Bipolar channels gain:" << conf->bipGain;
  qInfo() << "===============================================================";

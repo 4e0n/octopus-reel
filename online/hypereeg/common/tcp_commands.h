@@ -62,6 +62,7 @@ const QString CMD_STOR_REC_OFF="RECSTOP";
 
 // node-comp-pp
 const QString CMD_COMPPP_GETCMLEVELS="GETCMLEVELS";
+const QString CMD_COMPPP_GETPOWER="GETPOWER";
 
 // node-wavplay
 const QString CMD_WAVPLAY_PLAY="PLAY";

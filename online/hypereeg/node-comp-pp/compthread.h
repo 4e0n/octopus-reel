@@ -60,7 +60,7 @@ class CompThread : public QThread {
    const unsigned int ampCount=conf->ampCount;
    const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount;
    const unsigned int metaChnCount=conf->metaChnCount;
-   const unsigned int chnCount=conf->chnCount; const unsigned int physChnCount=conf->physChnCount;
+   const unsigned int chnCount=conf->physChnCount; const unsigned int physChnCount=conf->physChnCount;
 
    const auto& refChns=conf->refChns; const auto& bipChns=conf->bipChns; const auto& metaChns=conf->metaChns;
    auto& filterListN=conf->filterListN; auto& filterListBP=conf->filterListBP;
@@ -75,6 +75,41 @@ class CompThread : public QThread {
     return;
    }
 
+#ifdef EEGBANDSCOMP
+   if (conf->powerWindowSamples==0 || conf->powerUpdateStepSamples==0) {
+    qCritical() << "[PP:COMP] Invalid power sliding-window configuration.";
+    return;
+   }
+
+   const unsigned int powerChnCount=conf->powerChnCount;
+   const unsigned int gfpAllOutIdx=conf->grandChnCount;
+   const unsigned int gfpLeftOutIdx=conf->grandChnCount+1;
+   const unsigned int gfpRightOutIdx=conf->grandChnCount+2;
+
+   QVector<QVector<QVector<QVector<float>>>> powerRing; // [amp][chn][band][ring]
+   QVector<QVector<QVector<double>>> powerRunningSumSq; // [amp][chn][band]
+   powerRing.resize(ampCount);
+   powerRunningSumSq.resize(ampCount);
+   for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+    powerRing[ampIdx].resize(powerChnCount);
+    powerRunningSumSq[ampIdx].resize(powerChnCount);
+    for (unsigned int chnIdx=0;chnIdx<powerChnCount;++chnIdx) {
+     powerRing[ampIdx][chnIdx].resize(ConfParam::POWER_BAND_COUNT);
+     powerRunningSumSq[ampIdx][chnIdx].resize(ConfParam::POWER_BAND_COUNT);
+     for (int b=0;b<ConfParam::POWER_BAND_COUNT;++b) {
+      powerRing[ampIdx][chnIdx][b].resize(conf->powerWindowSamples);
+      for (unsigned int k=0;k<conf->powerWindowSamples;++k)
+       powerRing[ampIdx][chnIdx][b][int(k)]=0.0f;
+      powerRunningSumSq[ampIdx][chnIdx][b]=0.0;
+     }
+    }
+   }
+
+   unsigned int powerRingPos=0;
+   unsigned int powerValidSamples=0;
+   quint64 powerSinceLastPublish=0;
+#endif
+
    // Initialize CMlevels ringbuffer
    const unsigned int cmRingSize=conf->cmWindowSamples;
    QVector<QVector<QVector<float>>> cmDiffRing;
@@ -88,9 +123,22 @@ class CompThread : public QThread {
    }
    unsigned int cmRingPos=0; unsigned int cmValidSamples=0; quint64 cmSinceLastCompute=0;
 
+#ifdef EEGBANDSCOMP
+   QVector<QVector<QVector<double>>> powerSumSq; // [amp][grandChn][band]
+   powerSumSq.resize(ampCount);
+   for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+    powerSumSq[ampIdx].resize(powerChnCount);
+    for (unsigned int chnIdx=0;chnIdx<powerChnCount;++chnIdx) {
+     powerSumSq[ampIdx][chnIdx].resize(ConfParam::POWER_BAND_COUNT);
+     for (int b=0;b<ConfParam::POWER_BAND_COUNT;++b)
+      powerSumSq[ampIdx][chnIdx][b]=0.0;
+    }
+   }
+#endif
+
    // Initialize main stream processing
    TcpSample tcpS(ampCount,physChnCount); // Ref+Bip Channels
-   TcpSamplePP tcpSPP(ampCount,chnCount); // Ref+Bip+Meta Channels
+   TcpSamplePP tcpSPP(ampCount,conf->grandChnCount); // Ref+Bip+Meta+GFP Channels
 
    // Simple guard: when output ring is "near full", pause briefly.
    // This prevents burning CPU while SEND drains.
@@ -196,8 +244,9 @@ class CompThread : public QThread {
 
      // Channels' interpolation on Notch filtered version
      for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
-
       for (unsigned int chnIdx=0;chnIdx<refChnCount;++chnIdx) { // Should be refChnCount as it is only EEG
+
+       // 1. Referential EEG interpolation + filtering
        const unsigned interMode=refChns[chnIdx].interMode[ampIdx];
        float xN=tcpSPP.amp[ampIdx].dataN[chnIdx];
        // Default is 1
@@ -216,11 +265,17 @@ class CompThread : public QThread {
        auto &delta=filterListD[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataD[chnIdx]=delta.filterSample(xN);
        auto &theta=filterListT[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataT[chnIdx]=theta.filterSample(xN);
        auto &alpha=filterListA[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataA[chnIdx]=alpha.filterSample(xN);
-       auto &beta=filterListB[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataB[chnIdx]=beta.filterSample(xN);
+       auto &beta=filterListB[ampIdx][chnIdx];  tcpSPP.amp[ampIdx].dataB[chnIdx]=beta.filterSample(xN);
        auto &gamma=filterListG[ampIdx][chnIdx]; tcpSPP.amp[ampIdx].dataG[chnIdx]=gamma.filterSample(xN);
 #endif
       }
 
+      // 2. GFP computation from already-interpolated, already-bandpassed ref EEG
+#ifdef EEGBANDSCOMP
+      tcpSPP.amp[ampIdx].computeGFPs(conf->gfpAllIdx,conf->gfpLeftIdx,conf->gfpRightIdx);
+#endif
+
+      // 3. Bipolar channels
       for (unsigned int chnIdx=0;chnIdx<bipChnCount;++chnIdx) {
        const unsigned interMode=bipChns[chnIdx].interMode[ampIdx];
        float xN=tcpSPP.amp[ampIdx].dataN[refChnCount+chnIdx];
@@ -269,6 +324,110 @@ class CompThread : public QThread {
 #endif
       }
      }
+
+#ifdef EEGBANDSCOMP
+     // -----------------------------------------------------------------------------------------
+     // Sliding-window power accumulation for node-gui-glpower
+     //
+     // Window:
+     //   conf->powerWindowSamples samples, e.g. 10000 = 10 s at 1000 Hz
+     //
+     // Publish:
+     //   every conf->powerUpdateStepSamples samples, e.g. 500 = 2/sec
+     //
+     // Output:
+     //   latestPowerRMS[amp][powerChn][band]
+     //
+     // powerChn layout:
+     //   0 ... grandChnCount-1 : ordinary processed channels
+     //   grandChnCount         : GFP-all
+     //   grandChnCount+1       : GFP-left
+     //   grandChnCount+2       : GFP-right
+
+     auto pushPowerSq=[&](unsigned int ampIdx,unsigned int chnIdx,int bandIdx,double sq) {
+      const float oldSq=powerRing[ampIdx][chnIdx][bandIdx][int(powerRingPos)];
+      powerRing[ampIdx][chnIdx][bandIdx][int(powerRingPos)]=float(sq);
+      powerRunningSumSq[ampIdx][chnIdx][bandIdx]+=sq;
+      powerRunningSumSq[ampIdx][chnIdx][bandIdx]-=double(oldSq);
+     };
+
+     auto pushBandSet = [&](unsigned int ampIdx,unsigned int outIdx,
+                            double xBP,double xD,double xT,double xA,double xB,double xG) {
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_OVERALL,xBP*xBP);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_DELTA,xD*xD);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_THETA,xT*xT);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_ALPHA,xA*xA);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_BETA,xB*xB);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_GAMMA,xG*xG);
+     };
+
+     auto pushGFPBandSet = [&](unsigned int ampIdx,unsigned int outIdx,const std::vector<int> &idxs) {
+      if (idxs.empty()) {
+       pushBandSet(ampIdx,outIdx,0,0,0,0,0,0);
+       return;
+      }
+      double sBP=0.0,sD=0.0,sT=0.0,sA=0.0,sB=0.0,sG=0.0; int n=0;
+      for (int ch:idxs) {
+       if (ch<0 || ch>=int(conf->grandChnCount)) continue;
+       const double xBP=double(tcpSPP.amp[ampIdx].dataBP[ch]);
+       const double xD=double(tcpSPP.amp[ampIdx].dataD[ch]);
+       const double xT=double(tcpSPP.amp[ampIdx].dataT[ch]);
+       const double xA=double(tcpSPP.amp[ampIdx].dataA[ch]);
+       const double xB=double(tcpSPP.amp[ampIdx].dataB[ch]);
+       const double xG=double(tcpSPP.amp[ampIdx].dataG[ch]);
+       sBP+=xBP*xBP; sD+=xD*xD; sT+=xT*xT; sA+=xA*xA; sB+=xB*xB; sG+=xG*xG;
+       ++n;
+      }
+      if (n<=0) { pushBandSet(ampIdx,outIdx,0,0,0,0,0,0); return; }
+      const double invN=1.0/double(n);
+      // For GFP, store mean square directly.
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_OVERALL,sBP*invN);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_DELTA,sD*invN);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_THETA,sT*invN);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_ALPHA,sA*invN);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_BETA,sB*invN);
+      pushPowerSq(ampIdx,outIdx,ConfParam::POWER_GAMMA,sG*invN);
+     };
+     for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+      for (unsigned int chnIdx=0;chnIdx<conf->grandChnCount;++chnIdx) {
+       pushBandSet(ampIdx,chnIdx,
+        double(tcpSPP.amp[ampIdx].dataBP[chnIdx]),
+        double(tcpSPP.amp[ampIdx].dataD [chnIdx]),
+        double(tcpSPP.amp[ampIdx].dataT [chnIdx]),
+        double(tcpSPP.amp[ampIdx].dataA [chnIdx]),
+        double(tcpSPP.amp[ampIdx].dataB [chnIdx]),
+        double(tcpSPP.amp[ampIdx].dataG [chnIdx])
+       );
+      }
+      pushGFPBandSet(ampIdx,gfpAllOutIdx,conf->gfpAllIdx);
+      pushGFPBandSet(ampIdx,gfpLeftOutIdx,conf->gfpLeftIdx);
+      pushGFPBandSet(ampIdx,gfpRightOutIdx,conf->gfpRightIdx);
+     }
+     powerRingPos++;
+     if (powerRingPos>=conf->powerWindowSamples) powerRingPos=0;
+     if (powerValidSamples<conf->powerWindowSamples) powerValidSamples++;
+     powerSinceLastPublish++;
+     if (powerValidSamples>=conf->powerWindowSamples && powerSinceLastPublish>=conf->powerUpdateStepSamples) {
+      QVector<QVector<QVector<float>>> newPower; newPower.resize(ampCount);
+      for (unsigned int ampIdx=0;ampIdx<ampCount;++ampIdx) {
+       newPower[ampIdx].resize(powerChnCount);
+       for (unsigned int chnIdx=0;chnIdx<powerChnCount;++chnIdx) {
+        newPower[ampIdx][chnIdx].resize(ConfParam::POWER_BAND_COUNT);
+        for (int b=0;b<ConfParam::POWER_BAND_COUNT;++b) {
+         newPower[ampIdx][chnIdx][b]=float(std::sqrt(powerRunningSumSq[ampIdx][chnIdx][b]/double(powerValidSamples)));
+        }
+       }
+      }
+
+      {
+       QMutexLocker lk(&conf->powerMutex);
+       conf->latestPowerRMS=std::move(newPower);
+       conf->powerValuesValid=true;
+      }
+
+      powerSinceLastPublish=0;
+     }
+#endif
 
      // ==============================================================================================================
      // ==============================================================================================================

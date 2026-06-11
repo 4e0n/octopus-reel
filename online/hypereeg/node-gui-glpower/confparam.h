@@ -29,14 +29,14 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <atomic>
 #include <QVector>
 #include <QLabel>
-#include "cmchninfo.h"
+#include "powchninfo.h"
 
-const int CMODE_REFRESH_MS=500; // Not to be smaller than 500ms
+const int GLPOWER_REFRESH_MS=500; // Not to be smaller than 500ms
 
 class ConfParam : public QObject {
  Q_OBJECT
  public:
-  ConfParam() { cmRefreshMs=CMODE_REFRESH_MS; quitPending=false; }
+  ConfParam() { powRefreshMs=GLPOWER_REFRESH_MS; quitPending=false; }
 
   QString commandToDaemon(QTcpSocket *socket,const QString &command, int timeoutMs=1000) { // Upstream command
    if (!socket || socket->state()!=QAbstractSocket::ConnectedState) return QString(); // or the error msg
@@ -60,22 +60,36 @@ class ConfParam : public QObject {
   unsigned int ampCount,refChnCount,bipChnCount,metaChnCount;
   unsigned int physChnCount,totalChnCount;
 
-  QVector<GUIChnInfo> refChns,bipChns,metaChns;
+  unsigned int powerChnCount=0;
+  unsigned int gfpAllIdx=0;
+  unsigned int gfpLeftIdx=0;
+  unsigned int gfpRightIdx=0;
+
+  QVector<PowChnInfo> refChns,bipChns,metaChns;
   std::atomic<bool> quitPending{false};
 
-  int cmRefreshMs;
+  int powRefreshMs;
 #ifdef EEGBANDSCOMP
   unsigned int eegBand;
 #endif
 
   int guiX,guiY,guiW,guiH,frameW,frameH,cellSize;
-  QVector<QVector<float>> curCMData;
+
+  static constexpr int POWER_BAND_COUNT=6;
+  static constexpr int POWER_OVERALL=0;
+  static constexpr int POWER_DELTA=1;
+  static constexpr int POWER_THETA=2;
+  static constexpr int POWER_ALPHA=3;
+  static constexpr int POWER_BETA=4;
+  static constexpr int POWER_GAMMA=5;
+
+  QVector<QVector<QVector<float>>> curPowData; // [amp][powerChn][band]
 
   QMutex mutex;
 
-  quint32 cmCommPort=0;
-  QTcpServer cmCommServer;
-  QVector<QTcpSocket*> cmClients;
+  quint32 powCommPort=0;
+  QTcpServer powCommServer;
+  QVector<QTcpSocket*> powClients;
 
   bool pollingActive=true;
 

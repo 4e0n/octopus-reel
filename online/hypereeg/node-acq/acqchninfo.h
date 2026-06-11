@@ -25,7 +25,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 struct AcqChnInfo {
  unsigned int physChn; QString chnName;
- unsigned int type; // 0:ref,1:bipolar,2:meta;
+ unsigned int type; // 0:ref,1:bipolar
  float topoTheta,topoPhi; unsigned int topoX,topoY;
  // Intermodes are not defined in node-acq, but only in node-acq-pp
  // Only neighborhood info is conveyed.

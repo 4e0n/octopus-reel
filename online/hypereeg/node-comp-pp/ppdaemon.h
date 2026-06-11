@@ -67,25 +67,29 @@ class PPDaemon: public QObject {
    conf->tcpBufSize*=conf->eegRate;          // TCPBUFSIZE (in SAMPLE#)
    conf->refChnCount=sList[2].toInt();
    conf->bipChnCount=sList[3].toInt();
-   conf->metaChnCount=sList[4].toInt();
-   conf->physChnCount=sList[5].toInt();
-   conf->chnCount=sList[6].toInt();
-   conf->totalChnCount=sList[7].toInt();
-   conf->totalCount=sList[8].toInt();
-   conf->refGain=sList[9].toFloat();
-   conf->bipGain=sList[10].toFloat();
-   conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
-   conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-   conf->frameBytesIn=sList[12].toInt();
 
-   const unsigned int ampCount=conf->ampCount; const unsigned int chnCount=conf->chnCount;
+   conf->metaChnCount=0; // hard-coded for now, soon will be parsed from config file
+
+   conf->physChnCount=conf->refChnCount+conf->bipChnCount;
+   conf->grandChnCount=conf->physChnCount+conf->metaChnCount;
+   conf->powerChnCount=conf->grandChnCount+3;
+
+   conf->totalChnCount=sList[4].toInt();
+   conf->totalChnCount+=conf->metaChnCount; // Meta Channels are introduced in CompPP - Currently all are GFP
+
+   conf->refGain=sList[5].toFloat();
+   conf->bipGain=sList[6].toFloat();
+   conf->eegProbeMsecs=sList[7].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+   conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
+   conf->frameBytesIn=sList[8].toInt();
+
+   const unsigned int ampCount=conf->ampCount; const unsigned int physChnCount=conf->physChnCount; 
    const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount; 
-   const unsigned int metaChnCount=conf->metaChnCount; const unsigned int physChnCount=conf->physChnCount; 
+   const unsigned int metaChnCount=conf->metaChnCount; const unsigned int chnCount=conf->grandChnCount;
 
    conf->frameBytesOut=TcpSamplePP(ampCount,chnCount).serialize().size();
 
    // CHANNELS
-   //
    commResponse=conf->commandToDaemon(conf->origCommSocket,CMD_ACQ_GETCHAN);
    if (!commResponse.isEmpty()) qInfo() << "<GetChannelListFromAcqDaemon> ChannelList received."; // << commResponse;
    else qCritical() << "<GetChannelListFromAcqDaemon> (TIMEOUT) No response from Acquisition Node!";
@@ -142,6 +146,15 @@ class PPDaemon: public QObject {
     chn.interElec.clear();
     for (int ieChnIdx=0;ieChnIdx<ieCount;ieChnIdx++) chn.interElec.append(sList2[8+ieChnIdx].toInt());
     conf->metaChns.append(chn);
+   }
+
+   // Generate electrode list for all, left hemisphere and right hemisphere
+   conf->gfpAllIdx.clear(); conf->gfpLeftIdx.clear(); conf->gfpRightIdx.clear();
+   for (int i=0;i<int(conf->refChns.size());++i) {
+    const QString name=conf->refChns[i].chnName.trimmed();
+    conf->gfpAllIdx.push_back(i);
+    if (name.endsWith("1") || name.endsWith("3") || name.endsWith("5") || name.endsWith("7")) conf->gfpLeftIdx.push_back(i);
+    else if (name.endsWith("2") || name.endsWith("4") || name.endsWith("6") || name.endsWith("8")) conf->gfpRightIdx.push_back(i);
    }
 
    qDebug() << "[PP] ampCount=" << ampCount << "chnCount=" << chnCount
@@ -227,7 +240,6 @@ class PPDaemon: public QObject {
      client->write("-> Meta (computed) channel(s)#: "+QString::number(conf->metaChnCount).toUtf8()+"\n");
      client->write("-> Physical channel(s)# (Ref+Bip): "+QString::number(conf->physChnCount).toUtf8()+"\n");
      client->write("-> Total channels# (Ref+Bip+Trig+Offset): "+QString::number(conf->totalChnCount).toUtf8()+"\n");
-     client->write("-> Grand total channels# from all amps: "+QString::number(conf->totalCount).toUtf8()+"\n");
      client->write("-> EEG Probe interval (ms): "+QString::number(conf->eegProbeMsecs).toUtf8()+"\n");
     } else if (cmd==CMD_ACQ_GETCONF) {
      qInfo() << "<Comm> Sending Config Parameters..";
@@ -237,9 +249,7 @@ class PPDaemon: public QObject {
                    QString::number(conf->bipChnCount).toUtf8()+","+ \
                    QString::number(conf->metaChnCount).toUtf8()+","+ \
                    QString::number(conf->physChnCount).toUtf8()+","+ \
-                   QString::number(conf->chnCount).toUtf8()+","+ \
                    QString::number(conf->totalChnCount).toUtf8()+","+ \
-                   QString::number(conf->totalCount).toUtf8()+","+ \
                    QString::number(conf->refGain).toUtf8()+","+ \
                    QString::number(conf->bipGain).toUtf8()+","+ \
                    QString::number(conf->eegProbeMsecs).toUtf8()+","+ \
@@ -285,14 +295,14 @@ class PPDaemon: public QObject {
                     QString::number(ch.type).toUtf8()+","+ \
                     interMode.toUtf8()+"\n"); // interMode status of that channel for individual amps
      }
-    } else if (cmd==CMD_ACQPP_GETCMLEVELS) {
+    } else if (cmd==CMD_COMPPP_GETCMLEVELS) {
      QStringList vals;
      {
        QMutexLocker lk(&conf->cmMutex);
        if (!conf->cmLevelsValid) { client->write("\n"); client->flush(); return; }
        for (unsigned int ampIdx=0;ampIdx<conf->ampCount;++ampIdx) {
        if (ampIdx>=unsigned(conf->latestCMLevels.size())) break;
-       for (unsigned int chnIdx=0;chnIdx<conf->chnCount;++chnIdx) {
+       for (unsigned int chnIdx=0;chnIdx<conf->physChnCount;++chnIdx) {
         if ((int)chnIdx>=conf->latestCMLevels[(int)ampIdx].size()) break;
         vals << QString::number(conf->latestCMLevels[int(ampIdx)][chnIdx],'f',6);
        }
@@ -300,6 +310,33 @@ class PPDaemon: public QObject {
      }
      client->write(vals.join(",").toUtf8() + "\n");
      client->flush();
+#ifdef EEGBANDSCOMP
+    } else if (cmd==CMD_COMPPP_GETPOWER) {
+     QStringList vals;
+     //qDebug() << "[PP:CMD] GETPOWER requested"
+     //    << "valid=" << conf->powerValuesValid
+     //    << "amps=" << conf->latestPowerRMS.size();
+     {
+      QMutexLocker lk(&conf->powerMutex);
+      if (!conf->powerValuesValid) {
+       client->write("\n");
+       client->flush();
+       return;
+      }
+      for (unsigned int ampIdx=0;ampIdx<conf->ampCount;++ampIdx) {
+       if (ampIdx>=unsigned(conf->latestPowerRMS.size())) break;
+       for (unsigned int chnIdx=0;chnIdx<conf->powerChnCount;++chnIdx) {
+        if ((int)chnIdx>=conf->latestPowerRMS[int(ampIdx)].size()) break;
+        for (int bandIdx=0;bandIdx<ConfParam::POWER_BAND_COUNT;++bandIdx) {
+         if (bandIdx>=conf->latestPowerRMS[int(ampIdx)][int(chnIdx)].size()) break;
+         vals << QString::number(conf->latestPowerRMS[int(ampIdx)][int(chnIdx)][bandIdx],'f',6);
+        }
+       }
+      }
+     }
+     client->write(vals.join(",").toUtf8() + "\n");
+     client->flush();
+#endif
     } else if (cmd==CMD_STATUS) {
      //qInfo() << "<Comm> Sending Amp(s) status..";
      client->write("OK\n");

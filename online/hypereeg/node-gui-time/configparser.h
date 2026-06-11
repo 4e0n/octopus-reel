@@ -199,14 +199,12 @@ class ConfigParser {
     conf->bipChnCount=sList[3].toInt();
     conf->metaChnCount=sList[4].toInt();
     conf->physChnCount=sList[5].toInt();
-    conf->chnCount=sList[6].toInt();      // logical count from node-acq metadata
-    conf->totalChnCount=sList[7].toInt();
-    conf->totalCount=sList[8].toInt();
-    conf->refGain=sList[9].toFloat();
-    conf->bipGain=sList[10].toFloat();
-    conf->eegProbeMsecs=sList[11].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
+    conf->totalChnCount=sList[6].toInt();
+    conf->refGain=sList[7].toFloat();
+    conf->bipGain=sList[8].toFloat();
+    conf->eegProbeMsecs=sList[9].toInt(); // This determines the (maximum/optimal) data feed rate together with eegRate
     conf->eegSamplesInTick=conf->eegRate*conf->eegProbeMsecs/1000;
-    conf->frameBytes=sList[12].toInt();
+    conf->frameBytes=sList[10].toInt();
 
     // # of data to wait for, to be available for screen plot/sweeper
     // (1000sps/50Hz)/(1000/1000)=20ms=20samples
@@ -219,7 +217,6 @@ class ConfigParser {
     const unsigned int ampCount=conf->ampCount;
     const unsigned int refChnCount=conf->refChnCount; const unsigned int bipChnCount=conf->bipChnCount;
     const unsigned int physChnCount=conf->physChnCount; const unsigned int metaChnCount=conf->metaChnCount;
-    const unsigned int chnCount=conf->chnCount;
 
     // CHANNELS
 
@@ -257,7 +254,7 @@ class ConfigParser {
      conf->metaChns.append(chn);
     }
 
-    qInfo() << "[TIME] ampCount=" << ampCount << " chnCount=" << chnCount << " frameBytes=" << conf->frameBytes;
+    qInfo() << "[TIME] ampCount=" << ampCount << " chnCount=" << physChnCount << " frameBytes=" << conf->frameBytes;
 
     //for (int idx=0;idx<conf->refChns.size();idx++) {
     // QString x="";
@@ -297,7 +294,7 @@ class ConfigParser {
         conf->guiCtrlW=opts2[2].toInt(); conf->guiCtrlH=opts2[3].toInt();
         if ((!(conf->guiCtrlX >= -4000 && conf->guiCtrlX <= 4000)) ||
             (!(conf->guiCtrlY >= -3000 && conf->guiCtrlY <= 3000)) ||
-            (!(conf->guiCtrlW >=   400 && conf->guiCtrlW <= 2000)) ||
+            (!(conf->guiCtrlW >=   200 && conf->guiCtrlW <= 2000)) ||
             (!(conf->guiCtrlH >=    60 && conf->guiCtrlH <= 1800))) {
          qWarning() << "node-time: <ConfigParser> <GUI> <CTRL> ERROR: Window size settings not in appropriate range!";
          return true;
