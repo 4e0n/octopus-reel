@@ -340,15 +340,6 @@ class PowGLWidget:public QGLWidget {
 
    glPushMatrix();
    glScalef(1.0f,1.0f,1.20f);
-   // SCALP
-   if (conf->showScalp) {
-    if (conf->scalpObj.loaded && scalpInterpReady) drawColoredScalp();
-    else if (scalpList) glCallList(scalpList);
-   }
-   // SKULL
-   if (conf->showSkull) {
-    if (skullList) glCallList(skullList);
-   }
    // BRAIN
    if (conf->showBrain) {
     if (conf->brainObj.loaded && brainInterpReady) drawColoredBrain();
@@ -356,6 +347,23 @@ class PowGLWidget:public QGLWidget {
    }
    // ELECTRODES
    if (conf->showElectrodes) drawElectrodes();
+   // SKULL
+   if (conf->showSkull) {
+    if (skullList) glCallList(skullList);
+   }
+   // SCALP
+   if (conf->showScalp) {
+    if (conf->scalpObj.loaded && scalpInterpReady) {
+     if (conf->glMapAlpha>=250) {
+      glDepthMask(GL_TRUE);
+      drawColoredScalp();
+     } else {
+      glDepthMask(GL_FALSE);
+      drawColoredScalp();
+      glDepthMask(GL_TRUE);
+     }
+    } else if (scalpList) glCallList(scalpList);
+   }
    glPopMatrix();
   }
 

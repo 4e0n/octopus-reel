@@ -122,8 +122,8 @@ class PowFrame:public QFrame {
    const float overallRMS=rawVals[ConfParam::POWER_OVERALL];
    p.drawText(12,43,QString("Overall GFP RMS: %1").arg(overallRMS,0,'g',3));
 
-   float pctSum=vals[ConfParam::POWER_DELTA]+vals[ConfParam::POWER_THETA]+vals[ConfParam::POWER_ALPHA]+
-                                             vals[ConfParam::POWER_BETA]+vals[ConfParam::POWER_GAMMA];
+   //float pctSum=vals[ConfParam::POWER_DELTA]+vals[ConfParam::POWER_THETA]+vals[ConfParam::POWER_ALPHA]+
+   //                                          vals[ConfParam::POWER_BETA]+vals[ConfParam::POWER_GAMMA];
    //p.drawText(left,conf->frameH-8,QString("sum=%1%").arg(pctSum,0,'f',1));
 
    p.end();
