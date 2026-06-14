@@ -23,16 +23,19 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 
 #pragma once
 
+#include <QString>
+
 struct PowChnInfo {
- //GUIChnInfo() { param.x=1.0; cmColor=QColor(255,255,255,128); }
- //QColor cmColor; // Instantly computed line noise level..
+ PowChnInfo() {
+  physChn=0; type=0;
+  topoTheta=topoPhi=0.0f;
+  topoX=topoY=0;
+ }
 
- unsigned int physChn; QString chnName;
- unsigned int type; // 0:ref,1:bipolar,2:meta
- unsigned int topoX,topoY;
+ unsigned int physChn;
+ QString chnName;
+ unsigned int type; // 0:ref, 1:bipolar, 2:meta
 
- // -------------------------------------------------------------------------------------------
-
- //float cmLevel;
-
+ float topoTheta,topoPhi; // GL spherical coords
+ unsigned int topoX,topoY; // unused here, kept for compatibility
 };

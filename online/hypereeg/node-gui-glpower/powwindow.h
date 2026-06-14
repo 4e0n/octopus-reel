@@ -26,6 +26,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QMainWindow>
 #include "confparam.h"
 #include "powframe.h"
+#include "powcorrframe.h"
 
 class PowWindow : public QMainWindow {
  Q_OBJECT
@@ -34,19 +35,26 @@ class PowWindow : public QMainWindow {
    conf=c; setGeometry(conf->guiX,conf->guiY,conf->guiW,conf->guiH); setFixedSize(conf->guiW,conf->guiH);
 
    PowFrame *powF;
-   for (unsigned int ampIdx=0; ampIdx<conf->ampCount; ampIdx++) {
+   for (unsigned int ampIdx=0;ampIdx<conf->ampCount;ampIdx++) {
     powF=new PowFrame(conf,ampIdx,this); powF->show(); powFrames.append(powF);
    }
 
-   setWindowTitle("Octopus-HyperEEG Common-Mode (Mains) Noise Levels");
+   corrFrame=new PowCorrFrame(conf,this);
+   const int corrW=conf->frameW; const int corrH=conf->frameH;
+   const int corrX=20+conf->ampCount*(conf->frameW+20); const int corrY=20;
+   corrFrame->setGeometry(corrX,corrY,corrW,corrH); corrFrame->show();
+
+   setWindowTitle("Octopus-HyperEEG GFP Band Power Levels");
   }
 
   ~PowWindow() override {}
 
-  void updatePowFrames() { for (auto *f:powFrames) if (f) f->refreshImage(); }
+  void updatePowFrames() {
+   for (auto *f:powFrames) if (f) f->refreshImage();
+   if (corrFrame) corrFrame->refreshImage();
+  }
 
   void showNode() { show(); raise(); activateWindow(); }
-
   void hideNode() { hide(); }
 
   void setPaletteMode(const QString &mode) {
@@ -59,5 +67,5 @@ class PowWindow : public QMainWindow {
   ConfParam *conf=nullptr;
 
  private:
-  QVector<PowFrame*> powFrames;
+  QVector<PowFrame*> powFrames; PowCorrFrame *corrFrame=nullptr;
 };

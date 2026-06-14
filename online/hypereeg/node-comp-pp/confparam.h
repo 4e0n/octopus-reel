@@ -188,7 +188,7 @@ class ConfParam : public QObject {
   QVector<QVector<QVector<float>>> latestPowerRMS; // [amp][grandChn][band]
   bool powerValuesValid=false;
 
-  unsigned int powerWindowSamples=3000;     // 3 s at 1000 Hz
+  unsigned int powerWindowSamples=6000;     // 3 s at 1000 Hz
   unsigned int powerUpdateStepSamples=500;   // publish 2/sec
   unsigned int powerChnCount=0;
 

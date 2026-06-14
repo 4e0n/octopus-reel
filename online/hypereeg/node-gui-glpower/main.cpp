@@ -35,6 +35,8 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QDateTime>
 #include <QString>
 #include <QFile>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 #include <cstdio>
 #include <sys/stat.h>
 #include "../common/globals.h"
@@ -44,6 +46,26 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include "powclient.h"
 
 const QString CFGPATH="/opt/octopus/etc/hypereeg.conf";
+
+static bool apply_cli_overrides(QApplication &app, ConfParam *conf) {
+ QCommandLineParser parser;
+ parser.setApplicationDescription("Octopus node-gui-glpower");
+ parser.addHelpOption();
+ QCommandLineOption portOpt(QStringList() << "p" << "port","Override local command/listen port from config file.","port");
+
+ parser.addOption(portOpt); parser.process(app);
+
+ if (parser.isSet(portOpt)) {
+  bool ok=false; int p=parser.value(portOpt).toInt(&ok);
+  if (!ok || p<65000 || p>=65999) {
+   qCritical() << "node-gui-glpower: <CLI> Invalid --port value:" << parser.value(portOpt) << "(expected 65000..65998)";
+   return true;
+  }
+  conf->powCommPort=quint32(p);
+  qInfo() << "node-gui-glpower: <CLI> Overriding local command port with:" << conf->powCommPort;
+ }
+ return false;
+}
 
 bool conf_init_pre(ConfParam *conf) { QString cfgPath=CFGPATH;
  if (QFile::exists(cfgPath)) { ConfigParser cfp(cfgPath);
@@ -128,6 +150,11 @@ int main(int argc,char* argv[]) {
 
  if (conf_init_pre(&conf)) {
   qCritical("node-gui-glpower: <FatalError> Failed to initialize Octopus-ReEL Power computation node.");
+  return 1;
+ }
+
+ if (apply_cli_overrides(app,&conf)) {
+  qCritical("node-gui-glpower: <FatalError> Invalid command-line options.");
   return 1;
  }
 

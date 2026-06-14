@@ -96,7 +96,7 @@ class StatusWindow:public QMainWindow {
     auto *it4=table->item(i,4);
 
     if (n.checking)    { it0->setText("..."); it0->setBackground(QBrush(QColor(255,220,120)));  }
-    else if (n.online) { it0->setText("OK"); it0->setBackground(QBrush(QColor(120,220,120)));   }
+    else if (n.online) { it0->setText("ONLINE"); it0->setBackground(QBrush(QColor(120,220,120)));   }
     else               { it0->setText("DOWN"); it0->setBackground(QBrush(QColor(230,100,100))); }
 
     it1->setText(n.name); it2->setText(n.ipAddr); it3->setText(QString::number(n.commPort));

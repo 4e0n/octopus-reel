@@ -174,8 +174,8 @@ class EEGThread:public QThread {
     const int yGL=baseYG+25-int(gfpL*conf->eegAmpX[ampNo]*200); const int yGR=baseYG+30-int(gfpR*conf->eegAmpX[ampNo]*200);
     for (unsigned colIdx=0;colIdx<colCount;++colIdx) {
      const int x0=wX[colIdx]-1; const int x1=wX[colIdx];
-     sweepPainter.setPen(Qt::blue);  if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGL,x1,yGL);
-     sweepPainter.setPen(Qt::red);   if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGR,x1,yGR);
+//     sweepPainter.setPen(Qt::blue);  if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGL,x1,yGL);
+//     sweepPainter.setPen(Qt::red);   if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYGR,x1,yGR);
      sweepPainter.setPen(Qt::black); if (x0>=w0[colIdx]) sweepPainter.drawLine(x0,prevYG,x1,yG);
     }
     prevYG=yG; prevYGL=yGL; prevYGR=yGR;
