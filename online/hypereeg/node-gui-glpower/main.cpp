@@ -37,6 +37,7 @@ Octopus-ReEL - Realtime Encephalography Laboratory Network
 #include <QFile>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
+#include <QScreen>
 #include <cstdio>
 #include <sys/stat.h>
 #include "../common/globals.h"
@@ -51,19 +52,68 @@ static bool apply_cli_overrides(QApplication &app, ConfParam *conf) {
  QCommandLineParser parser;
  parser.setApplicationDescription("Octopus node-gui-glpower");
  parser.addHelpOption();
- QCommandLineOption portOpt(QStringList() << "p" << "port","Override local command/listen port from config file.","port");
 
- parser.addOption(portOpt); parser.process(app);
+ QCommandLineOption portOpt(QStringList() << "p" << "port","Override local command/listen port from config file.","port");
+ QCommandLineOption xOpt(QStringList() << "x","Override GUI X position.","x");
+ QCommandLineOption yOpt(QStringList() << "y","Override GUI Y position.","y");
+ QCommandLineOption widthOpt(QStringList() << "width","Override GUI width.","width");
+ QCommandLineOption heightOpt(QStringList() << "height","Override GUI height.","height");
+ QCommandLineOption screenOpt(QStringList() << "screen","Place GUI on screen index.","screen");
+
+ parser.addOption(portOpt);
+ parser.addOption(screenOpt);
+ parser.addOption(xOpt);
+ parser.addOption(yOpt);
+ parser.addOption(widthOpt);
+ parser.addOption(heightOpt);
+ parser.process(app);
+
+ auto parseIntOpt=[&](const QCommandLineOption &opt,const QString &name,int minVal,int maxVal,int &dst)->bool {
+  if (!parser.isSet(opt)) return false;
+  bool ok=false; int v=parser.value(opt).toInt(&ok);
+  if (!ok || v<minVal || v>maxVal) {
+   qCritical() << "node-gui-glpower: <CLI> Invalid" << name << "value:" << parser.value(opt)
+               << QString("(expected %1..%2)").arg(minVal).arg(maxVal);
+   return true;
+  }
+  dst=v; qInfo() << "node-gui-glpower: <CLI> Overriding" << name << "with:" << dst;
+  return false;
+ };
 
  if (parser.isSet(portOpt)) {
   bool ok=false; int p=parser.value(portOpt).toInt(&ok);
+
   if (!ok || p<65000 || p>=65999) {
    qCritical() << "node-gui-glpower: <CLI> Invalid --port value:" << parser.value(portOpt) << "(expected 65000..65998)";
    return true;
   }
+
   conf->powCommPort=quint32(p);
   qInfo() << "node-gui-glpower: <CLI> Overriding local command port with:" << conf->powCommPort;
  }
+
+ if (parser.isSet(screenOpt)) {
+  bool ok=false; int screenIdx=parser.value(screenOpt).toInt(&ok);
+  const QList<QScreen*> screens=app.screens();
+  if (!ok || screenIdx<0 || screenIdx>=screens.size()) {
+   qCritical() << "node-gui-glpower: <CLI> Invalid --screen value:"
+               << parser.value(screenOpt)
+               << QString("(available screens: 0..%1)").arg(screens.size()-1);
+   return true;
+  }
+  QRect g=screens[screenIdx]->geometry();
+  conf->guiX=g.x(); conf->guiY=g.y(); conf->guiW=g.width(); conf->guiH=g.height();
+  qInfo() << "node-gui-glpower: <CLI> Using screen" << screenIdx
+          << "geometry:"
+          << conf->guiX << conf->guiY << conf->guiW << conf->guiH;
+ }
+
+ if (parseIntOpt(xOpt,"GUI X",-4000,4000,conf->guiX)) return true;
+ if (parseIntOpt(yOpt,"GUI Y",-3000,3000,conf->guiY)) return true;
+ if (parseIntOpt(widthOpt,"GUI width",400,4000,conf->guiW)) return true;
+ if (parseIntOpt(heightOpt,"GUI height",60,2800,conf->guiH)) return true;
+
+
  return false;
 }
 
